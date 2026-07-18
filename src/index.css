@@ -1,0 +1,100 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Design tokens — DESIGN_SYSTEM.md §2. Values are copied verbatim from the
+  spec. Do not invent new colors/radii/shadows here — extend the spec first.
+*/
+:root {
+  /* Pozadí a plochy */
+  --bg-app: #FAF9F5;
+  --bg-surface: #FFFFFF;
+  --bg-surface-soft: #F5F3EE;
+  --bg-inset: #F0EEE7;
+
+  /* Text */
+  --text-primary: #1F1E1B;
+  --text-secondary: #6B6A64;
+  --text-tertiary: #9C9A92;
+  --text-inverse: #FFFFFF;
+
+  /* Čáry */
+  --border-default: #E8E5DD;
+  --border-strong: #D6D3CA;
+
+  /* Primární akcent — forest teal, JEDINÁ akcentní barva aplikace */
+  --primary: #2C6E63;
+  --primary-hover: #245A51;
+  --primary-soft: #E7F0EE;
+  --primary-soft-hover: #DCE9E6;
+  --ring: #2C6E63;
+
+  /* Sémantika subjektů (§2.2) — jen badge/tečka/proužek, nikdy celé plochy */
+  --subject-foster: #4A7C59;
+  --subject-foster-bg: #EAF2EC;
+  --subject-ospod: #4A6FA5;
+  --subject-ospod-bg: #EAF0F7;
+  --subject-court: #6B7280;
+  --subject-court-bg: #F0F1F3;
+  --subject-bio: #A8752A;
+  --subject-bio-bg: #F7EFDF;
+  --crisis: #C05B4D;
+  --crisis-bg: #F9ECE9;
+
+  --success: #4A7C59;
+  --success-bg: #EAF2EC;
+  --warning: #A8752A;
+  --warning-bg: #F7EFDF;
+  --danger: #C05B4D;
+  --danger-bg: #F9ECE9;
+
+  /* Radiusy (§2.4) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Stíny (§2.5) — jen dvě úrovně, vždy měkké */
+  --shadow-raised: 0 1px 3px rgba(31, 30, 27, .06), 0 4px 12px rgba(31, 30, 27, .05);
+  --shadow-overlay: 0 8px 30px rgba(31, 30, 27, .12);
+
+  color-scheme: light;
+}
+
+html {
+  background: var(--bg-app);
+}
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1 {
+  font-family: 'Source Serif 4', Georgia, serif;
+}
+
+/* §9.3 — input text nikdy pod 16px, jinak iOS Safari zoomuje po focusu */
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

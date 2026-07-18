@@ -1,0 +1,78 @@
+rules_version = '2';
+
+// Kostra pravidel — M0 (§4.3, §5). Rozšiřuje se modul po modulu (M1+),
+// nikdy najednou pro kolekce, které ještě neexistují v kódu.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- Sdílené helpery ----------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // §5: role se čte VÝHRADNĚ z Firestore users/{uid}, NIKDY z Custom Claims.
+    // Pozn.: rules jazyk nepodporuje top-level const — seznamy rolí jsou
+    // proto inline v každé funkci (drž obě definice synchronní se
+    // src/types/user.ts STAFF_ROLES / READ_ONLY_MANAGER_ROLES).
+    function isStaff() {
+      return isSignedIn() && userDoc().role in [
+        'superadmin', 'org_admin', 'vedouci_pobocky', 'teamleader',
+        'klicova_osoba', 'asistent_ko', 'zamestnanec'
+      ];
+    }
+
+    function isReadOnlyManager() {
+      return isSignedIn() && userDoc().role in ['vedouci_pobocky', 'teamleader'];
+    }
+
+    function isSuperadmin() {
+      return isSignedIn() && userDoc().role == 'superadmin';
+    }
+
+    // §5 "Klíčová past": sameOrg() musí být VŽDY gated za isStaff() — pěstoun
+    // i externí účastník mají taky organizationId, holé sameOrg by jim
+    // otevřelo celou organizaci. Nikde nepoužívej sameOrg() bez isStaff()
+    // (nebo bez vlastního úzkého disjunktu pro pěstouna/EP přes profil).
+    function sameOrg(orgId) {
+      return isStaff() && userDoc().organizationId == orgId;
+    }
+
+    // ---- users/{uid} ---------------------------------------------------
+
+    match /users/{uid} {
+      allow read: if isSignedIn() &&
+        (request.auth.uid == uid || sameOrg(resource.data.organizationId));
+
+      // SEAM (§11 bod 7): záměrně 'if false'. Vytváření users/{uid} je
+      // bezpečnostně citlivé (role se odtud čte přímo, žádné Custom Claims
+      // jako pojistka) a musí být vázané na existující pozvánku
+      // (foster_invitations/ep_invitations, §6 A6) nebo na org_admina
+      // zakládajícího zaměstnance (§6 A9) — obojí přichází až s M1/M4.
+      // Do té doby se uživatelé sedí jen přes Admin SDK seed skript.
+      allow create, update, delete: if false;
+    }
+
+    // ---- counters/{orgId}_{typ} — §4.3 pozn. 2 (UID sekvenční čítač) ----
+
+    match /counters/{counterId} {
+      allow read: if sameOrg(resource.data.organizationId);
+      // Zápis jen přes transakci ze service vrstvy (allocateUid) — libovolný
+      // isStaff v dané organizaci smí spustit transakci, samotné zvýšení
+      // hodnoty i tak zůstává atomické na úrovni Firestore transakce.
+      allow write: if isStaff() &&
+        (resource == null || sameOrg(resource.data.organizationId)) &&
+        sameOrg(request.resource.data.organizationId);
+    }
+
+    // ---- Vše ostatní: default deny, dokud modul nepřidá vlastní match ---
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
