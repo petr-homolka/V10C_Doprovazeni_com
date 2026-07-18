@@ -44,6 +44,36 @@
   přes `import()` v konzoli). Pro čistě emulátorový lokální vývoj stačí
   dummy hodnoty (`demo-api-key` apod.) — `.env.local` je gitignored.
 
+### Dodatek (2026-07-18, po zpětné vazbě): hlavní shell přidán do M0
+
+Uživatel oprávněně namítl, že samotná přihlašovací stránka nedokazuje nic o
+cíli "vypadat jako Claude.ai/Gemini/ChatGPT/Mistral" — to dokazuje až hlavní
+kostra appky (sidebar + obsah), ne login formulář. Metodika sama říká
+"vzorek před sweepem" u čehokoli vizuálního (§11 bod 2) — měl jsem tímhle
+vzorkem začít, ne přihlašovačkou. Doplněno proto ještě v M0:
+
+- **`src/components/shell/Sidebar.tsx`** — 240px, `bg-surface-soft`,
+  sbalitelná na ikonový rail, aktivní položka `primary-soft`/`primary`
+  přesně dle DESIGN_SYSTEM §4. Navigační položky (Dnes/Rodiny/Úkoly/
+  Kalendář/Dokumenty) jsou reprezentativní ukázka, ne finální
+  role-aware seznam (ten je funkční záležitost M1+).
+- **`src/components/shell/AppShell.tsx`** — sidebar + obsah na `--bg-app`,
+  max-width 1200px vycentrovaný.
+- **`src/components/FamilyCard.tsx`**, **`src/components/ui/badge.tsx`**,
+  **`src/components/ui/empty-state.tsx`** — přesně dle mikro-příkladu §14,
+  badge §6.3, prázdný stav §6.7.
+- **`DashboardPage.tsx`** teď staví na `AppShell` + ukázkových datech
+  (`TodaySampleSections`) — vizuál je tam, reálný dotaz nad Dohodami/
+  timeline přijde s M2/M3.
+- **`/_preview` route + `DesignPreviewPage.tsx`** — DOČASNÁ, obchází
+  `RequireAuth` (žádný funkční backend zatím, viz emulator TODO níže),
+  aby šel shell rovnou ukázat v prohlížeči bez přihlášení. **Smazat s M1**,
+  jakmile jde stejný shell ověřit reálným přihlášením.
+
+Tenhle vzorek čeká na schválení uživatelem, než se stane vzorem pro
+všechny další obrazovky M1+ — neopakuj sidebar/kartu/badge vzor jinam,
+dokud nepadne potvrzení.
+
 ### Rozhodnutí padlá při stavbě (proti čemu neregredovat)
 
 1. **§5.8 byznys model:** vše zdarma zatím, žádné UI k placení. Datový

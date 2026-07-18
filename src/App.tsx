@@ -8,6 +8,8 @@ import RequireAuth from '@/routes/RequireAuth'
 // jednoho velkého bundlu.
 const LoginPage = lazy(() => import('@/routes/LoginPage'))
 const DashboardPage = lazy(() => import('@/routes/DashboardPage'))
+// DOČASNÉ — viz komentář v DesignPreviewPage.tsx, smazat s M1.
+const DesignPreviewPage = lazy(() => import('@/routes/DesignPreviewPage'))
 
 function RouteFallback() {
   return (
@@ -24,6 +26,7 @@ export default function App() {
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/_preview" element={<DesignPreviewPage />} />
             <Route element={<RequireAuth />}>
               <Route path="/" element={<DashboardPage />} />
             </Route>

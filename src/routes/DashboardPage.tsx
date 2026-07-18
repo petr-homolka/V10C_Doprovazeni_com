@@ -1,34 +1,36 @@
 import { signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/hooks/useAuth'
+import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
+import { TodaySampleSections } from '@/components/TodaySampleSections'
 
 /**
- * Placeholder pro M0 — jen dokazuje, že Auth + role z users/{uid} + routing
- * fungují od začátku do konce. Skutečná obrazovka „Dnes" (přehled rodin,
- * upozornění na blížící se lhůty) vzniká až v M1+/M3.
+ * "Dnes" — DESIGN_SYSTEM.md vzorová obrazovka (§1, §4, §14). Obsah sekcí
+ * (TodaySampleSections) je zatím ukázková data pro ověření vizuálu, ne
+ * reálný dotaz — viz ZADANI §6 A3 bod 5, přijde s M2/M3.
  */
 export default function DashboardPage() {
-  const { firebaseUser, userDoc } = useAuth()
+  const { userDoc, firebaseUser } = useAuth()
 
   return (
-    <div className="min-h-screen bg-app px-6 py-8">
-      <div className="mx-auto max-w-[1200px]">
-        <h1 className="font-serif text-[28px] font-semibold text-text-primary">
-          Dnes
-        </h1>
-        <div className="mt-4 rounded-lg border border-border bg-surface p-5">
-          <p className="text-[15px] text-text-primary">
-            Přihlášen jako <strong>{userDoc?.displayName ?? firebaseUser?.email}</strong>
-          </p>
+    <AppShell>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-serif text-[28px] font-semibold leading-tight text-text-primary">
+            Dnes
+          </h1>
           <p className="mt-1 text-[13px] text-text-secondary">
-            Role: {userDoc?.role ?? '(profil users/{uid} zatím neexistuje)'}
+            Přihlášen jako {userDoc?.displayName ?? firebaseUser?.email}
+            {userDoc?.role ? ` · ${userDoc.role}` : ''}
           </p>
         </div>
-        <Button variant="ghost" className="mt-6" onClick={() => signOut(auth)}>
+        <Button variant="ghost" size="sm" onClick={() => signOut(auth)}>
           Odhlásit se
         </Button>
       </div>
-    </div>
+
+      <TodaySampleSections />
+    </AppShell>
   )
 }
