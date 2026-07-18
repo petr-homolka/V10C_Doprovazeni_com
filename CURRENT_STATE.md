@@ -5,6 +5,46 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 4 (2026-07-19): plovoucí panely + přesun akcí do TopBaru
+
+Třetí kolo zpětné vazby, dvě věci:
+
+1. **Nastavení + přepínač Světlý/Tmavý přesunuty ze sidebaru do TopBaru** —
+   `Sidebar.tsx` teď má dole JEN identitu uživatele (avatar+jméno), žádné
+   akce. `TopBar.tsx` má ikonový cluster vpravo (bez textových labelů):
+   motiv → nastavení (zatím bez funkce, jen ikona) → oznámení → účet, v
+   tomhle pořadí, avatar úplně vpravo. `useTheme()` se přesunul ze
+   Sidebaru do TopBaru.
+   **Princip pro budoucí stavové ikony** (zapsáno na výslovnou žádost):
+   ikona reprezentující zapnutou/vypnutou "službu" (např. ztlumená
+   oznámení) MUSÍ vizuálně odlišit stav (jiná ikona jako `BellOff`, ne
+   stejná ikona bez ohledu na stav) — zvonek zatím jen otevírá panel
+   (není to on/off přepínač), princip se uplatní až s M9.
+2. **Layout „plovoucích panelů"** — sidebar a hlavní obsah už nejsou
+   edge-to-edge, ale dva samostatné `rounded-lg` panely s `gap-2`/`p-2`
+   mezerou na nové ploše `--bg-void` (světle šedá `#E5E5E5` v light, čistá
+   černá `#000000` v dark — o úroveň tmavší/světlejší než `--bg-app`).
+   Ověřeno vizuálně v obou režimech, sbalení sidebaru kliknutím na logo
+   funguje beze změny uvnitř nového layoutu.
+   **Past při ověřování:** `resize_window` s explicitními
+   `width`/`height` (1280×800) produkoval zdeformovaný/zmenšený screenshot
+   (obsah zabíral jen ~74 % plochy), i když `getBoundingClientRect`
+   potvrzoval správné 1280×800 rozvržení — je to artefakt nástroje
+   screenshotu při explicitním rozlišení, ne chyba appky. `resize_window`
+   s `preset: 'desktop'` (nativní velikost) renderuje/screenshotuje
+   správně. Používej `preset`, ne explicitní `width`/`height`, pro vizuální
+   review.
+3. **Border na kartách zatím NEODSTRANĚN** — uživatel upozornil, že
+   Magnific elevated plochy nemají žádnou viditelnou outline. Náš
+   `--border-default` je už jen 10% alpha, což při vizuální kontrole v
+   dark módu nepůsobí jako tvrdá čára — ponecháno beze změny, ale je to
+   vědomé rozhodnutí (ne přehlédnutí), zmínit uživateli při schvalování.
+
+Zdroj reference: `../nove zadani/pak-smazat-inspirace-chatgpt/maginific/`
+(HTML/CSS export + screenshot dodaný přímo v konverzaci).
+
+---
+
 ## Dodatek 3 (2026-07-19): design tokeny v3 — Magnific.ai referencia, tmavší dark mode, sidebar úpravy
 
 Uživatel schválil směr v2, ale se třemi konkrétními úpravami:

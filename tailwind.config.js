@@ -8,6 +8,7 @@ export default {
         surface: 'var(--bg-surface)',
         'surface-soft': 'var(--bg-surface-soft)',
         inset: 'var(--bg-inset)',
+        void: 'var(--bg-void)',
 
         'text-primary': 'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',

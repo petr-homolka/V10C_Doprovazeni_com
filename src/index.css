@@ -28,6 +28,10 @@
   --bg-surface: #F5F5F5;
   --bg-surface-soft: #ECECEC;
   --bg-inset: #E3E3E3;
+  /* "Void" za plovoucími panely (sidebar/hlavní obsah) — o něco tmavší/
+     šedější než --bg-app, aby panely opticky "plavaly" na vlastní ploše
+     s mezerou mezi nimi, ne edge-to-edge jako dřív. */
+  --bg-void: #E5E5E5;
 
   /* Text — Magnific surface-foreground-0/3/4 (light blok) */
   --text-primary: #1A1A1A;
@@ -92,6 +96,7 @@
     --bg-surface: #1A1A1A;
     --bg-surface-soft: #2B2B2B;
     --bg-inset: #353535;
+    --bg-void: #000000;
 
     --text-primary: #F5F5F5;
     --text-secondary: #AAAAAA;

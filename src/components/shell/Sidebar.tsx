@@ -1,25 +1,18 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import {
-  Calendar,
-  CheckSquare,
-  FileText,
-  Home,
-  Moon,
-  Settings,
-  Sun,
-  Users,
-} from 'lucide-react'
+import { Calendar, CheckSquare, FileText, Home, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
-import { useTheme } from '@/hooks/useTheme'
 
 /**
- * DESIGN_SYSTEM.md §4 — Sidebar: --bg-surface-soft, bez borderu vpravo,
- * položky ikona 18px + label, radius-md, aktivní = --primary-soft pozadí +
- * --primary text. Sbalitelný na ikonový rail (existující, osvědčený UX
- * vzor z funkčního handoffu, jen v novém vizuálu) — sbalení/rozbalení se
- * ovládá kliknutím na logo nahoře, ne samostatným tlačítkem dole.
+ * DESIGN_SYSTEM.md §4 — Sidebar: --bg-surface-soft, položky ikona 18px +
+ * label, radius-md, aktivní = --primary-soft pozadí + --primary text.
+ * Sbalitelný na ikonový rail — sbalení/rozbalení se ovládá kliknutím na
+ * logo nahoře, ne samostatným tlačítkem dole.
+ *
+ * Nastavení + přepínač Světlý/Tmavý žijí od 2026-07-19 v TopBar.tsx (ikonový
+ * cluster vpravo nahoře, inspirace Magnific.ai) — sidebar dole má už jen
+ * identitu přihlášeného uživatele, žádné akce.
  *
  * Skutečná sada položek/oprávnění (kdo vidí co) je funkční záležitost M1+
  * (role-aware nav) — tady je jen reprezentativní sada, ne finální seznam.
@@ -35,7 +28,6 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { userDoc, firebaseUser } = useAuth()
-  const { theme, toggleTheme } = useTheme()
   const displayName = userDoc?.displayName ?? firebaseUser?.email ?? ''
   const initials = displayName
     .split(' ')
@@ -47,7 +39,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'flex h-screen flex-col bg-surface-soft transition-[width] duration-200',
+        'flex h-full flex-col bg-surface-soft transition-[width] duration-200',
         collapsed ? 'w-[72px]' : 'w-[240px]',
       )}
     >
@@ -91,34 +83,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="space-y-0.5 border-t border-border px-3 py-3">
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className={cn(
-            'flex w-full items-center gap-3 rounded-md px-3 py-2 text-[14px] font-medium text-text-secondary transition-colors duration-150 hover:bg-surface',
-            collapsed && 'justify-center px-0',
-          )}
-        >
-          {theme === 'light' ? (
-            <Moon size={18} strokeWidth={1.75} className="shrink-0" />
-          ) : (
-            <Sun size={18} strokeWidth={1.75} className="shrink-0" />
-          )}
-          {!collapsed && <span>{theme === 'light' ? 'Tmavý režim' : 'Světlý režim'}</span>}
-        </button>
-
-        <button
-          type="button"
-          className={cn(
-            'flex w-full items-center gap-3 rounded-md px-3 py-2 text-[14px] font-medium text-text-secondary transition-colors duration-150 hover:bg-surface',
-            collapsed && 'justify-center px-0',
-          )}
-        >
-          <Settings size={18} strokeWidth={1.75} className="shrink-0" />
-          {!collapsed && <span>Nastavení</span>}
-        </button>
-
+      <div className="border-t border-border px-3 py-3">
         <div className={cn('flex items-center gap-2.5 rounded-md px-3 py-2', collapsed && 'justify-center px-0')}>
           <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary">
             {initials || '?'}
