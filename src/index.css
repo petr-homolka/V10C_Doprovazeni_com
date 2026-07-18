@@ -185,15 +185,11 @@ body {
   margin: 0;
   background: var(--bg-void);
   color: var(--text-primary);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Geist Sans', system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-h1 {
-  font-family: 'Source Serif 4', Georgia, serif;
 }
 
 /* §9.3 — input text nikdy pod 16px, jinak iOS Safari zoomuje po focusu */

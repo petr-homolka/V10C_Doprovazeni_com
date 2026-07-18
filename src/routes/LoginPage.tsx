@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="w-full max-w-[380px] rounded-lg border border-border bg-surface p-6 shadow-raised">
-        <h1 className="mb-1 font-serif text-[28px] font-semibold leading-tight text-text-primary">
+        <h1 className="mb-1 text-[28px] font-semibold leading-tight text-text-primary">
           Doprovázení.com
         </h1>
         <p className="mb-6 text-[13px] text-text-secondary">

@@ -69,8 +69,7 @@ export default {
         overlay: 'var(--shadow-overlay)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        serif: ['Source Serif 4', 'Georgia', 'serif'],
+        sans: ['Geist Sans', 'system-ui', 'sans-serif'],
       },
       transitionDuration: {
         150: '150ms',

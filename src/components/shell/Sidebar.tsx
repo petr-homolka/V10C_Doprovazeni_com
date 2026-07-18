@@ -59,7 +59,7 @@ export function Sidebar() {
           D
         </div>
         {!collapsed && (
-          <span className="truncate font-serif text-[15px] font-semibold text-text-primary">
+          <span className="truncate text-[15px] font-semibold text-text-primary">
             Doprovázení
           </span>
         )}

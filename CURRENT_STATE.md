@@ -5,6 +5,27 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 6 (2026-07-19): font — Geist Sans všude, žádný serif
+
+Uživatel potvrdil: přejít na Geist plošně, ŽÁDNÝ serif nikde (rušíme H1
+výjimku z původního DESIGN_SYSTEM.md §3, která odkazovala na Claude.ai).
+
+- `@fontsource/inter` a `@fontsource/source-serif-4` ODEBRÁNY,
+  `@fontsource/geist-sans` (Vercel, MIT, self-hosted stejným vzorem jako
+  předtím) nainstalován — váhy 400/500/600 v `main.tsx`.
+- `src/index.css`: `body` font-family → `'Geist Sans', system-ui,
+  sans-serif`; pravidlo `h1 { font-family: 'Source Serif 4'... }` smazáno.
+- `tailwind.config.js`: `fontFamily.sans` → Geist Sans, `fontFamily.serif`
+  odstraněno (nic ho už nepoužívá).
+- `font-serif` třída odstraněna ze všech 4 výskytů (`Sidebar.tsx`,
+  `DashboardPage.tsx`, `DesignPreviewPage.tsx`, `LoginPage.tsx`) — H1 teď
+  jede na stejném sans jako zbytek appky, jen větší/tučnější.
+
+Ověřeno v prohlížeči (`document.fonts`, computed `font-family`) — Geist
+Sans 400/500/600 se načítá a aplikuje správně v obou režimech.
+
+---
+
 ## Dodatek 5 (2026-07-19): přeměřeno přímo na živé Magnific appce (ne odhad)
 
 Uživatel po Dodatku 4 napsal "STÁLE TO NENÍ ONO" a poslal screenshot naší
