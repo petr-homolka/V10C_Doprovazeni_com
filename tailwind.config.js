@@ -22,6 +22,7 @@ export default {
         primary: {
           DEFAULT: 'var(--primary)',
           hover: 'var(--primary-hover)',
+          foreground: 'var(--primary-foreground)',
           soft: 'var(--primary-soft)',
           'soft-hover': 'var(--primary-soft-hover)',
         },
@@ -52,6 +53,7 @@ export default {
         danger: {
           DEFAULT: 'var(--danger)',
           bg: 'var(--danger-bg)',
+          solid: 'var(--danger-solid)',
         },
       },
       borderRadius: {

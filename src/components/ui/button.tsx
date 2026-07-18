@@ -14,11 +14,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-white hover:bg-primary-hover',
+        primary: 'bg-primary text-primary-foreground hover:bg-primary-hover',
         secondary:
           'bg-surface border border-border-strong text-text-primary hover:bg-surface-soft',
         ghost: 'text-text-secondary hover:bg-surface-soft',
-        destructive: 'bg-danger text-white hover:opacity-90',
+        destructive: 'bg-danger-solid text-white hover:opacity-90',
       },
       size: {
         default: 'h-10 px-4',

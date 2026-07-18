@@ -5,6 +5,59 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 2 (2026-07-18): design tokeny v2 — grayscale ChatGPT směr
+
+Uživatel po zhlédnutí `/_preview` shellu potvrdil směr (sidebar+karty), ale
+požádal o přepracování PALETY blíž ke ChatGPT: **UI chrome (pozadí, karty,
+tlačítka, text) jen šedá/bílá/černá — barva je vyhrazená VÝHRADNĚ
+subjektovým badge/výstrahám.** Dodal referenční HTML/CSS export ChatGPT
+(`../nove zadani/pak-smazat-inspirace-chatgpt/`, smazat po dokončení) pro
+zjištění reálné škály (`--gray-25…975`, `--main-surface-*`,
+`--sidebar-surface-*`) — hodnoty tokenů níže z něj vychází, ne z odhadu.
+
+**Tohle mění dřívější `DESIGN_SYSTEM.md` (v `nove zadani/`) na dvou místech
+— dokument samotný jsem NEEDITOVAL (je to dodaný brief, ne repo soubor),
+ale zaznamenávám odchylku tady, ať se neztratí:**
+- §2.1 (barvy) — teplá krémová/teal paleta nahrazena šedou/bílou/černou.
+  Subjektové barvy (§2.2) a tři úrovně stavů dokumentů (§2.3) zůstávají
+  BEZE ZMĚNY — pořád jediné místo s barvou.
+- §12 bod 9 (NIKDY dark mode) — ZRUŠENO na výslovnou žádost (uživatel
+  poslal světlý i tmavý referenční screenshot). Světlý i tmavý režim
+  jsou teď oba v `src/index.css`, přepínatelné přes `prefers-color-scheme`
+  nebo `[data-theme]` (pro budoucí přepínač §5.6).
+
+**Nové/změněné tokeny** (`src/index.css`, zrcadleno v `tailwind.config.js`):
+- `--bg-app/-surface/-surface-soft/-inset`: teď `#F9F9F9/#FFF/#F3F3F3/#ECECEC`
+  (light), `#212121/#2B2B2B/#262626/#333333` (dark) — místo cream škály.
+- `--text-primary/-secondary/-tertiary`: `#171717/#676767/#9B9B9B` (light),
+  `#EDEDED/#A0A0A0/#737373` (dark) — místo teplé skoro-černé.
+- `--primary`: teď MONOCHROMNÍ (skoro černá v light, skoro bílá v dark),
+  NE teal — přesně princip "barva jen na badge/výstraze". Nový token
+  `--primary-foreground` (text NA primárním tlačítku, obrací se s tématem)
+  — `Button.tsx` primary varianta ho používá misto natvrdo `text-white`.
+- **Past, na kterou jsem narazil a opravil:** subjektové/sémantické barvy
+  (`--danger` aj.) se v dark módu zesvětlují kvůli čitelnosti jako badge
+  text na tmavém pozadí — ale destruktivní tlačítko (§6.1) potřebuje
+  sytou plochu pro bílý text, ne zesvětlenou. Řešení: nový konstantní
+  token `--danger-solid` (stejná hodnota v obou režimech), destruktivní
+  varianta Button.tsx ho používá místo `--danger`.
+- `--border-default/-strong`: teď alpha-black/white (`rgba(0,0,0,.1)` light,
+  `rgba(255,255,255,.12)` dark) místo pevného hexu — funguje nad
+  libovolnou plochou v obou režimech.
+- Font zůstává Inter + Source Serif 4 (H1) — ChatGPT používá vlastní
+  proprietární "OpenAI Sans", tu nelze/nemá smysl kopírovat, Inter je
+  nejbližší volně dostupná alternativa a nebyla součástí připomínky.
+
+**Ověřeno v prohlížeči** (`/_preview`, `/login`) — screenshoty i computed
+styles v obou režimech (`resize_window` s `colorScheme: light/dark`),
+včetně opravy bugu (dev server nesebral nový `tailwind.config.js` klíč
+`primary.foreground` bez restartu — po restartu `npm run build` i dev
+server generují `.text-primary-foreground` správně).
+
+Čeká na finální schválení uživatele, než se stane závazným pro M1+.
+
+---
+
 ## Stav: M0 hotový (2026-07-18)
 
 ### Co je hotové

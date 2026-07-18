@@ -49,7 +49,7 @@ export function Sidebar() {
       )}
     >
       <div className={cn('flex items-center gap-2 px-4 pt-5 pb-3', collapsed && 'justify-center px-0')}>
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-semibold text-white">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-semibold text-primary-foreground">
           D
         </div>
         {!collapsed && (
