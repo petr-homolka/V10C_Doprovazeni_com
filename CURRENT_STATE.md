@@ -33,6 +33,16 @@
   `--bg-app`, ne bílá), React Router s lazy-loaded routami (`/login`,
   `/` za `RequireAuth`).
 - **Lint + build zelené** (`npm run lint`, `npm run build`).
+- **Ověřeno v prohlížeči** (`npm run dev`, ne jen build): nepřihlášený
+  uživatel je přesměrován na `/login`, formulář se vykreslí správně, a
+  computed styles sedí na tokeny — `body` bg `rgb(250,249,245)` (`--bg-app`),
+  primární tlačítko bg `rgb(44,110,99)` (`--primary`) s `radius 12px`
+  (`--radius-md`), H1 `Source Serif 4` 28px. Lokální dev vyžaduje
+  `.env.local` (viz `.env.example`) — bez něj `getAuth()` hází
+  `auth/invalid-api-key` synchronně a celá appka zůstane prázdná stránka
+  bez jediné console chyby zachycené běžnými nástroji (objevilo se to jen
+  přes `import()` v konzoli). Pro čistě emulátorový lokální vývoj stačí
+  dummy hodnoty (`demo-api-key` apod.) — `.env.local` je gitignored.
 
 ### Rozhodnutí padlá při stavbě (proti čemu neregredovat)
 
