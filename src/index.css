@@ -3,67 +3,75 @@
 @tailwind utilities;
 
 /*
-  Design tokeny — v2 (2026-07-18), přepracováno směrem k ChatGPT: čistě
-  šedá/bílá/černá škála pro chrome appky (pozadí, karty, tlačítka, text),
-  BAREVNÉ zůstávají výhradně subjektové/sémantické tokeny (badge, výstrahy) —
-  viz sekce "Sémantika subjektů" níže. Hodnoty odvozené z reálné ChatGPT
-  CSS škály (gray-25…gray-975), ne vymyšlené od oka.
+  Design tokeny — v3 (2026-07-19). Grayscale chrome appky (pozadí, karty,
+  tlačítka, text) zůstává princip z v2, ale hodnoty teď vychází z reálné
+  produkční škály Magnific.ai (viz `nove zadani/pak-smazat-inspirace-
+  chatgpt/maginific/`) — přesnější odstupňování elevace + o dost tmavší
+  dark mode, přesně jak bylo požadováno. BAREVNÉ zůstávají výhradně
+  subjektové/sémantické tokeny (badge, výstrahy).
+
+  Klíčové zjištění z reference: sémantické "foreground" barvy (success/
+  warning/danger/subject-*) jsou v Magnific KONSTANTNÍ napříč light/dark —
+  mění se jen jejich "-bg" tinted protějšek. Přebíráme stejný princip —
+  jednodušší a řeší to i kontrast destruktivního tlačítka bez zvláštního
+  --danger-solid triku, který jsme potřebovali v v2.
 
   Světlý režim = výchozí :root. Tmavý režim = @media (prefers-color-scheme:
-  dark) NEBO explicitní [data-theme="dark"] (pro pozdější přepínač
-  Vzhled: Světlý/Tmavý/Systémový, §5.6). [data-theme="light"] vynucuje
-  světlý i quando OS preferuje tmavý.
+  dark) NEBO explicitní [data-theme="dark"] (přepínač v Sidebaru,
+  useTheme.ts — dočasně přes localStorage, dokud §5.6/M9.5 nepřinese
+  per-uživatel uložené nastavení). [data-theme="light"] vynucuje světlý
+  i když OS preferuje tmavý.
 */
 :root {
-  /* Pozadí a plochy */
-  --bg-app: #F9F9F9;
-  --bg-surface: #FFFFFF;
-  --bg-surface-soft: #F3F3F3;
-  --bg-inset: #ECECEC;
+  /* Pozadí a plochy — Magnific surface-0..3 (light blok) */
+  --bg-app: #FFFFFF;
+  --bg-surface: #F5F5F5;
+  --bg-surface-soft: #ECECEC;
+  --bg-inset: #E3E3E3;
 
-  /* Text */
-  --text-primary: #171717;
-  --text-secondary: #676767;
-  --text-tertiary: #9B9B9B;
+  /* Text — Magnific surface-foreground-0/3/4 (light blok) */
+  --text-primary: #1A1A1A;
+  --text-secondary: #616161;
+  --text-tertiary: #737373;
   --text-inverse: #FFFFFF;
 
-  /* Čáry — alpha-black, aby fungovaly nad libovolnou plochou */
-  --border-default: rgba(0, 0, 0, .10);
-  --border-strong: rgba(0, 0, 0, .16);
+  /* Čáry — alpha-black (Magnific surface-border-alpha-1/2) */
+  --border-default: rgba(16, 16, 16, .10);
+  --border-strong: rgba(16, 16, 16, .20);
 
-  /* Primární akcent — monochromní (černá v light, bílá v dark), NE barevná.
-     Barva je vyhrazená výhradně subjektovým/sémantickým tokenům níže. */
-  --primary: #171717;
-  --primary-hover: #2F2F2F;
-  --primary-foreground: #FFFFFF;
-  --primary-soft: #ECECEC;
-  --primary-soft-hover: #E3E3E3;
-  --ring: #171717;
+  /* Primární akcent — monochromní (skoro černá v light, skoro bílá v
+     dark), NE barevná. Barva je vyhrazená výhradně subjektovým/
+     sémantickým tokenům níže. */
+  --primary: #1A1A1A;
+  --primary-hover: #353535;
+  --primary-foreground: #FAFAFA;
+  --primary-soft: #E3E3E3;
+  --primary-soft-hover: #DBDBDB;
+  --ring: #1A1A1A;
 
-  /* Sémantika subjektů — JEDINÉ místo s barvou v celé appce (badge/tečka/
-     proužek, nikdy plochy) */
-  --subject-foster: #4A7C59;
-  --subject-foster-bg: #EAF2EC;
-  --subject-ospod: #4A6FA5;
-  --subject-ospod-bg: #EAF0F7;
+  /* Sémantika subjektů/stavů — JEDINÉ místo s barvou v celé appce (badge/
+     tečka/proužek, nikdy plochy). Foreground konstantní přes obě témata
+     (viz komentář výše), jen -bg se mění v dark bloku níže. */
+  --subject-foster: #14A372;
+  --subject-foster-bg: #E7F5F0;
+  --subject-ospod: #4F69F2;
+  --subject-ospod-bg: #EDF0FD;
   --subject-court: #6B7280;
   --subject-court-bg: #F0F1F3;
-  --subject-bio: #A8752A;
-  --subject-bio-bg: #F7EFDF;
-  --crisis: #C05B4D;
-  --crisis-bg: #F9ECE9;
+  --subject-bio: #E7AD16;
+  --subject-bio-bg: #FDF8EA;
+  --crisis: #F66950;
+  --crisis-bg: #FEF0ED;
 
-  --success: #4A7C59;
-  --success-bg: #EAF2EC;
-  --warning: #A8752A;
-  --warning-bg: #F7EFDF;
-  --danger: #C05B4D;
-  --danger-bg: #F9ECE9;
+  --success: #14A372;
+  --success-bg: #E7F5F0;
+  --warning: #E7AD16;
+  --warning-bg: #FDF8EA;
+  --danger: #F66950;
+  --danger-bg: #FEF0ED;
   /* Konstantní přes obě témata — destruktivní tlačítko (§6.1) potřebuje
-     vždy dost sytou plochu pro bílý text, --danger výše se v tmavém
-     režimu zesvětluje kvůli čitelnosti jako text badge, což by na plné
-     ploše s bílým textem ztratilo kontrast. */
-  --danger-solid: #C05B4D;
+     vždy dost sytou plochu pro bílý text. */
+  --danger-solid: #DA2A0B;
 
   /* Radiusy */
   --radius-sm: 8px;
@@ -80,92 +88,76 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg-app: #212121;
-    --bg-surface: #2B2B2B;
-    --bg-surface-soft: #262626;
-    --bg-inset: #333333;
+    --bg-app: #101010;
+    --bg-surface: #1A1A1A;
+    --bg-surface-soft: #2B2B2B;
+    --bg-inset: #353535;
 
-    --text-primary: #EDEDED;
-    --text-secondary: #A0A0A0;
+    --text-primary: #F5F5F5;
+    --text-secondary: #AAAAAA;
     --text-tertiary: #737373;
-    --text-inverse: #171717;
+    --text-inverse: #101010;
 
-    --border-default: rgba(255, 255, 255, .12);
+    --border-default: rgba(255, 255, 255, .10);
     --border-strong: rgba(255, 255, 255, .20);
 
-    --primary: #EDEDED;
-    --primary-hover: #D4D4D4;
-    --primary-foreground: #171717;
-    --primary-soft: #2F2F2F;
-    --primary-soft-hover: #383838;
-    --ring: #EDEDED;
+    --primary: #F5F5F5;
+    --primary-hover: #E3E3E3;
+    --primary-foreground: #101010;
+    --primary-soft: #353535;
+    --primary-soft-hover: #424242;
+    --ring: #F5F5F5;
 
-    --subject-foster: #7FCB94;
-    --subject-foster-bg: #1E2E22;
-    --subject-ospod: #8FB4E8;
-    --subject-ospod-bg: #1E2A3A;
-    --subject-court: #A8AEB8;
+    --subject-foster-bg: #112E24;
+    --subject-ospod-bg: #1D223D;
     --subject-court-bg: #26292E;
-    --subject-bio: #DDA75F;
-    --subject-bio-bg: #332616;
-    --crisis: #E38F82;
-    --crisis-bg: #3A211D;
+    --subject-bio-bg: #3D3623;
+    --crisis-bg: #2F1410;
 
-    --success: #7FCB94;
-    --success-bg: #1E2E22;
-    --warning: #DDA75F;
-    --warning-bg: #332616;
-    --danger: #E38F82;
-    --danger-bg: #3A211D;
+    --success-bg: #112E24;
+    --warning-bg: #3D3623;
+    --danger-bg: #2F1410;
 
-    --shadow-raised: 0 1px 3px rgba(0, 0, 0, .30), 0 4px 12px rgba(0, 0, 0, .24);
-    --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .45);
+    --shadow-raised: 0 1px 3px rgba(0, 0, 0, .40), 0 4px 12px rgba(0, 0, 0, .32);
+    --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .55);
 
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --bg-app: #212121;
-  --bg-surface: #2B2B2B;
-  --bg-surface-soft: #262626;
-  --bg-inset: #333333;
+  --bg-app: #101010;
+  --bg-surface: #1A1A1A;
+  --bg-surface-soft: #2B2B2B;
+  --bg-inset: #353535;
 
-  --text-primary: #EDEDED;
-  --text-secondary: #A0A0A0;
+  --text-primary: #F5F5F5;
+  --text-secondary: #AAAAAA;
   --text-tertiary: #737373;
-  --text-inverse: #171717;
+  --text-inverse: #101010;
 
-  --border-default: rgba(255, 255, 255, .12);
+  --border-default: rgba(255, 255, 255, .10);
   --border-strong: rgba(255, 255, 255, .20);
 
-  --primary: #EDEDED;
-  --primary-hover: #D4D4D4;
-  --primary-foreground: #171717;
-  --primary-soft: #2F2F2F;
-  --primary-soft-hover: #383838;
-  --ring: #EDEDED;
+  --primary: #F5F5F5;
+  --primary-hover: #E3E3E3;
+  --primary-foreground: #101010;
+  --primary-soft: #353535;
+  --primary-soft-hover: #424242;
+  --ring: #F5F5F5;
 
-  --subject-foster: #7FCB94;
-  --subject-foster-bg: #1E2E22;
-  --subject-ospod: #8FB4E8;
-  --subject-ospod-bg: #1E2A3A;
-  --subject-court: #A8AEB8;
+  --subject-foster-bg: #112E24;
+  --subject-ospod-bg: #1D223D;
   --subject-court-bg: #26292E;
-  --subject-bio: #DDA75F;
-  --subject-bio-bg: #332616;
-  --crisis: #E38F82;
-  --crisis-bg: #3A211D;
+  --subject-bio-bg: #3D3623;
+  --crisis-bg: #2F1410;
 
-  --success: #7FCB94;
-  --success-bg: #1E2E22;
-  --warning: #DDA75F;
-  --warning-bg: #332616;
-  --danger: #E38F82;
-  --danger-bg: #3A211D;
+  --success-bg: #112E24;
+  --warning-bg: #3D3623;
+  --danger-bg: #2F1410;
 
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, .30), 0 4px 12px rgba(0, 0, 0, .24);
-  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .45);
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, .40), 0 4px 12px rgba(0, 0, 0, .32);
+  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .55);
 
   color-scheme: dark;
 }

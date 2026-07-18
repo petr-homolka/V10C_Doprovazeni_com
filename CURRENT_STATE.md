@@ -5,6 +5,62 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 3 (2026-07-19): design tokeny v3 — Magnific.ai referencia, tmavší dark mode, sidebar úpravy
+
+Uživatel schválil směr v2, ale se třemi konkrétními úpravami:
+
+1. **Sidebar:** žádný samostatný "Sbalit" řádek dole — kliknutí na logo
+   nahoře (`Sidebar.tsx`) teď přepíná collapsed/expanded stav. Ověřeno
+   klikem v prohlížeči, funguje.
+2. **Přepínač Světlý/Tmavý přesunut do Sidebaru** (řádek nad "Nastavení",
+   ikona Moon/Sun podle CÍLOVÉHO stavu) — nový `src/hooks/useTheme.ts`,
+   nastavuje `data-theme` na `<html>` + ukládá volbu do `localStorage`
+   (`doprovazeni.theme`) jako dočasnou náhradu za `users/{uid}.
+   preferences.appearance` (§5.6/M9.5). `/_preview` už nemá svoje vlastní
+   tlačítko — dědí ho ze Sidebaru jako každá jiná stránka.
+3. **Tmavý režim o dost tmavší** + **kompletní přeladění barev podle
+   reálné Magnific.ai produkční škály** (dodaný HTML/CSS export v
+   `../nove zadani/pak-smazat-inspirace-chatgpt/maginific/`, otevřen lokálně
+   přes `npx serve` a fyzicky ověřen v prohlížeči, ne jen čten jako text).
+
+**Token hodnoty přepsané na Magnific `--color-surface-*`/`--color-*-alpha`/
+`--color-alert-icon-*`:**
+- `--bg-app/-surface/-surface-soft/-inset`: `#FFF/#F5F5F5/#ECECEC/#E3E3E3`
+  (light), `#101010/#1A1A1A/#2B2B2B/#353535` (dark) — POZOR, směr elevace
+  se mezi tématy OBRACÍ (v light je karta (surface) tmavší/šedější než
+  plátno (app), v dark je karta SVĚTLEJŠÍ než plátno) — to je záměrné,
+  přesně jak to dělá Magnific, ne chyba.
+- **Zjednodušení oproti v2:** sémantické foreground barvy (`--success`,
+  `--warning`, `--danger`, `--subject-foster/-ospod/-bio`) jsou teď
+  KONSTANTNÍ napříč light/dark (přesně jak to má Magnific — mění se jen
+  jejich `-bg` protějšek). To ruší potřebu z v2 dark-mode badge barvy
+  zesvětlovat kvůli čitelnosti. `--danger-solid` zůstává samostatný
+  konstantní token (sytější červená než `--danger`) — pořád ho potřebuje
+  jen destruktivní tlačítko (§6.1), kde plná plocha s bílým textem
+  vyžaduje víc sytosti než badge text.
+- `--subject-foster`/`--success`: `#14A372` (bylo `#4A7C59`) — teal-zelená
+  z Magnific `alert-icon-success`.
+- `--subject-ospod`: `#4F69F2` (bylo `#4A6FA5`) — Magnific `alert-icon-
+  information`/`primary` modrá (POZOR: tohle je i jejich brand primary —
+  u nás je unikátní jen pro OSPOD badge, naše `--primary` zůstává
+  monochromní, žádná kolize).
+- `--subject-bio`/`--warning`: `#E7AD16` (bylo `#A8752A`).
+- `--crisis`/`--danger`: `#F66950` (bylo `#C05B4D`), `--danger-solid`:
+  `#DA2A0B` (Magnific `destructive-1` dark).
+- `--subject-court`: beze změny (`#6B7280`) — nemá magnific ekvivalent,
+  zůstává náš vlastní neutrální tón.
+- `--primary-foreground` (light): `#FAFAFA` (ne čistá bílá) — drobný
+  detail z jejich `primary-foreground-0`.
+
+Ověřeno v prohlížeči (`/_preview`, computed styles i vizuálně, oba
+režimy) — hodnoty sedí přesně na tokeny výše.
+
+**Poznámka k `pak-smazat-inspirace-chatgpt/`:** obsahuje teď DVĚ reference
+(ChatGPT dump + `maginific/` podsložka) — obojí zůstává smazat, jakmile
+uživatel potvrdí, že už je nepotřebuje.
+
+---
+
 ## Dodatek 2 (2026-07-18): design tokeny v2 — grayscale ChatGPT směr
 
 Uživatel po zhlédnutí `/_preview` shellu potvrdil směr (sidebar+karty), ale

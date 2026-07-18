@@ -3,21 +3,23 @@ import { NavLink } from 'react-router-dom'
 import {
   Calendar,
   CheckSquare,
-  ChevronsLeft,
-  ChevronsRight,
   FileText,
   Home,
+  Moon,
   Settings,
+  Sun,
   Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
+import { useTheme } from '@/hooks/useTheme'
 
 /**
  * DESIGN_SYSTEM.md §4 — Sidebar: --bg-surface-soft, bez borderu vpravo,
  * položky ikona 18px + label, radius-md, aktivní = --primary-soft pozadí +
  * --primary text. Sbalitelný na ikonový rail (existující, osvědčený UX
- * vzor z funkčního handoffu, jen v novém vizuálu).
+ * vzor z funkčního handoffu, jen v novém vizuálu) — sbalení/rozbalení se
+ * ovládá kliknutím na logo nahoře, ne samostatným tlačítkem dole.
  *
  * Skutečná sada položek/oprávnění (kdo vidí co) je funkční záležitost M1+
  * (role-aware nav) — tady je jen reprezentativní sada, ne finální seznam.
@@ -33,6 +35,7 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { userDoc, firebaseUser } = useAuth()
+  const { theme, toggleTheme } = useTheme()
   const displayName = userDoc?.displayName ?? firebaseUser?.email ?? ''
   const initials = displayName
     .split(' ')
@@ -48,7 +51,16 @@ export function Sidebar() {
         collapsed ? 'w-[72px]' : 'w-[240px]',
       )}
     >
-      <div className={cn('flex items-center gap-2 px-4 pt-5 pb-3', collapsed && 'justify-center px-0')}>
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        aria-label={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
+        title={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
+        className={cn(
+          'mx-3 mt-4 mb-2 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-150 hover:bg-surface',
+          collapsed && 'mx-0 justify-center px-0',
+        )}
+      >
         <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-semibold text-primary-foreground">
           D
         </div>
@@ -57,7 +69,7 @@ export function Sidebar() {
             Doprovázení
           </span>
         )}
-      </div>
+      </button>
 
       <nav className="flex-1 space-y-0.5 px-3">
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
@@ -82,6 +94,22 @@ export function Sidebar() {
       <div className="space-y-0.5 border-t border-border px-3 py-3">
         <button
           type="button"
+          onClick={toggleTheme}
+          className={cn(
+            'flex w-full items-center gap-3 rounded-md px-3 py-2 text-[14px] font-medium text-text-secondary transition-colors duration-150 hover:bg-surface',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          {theme === 'light' ? (
+            <Moon size={18} strokeWidth={1.75} className="shrink-0" />
+          ) : (
+            <Sun size={18} strokeWidth={1.75} className="shrink-0" />
+          )}
+          {!collapsed && <span>{theme === 'light' ? 'Tmavý režim' : 'Světlý režim'}</span>}
+        </button>
+
+        <button
+          type="button"
           className={cn(
             'flex w-full items-center gap-3 rounded-md px-3 py-2 text-[14px] font-medium text-text-secondary transition-colors duration-150 hover:bg-surface',
             collapsed && 'justify-center px-0',
@@ -99,25 +127,6 @@ export function Sidebar() {
             <span className="truncate text-[13px] text-text-secondary">{displayName}</span>
           )}
         </div>
-
-        <button
-          type="button"
-          onClick={() => setCollapsed((v) => !v)}
-          className={cn(
-            'flex w-full items-center gap-3 rounded-md px-3 py-2 text-[13px] text-text-tertiary transition-colors duration-150 hover:bg-surface hover:text-text-secondary',
-            collapsed && 'justify-center px-0',
-          )}
-          aria-label={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
-        >
-          {collapsed ? (
-            <ChevronsRight size={18} strokeWidth={1.75} />
-          ) : (
-            <>
-              <ChevronsLeft size={18} strokeWidth={1.75} />
-              <span>Sbalit</span>
-            </>
-          )}
-        </button>
       </div>
     </aside>
   )
