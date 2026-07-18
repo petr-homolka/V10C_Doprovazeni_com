@@ -3,7 +3,12 @@ import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/hooks/useTheme'
 
 /**
- * Ikonový cluster vpravo nahoře (2026-07-19, inspirace Magnific.ai) —
+ * Ikonový cluster vpravo nahoře — přeměřeno 2026-07-19 přímo na živé
+ * Magnific.ai appce (getComputedStyle): header výška 56px (h-14), padding
+ * px-4 (ne px-8), ikonová tlačítka 32px (size-8) s radius-sm (8px),
+ * hover = jemný alpha overlay (`--overlay-active`), STEJNÁ jasnost textu/
+ * ikony jako zbytek chrome appky (žádné ztlumení pro "neaktivní" stav).
+ *
  * Nastavení a přepínač Světlý/Tmavý se sem přesunuly ze sidebaru, jen
  * ikony (bez textového labelu), v tomhle pořadí před avatarem: motiv/téma
  * → nastavení → oznámení → účet.
@@ -28,13 +33,13 @@ export function TopBar() {
     .toUpperCase()
 
   return (
-    <div className="flex items-center justify-end gap-1 px-8 py-3">
+    <div className="flex h-14 items-center justify-end gap-1 px-4">
       <button
         type="button"
         onClick={toggleTheme}
         aria-label={theme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'}
         title={theme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'}
-        className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-surface-soft"
+        className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
       >
         {theme === 'light' ? <Moon size={18} strokeWidth={1.75} /> : <Sun size={18} strokeWidth={1.75} />}
       </button>
@@ -43,7 +48,7 @@ export function TopBar() {
         type="button"
         aria-label="Nastavení"
         title="Nastavení"
-        className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-surface-soft"
+        className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
       >
         <Settings size={18} strokeWidth={1.75} />
       </button>
@@ -52,7 +57,7 @@ export function TopBar() {
         type="button"
         aria-label="Oznámení"
         title="Oznámení"
-        className="flex size-9 items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-surface-soft"
+        className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
       >
         <Bell size={18} strokeWidth={1.75} />
       </button>

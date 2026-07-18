@@ -9,6 +9,7 @@ export default {
         'surface-soft': 'var(--bg-surface-soft)',
         inset: 'var(--bg-inset)',
         void: 'var(--bg-void)',
+        'overlay-active': 'var(--overlay-active)',
 
         'text-primary': 'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',

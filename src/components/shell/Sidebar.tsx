@@ -5,14 +5,16 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 
 /**
- * DESIGN_SYSTEM.md §4 — Sidebar: --bg-surface-soft, položky ikona 18px +
- * label, radius-md, aktivní = --primary-soft pozadí + --primary text.
- * Sbalitelný na ikonový rail — sbalení/rozbalení se ovládá kliknutím na
- * logo nahoře, ne samostatným tlačítkem dole.
+ * Sidebar — přeměřeno 2026-07-19 přímo na živé Magnific.ai appce
+ * (getComputedStyle, ne jen screenshot): šířka 224px (ne 240), položky
+ * výšky ~32px s radius-sm (8px, ne radius-md), aktivní stav = jemný alpha
+ * overlay (`--overlay-active`) přes CELOU plochu položky, NE plná barva
+ * --primary-soft. Text nav položek je STEJNĚ jasný aktivní i neaktivní
+ * (Magnific nedimuje text, rozlišuje jen přes pozadí) — to je změna oproti
+ * předchozí verzi, kde neaktivní položky měly text-secondary.
  *
- * Nastavení + přepínač Světlý/Tmavý žijí od 2026-07-19 v TopBar.tsx (ikonový
- * cluster vpravo nahoře, inspirace Magnific.ai) — sidebar dole má už jen
- * identitu přihlášeného uživatele, žádné akce.
+ * Sbalitelný na ikonový rail — sbalení/rozbalení se ovládá kliknutím na
+ * logo nahoře. Nastavení + přepínač Světlý/Tmavý žijí v TopBar.tsx.
  *
  * Skutečná sada položek/oprávnění (kdo vidí co) je funkční záležitost M1+
  * (role-aware nav) — tady je jen reprezentativní sada, ne finální seznam.
@@ -40,7 +42,7 @@ export function Sidebar() {
     <aside
       className={cn(
         'flex h-full flex-col bg-surface-soft transition-[width] duration-200',
-        collapsed ? 'w-[72px]' : 'w-[240px]',
+        collapsed ? 'w-[72px]' : 'w-56',
       )}
     >
       <button
@@ -49,11 +51,11 @@ export function Sidebar() {
         aria-label={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
         title={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
         className={cn(
-          'mx-3 mt-4 mb-2 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-150 hover:bg-surface',
+          'mx-3 mt-4 mb-2 flex items-center gap-2 rounded-sm px-2 py-1.5 transition-colors duration-150 hover:bg-overlay-active',
           collapsed && 'mx-0 justify-center px-0',
         )}
       >
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-semibold text-primary-foreground">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-[13px] font-semibold text-primary-foreground">
           D
         </div>
         {!collapsed && (
@@ -71,9 +73,9 @@ export function Sidebar() {
             end={end}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-[14px] font-medium text-text-secondary transition-colors duration-150 hover:bg-surface',
+                'flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-[14px] font-medium text-text-primary transition-colors duration-150 hover:bg-overlay-active',
                 collapsed && 'justify-center px-0',
-                isActive && 'bg-primary-soft text-primary hover:bg-primary-soft',
+                isActive && 'bg-overlay-active',
               )
             }
           >
@@ -84,7 +86,7 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-border px-3 py-3">
-        <div className={cn('flex items-center gap-2.5 rounded-md px-3 py-2', collapsed && 'justify-center px-0')}>
+        <div className={cn('flex items-center gap-2.5 rounded-sm px-2.5 py-2', collapsed && 'justify-center px-0')}>
           <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary">
             {initials || '?'}
           </div>

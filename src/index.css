@@ -3,35 +3,37 @@
 @tailwind utilities;
 
 /*
-  Design tokeny — v3 (2026-07-19). Grayscale chrome appky (pozadí, karty,
-  tlačítka, text) zůstává princip z v2, ale hodnoty teď vychází z reálné
-  produkční škály Magnific.ai (viz `nove zadani/pak-smazat-inspirace-
-  chatgpt/maginific/`) — přesnější odstupňování elevace + o dost tmavší
-  dark mode, přesně jak bylo požadováno. BAREVNÉ zůstávají výhradně
-  subjektové/sémantické tokeny (badge, výstrahy).
+  Design tokeny — v4 (2026-07-19). Hodnoty pro dark mode teď vychází z
+  přímo NAMĚŘENÝCH computed styles živé Magnific.ai appky (otevřené lokálně
+  z `nove zadani/pak-smazat-inspirace-chatgpt/maginific/`, ne jen z CSS
+  textu) — getComputedStyle na skutečných elementech (void pozadí, sidebar
+  panel, hlavní panel, nav položky, header). Klíčové zjištění oproti v3:
+  škála je mnohem JEMNĚJŠÍ (void #0F0F0F → sidebar panel #1A1A1A je jen
+  11 bodů RGB rozdíl, ne naše dřívější skoky), a sidebar JE svůj vlastní
+  zaoblený panel (jen o kousek světlejší než hlavní obsah), ne průhledný,
+  jak by se dalo usoudit jen ze screenshotu.
 
-  Klíčové zjištění z reference: sémantické "foreground" barvy (success/
-  warning/danger/subject-*) jsou v Magnific KONSTANTNÍ napříč light/dark —
-  mění se jen jejich "-bg" tinted protějšek. Přebíráme stejný princip —
-  jednodušší a řeší to i kontrast destruktivního tlačítka bez zvláštního
-  --danger-solid triku, který jsme potřebovali v v2.
+  BAREVNÉ zůstávají výhradně subjektové/sémantické tokeny (badge, výstrahy).
 
   Světlý režim = výchozí :root. Tmavý režim = @media (prefers-color-scheme:
-  dark) NEBO explicitní [data-theme="dark"] (přepínač v Sidebaru,
+  dark) NEBO explicitní [data-theme="dark"] (přepínač v TopBaru,
   useTheme.ts — dočasně přes localStorage, dokud §5.6/M9.5 nepřinese
   per-uživatel uložené nastavení). [data-theme="light"] vynucuje světlý
   i když OS preferuje tmavý.
 */
 :root {
-  /* Pozadí a plochy — Magnific surface-0..3 (light blok) */
+  /* Pozadí a plochy — Magnific surface-0..3 (light blok, dosud jen z CSS
+     textu — světlý režim uživatel takhle podrobně nekontroloval) */
   --bg-app: #FFFFFF;
   --bg-surface: #F5F5F5;
   --bg-surface-soft: #ECECEC;
   --bg-inset: #E3E3E3;
-  /* "Void" za plovoucími panely (sidebar/hlavní obsah) — o něco tmavší/
-     šedější než --bg-app, aby panely opticky "plavaly" na vlastní ploše
-     s mezerou mezi nimi, ne edge-to-edge jako dřív. */
+  /* "Void" za plovoucími panely (sidebar/hlavní obsah). */
   --bg-void: #E5E5E5;
+  /* Aktivní položka navigace — jemný alpha overlay, NE plná barva
+     (Magnific: rgba(255,255,255,.15) v dark, tohle je symetrický odhad
+     pro light — nebyl přímo naměřen). */
+  --overlay-active: rgba(0, 0, 0, .06);
 
   /* Text — Magnific surface-foreground-0/3/4 (light blok) */
   --text-primary: #1A1A1A;
@@ -54,8 +56,8 @@
   --ring: #1A1A1A;
 
   /* Sémantika subjektů/stavů — JEDINÉ místo s barvou v celé appce (badge/
-     tečka/proužek, nikdy plochy). Foreground konstantní přes obě témata
-     (viz komentář výše), jen -bg se mění v dark bloku níže. */
+     tečka/proužek, nikdy plochy). Foreground konstantní přes obě témata,
+     jen -bg se mění v dark bloku níže. */
   --subject-foster: #14A372;
   --subject-foster-bg: #E7F5F0;
   --subject-ospod: #4F69F2;
@@ -92,11 +94,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg-app: #101010;
-    --bg-surface: #1A1A1A;
-    --bg-surface-soft: #2B2B2B;
-    --bg-inset: #353535;
-    --bg-void: #000000;
+    /* Naměřeno přímo (getComputedStyle) na živé Magnific appce:
+       void (body) rgb(15,15,15), sidebar panel (NAV) rgb(26,26,26),
+       hlavní panel rgb(22,22,22) — velmi těsná škála, ne naše dřívější
+       velké skoky. --bg-surface/--bg-inset dál extrapolované stejným
+       jemným krokem (nebyly na této obrazovce k naměření). */
+    --bg-void: #0F0F0F;
+    --bg-app: #161616;
+    --bg-surface-soft: #1A1A1A;
+    --bg-surface: #202020;
+    --bg-inset: #2A2A2A;
+    --overlay-active: rgba(255, 255, 255, .15);
 
     --text-primary: #F5F5F5;
     --text-secondary: #AAAAAA;
@@ -131,10 +139,12 @@
 }
 
 :root[data-theme='dark'] {
-  --bg-app: #101010;
-  --bg-surface: #1A1A1A;
-  --bg-surface-soft: #2B2B2B;
-  --bg-inset: #353535;
+  --bg-void: #0F0F0F;
+  --bg-app: #161616;
+  --bg-surface-soft: #1A1A1A;
+  --bg-surface: #202020;
+  --bg-inset: #2A2A2A;
+  --overlay-active: rgba(255, 255, 255, .15);
 
   --text-primary: #F5F5F5;
   --text-secondary: #AAAAAA;
@@ -168,12 +178,12 @@
 }
 
 html {
-  background: var(--bg-app);
+  background: var(--bg-void);
 }
 
 body {
   margin: 0;
-  background: var(--bg-app);
+  background: var(--bg-void);
   color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
   font-size: 15px;

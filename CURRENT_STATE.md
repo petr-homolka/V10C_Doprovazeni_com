@@ -5,6 +5,73 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 5 (2026-07-19): přeměřeno přímo na živé Magnific appce (ne odhad)
+
+Uživatel po Dodatku 4 napsal "STÁLE TO NENÍ ONO" a poslal screenshot naší
+appky, který ukázal, že dosavadní hodnoty (Dodatek 3/4) byly moc "hrubé" —
+moc velké skoky mezi void/sidebar/obsah, moc velké radiusy, moc silný
+aktivní stav navigace. Místo dalšího grepování minifikovaného CSS jsem
+otevřel `maginific/Magnific _ All-in-One AI Creative Suite.html` znovu
+lokálně (`npx serve`) a použil `getComputedStyle`/`getBoundingClientRect`
+PŘÍMO na živých elementech (void, sidebar panel, hlavní panel, nav
+položky, header) — tohle je spolehlivější zdroj pravdy než čtení CSS textu
+nebo odhad ze screenshotu, protože dá přesné, finální (cascade-resolved)
+hodnoty.
+
+**Zásadní zjištění, které jsem měl špatně:** myslel jsem si, že sidebar
+i hlavní obsah jsou DVA STEJNĚ nápadné plovoucí panely. Ve skutečnosti:
+- **`--bg-void`** (body pozadí): `rgb(15,15,15)` = `#0F0F0F`
+- **sidebar panel** (skutečný `<nav>` element, ne jen wrapper): `rgb(26,26,26)`
+  = `#1A1A1A`
+- **hlavní obsah panel**: `rgb(22,22,22)` = `#161616`
+
+Tři tóny jsou od sebe jen ~5–11 bodů RGB — MNOHEM jemnější přechod, než
+jsme měli (dřív `#000000`→`#101010`→`#2B2B2B`, tedy skoky přes 40+ bodů).
+Přepsáno v `src/index.css` (dark blok): `--bg-void:#0F0F0F`,
+`--bg-app:#161616` (teď = hlavní panel, ne samostatná "plátno" vrstva),
+`--bg-surface-soft:#1A1A1A` (sidebar), `--bg-surface:#202020`/
+`--bg-inset:#2A2A2A` (extrapolováno stejným jemným krokem, nebyly přímo
+na této obrazovce k naměření).
+
+**Další přeměřené detaily, teď opravené:**
+- Šířka sidebaru: **224px** (`w-56`), ne 240px.
+- Header/TopBar: výška **56px** (`h-14`), padding **`px-4`** (ne `px-8`),
+  `shrink-0` — NESCROLUJE s obsahem (opraveno v `AppShell.tsx`, dřív celý
+  `<main>` scrolloval včetně TopBaru).
+- Ikonová tlačítka (TopBar): **32px** (`size-8`), radius **8px**
+  (`rounded-sm`, ne `rounded-md`).
+- Nav položky (Sidebar): výška ~32px (`h-8`), radius **8px**
+  (`rounded-sm`), gap 10px mezi ikonou a textem.
+- **Aktivní stav navigace NENÍ plná barva** (`--primary-soft`) — je to
+  jemný **alpha overlay** `rgba(255,255,255,.15)` (dark) přes CELOU
+  položku. Nový token `--overlay-active` (light: `rgba(0,0,0,.06)`,
+  odhad, nebyl přímo měřen). Stejný token používá i `hover:` stav a
+  logo/collapse tlačítko — nahrazuje `hover:bg-surface`/`hover:bg-surface-soft`
+  všude v Sidebar/TopBar.
+- **Text nav položek je STEJNĚ jasný aktivní i neaktivní** (`rgb(245,245,245)`
+  konstantně) — Magnific nedimuje text pro "neaktivní" stav, rozlišuje
+  VÝHRADNĚ přes pozadí. Změněno z `text-text-secondary` na `text-text-primary`
+  pro všechny nav položky.
+- Font je **Geist** (Vercel, MIT licence, ne ChatGPT proprietární "OpenAI
+  Sans" jak jsem se dřív domníval), 400 weight, ŽÁDNÝ serif nikde. **Tohle
+  jsem NEZMĚNIL** — `h1` pořád používá Source Serif 4 z původního
+  DESIGN_SYSTEM.md. Je to vědomé podržení, ne přehlédnutí: serif byl
+  explicitní součást PŮVODNÍHO zadání (nod ke Claude.ai), nikdo si na něj
+  nestěžoval přímo, a je to větší identitní rozhodnutí než paleta/tvar —
+  ptám se uživatele explicitně, než bych ho sám smazal.
+
+**Past při ladění:** `resize_window` s explicitními `width`/`height` dál
+produkuje zdeformovaný screenshot (viz Dodatek 4) — `preset: 'desktop'`
+funguje spolehlivě, používat ten pro vizuální review.
+
+Reference zůstává `../nove zadani/pak-smazat-inspirace-chatgpt/maginific/`
+— HTML lze znovu otevřít přes `npx --yes serve -l 4321 .` v tom adresáři
+(nebo `.claude/launch.json` config `magnific-inspiration` v `nove zadani/`)
+a měřit přímo `getComputedStyle`, ne jen číst CSS text — mnohem
+spolehlivější metoda, použít ji hned příště, ne až po druhém "není to ono".
+
+---
+
 ## Dodatek 4 (2026-07-19): plovoucí panely + přesun akcí do TopBaru
 
 Třetí kolo zpětné vazby, dvě věci:
