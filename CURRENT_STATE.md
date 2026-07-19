@@ -5,6 +5,43 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Design systém: SCHVÁLENO A ZAMČENO (2026-07-19)
+
+Uživatel po Dodatku 13 vizuální design appky schválil a požádal, ať se
+teď ZAMKNE — další práce do něj má jen DOPLŇOVAT nové prvky ve STEJNÉM
+stylu, ne ho měnit nebo znovu vymýšlet. Tohle je závazné pravidlo pro
+všechnu budoucí práci (M1+), dokud uživatel výslovně neřekne jinak.
+
+**Co je zamčené (nesahat bez výslovného zadání uživatele):**
+- Všechny tokeny v `src/index.css` (barvy, radiusy, stíny, `--accent`/
+  `--toggle-*`) a jejich zrcadlení v `tailwind.config.js`.
+- Typografická škála: stránkový titulek + vnitřní sekční nadpis 18px/
+  font-normal (jen `leading-normal` vs `leading-tight` se liší), field-
+  label 14px/medium/leading-relaxed, tělo 15px (dědí se z `body`, nepsat
+  vlastní `text-*` pokud nejde o výjimku), drobný text 12-13px/secondary.
+- Layout shellu: `AppShell` (sidebar + hlavní panel na `--bg-void`
+  podkladu, `TopBar` `h-14` nescrolující, `secondaryPanel` pro
+  druhoúrovňové menu jako samostatný panel).
+- Existující UI primitiva: `Button` (variants primary/secondary/outline/
+  ghost/destructive), `Input`, `Switch`, `SegmentedTabs`, `Table`,
+  `ProgressBar`, `CopyableCodeBox`, `Tag`, `Breadcrumb`, `SettingsNav`.
+- Princip "barva jen na subjektové/sémantické tokeny a badge", s
+  JEDINOU zdokumentovanou výjimkou `--accent` (formulářové interaktivní
+  stavy — focus border, Switch ON, tučné inline odkazy).
+
+**Jak rozšiřovat, ne měnit:** nová obrazovka/komponenta v M1+ nejdřív
+zkusí poskládat z existujících primitiv výše se stejnými tokeny/velikostmi.
+Pokud fakt chybí stavební kámen (nový typ komponenty, který dosud
+neexistuje — např. Dialog/Drawer/Command paleta zmíněné v Rozhodnutí
+níž), postav ho ve STEJNÉM stylu (stejná typografická škála, stejné
+tokeny, stejný princip "žádný ring/glow", stejné zaoblení) a zdokumentuj
+jako nový Dodatek — ne jako revizi existujícího schváleného vzoru.
+Pokud narazíš na něco NEPOPSANÉHO (detail, co design řeší jinak, než tenhle
+soubor zachytil), rozhodni podle legislativy/nejlepší praxe (per uživatelovo
+svolení z Dodatku 13) a zapiš to — needěláš to sám za zavřenými dveřmi.
+
+---
+
 ## Dodatek 13 (2026-07-19): Vyčerpávající shoda s referenční appkou — typografie, barvy, formulářové prvky; žádná stopa reference v kódu
 
 Uživatel: design je na ~97 %, ale žádá **doslovnou shodu** s referenční
