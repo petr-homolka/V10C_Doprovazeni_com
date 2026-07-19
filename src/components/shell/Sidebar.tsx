@@ -40,27 +40,32 @@ export function Sidebar() {
         collapsed ? 'w-[72px]' : 'w-56',
       )}
     >
-      <button
-        type="button"
-        onClick={() => setCollapsed((v) => !v)}
-        aria-label={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
-        title={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
-        className={cn(
-          'mx-3 mt-4 mb-2 flex items-center gap-2 rounded-sm px-2 py-1.5 transition-colors duration-150 hover:bg-overlay-active',
-          collapsed && 'mx-0 justify-center px-0',
-        )}
-      >
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-[13px] font-semibold text-primary-foreground">
-          D
-        </div>
-        {!collapsed && (
-          <span className="truncate text-[15px] font-semibold text-text-primary">
-            Doprovázení
-          </span>
-        )}
-      </button>
+      {/* h-14 = STEJNÁ výška jako TopBar.tsx header — zarovnává logo s
+          breadcrumbem/ikonami napravo přesně na stejnou osu (na žádost
+          uživatele, viz CURRENT_STATE.md Dodatek 10). */}
+      <div className="flex h-14 shrink-0 items-center px-3">
+        <button
+          type="button"
+          onClick={() => setCollapsed((v) => !v)}
+          aria-label={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
+          title={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
+          className={cn(
+            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 transition-colors duration-150 hover:bg-overlay-active',
+            collapsed && 'justify-center px-0',
+          )}
+        >
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-[13px] font-semibold text-primary-foreground">
+            D
+          </div>
+          {!collapsed && (
+            <span className="truncate text-[15px] font-semibold text-text-primary">
+              Doprovázení
+            </span>
+          )}
+        </button>
+      </div>
 
-      <nav className="flex-1 space-y-0.5 px-3">
+      <nav className="flex-1 space-y-0.5 px-3 pt-2">
         {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}

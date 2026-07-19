@@ -1,7 +1,6 @@
 import { AppShell } from '@/components/shell/AppShell'
 import { TodaySampleSections } from '@/components/TodaySampleSections'
 import { AuthContext } from '@/contexts/auth-context'
-import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Tag } from '@/components/ui/tag'
 import { Input } from '@/components/ui/input'
 
@@ -24,22 +23,21 @@ const MOCK_AUTH_VALUE = {
  * backend (Auth emulátor na tomhle stroji nestartuje), přes který by šlo
  * ukázat reálně přihlášenou obrazovku. AuthContext se tu lokálně přepíše
  * mock hodnotou, ať Sidebar/Dashboard vidí "přihlášeného" uživatele stejně
- * jako v ostrém provozu. Přepínač Světlý/Tmavý je teď součást Sidebaru
+ * jako v ostrém provozu. Přepínač Světlý/Tmavý je teď součást TopBaru
  * (useTheme), tahle stránka ho jen dědí. Smazat, jakmile M1 přinese reálná
  * data a přihlášení přes tenhle shell jde ověřit normální cestou (/login).
  */
 export default function DesignPreviewPage() {
   return (
     <AuthContext.Provider value={MOCK_AUTH_VALUE}>
-      <AppShell>
+      <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: 'Rodina Novákových' }]}>
         <div>
           <div className="flex items-center gap-3">
-            <Breadcrumb items={[{ label: 'Rodiny', href: '/rodiny' }, { label: 'Rodina Novákových' }]} />
+            <h1 className="text-[28px] font-semibold leading-tight text-text-primary">
+              Dnes
+            </h1>
             <Tag>Prémiové</Tag>
           </div>
-          <h1 className="mt-1 text-[28px] font-semibold leading-tight text-text-primary">
-            Dnes
-          </h1>
           <p className="mt-1 text-[13px] text-text-secondary">
             Přihlášen jako Jana Málková · klicova_osoba (ukázková data pro review)
           </p>
