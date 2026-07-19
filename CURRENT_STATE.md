@@ -72,6 +72,20 @@ vidět OBĚ skupiny nested menu, "Obecné" i "Organizace") — přesunout pod
 Ověřeno v prohlížeči (`/_preview`, `/nastaveni/vzhled`, `/nastaveni/ucet`),
 lint/build/testy zelené.
 
+**Dodatečná oprava po review na plnou desktop šířku (1596px, ne zúžené
+okno):** `SettingsNav` měl `lg:w-46` — v Tailwindu neexistuje (škála skáče
+`w-44` → `w-48`, žádná `46`). Třída se nikdy nezkompilovala do CSS, takže
+nav spadl na `w-full` i na `lg` breakpointu, zabral celý řádek a sourozenec
+`min-w-0 flex-1` (obsah stránky) se smrskl na nulovou šířku — vizuálně to
+vypadalo jako obsah nacpaný do nečitelného proužku u pravého okraje.
+Opraveno na `lg:w-[184px]` (hodnota, na kterou by se `w-46` překládal,
+kdyby existovala). Zároveň `CopyableCodeBox.handleCopy` volal
+`navigator.clipboard.writeText` bez `try/catch` — když prohlížeč zápis do
+schránky zamítne (permissions policy, nezabezpečený kontext, zamítnutý
+prompt), promise spadne a `setCopied(true)` se nikdy nespustí, tlačítko
+potichu nedělá nic. Obaleno do `try/catch`. Obojí ověřeno živě v
+prohlížeči po opravě, lint/build/testy znovu zelené.
+
 ---
 
 ## Dodatek 9 (2026-07-19): ROZHODNUTO — Nastavení = celá stránka s breadcrumbem, NE modál
