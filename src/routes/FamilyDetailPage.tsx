@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
-import { VoiceRecorderModal, type AvailableSubject } from '@/components/timeline/VoiceRecorderModal'
+import { VoiceRecorderPanel, type RecordablePerson } from '@/components/timeline/VoiceRecorderPanel'
 import { useAuth } from '@/hooks/useAuth'
 import { getOrganization } from '@/services/organizationService'
 import { listStaff } from '@/services/staffService'
@@ -71,7 +71,10 @@ export default function FamilyDetailPage() {
   const [childLastName, setChildLastName] = useState('')
   const [childBirthNumber, setChildBirthNumber] = useState('')
 
-  const [recorderPreselected, setRecorderPreselected] = useState<SubjectRef[] | null>(null)
+  const [recorder, setRecorder] = useState<{
+    implicitSubjects: SubjectRef[]
+    preselectedPeopleKeys: string[]
+  } | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const familyAvatarInputRef = useRef<HTMLInputElement>(null)
 
@@ -103,38 +106,39 @@ export default function FamilyDetailPage() {
     }
   }
 
-  const availableSubjects = useMemo<AvailableSubject[]>(() => {
-    if (!docId) return []
-    const subjects: AvailableSubject[] = [{ kind: 'family', id: docId, label: family?.address || 'Spis' }]
+  /** "Zařadit k" nabízí jen OSOBY (pěstoun/dítě) — rodina a Dohoda nejsou
+   * volitelné položky (nejsou to lidé), viz VoiceRecorderPanel komentář. */
+  const recordablePeople = useMemo<RecordablePerson[]>(() => {
+    const people: RecordablePerson[] = []
     for (const { docId: fpId, fosterPerson: fp } of fosterPersons) {
-      subjects.push({ kind: 'fosterPerson', id: fpId, label: `${fp.firstName} ${fp.lastName}` })
+      people.push({ kind: 'fosterPerson', id: fpId, label: `${fp.firstName} ${fp.lastName}` })
     }
     for (const { docId: childId, child } of children) {
-      subjects.push({ kind: 'child', id: childId, label: `${child.firstName} ${child.lastName}` })
+      people.push({ kind: 'child', id: childId, label: `${child.firstName} ${child.lastName}` })
     }
-    if (agreement && organizationId) {
-      subjects.push({ kind: 'agreement', id: organizationId, label: 'Dohoda' })
-    }
-    return subjects
-  }, [docId, family, fosterPersons, children, agreement, organizationId])
+    return people
+  }, [fosterPersons, children])
 
   /**
-   * §7.3: klik na avatar rodiny předvybere VŠECHNY její členy (pěstouny +
-   * děti), klik na avatar konkrétního pěstouna/dítěte/Dohody předvybere jen
-   * tu entitu + rodinu — přesně dle zadání ("rodina vždy + přiřazení
-   * pěstoun(i)/přítomné děti" vs. "založeno jinde → ta entita + rodina").
+   * §7.3: klik na avatar rodiny předvybere VŠECHNY osoby (pěstouny + děti),
+   * klik na avatar konkrétní osoby předvybere jen ji. Rodina se do
+   * `subjectRefs` zapíše VŽDY potichu (`implicitSubjects`), Dohoda jen když
+   * se nahrávání spustilo z jejího avataru — ani jedno se needitovatelně
+   * nezobrazuje jako "Zařadit k" položka.
    */
   function openRecorderFor(subject: SubjectRef) {
     if (!docId) return
-    if (subject.kind === 'family') {
-      setRecorderPreselected([
-        { kind: 'family', id: docId },
-        ...fosterPersons.map(({ docId: fpId }): SubjectRef => ({ kind: 'fosterPerson', id: fpId })),
-        ...children.map(({ docId: childId }): SubjectRef => ({ kind: 'child', id: childId })),
-      ])
-    } else {
-      setRecorderPreselected([subject, { kind: 'family', id: docId }])
-    }
+    const implicitSubjects: SubjectRef[] = [{ kind: 'family', id: docId }]
+    if (subject.kind === 'agreement') implicitSubjects.push(subject)
+
+    const preselectedPeopleKeys =
+      subject.kind === 'family'
+        ? recordablePeople.map((p) => `${p.kind}:${p.id}`)
+        : subject.kind === 'agreement'
+          ? []
+          : [`${subject.kind}:${subject.id}`]
+
+    setRecorder({ implicitSubjects, preselectedPeopleKeys })
   }
 
   async function handleFamilyAvatarChange(e: ChangeEvent<HTMLInputElement>) {
@@ -512,14 +516,15 @@ export default function FamilyDetailPage() {
         </div>
       </section>
 
-      {recorderPreselected && docId && organizationId && userDoc && (
-        <VoiceRecorderModal
+      {recorder && docId && organizationId && userDoc && (
+        <VoiceRecorderPanel
           familyDocId={docId}
           organizationId={organizationId}
           createdByUid={userDoc.uid}
-          availableSubjects={availableSubjects}
-          preselectedKeys={recorderPreselected.map((s) => `${s.kind}:${s.id}`)}
-          onClose={() => setRecorderPreselected(null)}
+          implicitSubjects={recorder.implicitSubjects}
+          people={recordablePeople}
+          preselectedPeopleKeys={recorder.preselectedPeopleKeys}
+          onClose={() => setRecorder(null)}
           onSaved={reload}
         />
       )}

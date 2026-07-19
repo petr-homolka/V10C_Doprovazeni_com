@@ -6,11 +6,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
-import { VoiceRecorderModal } from '@/components/timeline/VoiceRecorderModal'
+import { VoiceRecorderPanel, type RecordablePerson } from '@/components/timeline/VoiceRecorderPanel'
 import { useAuth } from '@/hooks/useAuth'
 import { getOrganization } from '@/services/organizationService'
-import { createFamily, listFamiliesWithDocIds } from '@/services/familyService'
+import {
+  createFamily,
+  listChildrenForFamily,
+  listFamiliesWithDocIds,
+  listFosterPersonsByRefs,
+} from '@/services/familyService'
 import type { FamilyDoc } from '@/types/family'
+import type { SubjectRef } from '@/types/timelineEntry'
 import { Users } from 'lucide-react'
 
 const TABLE_COLUMNS = '40px 2fr 1fr'
@@ -28,9 +34,47 @@ export default function FamilyListPage() {
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [address, setAddress] = useState('')
-  const [recorderFamily, setRecorderFamily] = useState<{ docId: string; label: string } | null>(null)
+  const [recorderState, setRecorderState] = useState<{ docId: string; people: RecordablePerson[] } | null>(null)
+  const [recorderLoadingDocId, setRecorderLoadingDocId] = useState<string | null>(null)
 
   const organizationId = userDoc?.organizationId
+
+  /** Řádek v seznamu nemá pěstouny/děti předem načtené (jen jejich počet) —
+   * "Zařadit k" (VoiceRecorderPanel) potřebuje skutečné osoby, takže se
+   * dotáhnou až tady, na vyžádání (§10 provozní úspornost — ne pro každý
+   * řádek dopředu). */
+  async function handleOpenRecorder(docId: string, family: FamilyDoc) {
+    if (!organizationId) return
+    setRecorderLoadingDocId(docId)
+    setError(null)
+    try {
+      const [fosters, kids] = await Promise.all([
+        listFosterPersonsByRefs(family.fosterPersonRefs),
+        listChildrenForFamily(docId, organizationId),
+      ])
+      const people: RecordablePerson[] = [
+        ...fosters.map(
+          ({ docId: fpId, fosterPerson: fp }): RecordablePerson => ({
+            kind: 'fosterPerson',
+            id: fpId,
+            label: `${fp.firstName} ${fp.lastName}`,
+          }),
+        ),
+        ...kids.map(
+          ({ docId: childId, child }): RecordablePerson => ({
+            kind: 'child',
+            id: childId,
+            label: `${child.firstName} ${child.lastName}`,
+          }),
+        ),
+      ]
+      setRecorderState({ docId, people })
+    } catch {
+      setError('Osoby rodiny se nepodařilo načíst.')
+    } finally {
+      setRecorderLoadingDocId(null)
+    }
+  }
 
   async function reload() {
     if (!organizationId) return
@@ -124,9 +168,8 @@ export default function FamilyListPage() {
                     photoURL={family.avatarUrl}
                     label={family.address || 'Spis'}
                     fallbackIcon={Users}
-                    onQuickRecord={() =>
-                      setRecorderFamily({ docId, label: family.address || 'Spis' })
-                    }
+                    onQuickRecord={() => handleOpenRecorder(docId, family)}
+                    quickRecordDisabledReason={recorderLoadingDocId === docId ? 'Načítám…' : undefined}
                   />
                   <span className="truncate text-sm text-text-secondary">
                     {family.address || '—'}
@@ -141,14 +184,15 @@ export default function FamilyListPage() {
         )}
       </div>
 
-      {recorderFamily && organizationId && userDoc && (
-        <VoiceRecorderModal
-          familyDocId={recorderFamily.docId}
+      {recorderState && organizationId && userDoc && (
+        <VoiceRecorderPanel
+          familyDocId={recorderState.docId}
           organizationId={organizationId}
           createdByUid={userDoc.uid}
-          availableSubjects={[{ kind: 'family', id: recorderFamily.docId, label: recorderFamily.label }]}
-          preselectedKeys={[`family:${recorderFamily.docId}`]}
-          onClose={() => setRecorderFamily(null)}
+          implicitSubjects={[{ kind: 'family', id: recorderState.docId } satisfies SubjectRef]}
+          people={recorderState.people}
+          preselectedPeopleKeys={recorderState.people.map((p) => `${p.kind}:${p.id}`)}
+          onClose={() => setRecorderState(null)}
           onSaved={reload}
         />
       )}

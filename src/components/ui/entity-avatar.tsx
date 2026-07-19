@@ -72,7 +72,7 @@ export function EntityAvatar({
     <div className={cn('group relative shrink-0 rounded-full', dimension, className)}>
       <div
         className={cn(
-          'flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-surface-soft text-text-secondary',
+          'flex h-full w-full items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-soft text-text-secondary',
           size === 'lg' ? 'text-xl font-semibold' : 'text-[11px] font-semibold',
         )}
       >

@@ -5,6 +5,75 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Hlasový zápis — redesign na pravý panel dle Petrovy vizuální zpětné vazby (2026-07-19)
+
+Petr po vyzkoušení první verze (viz sekce níž) poslal 7 konkrétních
+výhrad. Všechny promítnuty:
+
+1. **Modál → pravý vyjížděcí panel** (`components/ui/drawer.tsx`, nový
+   primitiv, `VoiceRecorderPanel.tsx` nahradilo `VoiceRecorderModal.tsx`) —
+   přesně §7.6 vzor ("drawer zprava"), plná výška obrazovky pro
+   víceminutový diktát. Klik na tlumené pozadí ZÁMĚRNĚ nezavírá (na
+   rozdíl od `Modal`) — ztráta několikaminutového textu jedním klikem
+   vedle by byla krutá; zavření jen přes Escape/X/tlačítka dole.
+2. **Mikrofon pulzuje výrazněji** — dvě vrstvy: `animate-mic-breathe`
+   (kruh se cyklicky zvětšuje/zmenšuje, `scale` transform, ne jen
+   opacity) + `animate-mic-ring` (dvě fázově posunuté expandující/mizející
+   kružnice za ním) — nové Tailwind keyframes v `tailwind.config.js`.
+3. **Textové pole výrazně větší** — `flex-1` vyplňuje celou zbývající
+   výšku panelu (naměřeno 416×439 px v testu, ne pár řádků). Bohaté
+   formátování (tučně/kurzíva/seznam/příloha z Petrova referenčního
+   screenshotu) VĚDOMĚ NEIMPLEMENTOVÁNO teď — je to samostatná, výrazně
+   větší funkce (rich-text model, sanitizace, případně přílohy), ne
+   "zvětšit textarea" úprava. Řečeno nahlas, ne potichu vynecháno.
+4. **Názvosloví + obsah "Zařadit k"** — "Týká se" → "Zařadit k", a
+   nabízí VÝHRADNĚ osoby (pěstoun/dítě) stejné rodiny jako ta, na jejíž
+   avatar se kliklo — adresa (rodina) a "Dohoda" už nejsou volitelné
+   položky. Pořád se ale potichu zapisují do `subjectRefs` přes
+   `implicitSubjects` (rodina vždy, Dohoda jen když se nahrávání spustilo
+   z jejího avataru) — beze změny datového modelu/§7.3, jen jiné
+   zobrazení. "Kdo uvidí" (4 úrovně) nahrazeno jedním přepínačem
+   "Soukromá poznámka" (`Switch`) — zapnuto = `sharingLevel: 'private'`,
+   vypnuto (výchozí) = `'internal'` (zápis do časové osy přiřazených
+   osob). Plný 4-úrovňový model zůstává v typu (`SharingLevel`) pro
+   budoucí chat/dokumenty, tenhle konkrétní panel z něj teď nabízí jen 2.
+5. **Tlačítka přejmenována**: "Uložit doslovný zápis"→"Uložit text",
+   "AI přepis"→"AI souhrn" (pořád vypnuté, stejný M10 SEAM důvod).
+6. Rozhodnuto: **pravý panel**, ne modál (viz bod 1) — Petr dal na výběr,
+   navrhnul jsem a implementoval drawer jako lépe padnoucí pro
+   víceminutový diktát a konzistentní s §7.6 vzorem budoucího detailu
+   zápisu.
+7. **Avatar teď má vždy `border-strong` obrys** — v tmavém režimu byl
+   `bg-surface-soft` (#1A1A1A) prakticky nerozeznatelný od pozadí panelu
+   (#161616), teď viditelný nezávisle na fotce/iniciálách/tématu.
+
+**Skutečný bug nalezený PŘI vlastním ověřování (ne teoretický):** panel
+napoprvé zůstal vizuálně "za pravou hranou" (transform zůstal na
+translateX(480px), i po `entered=true`). Kořenová příčina: vstupní
+animace byla spuštěná v `useEffect(..., [onClose])` — `onClose` je nová
+inline funkce při KAŽDÉM renderu rodiče, takže se efekt (a s ním
+naplánovaný spouštěč animace) přeplánovával dřív, než mohl proběhnout.
+Oprava: prázdné pole závislostí pro spouštěč vstupu, samostatný efekt s
+`[onClose]` jen pro Escape listener. Při ladění navíc zjištěno (živým
+`document.hidden`/`getComputedStyle` testem, ne dohadem), že tenhle
+konkrétní automatizovaný prohlížeč běží se skrytým (`document.hidden ===
+true`) dokumentem, což u `requestAnimationFrame` i CSS transitions
+zabraňuje reálnému vykreslení průběhu (běžné, zdokumentované chování
+prohlížečů, ne bug) — proto spouštěč používá `setTimeout`, ne rAF, a
+funkčnost byla nakonec ověřena přes skutečné DOM/JS volání (`.click()`,
+`getBoundingClientRect`, `innerText`), ne přes souřadnicové kliknutí,
+protože to samo o sobě bylo touhle vykreslovací zvláštností zavádějící.
+Reální uživatelé (karta není `hidden`, mají ji skutečně otevřenou) tenhle
+projev nikdy neuvidí — je to vlastnost tohohle konkrétního testovacího
+nástroje, ne appky.
+
+**Ověřeno:** lint/build/testy zelené, redeploy hosting proběhl, celý tok
+(najetí→nahrávání→zastavení→"Zařadit k" jen osoby→"Soukromá poznámka"→
+"Uložit text") ověřen na dvou různých rodinách (Dvořákovi přes
+FamilyDetailPage, Procházkovi přes FamilyListPage on-demand fetch),
+včetně smazání testovacích zápisů po ověření (jeden byl dokonce Petrův
+vlastní testovací zápis ze screenshotu, ne můj — i ten uklizen).
+
 ## Avatar + mikrofon rychlý hlasový zápis + KRITICKÁ oprava rules (2026-07-19)
 
 Petr vyžádal novou funkci: každá Dohoda/rodina/pěstoun/dítě má avatar

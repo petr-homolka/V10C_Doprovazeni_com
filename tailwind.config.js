@@ -88,6 +88,25 @@ export default {
         150: '150ms',
         200: '200ms',
       },
+      keyframes: {
+        'mic-breathe': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.15)' },
+        },
+        'mic-ring': {
+          '0%': { transform: 'scale(1)', opacity: '0.45' },
+          '100%': { transform: 'scale(1.9)', opacity: '0' },
+        },
+        'slide-in-right': {
+          from: { transform: 'translateX(100%)' },
+          to: { transform: 'translateX(0)' },
+        },
+      },
+      animation: {
+        'mic-breathe': 'mic-breathe 1.4s ease-in-out infinite',
+        'mic-ring': 'mic-ring 1.4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite',
+        'slide-in-right': 'slide-in-right 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+      },
     },
   },
   plugins: [],
