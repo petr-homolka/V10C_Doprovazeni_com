@@ -79,6 +79,13 @@
      vždy dost sytou plochu pro bílý text. */
   --danger-solid: #DA2A0B;
 
+  /* Úrovňový/tier tag (§5.8 základní/prémiové) — přeměřeno na Magnific
+     "Business"/"New" pilulkách (Settings nav), konstantní přes obě témata
+     (alpha pozadí se přizpůsobí libovolné ploše samo). Zatím nikde
+     nepoužito ve funkčním kódu — token je připravený pro M9.5/entitlementy. */
+  --tier-accent: #FF58AE;
+  --tier-accent-bg: rgba(255, 88, 174, .15);
+
   /* Radiusy */
   --radius-sm: 8px;
   --radius-md: 12px;

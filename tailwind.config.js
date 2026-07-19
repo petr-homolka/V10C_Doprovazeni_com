@@ -57,6 +57,10 @@ export default {
           bg: 'var(--danger-bg)',
           solid: 'var(--danger-solid)',
         },
+        tier: {
+          DEFAULT: 'var(--tier-accent)',
+          bg: 'var(--tier-accent-bg)',
+        },
       },
       borderRadius: {
         sm: 'var(--radius-sm)',

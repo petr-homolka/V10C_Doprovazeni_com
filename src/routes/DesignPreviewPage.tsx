@@ -1,6 +1,9 @@
 import { AppShell } from '@/components/shell/AppShell'
 import { TodaySampleSections } from '@/components/TodaySampleSections'
 import { AuthContext } from '@/contexts/auth-context'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
+import { Tag } from '@/components/ui/tag'
+import { Input } from '@/components/ui/input'
 
 const MOCK_AUTH_VALUE = {
   firebaseUser: null,
@@ -30,12 +33,19 @@ export default function DesignPreviewPage() {
     <AuthContext.Provider value={MOCK_AUTH_VALUE}>
       <AppShell>
         <div>
-          <h1 className="text-[28px] font-semibold leading-tight text-text-primary">
+          <div className="flex items-center gap-3">
+            <Breadcrumb items={[{ label: 'Rodiny', href: '/rodiny' }, { label: 'Rodina Novákových' }]} />
+            <Tag>Prémiové</Tag>
+          </div>
+          <h1 className="mt-1 text-[28px] font-semibold leading-tight text-text-primary">
             Dnes
           </h1>
           <p className="mt-1 text-[13px] text-text-secondary">
             Přihlášen jako Jana Málková · klicova_osoba (ukázková data pro review)
           </p>
+          <div className="mt-4 max-w-80">
+            <Input placeholder="Ukázkový vstup (nové pozadí/border/focus)" />
+          </div>
         </div>
 
         <TodaySampleSections />

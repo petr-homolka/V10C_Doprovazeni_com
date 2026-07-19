@@ -5,6 +5,60 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 8 (2026-07-19): Breadcrumb, Input, Tag — z workflow extrakce (Teams/Settings stránka)
+
+Uživatel poslal 5 screenshotů Magnific Settings (Profile, Plan & billing,
+Plugins, MCP, People) a trval na tom, ať hodnoty NEODHADUJI, ale změřím
+přímo v `pak-smazat-inspirace-chatgpt/maginific/Teams _ Magnific (formerly
+Freepik)_files/`. Spustil jsem Workflow se 4 paralelními agenty, každý ve
+vlastním tabu otevřel živě uloženou stránku
+(`Teams _ Magnific (formerly Freepik).html`, servírováno přes
+`npx serve`/`.claude/launch.json` config `magnific-inspiration`) a měřil
+`getComputedStyle`/`getBoundingClientRect` na skutečném DOM.
+
+**Nové/změněné komponenty:**
+
+- **`src/components/ui/breadcrumb.tsx`** (nová) — text-xs (12px) po celé
+  délce, STEJNÁ barva (`--text-primary`) pro aktivní i neaktivní úsek
+  (Magnific nedimuje text, jen aktivní úsek není odkaz + nemá hover
+  pozadí). Oddělovač `/` jako CSS `::after` (ne DOM znak) — `--text-
+  secondary` @ 50% opacity, 4px padding po stranách. Použit jako ukázka na
+  `/_preview` (`Rodiny / Rodina Novákových`).
+- **`src/components/ui/input.tsx`** upraven — klidové pozadí `--bg-inset`
+  (dřív `--bg-surface`), border `--border-default` (dřív `--border-
+  strong`), focus = `border-2 border-primary` BEZ ring/glow (Magnific na
+  focus jen zesílí a přebarví border, žádný box-shadow). **Vědomě
+  NEpřevzato:** jejich Name input má 14px text a modrý (#4F69F2, jejich
+  brand barva) focus border — necháváme 16px (§9.3, tvrdý požadavek kvůli
+  iOS Safari zoomu) a monochromní `--primary` (barva zůstává jen na
+  badge, vlastní princip z Dodatku 3).
+- **`src/components/ui/tag.tsx`** (nová) + tokeny `--tier-accent`/`--tier-
+  accent-bg` (`#FF58AE` / 15% alpha, konstantní přes obě témata) — malá
+  pilulka pro úrovňové značky ("Business"/"New" v Magnific). Zatím NIKDE
+  funkčně nepoužito (§5.8 entitlementy nemají UI) — jen připraveno pro
+  M9.5, ukázka na `/_preview` ("Prémiové" vedle breadcrumbu).
+
+**Co jsem NEpřevzal, protože to v exportu vůbec nebylo (agent to
+poctivě nahlásil jako "NOT PRESENT", ne odhadl):** tabulka Members/Role/
+Credits, avatar v řádku tabulky, credits progress bar, tlačítko "Invite
+members", box "Danger zone". Uložený soubor obsahuje jen podstránku
+"Profile details" — People a Plan & billing nebyly zvlášť uloženy/
+servírovány. **Pokud je chcete implementovat věrně, potřebuju uložit
+i tyhle konkrétní podstránky** (stejným postupem — pravé tlačítko →
+Uložit jako → kompletní HTML).
+
+**Zjištění vyžadující rozhodnutí uživatele (zapsáno, nerozhoduji sám):**
+vnořená navigace Nastavení v Magnific je CELÁ STRÁNKA s breadcrumbem
+("Settings / Profile") a vnořeným levým menu (Account/Organization
+sekce) — náš `DESIGN_SYSTEM.md` §6.9 ale popisuje Nastavení jako MODÁLNÍ
+okno se svislými záložkami (vzor Claude.ai). To je architektonický
+rozdíl v celém přístupu k Nastavení, ne jen barva — needěláno, dokud
+uživatel nepotvrdí, kterou cestou jít.
+
+Ověřeno v prohlížeči (`/_preview`), oba režimy, lint/build/testy zelené.
+
+---
+
 ## Dodatek 7 (2026-07-19): sidebar = stejná barva jako hlavní obsah, žádná identita dole
 
 Dvě drobné, rychlé úpravy na žádost uživatele:
