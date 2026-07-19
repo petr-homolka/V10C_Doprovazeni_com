@@ -5,6 +5,125 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Modul M2 hotový (2026-07-19): Dohoda, historyDigest, §4.5 — MANDATORNÍ testy napsané
+
+Rozsah přesně dle §11.1: entita Dohoda (§3/§4.5), `assignedTo`, legislativní
+lhůty jako pole, `createdByOrgId` na timeline/dokumentech, `historyDigest`
+generování (jen pravidla + typ — skutečné generování je M3/M5 job, timeline/
+dokumenty samotné ještě nemají UI). §4.5 je jedno ze dvou NEJRIZIKOVĚJŠÍCH
+míst v systému (§11.2) — modul se podle zadání nepovažuje za hotový bez
+automatizovaných testů, takže `tests/rules/m2.rules.test.ts` je součástí
+tohohle commitu, ne dodatečný "testovací sprint".
+
+**Než cokoli jiného — emulátor přeměřen znovu, s reálným novým nálezem:**
+Java 21 je nainstalovaná a firebase-tools 15.24.0 ji vyžaduje — ALE `bash`
+měl ve svém "hash" cache starou cestu k Javě 11 z dřívějška v session, takže
+`java -version` tiše vracel 11 i po nastavení `PATH`/`JAVA_HOME` na Javu 21,
+a emulátor pak hlásil zavádějící "Java version before 21" chybu, i když
+21 byla k dispozici. `hash -r` tohle opravilo. Se skutečně běžící Javou 21
+se emulátor dostal dál a padá na PŮVODNÍ, už dřív zdokumentovaný problém:
+`java.net.SocketException: Invalid argument: connect` z
+`sun.nio.ch.UnixDomainSockets.connect0` — JDK 21 (na tomhle stroji) interně
+používá Unix domain socket pro NIO Pipe self-pipe trik, a vytvoření
+takového socketu tady systémově selhává. Vyzkoušeno navíc oproti dřívějším
+pokusům: `-Djava.nio.channels.spi.SelectorProvider=sun.nio.ch.WindowsSelectorProvider`
+(flag SE aplikoval, potvrzeno v logu, ale i legacy Windows selector teď
+interně jede přes stejný Unix-socket Pipe — stejná chyba) a
+`-Djava.net.preferIPv4Stack=true`/`preferIPv4Addresses=true` (beze změny).
+Blocker je tedy hlouběji než jen "špatná verze Javy" nebo "špatný selector
+provider" — vypadá na chybějící/blokovanou AF_UNIX podporu na téhle
+konkrétní Windows instalaci (bezpečnostní software, VPN, nebo chybějící
+Windows komponenta), mimo co jde opravit JVM flagy. **Pořád neověřeno —
+`npm run test:rules` nikdy skutečně neproběhl** — ale teď s přesnější
+diagnózou, ne jen "nefunguje".
+
+**Datový model (§4.1/§4.5):**
+- `families/{familyId}/agreements/{agreementId}` (DOHODA, TT=90) — **`agreementId`
+  JE `organizationId`** (deterministické ID, vědomá volba). Řeší dvě věci
+  najednou: (a) §4.5 zjednodušující předpoklad "jedna organizace má nejvýš
+  jednu Dohodu v čase" se stává STRUKTURÁLNÍ vlastností (druhý pokus je
+  update stejného dokumentu, ne kolize), (b) `firestore.rules` umí ověřit
+  "má organizace O Dohodu na tenhle Spis" přímým `get()`/`exists()` na
+  ZNÁMÉ cestě, BEZ dotazu (rules dotaz nad podkolekcí neumí) a BEZ
+  jakékoli denormalizované kopie na Spisu — jeden zdroj pravdy.
+- `families/{familyId}.orgAccessList: string[]` (M2) NAHRAZUJE M1 dočasné
+  `createdByOrgId` — každá organizace, co kdy měla Dohodu, vidí Spis
+  navždy (§4.5). Stejný model na `fosterPersons` (`+familyId` back-ref,
+  potřebný pro rules ověření).
+- `children.organizationId` (§4.2 bod 7) je teď SKUTEČNĚ denormalizace
+  z aktivní Dohody — `agreementService.createAgreement` ho cascaduje na
+  všechny děti rodiny při založení Dohody. M2 řeší jen scénář "první
+  Dohoda pro tenhle Spis" — WF-3 (předání jiné organizaci, §12 backlog)
+  NENÍ postaveno, i když to rules strukturálně unesou.
+- `historyDigest`/`timeline`/`documents` — jen typy + pravidla (M2), NE
+  UI/generování (M3 zápisník, M5 dokumenty workflow).
+
+**Bezpečnostní díra nalezená a opravená PŘI PSANÍ pravidel (přesně proč je
+tahle sada testů mandatorní, ne formalita):** první návrh `families`
+update pravidla dovolil JAKÉMUKOLI staff členovi přidat VLASTNÍ organizaci
+do `orgAccessList` JAKÉKOLI rodiny, bez ohledu na to, jestli měl reálnou
+Dohodu — pravidlo kontrolovalo jen TVAR změny (přesně jeden nový záznam,
+je to vlastní org), ne EXISTENCI Dohody. Opraveno přidáním
+`hasOwnAgreementFor(familyId)` kontroly (viz deterministické ID výše) —
+rozšíření přístupu teď vyžaduje SKUTEČNÝ existující dokument Dohody, ne
+jen tvarově validní pole. `tests/rules/m2.rules.test.ts` má samostatnou
+sekci na tohle (mimo §11.2 mandatorní matici, ale stejný typ chyby, který
+má odhalit).
+
+**§4.5 "Pravidlo čtení" implementace** (`hasOwnAgreementFor`/
+`ownAgreementPeriod`/`hasActiveAgreementFor` v `firestore.rules`): čte
+vlastní Dohodu volající organizace přímo na deterministické cestě,
+porovnává `segmentValidTo` cizího záznamu s `validFrom` vlastní Dohody
+(`<=`, přesně dle doslovného znění §4.5). `timeline`/`documents` create
+navíc vyžaduje AKTIVNÍ (ne jen historickou) Dohodu — nedává smysl zapisovat
+nové záznamy do case, který organizace už nespravuje.
+
+**Mandatorní test suite** (`tests/rules/m2.rules.test.ts`) — všech 8 bodů
+z §11.2 matice, scénář DO1(2020-2022)→DO2(2022-2024)→DO3(2024-dosud) přesně
+dle §4.5 příkladu, plus testy na výše zmíněnou díru a na
+`agreementId == organizationId` vynucení. Při psaní testů jsem sám našel
+a opravil chybu ve VLASTNÍM prvním návrhu testu 7b (měl obrácený směr
+organizace — cizí digest pozdější organizace nemůže číst dřívější,
+opraveno na správný směr, DO3 čte DO2). Testy na "note/koncept nemá
+digest" používají `withSecurityRulesDisabled` pro čistou kontrolu
+existence, ne běžný klient — čtení NEEXISTUJÍCÍHO dokumentu na pravidle,
+co čte `resource.data.*`, může vrátit permission-denied místo "neexistuje"
+(reálná Firestore rules vlastnost, ne bug), takže `getDoc().exists()` přes
+běžného klienta by testovalo špatnou věc.
+
+**Vedlejší, ale hodnotný nález:** `tests/rules/*.test.ts` NEBYLY nikdy
+součástí TypeScript type-checku (`tsconfig.app.json` má jen `"include":
+["src"]`, `tsconfig.node.json` jen `vite.config.ts`) — od M0 mohly mít
+typové chyby a nikdo by si nevšiml. Přidán `tsconfig.tests.json` +
+reference v kořenovém `tsconfig.json`, takže `npm run build` teď typuje
+i `tests/` — potvrzeno čerstvým `tsconfig.tests.tsbuildinfo`. Platí i pro
+budoucí M8 §5.1 test suite.
+
+**KO kapacita** (§6 A9, odloženo z M1 — teď odemčeno díky `assignedTo`):
+`agreementService.checkKoCapacity(orgId, koUid)` — collection-group dotaz
+na `agreements` (aktivní, přiřazené té KO, ve vlastní organizaci), porovná
+s `organization.capacityWarningThreshold` (výchozí 25). FamilyDetailPage
+zobrazí JEMNÉ upozornění při výběru klíčové osoby ve formuláři Dohody,
+NIKDY neblokuje — přesně dle zadání ("orientační přání, NE tvrdá hranice").
+
+**Vědomě NEpostaveno / odloženo:**
+- WF-3 (předání rodiny jiné organizaci) — mimo rozsah M2 (§12 backlog),
+  `createAgreement` řeší jen první Dohodu na Spis.
+- Skutečné generování `historyDigest` (automaticky při uložení `visit`/
+  `system` timeline záznamu nebo při přechodu dokumentu na
+  `odeslano_ospod`/`odeslano_soud`) — čeká na M3 (zápisník) a M5
+  (dokumenty), M2 staví jen pravidla + typ, testy simulují generování
+  ručním seedem (`withSecurityRulesDisabled`), ne skutečným triggerem.
+
+Ověřeno: lint/build (vč. `tests/` type-checku, viz výše)/7 unit testů
+zelené. Firestore rules jsou pečlivě ručně odůvodněné a (nově) precizněji
+diagnostikovaný blocker brání ověření emulátorem — **stejně jako M0/M1,
+poctivě přiznáno, ne zamlčeno.** UI (Dohoda sekce na FamilyDetailPage)
+ověřeno vizuálně jen v "nenalezeno" stavu (bez reálného backendu nejde
+založit skutečná data k zobrazení vyplněného stavu formuláře/karty Dohody).
+
+---
+
 ## Design systém: SCHVÁLENO A ZAMČENO (2026-07-19)
 
 Uživatel po Dodatku 13 vizuální design appky schválil a požádal, ať se
@@ -830,13 +949,16 @@ dokud nepadne potvrzení.
 - Žádný skutečný Firebase/GCP projekt zatím neexistuje — `.env.local` si
   každý vývojář založí sám z `.env.example`, produkční nasazení řeší M11+.
 
-### Jak pokračovat (M1 hotový, viz "Modul M1 hotový" výše → M1.5/M2)
+### Jak pokračovat (M1+M2 hotové, viz sekce nahoře souboru → M1.5/M3)
 
-M1 (Organizace, zaměstnanci, Spis/Dítě/fosterPerson základ) je hotový —
-detaily, seamy a co zůstává neověřené jsou v sekci "Modul M1 hotový"
-úplně nahoře souboru, čti tu, ne tohle staré shrnutí. Další v pořadí dle
-§11.1 tabulky: **M1.5 (Import/Export/Záloha)** nebo rovnou **M2 (Dohoda a
-přiřazení)** — M2 přímo naváže na `families`/`children` z M1 (`assignedTo`,
-`historyDigest`, konečně vyřeší `createdByOrgId` SEAM zapsaný výše). Než
-začneš M2, přečti si `ZADANI §3, §4.5, §6 A9` (kapacita KO) znovu — ne
-celý dokument.
+M1 a M2 jsou hotové — detaily, seamy a co zůstává neověřené jsou v
+sekcích "Modul M1 hotový"/"Modul M2 hotový" úplně nahoře souboru, čti tu,
+ne tohle staré shrnutí. Další v pořadí dle §11.1 tabulky: **M1.5
+(Import/Export/Záloha)**, nebo rovnou **M3 (Časová osa a hlasový
+zápisník)** — M3 přímo naváže na `families`/M2 (skutečné `timeline`
+záznamy + konečně zapojí `historyDigest` generování, které M2 nechalo
+jen jako pravidla). Než začneš M3, přečti si `ZADANI §7` (hlasový
+zápisník) a `§4.4.A` (vzdělávání pěstounů, dvojí evidence) znovu — ne
+celý dokument. Pokud se ještě NEPODAŘILO rozchodit lokální Firestore
+emulátor, zkus napřed `hash -r` v bashi (viz "Modul M2 hotový" — reálný
+nález, mohlo to celou dobu tiše maskovat skutečnou chybovou hlášku).

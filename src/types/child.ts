@@ -4,10 +4,13 @@
  * `birthDate` odvození z RČ NENÍ v M1 implementováno (jen uloženo, pokud
  * ho uživatel zadá zvlášť), viz TODO v childService.ts.
  *
- * SEAM: `organizationId` je podle §4.2 bodu 7 má být denormalizace z
- * AKTIVNÍ DOHODY — Dohoda ještě neexistuje (M2), takže M1 ho nastavuje
- * přímo při založení. Až M2 přinese Dohodu/assignedTo, přepsat na
- * skutečnou denormalizaci při každé změně přiřazení.
+ * `organizationId` je dle §4.2 bodu 7 denormalizace z AKTIVNÍ DOHODY —
+ * od M2 to `agreementService.ts` skutečně dělá (přepíše `organizationId`
+ * na všech dětech rodiny při založení/skončení Dohody), NE už M1
+ * statické pole nastavené jen při vzniku dítěte. JEDNA aktuální hodnota,
+ * ne historický seznam jako `FamilyDoc.orgAccessList` — dítě má vždy
+ * přesně jednu "současnou" organizaci, na rozdíl od Spisu, který si
+ * pamatuje VŠECHNY organizace v historii.
  */
 export interface ChildDoc {
   uid: string

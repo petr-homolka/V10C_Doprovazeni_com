@@ -21,8 +21,14 @@ import type { ChildDoc } from '@/types/child'
  * jako jeden kontextový celek, ne tři nezávislé obrazovky.
  */
 
+/**
+ * `orgAccessList` obsahuje KAŽDOU organizaci, co kdy měla s rodinou
+ * Dohodu (M2, nahrazuje M1 `createdByOrgId`) — vrací tedy i rodiny, se
+ * kterými už vlastní Dohoda skončila (§4.5: vlastní historie zůstává
+ * navždy viditelná).
+ */
 export async function listFamilies(organizationId: string): Promise<FamilyDoc[]> {
-  const q = query(collection(db, 'families'), where('createdByOrgId', '==', organizationId))
+  const q = query(collection(db, 'families'), where('orgAccessList', 'array-contains', organizationId))
   const snap = await getDocs(q)
   return snap.docs.map((d) => d.data() as FamilyDoc)
 }
@@ -32,14 +38,13 @@ export async function listFamilies(organizationId: string): Promise<FamilyDoc[]>
  * implementační poznámka 1: "Human-facing (URL...) vždy používá uid
  * pole, ne interní document ID"), ne Firestore document ID — proto dotaz,
  * ne přímý `getDoc`. Vrací i `docId`, protože další zápisy (přidání
- * pěstouna/dítěte) potřebují skutečné Firestore document ID pro `doc()`.
+ * pěstouna/dítěte, založení Dohody) potřebují skutečné Firestore document
+ * ID pro `doc()`.
  *
  * Filtruje i na `organizationId` ze STEJNÉHO důvodu jako
- * `listChildrenForFamily` — firestore.rules čte `createdByOrgId`, dotaz
- * musí tohle pole zrcadlit, jinak Firestore list dotaz zamítne celý (ne
- * jen skryje cizí výsledky). Vedlejší efekt shodný se seamem výše: mimo
- * vlastní organizaci se Spis takhle nenajde vůbec, ne že by se skryl jen
- * obsah — historyDigest cross-org řešení přichází až s M2.
+ * `listChildrenForFamily` — firestore.rules čte `orgAccessList`, dotaz
+ * musí tohle pole zrcadlit (`array-contains`), jinak Firestore list dotaz
+ * zamítne celý (ne jen skryje cizí výsledky).
  */
 export async function getFamilyByUid(
   uid: string,
@@ -49,7 +54,7 @@ export async function getFamilyByUid(
     query(
       collection(db, 'families'),
       where('uid', '==', uid),
-      where('createdByOrgId', '==', organizationId),
+      where('orgAccessList', 'array-contains', organizationId),
     ),
   )
   if (snap.empty) return null
@@ -66,7 +71,7 @@ export async function createFamily(
   const uid = await allocateUid(organizationId, orgCode, 'familyFile')
   const data: FamilyDoc = {
     uid,
-    createdByOrgId: organizationId,
+    orgAccessList: [organizationId],
     fosterPersonRefs: [],
     address,
     createdAt: new Date().toISOString(),
@@ -97,7 +102,8 @@ export async function addFosterPersonToFamily(
   const uid = await allocateUid(organizationId, orgCode, 'fosterPerson')
   const data: FosterPersonDoc = {
     uid,
-    createdByOrgId: organizationId,
+    orgAccessList: [organizationId],
+    familyId,
     ...input,
     createdAt: new Date().toISOString(),
   }

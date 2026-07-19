@@ -105,14 +105,19 @@ describe('users/{uid} read rules', () => {
   })
 })
 
-describe('users/{uid} write rules — seam intentionally closed', () => {
-  it('nobody can create a user doc via the client yet, not even org_admin (§6 A6/A9 land in M1/M4)', async () => {
-    const asOrgAdminB1 = testEnv.authenticatedContext('ko-b1')
+describe('users/{uid} write rules', () => {
+  // M1 (§6 A9) replaced the M0 blanket `if false` seam with two real create
+  // paths — see tests/rules/m1.rules.test.ts for the full staff-creation and
+  // self-registration matrix. This file only re-checks that a NON-admin
+  // staff member still can't found a colleague (the M0-era protective
+  // intent), since that path never opened.
+  it('a plain staff member (not org_admin) cannot create a colleague', async () => {
+    const asKoA1 = testEnv.authenticatedContext('ko-a1')
     await assertFails(
-      setDoc(doc(asOrgAdminB1.firestore(), 'users', 'new-hire'), {
+      setDoc(doc(asKoA1.firestore(), 'users', 'new-hire'), {
         uid: 'new-hire',
         role: 'zamestnanec',
-        organizationId: ORG_B,
+        organizationId: ORG_A,
         displayName: 'New Hire',
         email: 'new@example.com',
         createdAt: 'test',

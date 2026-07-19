@@ -51,6 +51,38 @@ service cloud.firestore {
       return isSignedIn() && !exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    // M2 (§4.5): `families`/`fosterPersons` orgAccessList smí RŮST jen o
+    // PŘESNĚ jeden záznam a ten musí být vlastní organizace volajícího —
+    // nejde takhle přiřadit přístup CIZÍ organizaci. Zkombinováno s
+    // `hasOwnAgreementFor` níž (skutečná Dohoda musí existovat) u
+    // konkrétních `match` bloků families/fosterPersons — samotná tahle
+    // funkce jen hlídá TVAR změny, ne oprávněnost.
+    function isValidAccessExtension(oldList, newList, orgId) {
+      return newList.size() == oldList.size() + 1 && newList.hasAll(oldList) && (orgId in newList);
+    }
+
+    // M2 (§4.5 "Pravidlo čtení": "načíst vlastní Dohodu organizace O pro
+    // daný Spis") — Dohoda má DETERMINISTICKÉ ID (= organizationId, viz
+    // AgreementDoc komentář), takže se dá číst PŘÍMO na známé cestě
+    // `families/{familyId}/agreements/{orgId}`, bez dotazu a beze všech
+    // denormalizovaných kopií na Spisu. `familyId` je buď přímo z
+    // `match /families/{familyId}` výš, nebo (pro `agreements`/`timeline`/
+    // `documents`/`historyDigest` níž, zachycené jako `families/{familyId}`
+    // wildcard proměnnou `path`) `path.split('/')[1]` — všechny čtyři
+    // kolekce žijí přesně JEDNU úroveň pod families, ne hlouběji.
+    function ownAgreementPeriod(familyId) {
+      return get(/databases/$(database)/documents/families/$(familyId)/agreements/$(userDoc().organizationId)).data;
+    }
+
+    function hasOwnAgreementFor(familyId) {
+      return isStaff() &&
+        exists(/databases/$(database)/documents/families/$(familyId)/agreements/$(userDoc().organizationId));
+    }
+
+    function hasActiveAgreementFor(familyId) {
+      return hasOwnAgreementFor(familyId) && ownAgreementPeriod(familyId).status == 'active';
+    }
+
     // ---- users/{uid} ---------------------------------------------------
 
     match /users/{uid} {
@@ -134,22 +166,43 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ---- families/{familyId} — SPIS, §4.1/§4.5, M1 základ --------------
+    // ---- families/{familyId} — SPIS, §4.1/§4.5, M2 -----------------------
     //
-    // SEAM (zapsáno poctivě, §11 bod 7): Spis je dle §4.5 architektury
-    // org-NEZÁVISLÝ — příslušnost k organizaci má správně určovat aktivní
-    // Dohoda (M2), ne pole na Spisu samotném. Dohoda ještě neexistuje,
-    // takže M1 dočasně scopuje přes `createdByOrgId` (organizace, která
-    // Spis založila) — funguje pro jednu organizaci teď, ale NEŘEŠÍ
-    // cross-org viditelnost historie, až rodina/dítě organizaci změní.
-    // To přichází s M2 (`historyDigest`, §4.5) — nepovažuj tohle pravidlo
-    // za finální model, jen za přechodné minimum pro základní CRUD.
+    // `orgAccessList` (M2) nahrazuje M1 dočasné `createdByOrgId` — každá
+    // organizace, co kdy měla s rodinou Dohodu, čte Spis navždy (§4.5:
+    // "vlastní období: vidí VŠE... natrvalo, i po skončení vlastní
+    // Dohody"). Update smí buď (a) měnit cokoli KROMĚ orgAccessList (běžná
+    // úprava adresy/pěstounů organizací, co už přístup má), nebo (b)
+    // rozšířit orgAccessList o PŘESNĚ vlastní organizaci volajícího, A JEN
+    // pokud pro ni existuje SKUTEČNÁ Dohoda na tomhle Spisu
+    // (`families/{familyId}/agreements/{organizationId}`, viz
+    // `hasOwnAgreementFor`) — bez týhle kontroly by šlo přiřadit přístup
+    // JAKÉKOLI organizaci prostým zavoláním update, bez jakékoli Dohody
+    // (reálná díra, odhalená a opravená při psaní téhle sady pravidel).
+    // `agreementService.ts` proto VŽDY zakládá Dohodu jako PRVNÍ zápis,
+    // teprve pak rozšiřuje seznam (stejný sekvenční vzor jako M1
+    // registrace) — a rules teď TUHLE posloupnost i reálně vyžadují, ne
+    // jen předpokládají.
 
     match /families/{familyId} {
-      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
+      allow read: if isSuperadmin() || (isStaff() && userDoc().organizationId in resource.data.orgAccessList);
+
       allow create: if isStaff() &&
-        request.resource.data.createdByOrgId == userDoc().organizationId;
-      allow update: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
+        request.resource.data.orgAccessList == [userDoc().organizationId];
+
+      allow update: if isSuperadmin() || (
+        isStaff() && (
+          (
+            userDoc().organizationId in resource.data.orgAccessList &&
+            request.resource.data.orgAccessList == resource.data.orgAccessList
+          ) ||
+          (
+            isValidAccessExtension(resource.data.orgAccessList, request.resource.data.orgAccessList, userDoc().organizationId) &&
+            hasOwnAgreementFor(familyId)
+          )
+        )
+      );
+
       allow delete: if false;
     }
 
@@ -169,21 +222,124 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ---- fosterPersons/{fosterId} — TOP-LEVEL, §4.4.A, M1 základ -------
+    // ---- fosterPersons/{fosterId} — TOP-LEVEL, §4.4.A, M2 ----------------
     //
-    // SEAM: §4.4.A navrhuje Pěstouna jako osobu NEZÁVISLOU na Dohodě/
-    // organizaci (přežívá změnu DO) — tj. dlouhodobě by měl jít vidět i
-    // z JINÉ organizace, než která ho založila (obdoba §4.5 cross-org
-    // problému, jen pro pěstouna místo Spisu). To řešení (historyDigest
-    // styl) je mimo rozsah M1 — zatím scoped stejně jako families přes
-    // `createdByOrgId`, jen organizace-zakladatel vidí/edituje.
+    // Stejný `orgAccessList` model a stejná oprava jako `families` výš
+    // (§4.4.A: pěstoun jako osoba přežívá změnu Dohody/organizace, stejná
+    // logika jako Spis) — rozšíření orgAccessList vyžaduje skutečnou
+    // Dohodu na `resource.data.familyId` (rodina, ke které pěstoun patří),
+    // ne jen tvarově validní seznam. `agreementService.ts` rozšiřuje
+    // orgAccessList tady souběžně s `family.orgAccessList` při založení
+    // Dohody, pro VŠECHNY pěstouny dané rodiny.
 
     match /fosterPersons/{fosterId} {
+      allow read: if isSuperadmin() || (isStaff() && userDoc().organizationId in resource.data.orgAccessList);
+
+      allow create: if isStaff() &&
+        request.resource.data.orgAccessList == [userDoc().organizationId];
+
+      allow update: if isSuperadmin() || (
+        isStaff() && (
+          (
+            userDoc().organizationId in resource.data.orgAccessList &&
+            request.resource.data.orgAccessList == resource.data.orgAccessList
+          ) ||
+          (
+            isValidAccessExtension(resource.data.orgAccessList, request.resource.data.orgAccessList, userDoc().organizationId) &&
+            hasOwnAgreementFor(resource.data.familyId)
+          )
+        )
+      );
+
+      allow delete: if false;
+    }
+
+    // ---- families/{familyId}/agreements/{agreementId} — DOHODA, §4.5, M2 -
+    //
+    // `{path=**}` wildcard match (ne `families/{familyId}/agreements/...`
+    // přímo) — potřebné pro COLLECTION GROUP dotaz napříč rodinami (kapacita
+    // KO, §6 A9: "kolik aktivních Dohod má KO X", `collectionGroup('agreements')`
+    // filtrovaný na `assignedTo`+`status`+`organizationId` — poslední
+    // jmenované musí zrcadlit tohle pravidlo, jinak Firestore dotaz zamítne,
+    // stejná past jako u `children`/`families` v M1). `agreementId` MUSÍ
+    // rovnat se `organizationId` (deterministické ID, viz AgreementDoc) —
+    // tohle zajišťuje "nejvýš jedna Dohoda na organizaci" STRUKTURÁLNĚ
+    // (druhý pokus je update stejného dokumentu, ne kolize), ne runtime
+    // kontrolou.
+
+    match /{path=**}/agreements/{agreementId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        agreementId == userDoc().organizationId;
+
+      allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow delete: if false;
+    }
+
+    // ---- families/{familyId}/timeline/{id} — ZADANI §4.1/§7/§4.5, M2 -----
+    //
+    // Plný záznam čte VÝHRADNĚ organizace, co ho vytvořila — NIKDY cizí
+    // organizace, ani ta co má/měla vlastní Dohodu (§4.5 "Pravidlo čtení"
+    // bod 1-2: cizí čtou jen historyDigest, nikdy tohle). M2 staví jen
+    // pravidla + typ (`TimelineEntryDoc`) — skutečný zápisník/UI a
+    // `historyDigest` generování z tohohle přichází s M3. `path` je vždy
+    // `families/{familyId}` (jedna úroveň vnoření), takže
+    // `path.split('/')[1]` je Firestore document ID rodiče.
+
+    match /{path=**}/timeline/{entryId} {
       allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
       allow create: if isStaff() &&
-        request.resource.data.createdByOrgId == userDoc().organizationId;
+        request.resource.data.createdByOrgId == userDoc().organizationId &&
+        hasActiveAgreementFor(path.split('/')[1]);
+      allow update, delete: if false; // append-only, §5
+    }
+
+    // ---- families/{familyId}/documents/{docId} — ZADANI §6 A1/§4.5, M2 ---
+    //
+    // Stejný princip jako `timeline` — plný dokument čte jen tvůrce,
+    // status řídí JEN kdy vznikne `historyDigest` (M5 job), ne kdo smí
+    // číst tenhle plný záznam. M2 staví jen pravidla + typ
+    // (`FamilyDocumentDoc`) — celý schvalovací automat přichází s M5.
+
+    match /{path=**}/documents/{docId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
+      allow create: if isStaff() &&
+        request.resource.data.createdByOrgId == userDoc().organizationId &&
+        hasActiveAgreementFor(path.split('/')[1]);
       allow update: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
       allow delete: if false;
+    }
+
+    // ---- families/{familyId}/historyDigest/{id} — "nutné minimum", §4.5, M2
+    //
+    // JÁDRO §4.5. Tři cesty ke čtení:
+    // 1. Vlastní záznam (createdByOrgId == volající) — vždy, natrvalo.
+    // 2. Cizí záznam, jehož segmentValidTo (konec Dohody TVŮRCE) je ROVNO
+    //    NEBO STARŠÍ než validFrom VLASTNÍ Dohody volajícího pro tenhle
+    //    Spis (`<=`, přesně dle §4.5 doslovného znění) — dřívější
+    //    organizace, digest čitelný.
+    // 3. Cizí záznam vzniklý PO konci vlastní Dohody volajícího
+    //    (segmentValidTo je null NEBO pozdější než vlastní validFrom) —
+    //    ŽÁDNÝ přístup, ani na digest (§4.5 "Pravidlo čtení" bod 3).
+    // `ownAgreementPeriod`/`hasOwnAgreementFor` čtou vlastní Dohodu volající
+    // organizace přímo na jejím deterministickém ID (`get()`) — přesně to
+    // "načíst vlastní Dohodu organizace O pro daný Spis", které §4.5 sám
+    // předjímá jako nutné a přijatelné (čte se jen jednou za request, ne
+    // per záznam).
+
+    match /{path=**}/historyDigest/{digestId} {
+      allow read: if isSuperadmin() ||
+        sameOrg(resource.data.createdByOrgId) ||
+        (
+          hasOwnAgreementFor(path.split('/')[1]) &&
+          resource.data.segmentValidTo != null &&
+          resource.data.segmentValidTo <= ownAgreementPeriod(path.split('/')[1]).validFrom
+        );
+
+      allow create: if isStaff() && request.resource.data.createdByOrgId == userDoc().organizationId;
+      allow update, delete: if false; // append-only, §5
     }
 
     // ---- Vše ostatní: default deny, dokud modul nepřidá vlastní match ---
