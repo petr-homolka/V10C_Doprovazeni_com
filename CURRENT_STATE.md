@@ -5,6 +5,59 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Reálný Firebase projekt připojen + GitHub repo (2026-07-19)
+
+Petr založil skutečný Firebase projekt (`v10c-doprovazeni-com`) a GitHub
+repo (`github.com/petr-homolka/V10C_Doprovazeni_com`) a požádal o připojení
+před M3. Tohle **zásadně mění** dosavadní opakovaně zmiňované omezení
+"emulátor na tomhle stroji nejde spustit" — pro běžný vývoj/ruční testování
+appky (přihlášení, Firestore čtení/zápisy) už emulátor NENÍ potřeba,
+appka teď mluví se skutečným Firestore/Auth. **Co zůstává beze změny:**
+`tests/rules/*.test.ts` (automatizovaná sada) potřebuje emulátor
+STRUKTURÁLNĚ — `@firebase/rules-unit-testing` cíleně nikdy netestuje proti
+produkci (bezpečnostní/nákladový důvod, ne limitace tohohle stroje), takže
+`npm run test:rules` čeká na emulátor i nadále, jen dopad je teď menší
+(appku samotnou lze ověřovat ručně proti reálnému backendu).
+
+**Provedeno (vše přes CLI, žádné ruční kopírování configu):**
+- `firebase apps:sdkconfig` stáhl web SDK config přímo, žádné přepisování
+  z Console.
+- Firestore databáze založena v **europe-west3 (Frankfurt)** — vědomá
+  volba (EU region kvůli GDPR/zákonu 359/1999 Sb.), Petr vybral z options
+  {eur3 multi-region, europe-west3, europe-central2}, protože lokace jde
+  zvolit jen JEDNOU navždy (nejde později změnit bez smazání databáze).
+- `firestore.rules` + `firestore.indexes.json` nasazeny na produkci
+  (`npm run deploy:rules`, nový script) — PRVNÍ reálné nasazení pravidel
+  v historii tohohle projektu.
+- `.env.local` přepnut na reálný projekt (`VITE_USE_FIREBASE_EMULATORS=false`),
+  soubor zůstává gitignored, nikdy necommitován.
+- `.firebaserc` má teď DVA aliasy: `default` zůstává `demo-doprovazeni`
+  (emulátor, beze změny — bezpečnostní pojistka, aby holé `firebase deploy`
+  bez `--project` nikdy omylem netrefilo produkci), `production` =
+  `v10c-doprovazeni-com` (použito jen explicitně, viz `deploy:rules`).
+- GitHub remote `origin` přidán a `git push -u origin master` proběhl bez
+  problémů (repo bylo prázdné, `git-credential-manager` už byl na stroji
+  nastavený, žádný token nikde neopisován).
+
+**Jeden krok šel udělat jen ručně (Petr ho udělal, Console):** Email/Password
+sign-in metoda se v čerstvém Firebase projektu musí zapnout v Console
+(Authentication → Sign-in providers) — Google tohle konkrétní inicializační
+API gatuje za placeným Blaze plánem (`identityPlatform:initializeAuth`
+vrátilo `BILLING_NOT_ENABLED`), takže jsem to nezkoušel obcházet a rovnou
+požádal o ten jeden klik, místo abych hádal další API cesty.
+
+**Ověřeno end-to-end přímo proti produkci** (REST volání + `/registrace`
+formulář v prohlížeči, ne jen teoreticky): reálný Firebase Auth účet,
+reálný zápis `organizations`/`users` dokumentů, reálné `firestore.rules`
+správně pustily vlastníka číst svůj profil (autentizovaný token), a
+správně ODMÍTLY `DELETE` na `users`/`organizations` (obojí má natvrdo
+`delete: if false` kvůli audit stopě, §5) — smazání testovacích dat proto
+proběhlo přes admin CLI (`firebase firestore:delete --force`), ne přes
+klientská pravidla, přesně jak se to bude chovat i produkčně. Testovací
+Auth účet + oba dokumenty + `systemCounters/orgCode` čítač (vrácen na 0,
+aby první SKUTEČNÁ organizace dostala orgCode "0001") jsou po ověření
+smazané — produkce zůstává čistá, žádná testovací data.
+
 ## Modul M1.5 hotový (2026-07-19): Import / Export / Záloha
 
 Rozsah dle §5.5 "staging → report → commit → undo" + "vrstva 2" zálohy.

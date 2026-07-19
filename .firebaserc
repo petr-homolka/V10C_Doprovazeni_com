@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-doprovazeni"
+    "default": "demo-doprovazeni",
+    "production": "v10c-doprovazeni-com"
   }
 }
