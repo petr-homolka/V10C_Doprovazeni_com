@@ -5,6 +5,25 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 7 (2026-07-19): sidebar = stejná barva jako hlavní obsah, žádná identita dole
+
+Dvě drobné, rychlé úpravy na žádost uživatele:
+
+1. **`Sidebar.tsx` teď má `bg-app`** (stejný token jako hlavní panel), ne
+   `bg-surface-soft` — sidebar a hlavní obsah jsou teď barevně TOTOŽNÉ,
+   odlišuje je jen mezera (`--bg-void`) mezi panely, ne odstín. (Token
+   `--bg-surface-soft` zůstává v `index.css` definovaný pro budoucí použití
+   jinde — jen sidebar ho přestal používat.)
+2. **Odstraněn spodní řádek s avatarem/jménem uživatele ze Sidebaru** —
+   duplicitní s účtem v TopBaru vpravo nahoře (§ viz Dodatek 4/5). Sidebar
+   teď obsahuje jen logo/collapse tlačítko + navigaci, žádnou identitu ani
+   akci. `useAuth` import ze `Sidebar.tsx` odstraněn (už se tam nic z něj
+   nepoužívá).
+
+Ověřeno v prohlížeči, oba režimy, lint/build zelené.
+
+---
+
 ## Dodatek 6 (2026-07-19): font — Geist Sans všude, žádný serif
 
 Uživatel potvrdil: přejít na Geist plošně, ŽÁDNÝ serif nikde (rušíme H1
