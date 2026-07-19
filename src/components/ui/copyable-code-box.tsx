@@ -13,9 +13,14 @@ export function CopyableCodeBox({ value }: { value: string }) {
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(value)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard write can be denied (permissions policy, insecure context) —
+      // fail silently rather than leave an unhandled rejection.
+    }
   }
 
   return (

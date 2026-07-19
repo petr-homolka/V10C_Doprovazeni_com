@@ -19,7 +19,7 @@ export interface SettingsNavGroup {
 
 export function SettingsNav({ groups }: { groups: SettingsNavGroup[] }) {
   return (
-    <nav className="w-full shrink-0 space-y-4 lg:w-46">
+    <nav className="w-full shrink-0 space-y-4 lg:w-[184px]">
       {groups.map((group) => (
         <div key={group.label}>
           <p className="px-2.5 py-1.5 text-[10px] leading-none text-text-secondary">{group.label}</p>
