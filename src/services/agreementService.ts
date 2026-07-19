@@ -59,10 +59,17 @@ export interface CreateAgreementInput {
   orgCode: string
   careType: CareType
   assignedTo?: string
+  /** Import (§5.5, M1.5) často zakládá historickou Dohodu — bez tohohle
+   * by `createAgreement` vždy natvrdo použilo "teď", což by ztratilo
+   * skutečné datum ze zdrojových dat organizace. Ruční založení (UI) tohle
+   * pole nepředává, chová se tedy přesně jako dřív (výchozí "teď"). */
+  validFrom?: string
+  /** Viz FamilyDoc stejnojmenné pole — import rollback (§5.5, M1.5). */
+  createdByImportJobRef?: string
 }
 
 export async function createAgreement(input: CreateAgreementInput): Promise<AgreementDoc> {
-  const { familyDocId, organizationId, orgCode, careType, assignedTo } = input
+  const { familyDocId, organizationId, orgCode, careType, assignedTo, validFrom, createdByImportJobRef } = input
   const uid = await allocateUid(organizationId, orgCode, 'agreement')
   const data: AgreementDoc = {
     uid,
@@ -70,13 +77,14 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
     organizationId,
     careType,
     status: 'active',
-    validFrom: new Date().toISOString(),
+    validFrom: validFrom ?? new Date().toISOString(),
     validTo: null,
     assignedTo: assignedTo ?? null,
     visitIntervalDays: DEFAULT_VISIT_INTERVAL_DAYS,
     educationHoursTarget: EDUCATION_HOURS_TARGET[careType],
     noteDeadlineHours: DEFAULT_NOTE_DEADLINE_HOURS,
     createdAt: new Date().toISOString(),
+    ...(createdByImportJobRef ? { createdByImportJobRef } : {}),
   }
   // 1) Dohoda VŽDY první — firestore.rules na její existenci staví
   // rozšíření orgAccessList níž (hasOwnAgreementFor).

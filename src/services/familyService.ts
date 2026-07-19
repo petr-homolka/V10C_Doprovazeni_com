@@ -28,9 +28,22 @@ import type { ChildDoc } from '@/types/child'
  * navždy viditelná).
  */
 export async function listFamilies(organizationId: string): Promise<FamilyDoc[]> {
+  return (await listFamiliesWithDocIds(organizationId)).map((r) => r.family)
+}
+
+/**
+ * Stejný dotaz jako `listFamilies`, ale i s Firestore document ID —
+ * potřebuje ho export/import (§5.5, M1.5), kde se rodina musí propojit s
+ * dalšími zápisy (`children`/`fosterPersons`/`agreements` podle familyId),
+ * ne jen zobrazit. `listFamilies` (human-facing seznam, jen `uid`) tohle
+ * nepotřebuje, proto zůstává jako tenký wrapper nad touhle funkcí.
+ */
+export async function listFamiliesWithDocIds(
+  organizationId: string,
+): Promise<Array<{ docId: string; family: FamilyDoc }>> {
   const q = query(collection(db, 'families'), where('orgAccessList', 'array-contains', organizationId))
   const snap = await getDocs(q)
-  return snap.docs.map((d) => d.data() as FamilyDoc)
+  return snap.docs.map((d) => ({ docId: d.id, family: d.data() as FamilyDoc }))
 }
 
 /**
@@ -66,7 +79,8 @@ export async function createFamily(
   organizationId: string,
   orgCode: string,
   address: string | undefined,
-): Promise<FamilyDoc> {
+  createdByImportJobRef?: string,
+): Promise<{ docId: string; family: FamilyDoc }> {
   const ref = doc(collection(db, 'families'))
   const uid = await allocateUid(organizationId, orgCode, 'familyFile')
   const data: FamilyDoc = {
@@ -75,9 +89,10 @@ export async function createFamily(
     fosterPersonRefs: [],
     address,
     createdAt: new Date().toISOString(),
+    ...(createdByImportJobRef ? { createdByImportJobRef } : {}),
   }
   await setDoc(ref, data)
-  return data
+  return { docId: ref.id, family: data }
 }
 
 export async function listFosterPersonsByRefs(refs: string[]): Promise<FosterPersonDoc[]> {
@@ -97,7 +112,8 @@ export async function addFosterPersonToFamily(
   organizationId: string,
   orgCode: string,
   input: AddFosterPersonInput,
-): Promise<FosterPersonDoc> {
+  createdByImportJobRef?: string,
+): Promise<{ docId: string; fosterPerson: FosterPersonDoc }> {
   const ref = doc(collection(db, 'fosterPersons'))
   const uid = await allocateUid(organizationId, orgCode, 'fosterPerson')
   const data: FosterPersonDoc = {
@@ -106,12 +122,13 @@ export async function addFosterPersonToFamily(
     familyId,
     ...input,
     createdAt: new Date().toISOString(),
+    ...(createdByImportJobRef ? { createdByImportJobRef } : {}),
   }
   await setDoc(ref, data)
   await updateDoc(doc(db, 'families', familyId), {
     fosterPersonRefs: arrayUnion(ref.id),
   })
-  return data
+  return { docId: ref.id, fosterPerson: data }
 }
 
 /**
@@ -146,7 +163,8 @@ export async function addChildToFamily(
   organizationId: string,
   orgCode: string,
   input: AddChildInput,
-): Promise<ChildDoc> {
+  createdByImportJobRef?: string,
+): Promise<{ docId: string; child: ChildDoc }> {
   const ref = doc(collection(db, 'children'))
   const uid = await allocateUid(organizationId, orgCode, 'child')
   const data: ChildDoc = {
@@ -155,7 +173,8 @@ export async function addChildToFamily(
     organizationId,
     ...input,
     createdAt: new Date().toISOString(),
+    ...(createdByImportJobRef ? { createdByImportJobRef } : {}),
   }
   await setDoc(ref, data)
-  return data
+  return { docId: ref.id, child: data }
 }

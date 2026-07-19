@@ -22,4 +22,14 @@ export interface FamilyDoc {
   fosterPersonRefs: string[]
   address?: string
   createdAt: string
+  /**
+   * Vyplněné JEN pokud tenhle Spis vznikl hromadným importem (§5.5, M1.5)
+   * — Firestore document ID rodičovského `importJobs/{jobId}`. Jediný účel:
+   * `firestore.rules` na tohle pole navazuje NARROW delete výjimku pro
+   * rollback (§5.5 "30denní okno na kompletní vrácení") — jinak by import
+   * omylem nešel vůbec vrátit zpět, protože `families`/`fosterPersons`/
+   * `children` mají jinak `delete: if false` natvrdo (audit stopa, §5).
+   * Ručně založené entity tohle pole nikdy nemají.
+   */
+  createdByImportJobRef?: string
 }

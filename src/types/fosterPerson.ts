@@ -24,4 +24,6 @@ export interface FosterPersonDoc {
   phone?: string
   email?: string
   createdAt: string
+  /** Viz stejnojmenné pole na FamilyDoc — import rollback (§5.5, M1.5). */
+  createdByImportJobRef?: string
 }

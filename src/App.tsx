@@ -18,6 +18,8 @@ const DesignPreviewPage = lazy(() => import('@/routes/DesignPreviewPage'))
 const AppearanceSettingsPage = lazy(() => import('@/routes/settings/AppearanceSettingsPage'))
 const AccountSettingsPage = lazy(() => import('@/routes/settings/AccountSettingsPage'))
 const NotificationsSettingsPage = lazy(() => import('@/routes/settings/NotificationsSettingsPage'))
+const ImportSettingsPage = lazy(() => import('@/routes/settings/ImportSettingsPage'))
+const BackupSettingsPage = lazy(() => import('@/routes/settings/BackupSettingsPage'))
 
 function RouteFallback() {
   return (
@@ -58,6 +60,8 @@ export default function App() {
               <Route path="/nastaveni/vzhled" element={<AppearanceSettingsPage />} />
               <Route path="/nastaveni/ucet" element={<AccountSettingsPage />} />
               <Route path="/nastaveni/oznameni" element={<NotificationsSettingsPage />} />
+              <Route path="/nastaveni/import" element={<ImportSettingsPage />} />
+              <Route path="/nastaveni/zalohy" element={<BackupSettingsPage />} />
             </Route>
           </Routes>
         </Suspense>

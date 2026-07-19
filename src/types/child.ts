@@ -24,4 +24,6 @@ export interface ChildDoc {
   birthNumber: string
   birthDate?: string
   createdAt: string
+  /** Viz stejnojmenné pole na FamilyDoc — import rollback (§5.5, M1.5). */
+  createdByImportJobRef?: string
 }

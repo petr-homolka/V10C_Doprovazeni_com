@@ -83,6 +83,20 @@ service cloud.firestore {
       return hasOwnAgreementFor(familyId) && ownAgreementPeriod(familyId).status == 'active';
     }
 
+    // M1.5 (§5.5): "30denní okno na kompletní vrácení" po hromadném importu
+    // — families/fosterPersons/children/agreements mají jinak `delete: if
+    // false` natvrdo (audit stopa, §5), tohle je JEDINÁ, úzce vymezená
+    // výjimka. `importJobRef` musí odkazovat na SKUTEČNÝ importJob VLASTNÍ
+    // organizace volajícího ve stavu `committed` (ne už `rolled_back` —
+    // nejde vrátit dvakrát) — `importService.rollbackImportJob` maže
+    // entity JEDNU PO DRUHÉ podle manifestu a teprve nakonec přepne
+    // `importJobs/{jobId}.status` na `rolled_back`, takže tahle podmínka
+    // platí po celou dobu mazání a přestane platit hned po dokončení.
+    function canRollbackImportEntity(importJobRef) {
+      return isStaff() && userDoc().role == 'org_admin' && importJobRef != null &&
+        get(/databases/$(database)/documents/organizations/$(userDoc().organizationId)/importJobs/$(importJobRef)).data.status == 'committed';
+    }
+
     // ---- users/{uid} ---------------------------------------------------
 
     match /users/{uid} {
@@ -166,6 +180,63 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- organizations/{orgId}/importJobs/{jobId} — §5.5, M1.5 -----------
+    //
+    // §5.7 matice: "Import dat" — org_admin plný, vedení jen historie úloh
+    // (READ, žádná editace). `stagingRecords` podkolekce dědí přesně
+    // stejné scoping (žádný vlastní `organizationId` na záznamu — čte se
+    // z rodičovského `importJobs/{jobId}` dokumentu). Update na `importJobs`
+    // je záměrně bez omezení POLÍ (na rozdíl od `users`) — commit/rollback
+    // mění `status`/`manifest`/`committedAt` najednou, service vrstva
+    // (importService.ts) je jediné volající místo, ne uživatel ručně.
+
+    match /organizations/{orgId}/importJobs/{jobId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId);
+      allow update: if isSuperadmin() ||
+        (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
+      allow delete: if false;
+
+      match /stagingRecords/{recordId} {
+        allow read: if isSuperadmin() || sameOrg(orgId);
+        allow create, update: if isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId);
+        allow delete: if false;
+      }
+    }
+
+    // ---- organizations/{orgId}/backupConfig/config — §5.5, M1.5 ----------
+    // ---- organizations/{orgId}/backupJobs/{jobId} ------------------------
+    //
+    // §5.7 matice: "Zálohy" — org_admin plný, vedení jen stav (READ).
+    // `backupConfig` je jediný dokument (ID vždy `config`, viz backup.ts).
+
+    match /organizations/{orgId}/backupConfig/config {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow write: if isSuperadmin() ||
+        (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
+    }
+
+    match /organizations/{orgId}/backupJobs/{jobId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId);
+      allow update: if isSuperadmin() ||
+        (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
+      allow delete: if false;
+    }
+
+    // ---- organizations/{orgId}/backupRestoreTests/{id} — §5.5 gate, M1.5 -
+    //
+    // POVINNÝ GATE před produkčním nasazením zálohy/obnovení (§5.5) —
+    // platformní ověřovací záznam, ne organizační operativní data. Zapisuje
+    // VÝHRADNĚ superadmin (kdo skutečně provedl test obnovy na izolovaném
+    // prostředí), organizace svůj vlastní záznam vidí (transparentnost), ale
+    // nemůže si "sama sobě" test odškrtnout.
+
+    match /organizations/{orgId}/backupRestoreTests/{id} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow write: if isSuperadmin();
+    }
+
     // ---- families/{familyId} — SPIS, §4.1/§4.5, M2 -----------------------
     //
     // `orgAccessList` (M2) nahrazuje M1 dočasné `createdByOrgId` — každá
@@ -203,7 +274,10 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if false;
+      allow delete: if isSuperadmin() || (
+        userDoc().organizationId in resource.data.orgAccessList &&
+        canRollbackImportEntity(resource.data.createdByImportJobRef)
+      );
     }
 
     // ---- children/{childId} — TOP-LEVEL dle §4.2 bod 7, M1 základ ------
@@ -219,7 +293,10 @@ service cloud.firestore {
       allow create: if isStaff() &&
         request.resource.data.organizationId == userDoc().organizationId;
       allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
-      allow delete: if false;
+      allow delete: if isSuperadmin() || (
+        sameOrg(resource.data.organizationId) &&
+        canRollbackImportEntity(resource.data.createdByImportJobRef)
+      );
     }
 
     // ---- fosterPersons/{fosterId} — TOP-LEVEL, §4.4.A, M2 ----------------
@@ -251,7 +328,10 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if false;
+      allow delete: if isSuperadmin() || (
+        userDoc().organizationId in resource.data.orgAccessList &&
+        canRollbackImportEntity(resource.data.createdByImportJobRef)
+      );
     }
 
     // ---- families/{familyId}/agreements/{agreementId} — DOHODA, §4.5, M2 -
@@ -275,7 +355,10 @@ service cloud.firestore {
         agreementId == userDoc().organizationId;
 
       allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
-      allow delete: if false;
+      allow delete: if isSuperadmin() || (
+        sameOrg(resource.data.organizationId) &&
+        canRollbackImportEntity(resource.data.createdByImportJobRef)
+      );
     }
 
     // ---- families/{familyId}/timeline/{id} — ZADANI §4.1/§7/§4.5, M2 -----

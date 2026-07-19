@@ -5,6 +5,120 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Modul M1.5 hotový (2026-07-19): Import / Export / Záloha
+
+Rozsah dle §5.5 "staging → report → commit → undo" + "vrstva 2" zálohy.
+Cesta B (šablona, .xlsx) je JEDINÁ plně postavená cesta importu — cesty A
+(AI-asistovaná) a C (profesionální API) sdílí od `startImportJob` dál
+STEJNÝ `importJobs`/`stagingRecords` mechanismus (proto `ImportMethod` typ
+existuje už teď), ale jejich vlastní "přední dveře" (AI mapování sloupců /
+autentizovaný batch endpoint) čekají na infrastrukturu (Cloud Function +
+AI klíč / dokumentovaný API kontrakt), kterou tenhle build nemá nasazenou
+— SEAM, ne zapomenuté.
+
+**Bezpečnostní rozhodnutí PŘED napsáním kódu:** `xlsx` (SheetJS) balíček
+nainstalován, `npm audit` hned nato ukázal nevyřešenou HIGH severity
+Prototype Pollution + ReDoS zranitelnost (SheetJS patchuje jen přes
+VLASTNÍ CDN, ne přes npm registry — vědomé obchodní rozhodnutí výrobce,
+ne přehlédnutí). Nepřijatelné pro funkci, co parsuje nahrané soubory od
+uživatelů (přesně útočná plocha pro tenhle typ zranitelnosti) — `xlsx`
+odinstalován, nahrazen `exceljs@4.4.0` (jen menší, nesouvisející tranzitivní
+`uuid` nález, stejný jako v `firebase-tools` odjakživa).
+
+**Import (`src/services/importService.ts`):**
+- `generateImportTemplate()` — 3 listy (Pěstouni/Děti/Dohody) + list
+  Instrukce, sloupec **"ID rodiny"** je vlastní volný text organizace,
+  kterým se řádky napříč listy seskupují do JEDNÉ rodiny (víc pěstounů/
+  dětí = víc řádků se stejným ID) — po importu se nikam neukládá.
+- `parseImportTemplate(file)` — ČISTĚ klient-side (žádný Firestore zápis),
+  vrací `StagingRecordDoc[]` + `ImportSummary` s per-řádek `issues`.
+  Validace: povinná pole, formát e-mailu, formát rodného čísla (regex),
+  `careType` rozpoznán diakriticko-necitlivě (NFD rozklad + odfiltrování
+  kombinujících znamének podle Unicode rozsahu, ne regex Unicode rozsah
+  přímo v literálu — nečitelné/křehké v prostém zdrojáku), datum přijímá
+  ISO i český formát i skutečnou Excel `Date` buňku. Cross-row validace:
+  nejvýš JEDNA čistá Dohoda na rodinu v souboru (víc = jen první se
+  použije, zbytek se označí a přeskočí) + warningy na rodiny bez pěstouna/
+  Dohody v souboru.
+- **Scope rozhodnutí:** řádek s `issues.length > 0` se PŘESKOČÍ při
+  `commitImportJob` — žádný in-app editor jednotlivých řádků v M1.5,
+  organizace opraví soubor a chybějící řádky doimportuje zvlášť. Import
+  VŽDY zakládá NOVÉ rodiny, nikdy neslučuje s existujícím záznamem
+  (deduplikace/merge mimo rozsah).
+- `startImportJob`→`reviewing`, `confirmImportJob`→`confirmed`,
+  `commitImportJob`→`committed`/`failed` (manifest se plní PRŮBĚŽNĚ za
+  běhu, takže i částečně dokončený commit zůstává plně vratitelný),
+  `rollbackImportJob`→`rolled_back` (30denní okno, `ROLLBACK_WINDOW_DAYS`).
+  Mazání v rollbacku je záměrně v POŘADÍ (Dohody→pěstouni→děti→rodiny) a
+  `importJobs.status` se na `rolled_back` přepne AŽ ÚPLNĚ NAKONEC — rules
+  (`canRollbackImportEntity`) čtou tenhle status při KAŽDÉM mazání zvlášť.
+
+**Datový model — oprava PŘED prvním použitím:** `ImportManifest` (typ
+založený v M1.5.1) měl `familyDocId: string | null` (JEDNOTNÉ číslo) —
+nesedělo to se šablonou, která přes "ID rodiny" zjevně počítá s HROMADNÝM
+importem mnoha rodin najednou. Opraveno na `familyDocIds: string[]` +
+`agreementFamilyDocIds: string[]` (Dohoda má deterministické ID =
+organizationId, stačí tedy vědět KTEROU rodinu, ne ukládat ID Dohody
+znovu) — oprava proběhla dřív, než na typu cokoli stálo, žádná navazující
+migrace.
+
+**Export (`src/services/exportService.ts`):** self-service .xlsx export
+celé organizace (rodiny/pěstouni/děti/vlastní Dohoda) — čte přesně to, na
+co `firestore.rules` dává přístup, žádná zvláštní exportní cesta. Děti se
+(správně, dle §4.2 bodu 7) exportují jen s AKTUÁLNÍM `organizationId` —
+na rozdíl od Spisu/pěstouna nemá dítě historický seznam organizací, takže
+sama rules by staré dítě stejně nepustily ke čtení.
+
+**Záloha (`src/services/backupService.ts`):** JEDINÁ plně funkční cesta je
+"Zálohovat teď" s `destination.type === 'download'` — klient-side AES-256-
+GCM (Web Crypto `crypto.subtle`) s klíčem odvozeným PBKDF2-SHA256
+(210 000 iterací, OWASP 2023 doporučení) z hesla, které zadá organizace.
+**Heslo se NIKDE neukládá** — ani ve Firestore, ani jinam, jen dočasně v
+paměti prohlížeče pro odvození klíče — doslovné naplnění §5.5 "organizace
+si klíč spravuje sama". Naplánovaná záloha a gdrive/onedrive/ftp cíle jdou
+v UI NASTAVIT (`saveBackupConfig` skutečně zapisuje), ale nic se samo
+nespustí/nedoručí — chybí Cloud Scheduler/Function a OAuth konektory. UI
+na tenhle rozdíl výslovně upozorňuje (ne jen v kódu — §5 "poctivost
+nadevše"). `BackupRestoreTestDoc` (povinný gate před produkčním nasazením)
+zůstává nezapsaný — restore execution je mimo rozsah M1.5, viz typ.
+
+**UI:** `/nastaveni/import` (šablona ke stažení, upload+náhled PŘED
+založením jobu, historie s Potvrdit/Spustit/Vrátit zpět podle stavu) a
+`/nastaveni/zalohy` (export tlačítko, heslo+"Zálohovat teď", nastavení
+plánu s explicitním varováním, historie záloh) — oba nav odkazy existovaly
+už z Dodatku 11, teď mají reálné stránky. Ověřeno v prohlížeči (mock-auth
+režim): obě stránky renderují, prázdné stavy fungují, `generateImportTemplate`
+vytváří skutečný 9 kB platný .xlsx Blob, a celý `parseImportTemplate`
+pipeline ověřen end-to-end na skutečně vygenerovaném souboru přímo v
+běžícím prohlížeči (diakritika, duplicitní Dohoda, neplatné RČ/e-mail/typ
+péče — všechno správně rozpoznáno).
+
+**Mandatorní-styl test suite** (`tests/rules/m1.5.rules.test.ts`, ne jedna
+z §11.2 mandatorních dvou, ale `canRollbackImportEntity` je přesně ten typ
+jemné podmínky, co si zaslouží vlastní testy): importJobs/stagingRecords/
+backupConfig/backupJobs/backupRestoreTests scoping (org_admin plný přístup,
+ostatní staff jen READ, cizí organizace nic), a 6 testů na
+`canRollbackImportEntity` samotné — committed→smí, už rolled_back→nesmí
+(nejde vrátit dvakrát), bez `createdByImportJobRef` (ručně založená
+entita)→nesmí, non-org_admin→nesmí, cizí organizace→nesmí, a totéž na
+`children` (sameOrg-gated, ne orgAccessList-gated jako `families`) pro
+ověření, že mechanismus funguje na OBOU gating stylech.
+
+**Vědomě NEpostaveno / odloženo:** cesty A (AI-asistovaný import) a C
+(profesionální API import) — sdílí mechanismus, ne "přední dveře" (viz
+výše); gdrive/onedrive/ftp cíle a naplánovaná záloha — UI-nastavitelné
+stuby; skutečné OBNOVENÍ ze zálohy (dešifrování + dry-run diff + náhrada
+organizace) — vyžaduje Cloud Functions, mimo rozsah; `BackupRestoreTestDoc`
+zápis — nikdy se nezapíše v tomhle buildu, gate zůstává explicitně
+NESPLNĚN pro produkční nasazení.
+
+Ověřeno: lint/build/7 unit testů zelené, `tests/` type-check zelený
+(vč. nového `m1.5.rules.test.ts`). Firestore rules pečlivě ručně
+odůvodněné, ale — **stejně jako M0/M1/M2, poctivě přiznáno** — pořád
+neověřené skutečným emulátorem (stejný nevyřešený AF_UNIX blocker).
+
+---
+
 ## Modul M2 hotový (2026-07-19): Dohoda, historyDigest, §4.5 — MANDATORNÍ testy napsané
 
 Rozsah přesně dle §11.1: entita Dohoda (§3/§4.5), `assignedTo`, legislativní

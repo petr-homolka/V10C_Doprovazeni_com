@@ -51,4 +51,6 @@ export interface AgreementDoc {
   educationHoursTarget: number
   noteDeadlineHours: number
   createdAt: string
+  /** Viz FamilyDoc stejnojmenné pole — import rollback (§5.5, M1.5). */
+  createdByImportJobRef?: string
 }
