@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
@@ -29,16 +29,16 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="w-full max-w-[380px] rounded-lg border border-border bg-surface p-6 shadow-raised">
-        <h1 className="mb-1 text-[28px] font-semibold leading-tight text-text-primary">
+        <h1 className="mb-1 text-lg font-normal leading-normal text-text-primary">
           Doprovázení.com
         </h1>
-        <p className="mb-6 text-[13px] text-text-secondary">
+        <p className="mb-6 text-sm text-text-secondary">
           Přihlaste se do svého účtu.
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-text-primary">E-mail</span>
+            <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
             <Input
               type="email"
               autoComplete="username"
@@ -49,7 +49,7 @@ export default function LoginPage() {
           </label>
 
           <label className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium text-text-primary">Heslo</span>
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Heslo</span>
             <Input
               type="password"
               autoComplete="current-password"
@@ -60,7 +60,7 @@ export default function LoginPage() {
           </label>
 
           {error && (
-            <p className="text-[13px] text-danger" role="alert">
+            <p className="text-sm text-danger" role="alert">
               {error}
             </p>
           )}
@@ -69,6 +69,13 @@ export default function LoginPage() {
             {submitting ? 'Přihlašuji…' : 'Přihlásit se'}
           </Button>
         </form>
+
+        <p className="mt-4 text-sm text-text-secondary">
+          Nová organizace?{' '}
+          <Link to="/registrace" className="font-bold text-accent">
+            Zaregistrujte se
+          </Link>
+        </p>
       </div>
     </div>
   )

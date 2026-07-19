@@ -1,7 +1,8 @@
 rules_version = '2';
 
-// Kostra pravidel — M0 (§4.3, §5). Rozšiřuje se modul po modulu (M1+),
-// nikdy najednou pro kolekce, které ještě neexistují v kódu.
+// Pravidla — M0 (§4.3, §5) + M1 (Organizace, zaměstnanci, Spis, Dítě,
+// Pěstoun jako osoba). Rozšiřuje se modul po modulu, nikdy najednou pro
+// kolekce, které ještě neexistují v kódu.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -42,19 +43,50 @@ service cloud.firestore {
       return isStaff() && userDoc().organizationId == orgId;
     }
 
+    // M1: self-service registrace (§6 A9) potřebuje rozeznat "úplně nový,
+    // ještě neusazený uživatel" — ten smí jednou založit organizaci a svůj
+    // vlastní org_admin profil, a NIC jiného. Jakmile má profil, tahle
+    // cesta se pro něj navždy zavře.
+    function isProfileLess() {
+      return isSignedIn() && !exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
     // ---- users/{uid} ---------------------------------------------------
 
     match /users/{uid} {
       allow read: if isSignedIn() &&
         (request.auth.uid == uid || sameOrg(resource.data.organizationId));
 
-      // SEAM (§11 bod 7): záměrně 'if false'. Vytváření users/{uid} je
-      // bezpečnostně citlivé (role se odtud čte přímo, žádné Custom Claims
-      // jako pojistka) a musí být vázané na existující pozvánku
-      // (foster_invitations/ep_invitations, §6 A6) nebo na org_admina
-      // zakládajícího zaměstnance (§6 A9) — obojí přichází až s M1/M4.
-      // Do té doby se uživatelé sedí jen přes Admin SDK seed skript.
-      allow create, update, delete: if false;
+      // M1 (§6 A9) — dvě oddělené cesty, `if false` už neplatí plošně:
+      // 1) Bootstrap self-registrace: úplně nový uživatel zakládá SVŮJ
+      //    VLASTNÍ profil s rolí `org_admin`, a to jen k organizaci, kterou
+      //    (jak dokazuje `createdByUid`) sám před chvílí založil. Nejde
+      //    takhle vytvořit cizí/druhý profil ani jinou roli.
+      // 2) Org_admin zakládá dalšího zaměstnance (nikdy `superadmin`) ve
+      //    SVÉ organizaci — `role` v požadavku musí být validní staff role.
+      allow create: if
+        (request.auth.uid == uid && request.resource.data.role == 'org_admin' &&
+         get(/databases/$(database)/documents/organizations/$(request.resource.data.organizationId)).data.createdByUid == request.auth.uid) ||
+        (isStaff() && userDoc().role == 'org_admin' &&
+         request.resource.data.organizationId == userDoc().organizationId &&
+         request.resource.data.role in [
+           'org_admin', 'vedouci_pobocky', 'teamleader',
+           'klicova_osoba', 'asistent_ko', 'zamestnanec'
+         ]);
+
+      // Sebeúprava: jen `displayName` (žádná cesta k vlastnímu povýšení role).
+      // Org_admin nad zaměstnancem své organizace: jen `role`/`disabledAt`
+      // (soft-delete přes `disabledAt`, nikdy hard delete — audit stopa),
+      // nikdy nesahá na `superadmin` roli žádným směrem.
+      allow update: if
+        (request.auth.uid == uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])) ||
+        (isStaff() && userDoc().role == 'org_admin' && sameOrg(resource.data.organizationId) &&
+         resource.data.role != 'superadmin' && request.resource.data.role != 'superadmin' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'disabledAt', 'displayName']));
+
+      // Žádný hard delete profilu — jen `disabledAt` (viz update výše).
+      allow delete: if false;
     }
 
     // ---- counters/{orgId}_{typ} — §4.3 pozn. 2 (UID sekvenční čítač) ----
@@ -67,6 +99,91 @@ service cloud.firestore {
       allow write: if isStaff() &&
         (resource == null || sameOrg(resource.data.organizationId)) &&
         sameOrg(request.resource.data.organizationId);
+    }
+
+    // ---- systemCounters/orgCode — §4.3 (OOOO segment, JEDINÝ globální
+    // čítač v systému, přiděluje kód organizacím samotným) --------------
+
+    match /systemCounters/orgCode {
+      // Jen profil-less self-registrace smí číst/zvyšovat — jakmile má
+      // uživatel profil (a tedy i organizaci), tahle cesta se pro něj
+      // navždy zavře. Skutečná unikátnost čísla je zaručená Firestore
+      // transakcí ve service vrstvě (allocateOrgCode), pravidlo tady jen
+      // omezuje KDO smí transakci vůbec spustit.
+      allow read, write: if isProfileLess();
+    }
+
+    // ---- organizations/{orgId} — §4.1/§4.3, §6 A9 ----------------------
+
+    match /organizations/{orgId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+
+      // Bootstrap: jen profil-less uživatel, který zakládá SEBE jako
+      // vlastníka (createdByUid). `orgCode` musí mít tvar OOOO — skutečná
+      // unikátnost přichází z systemCounters/orgCode transakce výše.
+      allow create: if isProfileLess() &&
+        request.resource.data.createdByUid == request.auth.uid &&
+        request.resource.data.orgCode is string &&
+        request.resource.data.orgCode.matches('[0-9]{4}');
+
+      // Jen org_admin (plný přístup) nebo superadmin — vedení má podle
+      // §5.7 matice jen READ (žádná editace), proto tu není.
+      allow update: if isSuperadmin() ||
+        (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
+
+      allow delete: if false;
+    }
+
+    // ---- families/{familyId} — SPIS, §4.1/§4.5, M1 základ --------------
+    //
+    // SEAM (zapsáno poctivě, §11 bod 7): Spis je dle §4.5 architektury
+    // org-NEZÁVISLÝ — příslušnost k organizaci má správně určovat aktivní
+    // Dohoda (M2), ne pole na Spisu samotném. Dohoda ještě neexistuje,
+    // takže M1 dočasně scopuje přes `createdByOrgId` (organizace, která
+    // Spis založila) — funguje pro jednu organizaci teď, ale NEŘEŠÍ
+    // cross-org viditelnost historie, až rodina/dítě organizaci změní.
+    // To přichází s M2 (`historyDigest`, §4.5) — nepovažuj tohle pravidlo
+    // za finální model, jen za přechodné minimum pro základní CRUD.
+
+    match /families/{familyId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
+      allow create: if isStaff() &&
+        request.resource.data.createdByOrgId == userDoc().organizationId;
+      allow update: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
+      allow delete: if false;
+    }
+
+    // ---- children/{childId} — TOP-LEVEL dle §4.2 bod 7, M1 základ ------
+    //
+    // Stejný SEAM jako families výše: `organizationId` je teď přímo
+    // nastavené při založení, ale §4.2 bod 7 říká, že se má denormalizovat
+    // z AKTIVNÍ DOHODY (M2) — až Dohoda existuje, přepsat na skutečnou
+    // denormalizaci při každé změně přiřazení, ne nechávat jako statické
+    // pole z M1.
+
+    match /children/{childId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId;
+      allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow delete: if false;
+    }
+
+    // ---- fosterPersons/{fosterId} — TOP-LEVEL, §4.4.A, M1 základ -------
+    //
+    // SEAM: §4.4.A navrhuje Pěstouna jako osobu NEZÁVISLOU na Dohodě/
+    // organizaci (přežívá změnu DO) — tj. dlouhodobě by měl jít vidět i
+    // z JINÉ organizace, než která ho založila (obdoba §4.5 cross-org
+    // problému, jen pro pěstouna místo Spisu). To řešení (historyDigest
+    // styl) je mimo rozsah M1 — zatím scoped stejně jako families přes
+    // `createdByOrgId`, jen organizace-zakladatel vidí/edituje.
+
+    match /fosterPersons/{fosterId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
+      allow create: if isStaff() &&
+        request.resource.data.createdByOrgId == userDoc().organizationId;
+      allow update: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
+      allow delete: if false;
     }
 
     // ---- Vše ostatní: default deny, dokud modul nepřidá vlastní match ---

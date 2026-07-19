@@ -8,7 +8,11 @@ import { MOCK_AUTH_VALUE } from '@/routes/_mockAuth'
 // lazy routes). Přidávej sem novou stránku pro každý modul (M1+), ne do
 // jednoho velkého bundlu.
 const LoginPage = lazy(() => import('@/routes/LoginPage'))
+const RegisterPage = lazy(() => import('@/routes/RegisterPage'))
 const DashboardPage = lazy(() => import('@/routes/DashboardPage'))
+const StaffPage = lazy(() => import('@/routes/StaffPage'))
+const FamilyListPage = lazy(() => import('@/routes/FamilyListPage'))
+const FamilyDetailPage = lazy(() => import('@/routes/FamilyDetailPage'))
 // DOČASNÉ — viz komentář v DesignPreviewPage.tsx, smazat s M1.
 const DesignPreviewPage = lazy(() => import('@/routes/DesignPreviewPage'))
 const AppearanceSettingsPage = lazy(() => import('@/routes/settings/AppearanceSettingsPage'))
@@ -30,6 +34,7 @@ export default function App() {
         <Suspense fallback={<RouteFallback />}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/registrace" element={<RegisterPage />} />
             <Route path="/_preview" element={<DesignPreviewPage />} />
             {/*
               DOČASNĚ mimo RequireAuth (viz src/routes/_mockAuth.ts) — na
@@ -47,6 +52,9 @@ export default function App() {
               }
             >
               <Route path="/" element={<DashboardPage />} />
+              <Route path="/zamestnanci" element={<StaffPage />} />
+              <Route path="/rodiny" element={<FamilyListPage />} />
+              <Route path="/rodiny/:familyUid" element={<FamilyDetailPage />} />
               <Route path="/nastaveni/vzhled" element={<AppearanceSettingsPage />} />
               <Route path="/nastaveni/ucet" element={<AccountSettingsPage />} />
               <Route path="/nastaveni/oznameni" element={<NotificationsSettingsPage />} />

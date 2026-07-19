@@ -42,6 +42,104 @@ svolení z Dodatku 13) a zapiš to — needěláš to sám za zavřenými dveřm
 
 ---
 
+## Modul M1 hotový (2026-07-19): Organizace, zaměstnanci, Spis, Dítě, Pěstoun (osoba)
+
+Rozsah přesně dle ZADANI §11.1 tabulky pro M1: "Registrace organizace,
+zaměstnanci CRUD, kapacita KO, Spis CRUD (základ), Dítě CRUD (základ),
+pěstoun jako osoba (ještě bez účtu)." Postaveno jako svislý řez (typy +
+firestore.rules + service vrstva + UI) přesně dle §11 bodu 2/metodiky, ne
+vodorovné vrstvy.
+
+**Nové kolekce a jejich pravidla** (`firestore.rules`, viz komentáře přímo
+u každého `match` bloku pro plné odůvodnění):
+- `systemCounters/orgCode` — JEDINÝ globální čítač v systému (přiděluje
+  4místný `orgCode` OOOO segment nové organizaci), přístupný jen
+  "profil-less" self-registrujícímu se uživateli (`isProfileLess()`).
+- `organizations/{orgId}` — bootstrap create jen profil-less uživatelem
+  jako vlastníkem (`createdByUid`), update jen `org_admin`/superadmin
+  (vedení má dle §5.7 matice jen READ).
+- `users/{uid}` create — `if false` SEAM z M0 nahrazen dvěma cestami:
+  (1) bootstrap self-registrace (nový uživatel zakládá SVŮJ `org_admin`
+  profil, ověřeno proti organizaci, kterou sám právě založil), (2)
+  org_admin zakládá zaměstnance ve své organizaci (nikdy roli
+  `superadmin`). `users/{uid}` update — sebeúprava jen `displayName`,
+  org_admin nad podřízeným jen `role`/`disabledAt` (nikdy hard delete,
+  vždy soft-delete přes `disabledAt` — audit stopa, §5).
+- `families/{familyId}` (Spis), `children/{childId}`, `fosterPersons/{fosterId}`
+  — **SEAM zapsaný poctivě (§11 bod 7):** všechny tři scoped přes DOČASNÉ
+  `createdByOrgId`/`organizationId` pole nastavené přímo při založení.
+  Podle §4.5 (Spis) a §4.4.A (Pěstoun) má org-příslušnost správně určovat
+  AKTIVNÍ DOHODA (M2), ne pole na entitě samotné — cross-org viditelnost
+  (rodina/pěstoun změní organizaci, historie má zůstat čitelná staré i
+  nové organizaci dle pravidel §4.5) NENÍ v M1 řešena, čeká na M2
+  `historyDigest` mechanismus. Nepovažuj tohle scoping pole za finální
+  model, jen za přechodné minimum pro CRUD.
+- **Reálný list-query gotcha, na kterou jsem narazil a opravil** (§5 "List
+  dotaz vs. pole v pravidle"): `listChildrenForFamily` a `getFamilyByUid`
+  původně filtrovaly jen na `familyId`/`uid`, ale pravidlo čte
+  `organizationId`/`createdByOrgId` — Firestore by takový list dotaz
+  zamítl celý (ne jen skryl cizí výsledky), protože rovnostní filtr
+  dotazu musí zrcadlit pole v pravidle. Opraveno přidáním druhého
+  `where()` filtru do obou dotazů.
+
+**Self-service registrace** (`/registrace`, §6 A9): Auth účet →
+`organizations/{orgId}` → `users/{uid}` (role `org_admin`), tři kroky BEZ
+atomické transakce napříč Auth+Firestore (nejde bez Cloud Function, mimo
+rozsah — žádný nasazený projekt zatím neexistuje). Riziko: pokud selže
+krok 3, zůstane osiřelý Auth účet + organizace bez profilu — přijatelné
+pro M1 základ, žádný automatický úklid.
+
+**Zaměstnanci** (`/zamestnanci`, §6 A9, §5.7 "Nastavení ≠ Správa entit" —
+vlastní stránka appky, NE záložka v Nastavení): org_admin zakládá účet
+přes SEKUNDÁRNÍ Firebase App instanci (`src/lib/secondaryAuth.ts`) — jinak
+by `createUserWithEmailAndPassword` na primární `auth` odhlásil právě
+přihlášeného org_admina (známá vlastnost Firebase Auth client SDK).
+Všichni zaměstnanci vidí týmový seznam (read-only), jen `org_admin` vidí
+formulář na založení a přepínač aktivní/zablokován. Nový nav item
+"Zaměstnanci" je PRVNÍ role-gated položka v Sidebaru (`isStaffRole`) —
+zbytek nav zůstává univerzální, širší role-aware nav je mimo rozsah M1.
+
+**Spis + Pěstoun + Dítě** (`/rodiny`, `/rodiny/:familyUid`): jeden
+kontextový celek v UI (`familyService.ts`), ne tři nezávislé stránky —
+detail rodiny přidává pěstouny i děti inline. URL používá VŽDY human-facing
+`uid` pole (§4.3 pozn. 1: "Human-facing (URL...) vždy používá uid pole, ne
+interní document ID"), interní odkazy (`family.fosterPersonRefs`,
+`child.familyId`) používají Firestore document ID (efektivnější přímý
+`getDoc`, ne dotaz) — tohle rozlišení bylo potřeba promyslet explicitně,
+zapsáno tady, ať se příště neřeší znovu od nuly.
+
+**Vědomě NEpostaveno / odloženo:**
+- **Kapacita KO** (§6 A9, ~25 rodin, jen jemné upozornění vedení) — token
+  `capacityWarningThreshold` na organizaci existuje, ale počítání zatížení
+  potřebuje `assignedTo` z Dohody (M2), která ještě neexistuje. Nulová
+  hodnota by byla fabrikovaná, ne reálná — počká na M2.
+- Širší role-aware Sidebar (skrýt Rodiny/Úkoly/Dokumenty pro `pestoun`/
+  `external`/`provider`) — mimo rozsah M1, jen "Zaměstnanci" je zatím
+  gated.
+- RČ → datum narození dopočet (§3: "RČ je primární identifikátor, dopočet
+  data narození") — `birthNumber` se ukládá, `birthDate` odvození
+  NENÍ implementováno.
+- `firestore.rules` pro M1 jsou pečlivě ručně odůvodněné (viz komentáře
+  u každého `match` bloku), ale STEJNĚ JAKO M0 zůstávají neověřené
+  automatizovaným testem — lokální Firestore/Auth emulátor na tomhle
+  stroji stále nejde spustit (stejný Netty/JDK blocker jako M0). Mandatorní
+  testovací sady (§11.2) jsou explicitně vázané na §4.5 (M2) a §5.1 (M8),
+  ne na M1 — proto tu žádná nechybí oproti plánu, jen nejde ověřit ani
+  tahle ručně odůvodněná verze.
+
+Ověřeno: lint/build/7 testů zelené, živě v prohlížeči (`/registrace`,
+`/login`, `/zamestnanci`, `/rodiny`, `/rodiny/:uid` including "nenalezeno"
+stav) v mock-auth režimu — layout/formuláře/prázdné stavy correct.
+**NEOVĚŘENO živě:** skutečný zápis do Firestore (registrace → založení
+zaměstnance → založení rodiny/pěstouna/dítěte end-to-end) — bez
+funkčního Auth/Firestore emulátoru na tomhle stroji nejde spustit
+požadavek proti reálnému backendu, jen proti offline cache (prázdné
+výsledky, ne chyba). Kód je napsaný a odůvodněný správně, ale "funguje
+opravdu" zůstává neověřené tvrzení, dokud emulátor nebo reálný projekt
+nepůjde spustit — poctivě přiznáno, ne zamlčeno.
+
+---
+
 ## Dodatek 13 (2026-07-19): Vyčerpávající shoda s referenční appkou — typografie, barvy, formulářové prvky; žádná stopa reference v kódu
 
 Uživatel: design je na ~97 %, ale žádá **doslovnou shodu** s referenční
@@ -732,10 +830,13 @@ dokud nepadne potvrzení.
 - Žádný skutečný Firebase/GCP projekt zatím neexistuje — `.env.local` si
   každý vývojář založí sám z `.env.example`, produkční nasazení řeší M11+.
 
-### Jak pokračovat (M1)
+### Jak pokračovat (M1 hotový, viz "Modul M1 hotový" výše → M1.5/M2)
 
-Organizace + zaměstnanci CRUD, Spis/Dítě/fosterPerson základ. Tohle je
-první modul, který skutečně potřebuje `allocateUid()` (`src/lib/counters.ts`)
-a rozbije seam v `users/{uid}` create (A9 workflow — org_admin zakládá
-zaměstnance). Než začneš, přečti si `ZADANI §4.1, §4.2, §6 A9` — ne celý
-dokument znovu.
+M1 (Organizace, zaměstnanci, Spis/Dítě/fosterPerson základ) je hotový —
+detaily, seamy a co zůstává neověřené jsou v sekci "Modul M1 hotový"
+úplně nahoře souboru, čti tu, ne tohle staré shrnutí. Další v pořadí dle
+§11.1 tabulky: **M1.5 (Import/Export/Záloha)** nebo rovnou **M2 (Dohoda a
+přiřazení)** — M2 přímo naváže na `families`/`children` z M1 (`assignedTo`,
+`historyDigest`, konečně vyřeší `createdByOrgId` SEAM zapsaný výše). Než
+začneš M2, přečti si `ZADANI §3, §4.5, §6 A9` (kapacita KO) znovu — ne
+celý dokument.

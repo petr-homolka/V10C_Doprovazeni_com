@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Calendar, CheckSquare, FileText, Home, Users } from 'lucide-react'
+import { Calendar, CheckSquare, FileText, Home, UserCog, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/useAuth'
+import { isStaffRole } from '@/types/user'
 
 /**
  * Sidebar — přeměřeno 2026-07-19 přímo na živé referenční appce
@@ -21,17 +23,24 @@ import { cn } from '@/lib/utils'
  *
  * Skutečná sada položek/oprávnění (kdo vidí co) je funkční záležitost M1+
  * (role-aware nav) — tady je jen reprezentativní sada, ne finální seznam.
+ * "Zaměstnanci" (M1, §5.7 "Nastavení ≠ Správa entit" — vlastní stránka,
+ * NE záložka v Nastavení) je zatím JEDINÁ položka s reálným role-gatingem
+ * (jen `isStaffRole` vidí týmový seznam) — zbytek nav zůstává viditelný
+ * pro všechny, dokud se neřeší širší role-aware nav (mimo rozsah M1).
  */
 const NAV_ITEMS = [
-  { to: '/', label: 'Dnes', icon: Home, end: true },
-  { to: '/rodiny', label: 'Rodiny', icon: Users, end: false },
-  { to: '/ukoly', label: 'Úkoly', icon: CheckSquare, end: false },
-  { to: '/kalendar', label: 'Kalendář', icon: Calendar, end: false },
-  { to: '/dokumenty', label: 'Dokumenty', icon: FileText, end: false },
+  { to: '/', label: 'Dnes', icon: Home, end: true, staffOnly: false },
+  { to: '/rodiny', label: 'Rodiny', icon: Users, end: false, staffOnly: false },
+  { to: '/zamestnanci', label: 'Zaměstnanci', icon: UserCog, end: false, staffOnly: true },
+  { to: '/ukoly', label: 'Úkoly', icon: CheckSquare, end: false, staffOnly: false },
+  { to: '/kalendar', label: 'Kalendář', icon: Calendar, end: false, staffOnly: false },
+  { to: '/dokumenty', label: 'Dokumenty', icon: FileText, end: false, staffOnly: false },
 ] as const
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
+  const { userDoc } = useAuth()
+  const items = NAV_ITEMS.filter((item) => !item.staffOnly || (userDoc && isStaffRole(userDoc.role)))
 
   return (
     <aside
@@ -66,7 +75,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-0.5 px-3 pt-2">
-        {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+        {items.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
