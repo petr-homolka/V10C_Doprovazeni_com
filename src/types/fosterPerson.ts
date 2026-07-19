@@ -26,4 +26,6 @@ export interface FosterPersonDoc {
   createdAt: string
   /** Viz stejnojmenné pole na FamilyDoc — import rollback (§5.5, M1.5). */
   createdByImportJobRef?: string
+  /** Viz stejnojmenné pole na FamilyDoc — Cloud Storage avatar URL (M3). */
+  avatarUrl?: string | null
 }

@@ -68,8 +68,15 @@ service cloud.firestore {
     // denormalizovaných kopií na Spisu. `familyId` je buď přímo z
     // `match /families/{familyId}` výš, nebo (pro `agreements`/`timeline`/
     // `documents`/`historyDigest` níž, zachycené jako `families/{familyId}`
-    // wildcard proměnnou `path`) `path.split('/')[1]` — všechny čtyři
-    // kolekce žijí přesně JEDNU úroveň pod families, ne hlouběji.
+    // wildcard proměnnou `path`) `path[1]` — `path` z `{path=**}` je typ
+    // Path (indexovatelný po segmentech), NE string — `.split('/')[1]`
+    // (M2 původní verze) na Firestore i skutečně NASADÍ a ZKOMPILUJE beze
+    // varování, ale za běhu tiše selže (Path nemá `.split()`), takže
+    // KAŽDÝ zápis/čtení timeline/documents/historyDigest by natvrdo spadl
+    // na permission-denied — objeveno a opraveno 2026-07-19 živým testem
+    // proti skutečnému Firestore (§11.2 přesně proto testy nejsou
+    // formalita). Všechny čtyři kolekce žijí přesně JEDNU úroveň pod
+    // families, ne hlouběji.
     function ownAgreementPeriod(familyId) {
       return get(/databases/$(database)/documents/families/$(familyId)/agreements/$(userDoc().organizationId)).data;
     }
@@ -368,14 +375,15 @@ service cloud.firestore {
     // bod 1-2: cizí čtou jen historyDigest, nikdy tohle). M2 staví jen
     // pravidla + typ (`TimelineEntryDoc`) — skutečný zápisník/UI a
     // `historyDigest` generování z tohohle přichází s M3. `path` je vždy
-    // `families/{familyId}` (jedna úroveň vnoření), takže
-    // `path.split('/')[1]` je Firestore document ID rodiče.
+    // `families/{familyId}` (jedna úroveň vnoření), takže `path[1]` je
+    // Firestore document ID rodiče (viz `ownAgreementPeriod` komentář výš
+    // pro `path[1]` vs. `.split('/')[1]` — tohle je opravená verze, M3).
 
     match /{path=**}/timeline/{entryId} {
       allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
       allow create: if isStaff() &&
         request.resource.data.createdByOrgId == userDoc().organizationId &&
-        hasActiveAgreementFor(path.split('/')[1]);
+        hasActiveAgreementFor(path[1]);
       allow update, delete: if false; // append-only, §5
     }
 
@@ -390,7 +398,7 @@ service cloud.firestore {
       allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
       allow create: if isStaff() &&
         request.resource.data.createdByOrgId == userDoc().organizationId &&
-        hasActiveAgreementFor(path.split('/')[1]);
+        hasActiveAgreementFor(path[1]);
       allow update: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
       allow delete: if false;
     }
@@ -416,9 +424,9 @@ service cloud.firestore {
       allow read: if isSuperadmin() ||
         sameOrg(resource.data.createdByOrgId) ||
         (
-          hasOwnAgreementFor(path.split('/')[1]) &&
+          hasOwnAgreementFor(path[1]) &&
           resource.data.segmentValidTo != null &&
-          resource.data.segmentValidTo <= ownAgreementPeriod(path.split('/')[1]).validFrom
+          resource.data.segmentValidTo <= ownAgreementPeriod(path[1]).validFrom
         );
 
       allow create: if isStaff() && request.resource.data.createdByOrgId == userDoc().organizationId;

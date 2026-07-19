@@ -5,6 +5,93 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Avatar + mikrofon rychlý hlasový zápis + KRITICKÁ oprava rules (2026-07-19)
+
+Petr vyžádal novou funkci: každá Dohoda/rodina/pěstoun/dítě má avatar
+(v profilu editovatelný, na začátku řádku v tabulce zobrazovaný), a tenhle
+řádkový avatar se při najetí myší změní na červené kulaté tlačítko
+s mikrofonem — klik otevře modální okno, který OKAMŽITĚ začne nahrávat.
+Zároveň požádal o opravu zobrazování identifikátorů: **UID/rodné číslo
+patří VÝHRADNĚ do profilu, nikde jinde v seznamech se nezobrazují, jen
+jméno.**
+
+**Identifikátory (menší část, hotovo první):** `FamilyListPage` a
+`FamilyDetailPage` (tabulky pěstounů/dětí) přestaly zobrazovat UID/rodné
+číslo v seznamovém kontextu — zůstává jen jméno (+ adresa u rodiny). UID
+samotné zůstává na `FamilyDetailPage` (to JE profil Spisu, tam patří).
+Rodné číslo teď nikde v UI není vidět (dítě zatím nemá vlastní profilovou
+stránku) — SEAM, ne ztracené: pole zůstává ve Firestore, jen čeká na
+budoucí Child profil.
+
+**Avatar + hlasový zápis, technicky:**
+- `EntityAvatar` (`components/ui/entity-avatar.tsx`) — dvě VZÁJEMNĚ SE
+  VYLUČUJÍCÍ role na jedné instanci (nikdy obě zároveň): `onQuickRecord`
+  (řádek, `size="sm"`) překryje celý kruh na hover červeným mikrofonem;
+  `onChangePhoto` (profil, `size="lg"`) otevře výběr souboru. Zatím jen
+  Spis (`FamilyDetailPage`) má skutečnou "profilovou" plochu — pěstoun/
+  dítě/Dohoda profilovou stránku nemají, takže pro ně existuje jen
+  řádkový avatar (nahrávání), ne editace fotky. Přijatelné zúžení rozsahu
+  oproti zadání, ne opomenutí.
+- `VoiceRecorderModal` (`components/timeline/`) — §7.1 stavový automat
+  (jen část "spontánní zápis", ne A3 Giant Timer): otevře se rovnou v
+  `recording`, Web Speech API (`useSpeechRecognition.ts`, `lang: cs-CZ`)
+  živě přepisuje, "Zastavit" přejde na editovatelný text + výběr
+  subjektů (`subjectRefs`, §7.3 — klik na avatar rodiny předvybere
+  VŠECHNY pěstouny/děti, klik na jednotlivou entitu předvybere jen ji +
+  rodinu) + `sharingLevel` (§7.4, `SegmentedTabs`, sdílený typ
+  `types/sharing.ts` pro budoucí chat/dokumenty). **"AI přepis" tlačítko
+  je viditelné, ale VYPNUTÉ** (tooltip "čeká na napojení, M10") — žádný AI
+  backend v tomhle buildu, jen "Uložit doslovný zápis" je skutečně
+  funkční, přesně dle "poctivost nadevše".
+- `avatarService.ts` + **Cloud Storage poprvé v projektu** (`storage.rules`)
+  — cesta `avatars/{typ}/{id}/...` zrcadlí `firestore.rules` scoping
+  (`orgAccessList` u rodiny/pěstouna, `organizationId` u dítěte,
+  `firestore.exists()` na deterministické Dohodě u Dohody). Bezpečnostní
+  revize (samostatný subagent, dětské fotky = citlivá data) našla a
+  opravila 2 reálné chyby PŘED nasazením: (1) `request.resource` je `null`
+  při delete, takže kontrola velikosti/typu musela mazání explicitně
+  propustit, jinak by mazání VŽDY selhalo; (2) `image/.*` zahrnovalo
+  `image/svg+xml` (SVG umí nést `<script>`) — zúženo na `jpeg|png|webp`.
+  **Storage zatím není nasazený** — čerstvý projekt potřebuje jeden ruční
+  klik v Console (`Storage → Get started`), stejně jako dřív Auth —
+  zkoušeno obejít stejným postupem jako u Auth, stejný výsledek (žádná
+  scriptovatelná cesta bez placeného Blaze plánu). Funkce nahrávání
+  hlasového zápisu na tomhle NEZÁVISÍ (jen Firestore) — jen "změnit fotku"
+  čeká na tenhle jeden klik.
+- `timelineService.ts` + rozšířený `TimelineEntryDoc` (`subjectRefs`,
+  `sharingLevel`, `body`, `originalTranscript` pro budoucí AI krok,
+  `startedAt`/`endedAt`/`durationSeconds`/`location` strukturálně
+  připravené pro budoucí GPS Giant Timer, ale nepoužité touhle dávkou).
+- `listFosterPersonsByRefs`/`listChildrenForFamily` (familyService.ts)
+  opraveny, aby vracely i Firestore document ID (`{docId, fosterPerson}`/
+  `{docId, child}`), ne jen `.data()` — SubjectRef/Storage cesta
+  potřebuje SKUTEČNÉ document ID, ne human-facing `uid` (§4.3 pozn. 1
+  platí jen pro URL/PDF/QR). `exportService.ts` upraven na nový tvar.
+
+**KRITICKÝ nález, ne kosmetický:** živé testování proti skutečnému
+Firestore (poprvé v historii projektu, díky připojenému reálnému
+projektu) odhalilo, že `hasActiveAgreementFor(path.split('/')[1])` v M2
+`firestore.rules` (timeline/documents/historyDigest bloky) **se za běhu
+VŽDY vyhodnotí jako `false`**, přestože se pravidla vždy bezchybně
+zkompilují a nasadí. `path` z `{path=**}` recursive wildcardu je typ
+`Path` (indexovatelný po segmentech), NE `string` — `.split('/')`
+na něm neexistuje, volání za běhu selže, a Firestore rules na chybu
+uvnitř výrazu reagují jako na `false` (fail-closed, ne fail-open — aspoň
+bezpečně, ale nefunkčně). **Důsledek:** KAŽDÝ pokus o zápis/čtení
+`timeline`/`documents`/`historyDigest` by od nasazení M2 rules vždy
+spadl na permission-denied — objeveno JEN díky tomuhle živému testu, ne
+emulátorem (ten pořád nejde spustit) ani statickou kontrolou (rules
+compiler tohle nezachytí). Opraveno na `path[1]` (indexace, ne string
+metoda) na všech 4 místech, nasazeno, ověřeno end-to-end skrz UI (dvě
+různé rodiny, dva různé zápisy, oba uklizené po ověření). Přesně proč
+§11.2 trvá na automatizovaných testech — i pečlivě odůvodněná pravidla
+mají skryté chyby, které se projeví jen skutečným během.
+
+**Ověřeno:** lint/build/testy zelené, redeploy hosting +
+firestore rules proběhl, dva reálné hlasové zápisy uloženy a smazány
+během ověření (různé rodiny), UID/adresa-only zobrazení potvrzeno na
+živém nasazení.
+
 ## Mock-auth zrušen, reálné přihlášení + Hosting náhled + Petrův multi-role účet (2026-07-19)
 
 Petr požádal o skutečný náhled appky "na webu, ne local" — impuls k tomu,

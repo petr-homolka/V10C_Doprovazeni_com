@@ -1,0 +1,105 @@
+rules_version = '2';
+
+// Cloud Storage — M3, avatary (families/fosterPersons/children/agreements).
+// PRVNÍ použití Storage v tomhle projektu — stejné bezpečnostní principy
+// jako firestore.rules (role VÝHRADNĚ z users/{uid}, nikdy claims; sameOrg
+// vždy gated za isStaff), jen syntakticky jinak (Storage rules umí číst
+// Firestore přes `firestore.get()`/`firestore.exists()` — dostupné napříč
+// produkty, funguje i mezi Firestore/Storage emulátory v "singleProjectMode").
+//
+// DĚTSKÉ FOTKY JSOU CITLIVÁ DATA (§4 GDPR, ochrana dítěte v pěstounské
+// péči) — nikdy "authenticated-only", vždy ověření KONKRÉTNÍ organizace
+// přes skutečný Firestore dokument, ne jen shoda řetězců v cestě (viz
+// `canAccessAgreement` níž, kde by shoda cesty bez `firestore.exists()`
+// ověření byla obejitelná — kdokoli by mohl do cesty napsat VLASTNÍ
+// organizationId spárované s CIZÍM familyId).
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isStaff() {
+      return isSignedIn() && userDoc().role in [
+        'superadmin', 'org_admin', 'vedouci_pobocky', 'teamleader',
+        'klicova_osoba', 'asistent_ko', 'zamestnanec'
+      ];
+    }
+
+    function isSuperadmin() {
+      return isSignedIn() && userDoc().role == 'superadmin';
+    }
+
+    // `request.resource` je `null` při delete — `isReasonableImage()` musí
+    // tenhle případ propustit (jinak by delete VŽDY selhal, i pro
+    // superadmina). `image/(jpeg|png|webp)` záměrně vylučuje `image/svg+xml`
+    // — SVG umí nést <script>, u dětských fotek žádné riziko navíc, i když
+    // dneska běží jen přes <img> (bezpečné), ne přímé otevření souboru.
+    function isReasonableImage() {
+      return request.resource == null || (
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp)')
+      );
+    }
+
+    function canAccessFamily(familyId) {
+      return isSuperadmin() || (
+        isStaff() &&
+        userDoc().organizationId in firestore.get(/databases/(default)/documents/families/$(familyId)).data.orgAccessList
+      );
+    }
+
+    function canAccessFosterPerson(fosterId) {
+      return isSuperadmin() || (
+        isStaff() &&
+        userDoc().organizationId in firestore.get(/databases/(default)/documents/fosterPersons/$(fosterId)).data.orgAccessList
+      );
+    }
+
+    function canAccessChild(childId) {
+      return isSuperadmin() || (
+        isStaff() &&
+        userDoc().organizationId == firestore.get(/databases/(default)/documents/children/$(childId)).data.organizationId
+      );
+    }
+
+    function canAccessAgreement(familyId, organizationId) {
+      return isSuperadmin() || (
+        isStaff() &&
+        userDoc().organizationId == organizationId &&
+        firestore.exists(/databases/(default)/documents/families/$(familyId)/agreements/$(organizationId))
+      );
+    }
+
+    match /avatars/families/{familyId}/{fileName} {
+      allow read: if canAccessFamily(familyId);
+      allow write: if canAccessFamily(familyId) && isReasonableImage();
+    }
+
+    match /avatars/fosterPersons/{fosterId}/{fileName} {
+      allow read: if canAccessFosterPerson(fosterId);
+      allow write: if canAccessFosterPerson(fosterId) && isReasonableImage();
+    }
+
+    match /avatars/children/{childId}/{fileName} {
+      allow read: if canAccessChild(childId);
+      allow write: if canAccessChild(childId) && isReasonableImage();
+    }
+
+    // {organizationId} v cestě je jen zrcadlo skutečného vlastnictví —
+    // `canAccessAgreement` ověřuje přes `firestore.exists()` na
+    // deterministické Dohodě (viz agreement.ts), ne shodu cesty samotné.
+    match /avatars/agreements/{familyId}/{organizationId}/{fileName} {
+      allow read: if canAccessAgreement(familyId, organizationId);
+      allow write: if canAccessAgreement(familyId, organizationId) && isReasonableImage();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

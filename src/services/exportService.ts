@@ -92,7 +92,7 @@ function buildWorkbook(rows: FamilyExportRow[]): Workbook {
   ]
   fosterSheet.getRow(1).font = { bold: true }
   for (const row of rows) {
-    for (const fp of row.fosterPersons) {
+    for (const { fosterPerson: fp } of row.fosterPersons) {
       fosterSheet.addRow({
         familyUid: row.familyUid,
         uid: fp.uid,
@@ -115,7 +115,7 @@ function buildWorkbook(rows: FamilyExportRow[]): Workbook {
   ]
   childSheet.getRow(1).font = { bold: true }
   for (const row of rows) {
-    for (const child of row.children) {
+    for (const { child } of row.children) {
       childSheet.addRow({
         familyUid: row.familyUid,
         uid: child.uid,

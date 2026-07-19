@@ -1,13 +1,16 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
+import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { VoiceRecorderModal, type AvailableSubject } from '@/components/timeline/VoiceRecorderModal'
 import { useAuth } from '@/hooks/useAuth'
 import { getOrganization } from '@/services/organizationService'
 import { listStaff } from '@/services/staffService'
+import { uploadEntityAvatar } from '@/services/avatarService'
 import {
   addChildToFamily,
   addFosterPersonToFamily,
@@ -21,10 +24,12 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
 import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
-import { Baby, FileText, UserRound } from 'lucide-react'
+import type { SubjectRef } from '@/types/timelineEntry'
+import { Baby, FileText, Handshake, Home, UserRound } from 'lucide-react'
 
-const FOSTER_COLUMNS = '1fr 1fr 1fr 1fr'
-const CHILD_COLUMNS = '1fr 1fr 1fr'
+const FOSTER_COLUMNS = '40px 1.2fr 1fr 1.2fr'
+const CHILD_COLUMNS = '40px 1fr'
+const NO_ACTIVE_AGREEMENT_REASON = 'Tahle rodina nemá s vaší organizací aktivní Dohodu — zápis by nešlo uložit.'
 
 const CARE_TYPE_LABELS: Record<CareType, string> = {
   zprostredkovana: 'Zprostředkovaná (24 h/12 měsíců)',
@@ -43,8 +48,8 @@ export default function FamilyDetailPage() {
 
   const [docId, setDocId] = useState<string | null>(null)
   const [family, setFamily] = useState<FamilyDoc | null>(null)
-  const [fosterPersons, setFosterPersons] = useState<FosterPersonDoc[]>([])
-  const [children, setChildren] = useState<ChildDoc[]>([])
+  const [fosterPersons, setFosterPersons] = useState<Array<{ docId: string; fosterPerson: FosterPersonDoc }>>([])
+  const [children, setChildren] = useState<Array<{ docId: string; child: ChildDoc }>>([])
   const [agreement, setAgreement] = useState<AgreementDoc | null>(null)
   const [koOptions, setKoOptions] = useState<UserDoc[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -65,6 +70,10 @@ export default function FamilyDetailPage() {
   const [childFirstName, setChildFirstName] = useState('')
   const [childLastName, setChildLastName] = useState('')
   const [childBirthNumber, setChildBirthNumber] = useState('')
+
+  const [recorderPreselected, setRecorderPreselected] = useState<SubjectRef[] | null>(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const familyAvatarInputRef = useRef<HTMLInputElement>(null)
 
   const [submitting, setSubmitting] = useState(false)
 
@@ -91,6 +100,56 @@ export default function FamilyDetailPage() {
       setKoOptions(staff.filter((s) => s.role === 'klicova_osoba'))
     } catch {
       setError('Detail rodiny se nepodařilo načíst.')
+    }
+  }
+
+  const availableSubjects = useMemo<AvailableSubject[]>(() => {
+    if (!docId) return []
+    const subjects: AvailableSubject[] = [{ kind: 'family', id: docId, label: family?.address || 'Spis' }]
+    for (const { docId: fpId, fosterPerson: fp } of fosterPersons) {
+      subjects.push({ kind: 'fosterPerson', id: fpId, label: `${fp.firstName} ${fp.lastName}` })
+    }
+    for (const { docId: childId, child } of children) {
+      subjects.push({ kind: 'child', id: childId, label: `${child.firstName} ${child.lastName}` })
+    }
+    if (agreement && organizationId) {
+      subjects.push({ kind: 'agreement', id: organizationId, label: 'Dohoda' })
+    }
+    return subjects
+  }, [docId, family, fosterPersons, children, agreement, organizationId])
+
+  /**
+   * §7.3: klik na avatar rodiny předvybere VŠECHNY její členy (pěstouny +
+   * děti), klik na avatar konkrétního pěstouna/dítěte/Dohody předvybere jen
+   * tu entitu + rodinu — přesně dle zadání ("rodina vždy + přiřazení
+   * pěstoun(i)/přítomné děti" vs. "založeno jinde → ta entita + rodina").
+   */
+  function openRecorderFor(subject: SubjectRef) {
+    if (!docId) return
+    if (subject.kind === 'family') {
+      setRecorderPreselected([
+        { kind: 'family', id: docId },
+        ...fosterPersons.map(({ docId: fpId }): SubjectRef => ({ kind: 'fosterPerson', id: fpId })),
+        ...children.map(({ docId: childId }): SubjectRef => ({ kind: 'child', id: childId })),
+      ])
+    } else {
+      setRecorderPreselected([subject, { kind: 'family', id: docId }])
+    }
+  }
+
+  async function handleFamilyAvatarChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !docId) return
+    setUploadingAvatar(true)
+    setError(null)
+    try {
+      await uploadEntityAvatar({ kind: 'family', id: docId, file })
+      await reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fotku se nepodařilo nahrát.')
+    } finally {
+      setUploadingAvatar(false)
     }
   }
 
@@ -214,10 +273,28 @@ export default function FamilyDetailPage() {
     <AppShell
       breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: familyUid ?? '' }]}
     >
-      <h1 className="font-mono text-lg font-normal leading-normal text-text-primary">
-        {familyUid}
-      </h1>
-      {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
+      <div className="flex items-center gap-4">
+        <EntityAvatar
+          photoURL={family?.avatarUrl}
+          label={family?.address || 'Spis'}
+          fallbackIcon={Home}
+          size="lg"
+          onChangePhoto={uploadingAvatar ? undefined : () => familyAvatarInputRef.current?.click()}
+        />
+        <div>
+          <h1 className="font-mono text-lg font-normal leading-normal text-text-primary">
+            {familyUid}
+          </h1>
+          {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
+        </div>
+      </div>
+      <input
+        ref={familyAvatarInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handleFamilyAvatarChange}
+      />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">
@@ -227,7 +304,17 @@ export default function FamilyDetailPage() {
 
       <section className="mt-8">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
+          <div className="flex items-center gap-3">
+            {agreement && organizationId && (
+              <EntityAvatar
+                label="Dohoda"
+                fallbackIcon={Handshake}
+                onQuickRecord={() => openRecorderFor({ kind: 'agreement', id: organizationId })}
+                quickRecordDisabledReason={agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined}
+              />
+            )}
+            <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
+          </div>
           {!agreement && (
             <Button variant="secondary" size="sm" onClick={() => setShowAgreementForm((v) => !v)}>
               {showAgreementForm ? 'Zrušit' : '+ Založit Dohodu'}
@@ -343,10 +430,17 @@ export default function FamilyDetailPage() {
             <EmptyState icon={UserRound} text="Zatím žádní pěstouni." />
           ) : (
             <Table>
-              <TableHeaderRow columns={FOSTER_COLUMNS} labels={['UID', 'Jméno', 'Telefon', 'E-mail']} />
-              {fosterPersons.map((fp) => (
-                <TableRow key={fp.uid} columns={FOSTER_COLUMNS}>
-                  <span className="font-mono text-sm text-text-primary">{fp.uid}</span>
+              <TableHeaderRow columns={FOSTER_COLUMNS} labels={['', 'Jméno', 'Telefon', 'E-mail']} />
+              {fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => (
+                <TableRow key={fpId} columns={FOSTER_COLUMNS}>
+                  <EntityAvatar
+                    photoURL={fp.avatarUrl}
+                    label={`${fp.firstName} ${fp.lastName}`}
+                    onQuickRecord={() => openRecorderFor({ kind: 'fosterPerson', id: fpId })}
+                    quickRecordDisabledReason={
+                      !agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined
+                    }
+                  />
                   <span className="text-sm text-text-primary">
                     {fp.firstName} {fp.lastName}
                   </span>
@@ -397,20 +491,38 @@ export default function FamilyDetailPage() {
             <EmptyState icon={Baby} text="Zatím žádné svěřené děti." />
           ) : (
             <Table>
-              <TableHeaderRow columns={CHILD_COLUMNS} labels={['UID', 'Jméno', 'Rodné číslo']} />
-              {children.map((child) => (
-                <TableRow key={child.uid} columns={CHILD_COLUMNS}>
-                  <span className="font-mono text-sm text-text-primary">{child.uid}</span>
+              <TableHeaderRow columns={CHILD_COLUMNS} labels={['', 'Jméno']} />
+              {children.map(({ docId: childId, child }) => (
+                <TableRow key={childId} columns={CHILD_COLUMNS}>
+                  <EntityAvatar
+                    photoURL={child.avatarUrl}
+                    label={`${child.firstName} ${child.lastName}`}
+                    onQuickRecord={() => openRecorderFor({ kind: 'child', id: childId })}
+                    quickRecordDisabledReason={
+                      !agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined
+                    }
+                  />
                   <span className="text-sm text-text-primary">
                     {child.firstName} {child.lastName}
                   </span>
-                  <span className="text-sm text-text-secondary">{child.birthNumber}</span>
                 </TableRow>
               ))}
             </Table>
           )}
         </div>
       </section>
+
+      {recorderPreselected && docId && organizationId && userDoc && (
+        <VoiceRecorderModal
+          familyDocId={docId}
+          organizationId={organizationId}
+          createdByUid={userDoc.uid}
+          availableSubjects={availableSubjects}
+          preselectedKeys={recorderPreselected.map((s) => `${s.kind}:${s.id}`)}
+          onClose={() => setRecorderPreselected(null)}
+          onSaved={reload}
+        />
+      )}
     </AppShell>
   )
 }

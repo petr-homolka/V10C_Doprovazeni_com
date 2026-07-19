@@ -53,4 +53,6 @@ export interface AgreementDoc {
   createdAt: string
   /** Viz FamilyDoc stejnojmenné pole — import rollback (§5.5, M1.5). */
   createdByImportJobRef?: string
+  /** Viz FamilyDoc stejnojmenné pole — Cloud Storage avatar URL (M3). */
+  avatarUrl?: string | null
 }

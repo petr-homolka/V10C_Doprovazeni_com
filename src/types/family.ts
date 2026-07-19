@@ -21,6 +21,10 @@ export interface FamilyDoc {
   orgAccessList: string[]
   fosterPersonRefs: string[]
   address?: string
+  /** Cloud Storage download URL (`avatars/families/{familyId}/...`, viz
+   * avatarService.ts) — M3, jen zobrazovací účel, žádná Firestore rules
+   * logika se na tohle pole neváže. */
+  avatarUrl?: string | null
   createdAt: string
   /**
    * Vyplněné JEN pokud tenhle Spis vznikl hromadným importem (§5.5, M1.5)

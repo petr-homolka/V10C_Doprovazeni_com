@@ -95,9 +95,19 @@ export async function createFamily(
   return { docId: ref.id, family: data }
 }
 
-export async function listFosterPersonsByRefs(refs: string[]): Promise<FosterPersonDoc[]> {
+/**
+ * Vrací i Firestore document ID (ne jen `uid` na dokumentu) — potřebuje ho
+ * M3 avatar/hlasový zápis (`SubjectRef.id`, Storage cesta avataru), ta
+ * pole odkazují na SKUTEČNÉ document ID, ne na human-facing `uid` (§4.3
+ * pozn. 1 platí jen pro URL/PDF/QR, ne pro interní odkazy mezi dokumenty).
+ */
+export async function listFosterPersonsByRefs(
+  refs: string[],
+): Promise<Array<{ docId: string; fosterPerson: FosterPersonDoc }>> {
   const docs = await Promise.all(refs.map((id) => getDoc(doc(db, 'fosterPersons', id))))
-  return docs.filter((d) => d.exists()).map((d) => d.data() as FosterPersonDoc)
+  return docs
+    .filter((d) => d.exists())
+    .map((d) => ({ docId: d.id, fosterPerson: d.data() as FosterPersonDoc }))
 }
 
 export interface AddFosterPersonInput {
@@ -138,18 +148,22 @@ export async function addFosterPersonToFamily(
  * pravidle (§5 "List dotaz vs. pole v pravidle"). Vyžaduje složený index
  * (familyId + organizationId) — Firestore při prvním běhu nabídne odkaz
  * na jeho vytvoření, pokud ještě neexistuje.
+ *
+ * Vrací i Firestore document ID — stejný důvod jako u
+ * `listFosterPersonsByRefs` (M3 avatar/hlasový zápis potřebuje skutečné
+ * document ID, ne `uid`).
  */
 export async function listChildrenForFamily(
   familyId: string,
   organizationId: string,
-): Promise<ChildDoc[]> {
+): Promise<Array<{ docId: string; child: ChildDoc }>> {
   const q = query(
     collection(db, 'children'),
     where('familyId', '==', familyId),
     where('organizationId', '==', organizationId),
   )
   const snap = await getDocs(q)
-  return snap.docs.map((d) => d.data() as ChildDoc)
+  return snap.docs.map((d) => ({ docId: d.id, child: d.data() as ChildDoc }))
 }
 
 export interface AddChildInput {

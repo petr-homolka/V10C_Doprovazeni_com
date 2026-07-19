@@ -5,13 +5,15 @@ import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
+import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { VoiceRecorderModal } from '@/components/timeline/VoiceRecorderModal'
 import { useAuth } from '@/hooks/useAuth'
 import { getOrganization } from '@/services/organizationService'
-import { createFamily, listFamilies } from '@/services/familyService'
+import { createFamily, listFamiliesWithDocIds } from '@/services/familyService'
 import type { FamilyDoc } from '@/types/family'
 import { Users } from 'lucide-react'
 
-const TABLE_COLUMNS = '1fr 2fr 1fr'
+const TABLE_COLUMNS = '40px 2fr 1fr'
 
 /**
  * /rodiny — M1 základ. Zatím jen identifikace (UID) + adresa; pěstouni a
@@ -21,11 +23,12 @@ const TABLE_COLUMNS = '1fr 2fr 1fr'
  */
 export default function FamilyListPage() {
   const { userDoc } = useAuth()
-  const [families, setFamilies] = useState<FamilyDoc[] | null>(null)
+  const [families, setFamilies] = useState<Array<{ docId: string; family: FamilyDoc }> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [address, setAddress] = useState('')
+  const [recorderFamily, setRecorderFamily] = useState<{ docId: string; label: string } | null>(null)
 
   const organizationId = userDoc?.organizationId
 
@@ -33,7 +36,7 @@ export default function FamilyListPage() {
     if (!organizationId) return
     setError(null)
     try {
-      setFamilies(await listFamilies(organizationId))
+      setFamilies(await listFamiliesWithDocIds(organizationId))
     } catch {
       setError('Seznam rodin se nepodařilo načíst.')
     }
@@ -113,11 +116,18 @@ export default function FamilyListPage() {
           <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
         ) : (
           <Table>
-            <TableHeaderRow columns={TABLE_COLUMNS} labels={['UID', 'Adresa', 'Pěstouni']} />
-            {families.map((family) => (
+            <TableHeaderRow columns={TABLE_COLUMNS} labels={['', 'Adresa', 'Pěstouni']} />
+            {families.map(({ docId, family }) => (
               <Link key={family.uid} to={`/rodiny/${family.uid}`} className="contents">
                 <TableRow columns={TABLE_COLUMNS}>
-                  <span className="font-mono text-sm text-text-primary">{family.uid}</span>
+                  <EntityAvatar
+                    photoURL={family.avatarUrl}
+                    label={family.address || 'Spis'}
+                    fallbackIcon={Users}
+                    onQuickRecord={() =>
+                      setRecorderFamily({ docId, label: family.address || 'Spis' })
+                    }
+                  />
                   <span className="truncate text-sm text-text-secondary">
                     {family.address || '—'}
                   </span>
@@ -130,6 +140,18 @@ export default function FamilyListPage() {
           </Table>
         )}
       </div>
+
+      {recorderFamily && organizationId && userDoc && (
+        <VoiceRecorderModal
+          familyDocId={recorderFamily.docId}
+          organizationId={organizationId}
+          createdByUid={userDoc.uid}
+          availableSubjects={[{ kind: 'family', id: recorderFamily.docId, label: recorderFamily.label }]}
+          preselectedKeys={[`family:${recorderFamily.docId}`]}
+          onClose={() => setRecorderFamily(null)}
+          onSaved={reload}
+        />
+      )}
     </AppShell>
   )
 }
