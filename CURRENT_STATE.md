@@ -5,6 +5,34 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 9 (2026-07-19): ROZHODNUTO — Nastavení = celá stránka s breadcrumbem, NE modál
+
+**Ruší DESIGN_SYSTEM.md §6.9 (modální okno se svislými záložkami, vzor
+Claude.ai).** Uživatel se po Dodatku 8 rozhodl jít cestou Magnific: Nastavení
+dostane vlastní URL (`/nastaveni/profil` apod.) s `Breadcrumb` komponentou
+("Nastavení / Profil") nahoře a vnořeným levým menu (sekce jako "Účet"/
+"Organizace", položky pod nimi — přesně struktura naměřená v Dodatku 8:
+sekční label 10px/`--text-secondary`, položky 12px/500 no vizuální rozdíl
+aktivní/neaktivní v Magnific exportu — to ale byla ztráta `aria-current`
+stylu ve statickém exportu, ne skutečný záměr; **až se Nastavení bude
+reálně stavět, aktivní položka MUSÍ mít vlastní vizuální stav** (např.
+`bg-overlay-active` stejně jako v hlavním sidebaru), i když živý Magnific
+export tenhle detail ztratil.
+
+Netýká se M9.5 obsahu (které záložky vidí která role, §5.7 matice
+viditelnosti platí beze změny) — jen KONTEJNERU (stránka+breadcrumb+vnořené
+menu místo modálu+svislé taby). `Breadcrumb`/`Tag`/upravený `Input` z
+Dodatku 8 jsou přesně ty stavební kameny, které tenhle kontejner bude
+potřebovat.
+
+**Další krok:** uživatel pošle uložené HTML exporty stránek People a
+Plan & billing (stejný postup jako `maginific/` — pravé tlačítko → Uložit
+jako → kompletní HTML, do stejné `pak-smazat-inspirace-chatgpt/maginific/`
+složky) — pak doměřím tabulku (Members/Role/Credits), credits progress bar
+a "Danger zone" box stejnou metodou (živý `getComputedStyle`, ne odhad).
+
+---
+
 ## Dodatek 8 (2026-07-19): Breadcrumb, Input, Tag — z workflow extrakce (Teams/Settings stránka)
 
 Uživatel poslal 5 screenshotů Magnific Settings (Profile, Plan & billing,
