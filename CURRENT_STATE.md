@@ -5,6 +5,57 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Mock-auth zrušen, reálné přihlášení + Hosting náhled + Petrův multi-role účet (2026-07-19)
+
+Petr požádal o skutečný náhled appky "na webu, ne local" — impuls k tomu,
+udělat krok, který `App.tsx`/`_mockAuth.ts` komentáře od M1 avizovaly:
+"až M1 přinese funkční přihlášení, vrátit real auth". Teď, s reálným
+Firebase projektem (viz sekce níž), to konečně dává smysl udělat doopravdy.
+
+**Zrušeno:** `src/routes/_mockAuth.ts` a wrapper v `App.tsx`, co ho
+používal — `/`, `/zamestnanci`, `/rodiny`, `/nastaveni/*` jsou teď
+skutečně pod `<RequireAuth />` (soubor existoval už od M0, jen se
+nepoužíval). Smazána i `DesignPreviewPage.tsx`/`/_preview` — vlastní
+komentář v ní řekl přesně tohle je moment na smazání ("jakmile M1 přinese
+reálná data a přihlášení").
+
+**Nové: náhled role "jen pro Petra".** Jeden účet (`petr@doprovazeni.com`
+/ `heslo123`, skutečná role v dokumentu `org_admin`) má na `users/{uid}`
+pole `devRolePreview: true` — jediný účet v systému, co smí v avatarovém
+menu (`AccountMenu.tsx`, nahradilo dřívější statické tlačítko bez akce)
+přepínat KLIENT-SIDE zobrazovanou roli mezi všemi `STAFF_ROLES`
+(superadmin/org_admin/vedoucí pobočky/teamleader/klíčová osoba/asistent
+KO/zaměstnanec), pro rychlé posouzení UI z pohledu různých rolí beze
+zakládání dalších účtů. Mechanismus (`AuthContext.tsx`): `userDoc`
+vystavené ven přes `useAuth()` má `.role` přepsané na zvolený náhled
+(persistovaný v `localStorage`) — VŠECHNY existující `userDoc?.role ===
+'...'` kontroly v appce (StaffPage, FamilyDetailPage, ...) na to reagují
+BEZE ZMĚNY, protože přepis se děje na jednom místě, ne po jednotlivých
+stránkách. **Důležité omezení, ať se to nezaměňuje za bezpečnostní
+sandbox:** skutečná `firestore.rules` oprávnění se řídí VŽDY skutečnou
+rolí v dokumentu (`org_admin`) — náhled je jen zobrazení obrazovky, ne
+skutečné omezení zápisů. Petrův účet tedy i s "náhledem" klíčové osoby
+zůstává technicky schopný dělat org_admin věci, kdyby se o to pokusil.
+
+**Ukázková organizace pro náhled** (`scripts/seed-demo-org.mjs`, nový
+`npm run seed:demo`, idempotentní — bezpečné spustit znovu): "Ukázková
+organizace" (orgCode 0001), Petrův účet + 5 dalších zaměstnanců (po
+jednom z každé zbývající role, jen Firestore záznamy, žádné vlastní Auth
+účty — nikdo se jako oni nepřihlašuje, náhled řeší přepínač výš), 3
+rodiny (Dvořákovi/Novotná/Procházkovi) se skutečnými pěstouny/dětmi/
+Dohodami — UID generovány stejným EAN-13 algoritmem jako appka sama
+(`src/lib/uid.ts`), čítače (`counters/*`, `systemCounters/orgCode`)
+nastaveny tak, aby budoucí SKUTEČNÉ zápisy přes appku navazovaly bez
+kolize. Ověřeno vizuálně na živém nasazení, ne jen že se seed "spustil bez
+chyby" — rodiny/pěstouni/děti/Dohoda/zaměstnanci/přepínač rolí všechno
+zkontrolováno na skutečných datech.
+
+**Firebase Hosting** (`firebase.json` má teď i `hosting` blok, SPA rewrite
+na `index.html`) — `npm run deploy:hosting` (build + deploy) nasazuje na
+**https://v10c-doprovazeni-com.web.app**, veřejně dostupné (žádné IP
+omezení) — přijatelné, protože přihlášení je teď skutečné (ne mock) a
+jediná data uvnitř jsou ukázková organizace, ne reálný zákazník.
+
 ## Reálný Firebase projekt připojen + GitHub repo (2026-07-19)
 
 Petr založil skutečný Firebase projekt (`v10c-doprovazeni-com`) a GitHub

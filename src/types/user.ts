@@ -29,6 +29,16 @@ export function isReadOnlyManagerRole(role: UserRole): boolean {
   return (READ_ONLY_MANAGER_ROLES as readonly string[]).includes(role)
 }
 
+export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
+  superadmin: 'Superadmin',
+  org_admin: 'Správce organizace',
+  vedouci_pobocky: 'Vedoucí pobočky',
+  teamleader: 'Teamleader',
+  klicova_osoba: 'Klíčová osoba',
+  asistent_ko: 'Asistent KO',
+  zamestnanec: 'Zaměstnanec',
+}
+
 /**
  * users/{uid} — §4.1. Pole se liší podle role; nikdy nezaplňujeme
  * organizationId pro 'provider' (obsluhuje víc organizací najednou, scoping
@@ -47,4 +57,10 @@ export interface UserDoc {
   docApprover?: boolean
   createdAt: string
   disabledAt?: string | null
+  /** Jen na jednom (Petrově) účtu — povolí přepínač náhledu role v avataru
+   * (TopBar/AccountMenu), pro rychlé posouzení UI z pohledu různých rolí
+   * beze zakládání dalších účtů. Mění POUZE klient-side zobrazovanou roli
+   * (viz AuthContext previewRole) — skutečná Firestore oprávnění se vždy
+   * řídí SKUTEČNOU hodnotou tohohle pole, ne náhledem. */
+  devRolePreview?: boolean
 }

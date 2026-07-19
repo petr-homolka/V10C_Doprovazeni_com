@@ -5,19 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
-import { STAFF_ROLES, type StaffRole, type UserDoc } from '@/types/user'
+import { STAFF_ROLES, STAFF_ROLE_LABELS, type StaffRole, type UserDoc } from '@/types/user'
 import { createStaffMember, listStaff, setStaffMemberDisabled } from '@/services/staffService'
 import { UserCog } from 'lucide-react'
-
-const ROLE_LABELS: Record<StaffRole, string> = {
-  superadmin: 'Superadmin',
-  org_admin: 'Správce organizace',
-  vedouci_pobocky: 'Vedoucí pobočky',
-  teamleader: 'Teamleader',
-  klicova_osoba: 'Klíčová osoba',
-  asistent_ko: 'Asistent KO',
-  zamestnanec: 'Zaměstnanec',
-}
 
 // Org_admin nepřiděluje `superadmin` (platformní role) — viz firestore.rules.
 const ASSIGNABLE_ROLES = STAFF_ROLES.filter((r) => r !== 'superadmin')
@@ -135,7 +125,7 @@ export default function StaffPage() {
               >
                 {ASSIGNABLE_ROLES.map((r) => (
                   <option key={r} value={r}>
-                    {ROLE_LABELS[r]}
+                    {STAFF_ROLE_LABELS[r]}
                   </option>
                 ))}
               </select>
@@ -176,7 +166,7 @@ export default function StaffPage() {
               <TableRow key={member.uid} columns={TABLE_COLUMNS}>
                 <span className="text-sm font-medium text-text-primary">{member.displayName}</span>
                 <span className="truncate text-sm text-text-secondary">{member.email}</span>
-                <span className="text-sm text-text-primary">{ROLE_LABELS[member.role as StaffRole]}</span>
+                <span className="text-sm text-text-primary">{STAFF_ROLE_LABELS[member.role as StaffRole]}</span>
                 <span className={member.disabledAt ? 'text-sm text-danger' : 'text-sm text-success'}>
                   {member.disabledAt ? 'Zablokován' : 'Aktivní'}
                 </span>

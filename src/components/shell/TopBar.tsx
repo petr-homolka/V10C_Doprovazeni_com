@@ -1,8 +1,8 @@
 import { Bell, Moon, Settings, Sun } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/hooks/useTheme'
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb'
+import { AccountMenu } from './AccountMenu'
 
 /**
  * Header řádek — přeměřeno 2026-07-19 přímo na živé referenční appce
@@ -33,14 +33,6 @@ import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb'
  */
 export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
   const { resolvedTheme, toggleTheme } = useTheme()
-  const { userDoc, firebaseUser } = useAuth()
-  const displayName = userDoc?.displayName ?? firebaseUser?.email ?? ''
-  const initials = displayName
-    .split(' ')
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
   const themeLabel =
     resolvedTheme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'
 
@@ -77,14 +69,7 @@ export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
           <Bell size={18} strokeWidth={1.75} />
         </button>
 
-        <button
-          type="button"
-          aria-label="Účet"
-          title={displayName}
-          className="ml-1 flex size-8 items-center justify-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary"
-        >
-          {initials || '?'}
-        </button>
+        <AccountMenu />
       </div>
     </div>
   )
