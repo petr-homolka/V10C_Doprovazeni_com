@@ -3,8 +3,8 @@ import { Check, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
- * CopyableCodeBox — přeměřeno 2026-07-19 na Magnific MCP stránce (URL
- * box + copy tlačítko): bg --bg-inset, border --border-medium, radius-sm,
+ * CopyableCodeBox — přeměřeno 2026-07-19 na živé referenční appce (URL
+ * box + copy tlačítko na stránce integrací): bg --bg-inset, border --border-medium, radius-sm,
  * výška 40px, monospace text. Použitelné třeba pro ověřovací URL dokumentu
  * (`crm.doprovazeni.cz/d/{UID}`, §4.3) nebo webhook URL profesionálního
  * importu (§5.5 C), až na ně dojde řada.

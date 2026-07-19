@@ -4,12 +4,12 @@ import { Calendar, CheckSquare, FileText, Home, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
- * Sidebar — přeměřeno 2026-07-19 přímo na živé Magnific.ai appce
+ * Sidebar — přeměřeno 2026-07-19 přímo na živé referenční appce
  * (getComputedStyle, ne jen screenshot): šířka 224px (ne 240), položky
  * výšky ~32px s radius-sm (8px, ne radius-md), aktivní stav = jemný alpha
  * overlay (`--overlay-active`) přes CELOU plochu položky, NE plná barva
  * --primary-soft. Text nav položek je STEJNĚ jasný aktivní i neaktivní
- * (Magnific nedimuje text, rozlišuje jen přes pozadí).
+ * (text se nedimuje, rozlišuje jen přes pozadí).
  *
  * `bg-app` (STEJNÁ barva jako hlavní obsah, ne --bg-surface-soft) — na
  * žádost uživatele sidebar a hlavní panel splývají barevně, odlišuje je

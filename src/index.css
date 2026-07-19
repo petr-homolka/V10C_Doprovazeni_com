@@ -3,17 +3,23 @@
 @tailwind utilities;
 
 /*
-  Design tokeny — v4 (2026-07-19). Hodnoty pro dark mode teď vychází z
-  přímo NAMĚŘENÝCH computed styles živé Magnific.ai appky (otevřené lokálně
-  z `nove zadani/pak-smazat-inspirace-chatgpt/maginific/`, ne jen z CSS
-  textu) — getComputedStyle na skutečných elementech (void pozadí, sidebar
-  panel, hlavní panel, nav položky, header). Klíčové zjištění oproti v3:
-  škála je mnohem JEMNĚJŠÍ (void #0F0F0F → sidebar panel #1A1A1A je jen
-  11 bodů RGB rozdíl, ne naše dřívější skoky), a sidebar JE svůj vlastní
-  zaoblený panel (jen o kousek světlejší než hlavní obsah), ne průhledný,
-  jak by se dalo usoudit jen ze screenshotu.
+  Design tokeny — v5 (2026-07-19). Hodnoty vychází z přímo NAMĚŘENÝCH
+  computed styles živé referenční appky (lokální statická kopie, otevřená
+  přes `getComputedStyle`/`getBoundingClientRect` na skutečných
+  elementech) — v dark módu (void pozadí, sidebar panel, hlavní panel, nav
+  položky, header) i teď nově ve SVĚTLÉM módu (dřív jen odhad z CSS textu,
+  teď přepnuto přímo v živém DOMu a přeměřeno na reálně vykreslených
+  plochách). Klíčové zjištění: škála je mnohem JEMNĚJŠÍ v obou režimech
+  (void → app → surface-soft je jen ~5-11 bodů RGB rozdíl na krok, ne naše
+  dřívější velké skoky) a POŘADÍ jasu je STEJNÉ v obou režimech
+  (surface-soft je vždy nejsvětlejší plocha, pak app, pak void nejtmavší/
+  nejtemnější) — světlý blok předtím měl toto pořadí obráceně (app byl
+  nejsvětlejší), opraveno.
 
-  BAREVNÉ zůstávají výhradně subjektové/sémantické tokeny (badge, výstrahy).
+  BAREVNÉ zůstávají výhradně subjektové/sémantické tokeny (badge, výstrahy)
+  PLUS jeden nový `--accent` (modrá) — vyhrazený pro interaktivní stavy
+  formulářových prvků (focus border, zapnutý switch, tučné inline odkazy),
+  konstantní přes obě témata, viz komentář u definice níže.
 
   Světlý režim = výchozí :root. Tmavý režim = @media (prefers-color-scheme:
   dark) NEBO explicitní [data-theme="dark"] (přepínač v TopBaru,
@@ -22,20 +28,35 @@
   i když OS preferuje tmavý.
 */
 :root {
-  /* Pozadí a plochy — Magnific surface-0..3 (light blok, dosud jen z CSS
-     textu — světlý režim uživatel takhle podrobně nekontroloval) */
-  --bg-app: #FFFFFF;
+  /* Pozadí a plochy — přeměřeno přímo na živém DOMu (přepnutím tématu a
+     čtením computed background na skutečných panelech), ne odhadem z CSS
+     textu. Pořadí jasu: void < app < surface-soft (stejné v obou režimech). */
+  --bg-app: #FAFAFA;
   --bg-surface: #F5F5F5;
-  --bg-surface-soft: #ECECEC;
-  --bg-inset: #E3E3E3;
+  --bg-surface-soft: #FFFFFF;
+  --bg-inset: #FFFFFF;
   /* "Void" za plovoucími panely (sidebar/hlavní obsah). */
-  --bg-void: #E5E5E5;
+  --bg-void: #F5F5F5;
   /* Aktivní položka navigace — jemný alpha overlay, NE plná barva
-     (Magnific: rgba(255,255,255,.15) v dark, tohle je symetrický odhad
-     pro light — nebyl přímo naměřen). */
+     (dark: rgba(255,255,255,.15), tohle je symetrický odhad pro light —
+     nebyl přímo naměřen, na rozdíl od --toggle-off níž). */
   --overlay-active: rgba(0, 0, 0, .06);
+  /* Vypnutý stav přepínače (Switch) — přeměřeno NEZÁVISLE na --overlay-active
+     (jiný podkladový odstín, ne černá) — dvě rozdílné role, co v dark módu
+     náhodou vycházejí na stejné číslo. */
+  --toggle-off: rgba(115, 115, 115, .15);
+  /* Jediná barevná akcentní hodnota mimo subjektové tokeny — vyhrazená pro
+     interaktivní stav formulářových prvků: focus border inputu, zapnutý
+     Switch, tučné inline odkazy (viz §9 do budoucna: až M9.5 přinese per-
+     organizaci branding, tohle je kandidát na konfigurovatelnou barvu
+     místo pevné hodnoty). Konstantní přes obě témata. */
+  --accent: #4F69F2;
+  /* Switch thumb — přeměřeno jako KONSTANTNÍ #FAFAFA v obou režimech
+     (na rozdíl od --primary-foreground, který se mezi tématy obrací) —
+     drží se stínem (shadow-raised), ne kontrastem barvy vůči tracku. */
+  --toggle-thumb: #FAFAFA;
 
-  /* Text — Magnific surface-foreground-0/3/4 (light blok) */
+  /* Text — přeměřeno na živé referenční appce (light blok) */
   --text-primary: #1A1A1A;
   --text-secondary: #616161;
   --text-tertiary: #737373;
@@ -85,8 +106,8 @@
      vždy dost sytou plochu pro bílý text. */
   --danger-solid: #DA2A0B;
 
-  /* Úrovňový/tier tag (§5.8 základní/prémiové) — přeměřeno na Magnific
-     "Business"/"New" pilulkách (Settings nav), konstantní přes obě témata
+  /* Úrovňový/tier tag (§5.8 základní/prémiové) — přeměřeno na živé
+     referenční appce ("Business"/"New" pilulky, Settings nav), konstantní přes obě témata
      (alpha pozadí se přizpůsobí libovolné ploše samo). Zatím nikde
      nepoužito ve funkčním kódu — token je připravený pro M9.5/entitlementy. */
   --tier-accent: #FF58AE;
@@ -107,17 +128,18 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    /* Naměřeno přímo (getComputedStyle) na živé Magnific appce:
-       void (body) rgb(15,15,15), sidebar panel (NAV) rgb(26,26,26),
-       hlavní panel rgb(22,22,22) — velmi těsná škála, ne naše dřívější
-       velké skoky. --bg-surface/--bg-inset dál extrapolované stejným
-       jemným krokem (nebyly na této obrazovce k naměření). */
-    --bg-void: #0F0F0F;
+    /* Naměřeno přímo (getComputedStyle) na skutečných elementech:
+       void rgb(16,16,16), hlavní panel rgb(22,22,22), sidebar/nav panel
+       rgb(26,26,26) — velmi těsná škála. --bg-inset teď overlay (5% bílá
+       přes podklad), ne plochá barva — přesně jak se formulářové pole
+       reálně skládá (viz komentář u --accent v :root). */
+    --bg-void: #101010;
     --bg-app: #161616;
     --bg-surface-soft: #1A1A1A;
     --bg-surface: #202020;
-    --bg-inset: #2A2A2A;
+    --bg-inset: rgba(255, 255, 255, .05);
     --overlay-active: rgba(255, 255, 255, .15);
+    --toggle-off: rgba(255, 255, 255, .15);
 
     --text-primary: #F5F5F5;
     --text-secondary: #AAAAAA;
@@ -154,19 +176,22 @@
 }
 
 :root[data-theme='dark'] {
-  --bg-void: #0F0F0F;
+  --bg-void: #101010;
   --bg-app: #161616;
   --bg-surface-soft: #1A1A1A;
   --bg-surface: #202020;
-  --bg-inset: #2A2A2A;
+  --bg-inset: rgba(255, 255, 255, .05);
   --overlay-active: rgba(255, 255, 255, .15);
+  --toggle-off: rgba(255, 255, 255, .15);
 
   --text-primary: #F5F5F5;
   --text-secondary: #AAAAAA;
   --text-tertiary: #737373;
   --text-inverse: #101010;
 
+  --border-subtle: rgba(255, 255, 255, .05);
   --border-default: rgba(255, 255, 255, .10);
+  --border-medium: rgba(255, 255, 255, .15);
   --border-strong: rgba(255, 255, 255, .20);
 
   --primary: #F5F5F5;

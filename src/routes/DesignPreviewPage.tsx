@@ -36,7 +36,7 @@ const EDUCATION_ROWS = [
  * backend (Auth emulátor na tomhle stroji nestartuje), přes který by šlo
  * ukázat reálně přihlášenou obrazovku. Sekce "Vzdělávání pěstounů" ukazuje
  * Table+ProgressBar na DESIGN_SYSTEM.md §6.5 vlastním příkladu (hodiny vs.
- * limit), ne na cizím Magnific obsahu. Smazat, jakmile M1 přinese reálná
+ * limit), ne na cizím referenčním obsahu. Smazat, jakmile M1 přinese reálná
  * data a přihlášení přes tenhle shell jde ověřit normální cestou (/login).
  */
 export default function DesignPreviewPage() {
@@ -48,7 +48,7 @@ export default function DesignPreviewPage() {
       <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: 'Rodina Novákových' }]}>
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-[28px] font-semibold leading-tight text-text-primary">
+            <h1 className="text-lg font-normal leading-normal text-text-primary">
               Dnes
             </h1>
             <Tag>Prémiové</Tag>
@@ -64,7 +64,7 @@ export default function DesignPreviewPage() {
         <TodaySampleSections />
 
         <section className="mt-8">
-          <h2 className="text-[18px] font-semibold text-text-primary">
+          <h2 className="text-lg font-normal leading-tight text-text-primary">
             Vzdělávání pěstounů — hodiny vs. limit
           </h2>
           <p className="mt-1 text-[13px] text-text-secondary">
@@ -91,7 +91,7 @@ export default function DesignPreviewPage() {
 
         <section className="mt-8 flex flex-wrap gap-8">
           <div>
-            <h2 className="text-[18px] font-semibold text-text-primary">Období přehledu</h2>
+            <h2 className="text-lg font-normal leading-tight text-text-primary">Období přehledu</h2>
             <div className="mt-3">
               <SegmentedTabs
                 value={tabValue}
@@ -106,7 +106,7 @@ export default function DesignPreviewPage() {
           </div>
 
           <div>
-            <h2 className="text-[18px] font-semibold text-text-primary">E-mail upozornění</h2>
+            <h2 className="text-lg font-normal leading-tight text-text-primary">E-mail upozornění</h2>
             <div className="mt-3 flex items-center gap-2.5">
               <Switch checked={notifyOn} onChange={setNotifyOn} label="E-mail upozornění" />
               <span className="text-sm text-text-primary">{notifyOn ? 'Zapnuto' : 'Vypnuto'}</span>
@@ -115,7 +115,7 @@ export default function DesignPreviewPage() {
         </section>
 
         <section className="mt-8 max-w-xl">
-          <h2 className="text-[18px] font-semibold text-text-primary">Ověřovací odkaz dokumentu</h2>
+          <h2 className="text-lg font-normal leading-tight text-text-primary">Ověřovací odkaz dokumentu</h2>
           <p className="mt-1 text-[13px] text-text-secondary">§4.3 — QR kód na dokumentu vede sem.</p>
           <div className="mt-3">
             <CopyableCodeBox value="https://crm.doprovazeni.cz/d/2048270001233" />
@@ -123,7 +123,7 @@ export default function DesignPreviewPage() {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-[18px] font-semibold text-text-primary">Tlačítka</h2>
+          <h2 className="text-lg font-normal leading-tight text-text-primary">Tlačítka</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="primary">Primární</Button>
             <Button variant="secondary">Sekundární</Button>

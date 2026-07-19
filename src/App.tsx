@@ -13,6 +13,7 @@ const DashboardPage = lazy(() => import('@/routes/DashboardPage'))
 const DesignPreviewPage = lazy(() => import('@/routes/DesignPreviewPage'))
 const AppearanceSettingsPage = lazy(() => import('@/routes/settings/AppearanceSettingsPage'))
 const AccountSettingsPage = lazy(() => import('@/routes/settings/AccountSettingsPage'))
+const NotificationsSettingsPage = lazy(() => import('@/routes/settings/NotificationsSettingsPage'))
 
 function RouteFallback() {
   return (
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/nastaveni/vzhled" element={<AppearanceSettingsPage />} />
               <Route path="/nastaveni/ucet" element={<AccountSettingsPage />} />
+              <Route path="/nastaveni/oznameni" element={<NotificationsSettingsPage />} />
             </Route>
           </Routes>
         </Suspense>

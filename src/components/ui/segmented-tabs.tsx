@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils'
 
 /**
- * SegmentedTabs — přeměřeno 2026-07-19 na Magnific MCP stránce (výběr
- * klienta Claude Desktop/ChatGPT/...): ŽÁDNÝ obalový "pilulkový" kontejner
+ * SegmentedTabs — přeměřeno 2026-07-19 na živé referenční appce (výběr
+ * klienta na stránce integrací): ŽÁDNÝ obalový "pilulkový" kontejner
  * s vlastním pozadím — jen plochý flex řádek (gap 4px), každá volba je
  * SAMOSTATNĚ plně zaoblené tlačítko. Vybraná = --primary/--primary-
  * foreground; nevybraná = průhledná + --text-primary (STEJNÁ jasnost

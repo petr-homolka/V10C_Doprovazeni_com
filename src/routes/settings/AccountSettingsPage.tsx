@@ -6,10 +6,14 @@ import { Button } from '@/components/ui/button'
 
 /**
  * Nastavení / Účet — druhá REÁLNÁ stránka nové struktury Nastavení
- * (Dodatek 9). E-mail jako prostý text, ne input (naměřeno na Magnific
- * Profile stránce, Dodatek 8) — e-mail je identita přihlášení, needituje
+ * (Dodatek 9). E-mail jako prostý text, ne input (naměřeno na referenční
+ * Profil stránce, Dodatek 8) — e-mail je identita přihlášení, needituje
  * se tady stejnou cestou jako jméno. `secondaryPanel` (Dodatek 12) dělá
  * z nav sloupce samostatný panel vedle obsahu, ne vnořenou kartu uvnitř.
+ * Nadpis, labely a e-mailová hodnota přeměřeny znovu 2026-07-19 (Dodatek 13):
+ * nadpis 18px/normal (ne 28px/semibold), labely 14px/medium/leading-relaxed,
+ * e-mailová hodnota bez vlastní velikosti (dědí 15px z body) a --text-primary
+ * (naměřeno rgb(227,227,227), blíž primary než secondary tónu).
  */
 export default function AccountSettingsPage() {
   return (
@@ -17,17 +21,17 @@ export default function AccountSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Účet' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-[28px] font-semibold leading-tight text-text-primary">Účet</h1>
+      <h1 className="text-lg font-normal leading-normal text-text-primary">Účet</h1>
 
       <div className="mt-6 max-w-[480px] space-y-5">
         <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-text-primary">Jméno</span>
+          <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
           <Input defaultValue="Jana Málková" />
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-text-primary">E-mail</span>
-          <p className="text-[15px] text-text-secondary">jana.malkova@doprovazeni.cz</p>
+          <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
+          <p className="flex h-10 items-center text-text-primary">jana.malkova@doprovazeni.cz</p>
         </label>
 
         <Button variant="secondary" size="sm">

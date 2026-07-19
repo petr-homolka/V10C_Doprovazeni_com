@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react'
 
 /**
- * Table — přeměřeno 2026-07-19 na Magnific People stránce (Members/Role/
- * Credits): CSS grid řádky (ne <table>), border-strong dělítko mezi řádky
+ * Table — přeměřeno 2026-07-19 na živé referenční appce (People stránka,
+ * Members/Role/Credits): CSS grid řádky (ne <table>), border-strong dělítko mezi řádky
  * (poslední bez), padding 12px/16px. DESIGN_SYSTEM.md §6.5: tabulku použij
  * jen tam, kde se sloupce SKUTEČNĚ porovnávají (jejich vlastní příklad:
  * "přehled vzdělávání per pěstoun vs. limit hodin") — jinak seznam karet.

@@ -10,6 +10,9 @@ export default {
         inset: 'var(--bg-inset)',
         void: 'var(--bg-void)',
         'overlay-active': 'var(--overlay-active)',
+        'toggle-off': 'var(--toggle-off)',
+        'toggle-thumb': 'var(--toggle-thumb)',
+        accent: 'var(--accent)',
 
         'text-primary': 'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',

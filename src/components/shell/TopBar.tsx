@@ -5,14 +5,14 @@ import { useTheme } from '@/hooks/useTheme'
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb'
 
 /**
- * Header řádek — přeměřeno 2026-07-19 přímo na živé Magnific.ai appce
+ * Header řádek — přeměřeno 2026-07-19 přímo na živé referenční appce
  * (getComputedStyle): výška 56px (h-14), padding px-4 (ne px-8), ikonová
  * tlačítka 32px (size-8) s radius-sm (8px), hover = jemný alpha overlay
  * (`--overlay-active`), STEJNÁ jasnost textu/ikony jako zbytek chrome
  * appky (žádné ztlumení pro "neaktivní" stav).
  *
  * Breadcrumb (pokud stránka nějaký má) žije VLEVO ve STEJNÉM řádku jako
- * ikonový cluster vpravo — přesně struktura Magnific headeru (breadcrumb
+ * ikonový cluster vpravo — přesně stejná struktura headeru (breadcrumb
  * a ikony jsou sourozenci v jednom flex řádku, ne breadcrumb v obsahu pod
  * headerem). Bez breadcrumbu (stránky bez drill-down navigace, např.
  * "Dnes") zůstává levá strana prázdná.

@@ -17,7 +17,7 @@ export default function DashboardPage() {
     <AppShell>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-semibold leading-tight text-text-primary">
+          <h1 className="text-lg font-normal leading-normal text-text-primary">
             Dnes
           </h1>
           <p className="mt-1 text-[13px] text-text-secondary">

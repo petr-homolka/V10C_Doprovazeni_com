@@ -2,15 +2,15 @@ import { NavLink } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
 /**
- * Vnořená navigace Nastavení — přeměřeno 2026-07-19 na Magnific Settings
- * (Dodatek 8+11). Sekční label: 10px, --text-secondary, py-1.5 (bez
- * uppercase — Magnific ho taky nemá, jen barva/velikost dělá práci).
+ * Vnořená navigace Nastavení — přeměřeno 2026-07-19 na živé referenční
+ * appce (Dodatek 8+11). Sekční label: 10px, --text-secondary, py-1.5 (bez
+ * uppercase — reference ho taky nemá, jen barva/velikost dělá práci).
  * Položka: h-8, radius-sm, text VŽDY --text-primary (aktivní i neaktivní
- * stejně jasné — Magnific nedimuje), aktivní = --overlay-active pozadí.
+ * stejně jasné — text se nedimuje), aktivní = --overlay-active pozadí.
  * Tohle byla sporná otázka (viz Dodatek 8/9) — druhé kolo měření na
- * `people.html` potvrdilo `aria-current="page"` + přesně tenhle overlay,
- * takže naše dřívější volba `bg-overlay-active` pro aktivní stav byla
- * správná i předtím, než se to potvrdilo.
+ * jiné referenční stránce téže appky potvrdilo `aria-current="page"` +
+ * přesně tenhle overlay, takže naše dřívější volba `bg-overlay-active`
+ * pro aktivní stav byla správná i předtím, než se to potvrdilo.
  *
  * Bez vlastní šířky/pozadí/scrollu (Dodatek 12) — o to se teď stará
  * `AppShell`ův `secondaryPanel` wrapper (`<nav>`), aby stejný obsah šel

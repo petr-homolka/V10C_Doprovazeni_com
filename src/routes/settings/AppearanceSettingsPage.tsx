@@ -12,7 +12,11 @@ import { useTheme } from '@/hooks/useTheme'
  * UI ukázka — škálování celé typografické stupnice / hustoty seznamů
  * přijde s M9.5, kdy se bude reálně aplikovat na zbytek appky.
  * `secondaryPanel` (Dodatek 12) dělá z nav sloupce samostatný panel vedle
- * obsahu, ne vnořenou kartu uvnitř.
+ * obsahu, ne vnořenou kartu uvnitř. Typografie přeměřena znovu 2026-07-19
+ * (Dodatek 13): nadpis 18px/normal (ne 28px/semibold), popisek pod
+ * nadpisem a pod každou sekcí 14px/secondary (ne 13px), sekční labely
+ * ("Režim vzhledu" apod.) 14px/medium (ne 15px) — stejná velikost/váha
+ * jako labely na Účtu, jde o stejnou roli (field-label), ne nadpis.
  */
 export default function AppearanceSettingsPage() {
   const { preference, setPreference } = useTheme()
@@ -24,15 +28,15 @@ export default function AppearanceSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Vzhled' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-[28px] font-semibold leading-tight text-text-primary">Vzhled</h1>
-      <p className="mt-1 text-[13px] text-text-secondary">
+      <h1 className="text-lg font-normal leading-normal text-text-primary">Vzhled</h1>
+      <p className="mt-1 text-sm text-text-secondary">
         Osobní předvolba — platí jen pro váš účet, nemění nic pro ostatní v organizaci.
       </p>
 
       <div className="mt-6 max-w-[480px] space-y-6">
         <section>
-          <p className="text-[15px] font-medium text-text-primary">Režim vzhledu</p>
-          <p className="mt-0.5 text-[13px] text-text-secondary">
+          <p className="text-sm font-medium text-text-primary">Režim vzhledu</p>
+          <p className="mt-0.5 text-sm text-text-secondary">
             Systémový respektuje nastavení vašeho zařízení nebo prohlížeče.
           </p>
           <div className="mt-3">
@@ -51,8 +55,8 @@ export default function AppearanceSettingsPage() {
         <div className="border-t border-border-default" />
 
         <section>
-          <p className="text-[15px] font-medium text-text-primary">Velikost textu</p>
-          <p className="mt-0.5 text-[13px] text-text-secondary">
+          <p className="text-sm font-medium text-text-primary">Velikost textu</p>
+          <p className="mt-0.5 text-sm text-text-secondary">
             Škáluje celou typografickou stupnici proporčně, ne jednotlivé úrovně zvlášť.
           </p>
           <div className="mt-3">
@@ -71,7 +75,7 @@ export default function AppearanceSettingsPage() {
         <div className="border-t border-border-default" />
 
         <section>
-          <p className="text-[15px] font-medium text-text-primary">Hustota seznamů</p>
+          <p className="text-sm font-medium text-text-primary">Hustota seznamů</p>
           <div className="mt-3">
             <SegmentedTabs
               value={density}

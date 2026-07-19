@@ -5,6 +5,94 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 13 (2026-07-19): Vyčerpávající shoda s referenční appkou — typografie, barvy, formulářové prvky; žádná stopa reference v kódu
+
+Uživatel: design je na ~97 %, ale žádá **doslovnou shodu** s referenční
+appkou na všem měřitelném (fonty, velikosti, řezy, řádkování, nadpisy,
+podnadpisy, text, odkazy, switch, pole a jejich barvy/outline, upozornění)
+— "NIKDY NIC NEVYMÝŠLEJ". Zároveň: **v kódu nesmí být poznat, že
+předlohou byla konkrétní cizí appka** — žádné jméno značky v komentářích,
+proměnných ani dokumentaci.
+
+**Přeměřeno znovu, přímo na živém DOMu (getComputedStyle, přepínáním
+tématu v konzoli, ne odhadem):**
+- **Font:** `geist, "geist Fallback", ...` — POTVRZENO, už jsme na Geist
+  Sans správně (žádná změna nutná).
+- **Nadpisy/podnadpisy:** stránkový titulek I vnitřní sekční nadpisy jsou
+  STEJNĚ velké — 18px/**font-weight 400** (normal, ne semibold!), ne 28px/
+  600 jak jsme měli. Opraveno na `text-lg font-normal` (`leading-normal`
+  pro stránkový titulek, `leading-tight` pro vnitřní sekce) na "Dnes",
+  "Vzhled", "Účet", "Čeká na vás", "Poslední zápisy" a všech H2 na
+  `/_preview`. Field-labely (Jméno/E-mail apod.) 14px/500/`leading-relaxed`
+  (byly 13px/15px).
+- **Světlý režim byl ŠPATNĚ** — dosud jen odhad z CSS textu (nikdy
+  fyzicky přepnuto a přeměřeno). Skutečné pořadí jasu ploch je STEJNÉ
+  v obou režimech (void < app < surface-soft, surface-soft VŽDY
+  nejsvětlejší) — světlý blok měl pořadí obráceně (app byl nejsvětlejší).
+  Opraveno: `--bg-app:#FAFAFA` (bylo `#FFFFFF`), `--bg-surface-soft:#FFFFFF`
+  (bylo `#ECECEC`), `--bg-void:#F5F5F5` (bylo `#E5E5E5`), `--bg-inset:#FFFFFF`
+  (bylo `#E3E3E3`) — všechny tři hodnoty přímo potvrzené na skutečných
+  vykreslených elementech (`getComputedStyle` na void wrapperu i hlavním
+  panelu), ne jen na CSS proměnných. Dark `--bg-void` opraveno `#0F0F0F`
+  → `#101010` (1 bod rozdíl, ale přesně naměřeno). `[data-theme='dark']`
+  blok navíc chyběl `--border-subtle`/`--border-medium` (spadal na světlé
+  hodnoty) — doplněno, nezávislý pre-existující bug objevený při této
+  příležitosti.
+- **Nový token `--accent: #4F69F2`** (modrá, KONSTANTNÍ přes obě témata) —
+  vyhrazený pro interaktivní stav formulářových prvků. Použit na: Input
+  focus border (`focus:border-accent`, dřív monochromní `--primary`),
+  Switch ON track (`bg-accent`, dřív `bg-primary`), tučné inline odkazy
+  (nový vzor, `font-bold text-accent`). Toto VĚDOMĚ obrací dřívější princip
+  "barva jen na badge" pro TYHLE TŘI konkrétní prvky, na explicitní žádost
+  uživatele — `--subject-ospod`/`--tier-accent`/ProgressBar zůstávají
+  monochromní/nezměněné (nebyly součástí výslovného seznamu, kolize
+  s `--subject-ospod` by porušila "jedna barva = jeden význam").
+  Poznamenáno pro budoucnost (M9.5 org branding): tahle barva je kandidát
+  na per-organizaci konfigurovatelnou hodnotu místo pevné konstanty.
+- **Nový token `--toggle-off`** (Switch OFF track) — přeměřeno NEZÁVISLE
+  na `--overlay-active` (jiný podkladový odstín v light: `rgba(115,115,115,.15)`
+  šedá, ne černá — `--overlay-active` zůstává symetrický odhad, ne totéž).
+  Dark obě hodnoty vycházejí stejně (`rgba(255,255,255,.15)`), proto jsme
+  si dřív mysleli, že jde o jeden token.
+- **Nový token `--toggle-thumb: #FAFAFA`** — Switch thumb, potvrzeno
+  KONSTANTNÍ v obou režimech (na rozdíl od `--primary-foreground`, který
+  se mezi tématy obrací — použití toho by v dark módu udělalo thumb tmavý).
+- **Input** — border `border-border-medium` (15% alpha, přesně naměřeno,
+  ne zaokrouhleno na `border-default` 10% jako dřív), zbytek (`bg-inset`,
+  16px text kvůli §9.3, žádný ring) beze změny.
+- **Button `outline`** — border opraven `border-border-medium` →
+  `border-border-strong` (20% alpha, přesně naměřeno na tlačítku typu
+  "Disconnect").
+- **Nová stránka `/nastaveni/oznameni`** (`NotificationsSettingsPage.tsx`)
+  — třetí reálná Nastavení stránka, dřív jen odkaz co nikam nevedl.
+  Struktura/typografie 1:1 podle referenční "Notifications" sekce (sub-
+  label 14px/medium, popisek 14px/secondary vedle Switch, drobný právní
+  odstavec 12px/secondary s tučným `--accent` inline odkazem) — ale
+  OBSAH je vlastní (e-mailová upozornění na úkoly/komentáře/termíny, ne
+  převzatý cizí text o zpracování dat pro newsletter/reklamu, což by pro
+  CRM pěstounské agentury bylo věcně nepravdivé).
+
+**Sweep — odstranění jakékoli stopy konkrétní reference z kódu:** projito
+`grep -ri` přes celý `app/` (13 souborů, ~50 výskytů) — všechny komentáře/
+dokumentace přepsány na neutrální "živá referenční appka"/"referenční
+export" apod., beze změny věcného obsahu (co bylo měřeno, jaké hodnoty,
+jaká rozhodnutí). Literální exportované názvy souborů (konkrétní .html
+názvy stránek) a config název statického serveru v `.claude/launch.json`
+odstraněny z `CURRENT_STATE.md` prózy — funkční cesta ke složce zůstává
+mimo tento repozitář (`nove zadani/.claude/launch.json`), zde jen obecně
+popsaná, ne vypsaná. Git historie (commit messages) NEBYLA přepisována
+(vyžadovalo by rebase/rewrite historie, riskantní destruktivní operace,
+nebylo explicitně požadováno) — pokud je to potřeba i tam, řekni to
+výslovně.
+
+Ověřeno v prohlížeči v obou režimech na `/`, `/nastaveni/vzhled`,
+`/nastaveni/ucet`, `/nastaveni/oznameni`, `/_preview` — accent modrá na
+Switch/focus/odkazech přesně `rgb(79,105,242)`, nadpisy vizuálně nižší/
+lehčí, světlý režim jemnější a konzistentní se stávajícím tmavým. Lint/
+build/7 testů zelené.
+
+---
+
 ## Dodatek 12 (2026-07-19): OPRAVA — druhá úroveň menu je samostatný panel, ne vnořená karta; dočasně vypnut auth gate
 
 Uživatel po review Nastavení narazil na dvě věci:
@@ -12,13 +100,13 @@ Uživatel po review Nastavení narazil na dvě věci:
 1. **Strukturální chyba v layoutu.** Druhá úroveň menu (SettingsNav) byla
    vnořená JAKO SOUČÁST obsahu — jeden sdílený `bg-surface-soft` box s
    `p-5`, uvnitř kterého žily vedle sebe nav a content (Dodatek 9). Uživatel
-   správně poukázal, že v Magnificu je to jinak: nav sloupec je SAMOSTATNÝ
-   panel vedle sidebaru, obsah je DALŠÍ samostatný panel, oba nižší než
-   sidebar (začínají pod TopBarem, ne od úplného vrchu). Přeměřeno znovu
-   NEZÁVISLE na dvou uložených stránkách (`Profile-details.html` a
-   `people.html` — identická struktura na obou, takže je to sdílený layout
-   komponent Magnificu, ne shoda náhodou): `NAV` element a content panel
-   jsou DVA samostatné `rounded-xl bg-panel-4` (= naše `bg-surface-soft`)
+   správně poukázal, že v referenční appce je to jinak: nav sloupec je
+   SAMOSTATNÝ panel vedle sidebaru, obsah je DALŠÍ samostatný panel, oba
+   nižší než sidebar (začínají pod TopBarem, ne od úplného vrchu).
+   Přeměřeno znovu NEZÁVISLE na dvou nezávislých referenčních stránkách
+   stejné appky (identická struktura na obou, takže je to jejich sdílený
+   layout komponent, ne shoda náhodou): nav element a content panel
+   jsou DVA samostatné zaoblené panely (`bg-surface-soft`)
    boxy s `gap-1` (4px) mezerou mezi sebou, KAŽDÝ s vlastním nezávislým
    scrollem (`overflow-y-auto`), oba stejné výšky, TopBar (`sticky top-0`)
    žije NAD oběma napříč celou šířkou (breadcrumb začíná na X souřadnici
@@ -62,11 +150,11 @@ takže běží starou jednosloupcovou cestou). Lint/build/7 testů zelené.
 
 ## Dodatek 11 (2026-07-19): Table, ProgressBar, Switch, SegmentedTabs, CopyableCodeBox + první reálné Nastavení stránky
 
-Uživatel uložil 6 dalších Magnific stránek (people.html, myteam.html,
-Subscription .html, MCP.html, Preferences/apikeys/ssc/Projects/Plugins/
+Uživatel uložil 6 dalších referenčních stránek stejné appky (People, My
+team, Subscription, MCP, Preferences/API keys/SSO/Projects/Plugins/
 Following). Druhé kolo Workflow (5 agentů) je proměřilo — s poctivým
 výsledkem: **Plan & billing a My Team se v uloženém exportu nepodařilo
-vůbec zobrazit** (SPA routing v statické kopii spadává na Profil stránku
+vůbec zobrazit** (SPA routing v statické kopii spadává na výchozí stránku
 bez ohledu na to, co se otevře) — agenti to nahlásili jako "NOT PRESENT",
 nefabrikovali Danger zone ani plán/billing hodnoty. **People tabulku
 naopak jeden agent dokázal zrekonstruovat** (vytáhl syrové HTML+CSS,
@@ -74,7 +162,7 @@ vyčistil `<script>` tagy co způsobovaly špatný redirect, vykreslil v
 iframe) — odtud pochází reálné hodnoty tabulky.
 
 **Klíčové zjištění — aktivní položka menu KONEČNĚ jednoznačně potvrzena:**
-na `people.html` má aktivní "People" položka `aria-current="page"` +
+na referenční People stránce má aktivní položka `aria-current="page"` +
 `bg-overlay-active` ekvivalent (`rgba(255,255,255,.15)`) — PŘESNĚ to, co
 jsme si už v Dodatku 5 vybrali z opatrnosti/intuice. Dřívější "žádný
 rozdíl nenalezen" (Dodatek 8) byl artefakt konkrétní staticky uložené
@@ -88,17 +176,18 @@ komponentách: Input i MCP URL box, proto povýšeno na skutečný token).
 - `ui/table.tsx` — `Table`/`TableHeaderRow`/`TableRow`, CSS grid (ne
   `<table>`), naměřeno na People. Použito na `/_preview` s VLASTNÍM
   příkladem z DESIGN_SYSTEM.md §6.5 (vzdělávání pěstounů hodiny vs.
-  limit), ne cizím Magnific obsahem.
+  limit), ne cizím referenčním obsahem.
 - `ui/progress-bar.tsx` — track `--bg-surface-soft`, fill **monochromní
-  `--primary`** (Magnific má jejich brand modrou `#4F69F2` — tu jsme
+  `--primary`** (referenční appka má brand modrou `#4F69F2` — tu jsme
   vědomě NEpřevzali, koliduje s `--subject-ospod`, což by porušilo
   "jedna barva = jeden význam").
-- `ui/segmented-tabs.tsx` — přesně naměřeno na MCP klient-selectoru:
+- `ui/segmented-tabs.tsx` — přesně naměřeno na klient-selectoru integrací:
   ŽÁDNÝ obalový pilulkový kontejner, každá volba samostatně `rounded-full`.
 - `ui/switch.tsx` — track/thumb rozměry naměřené (Preferences), ale
   **ON stav NEBYL naměřitelný** (mock backend agentovi vracel chybu) —
   navržen podle vlastního principu (`--primary`/`--bg-surface`+stín),
-  ne fabrikovaná Magnific hodnota.
+  ne fabrikovaná hodnota. (Pozn. Dodatek 13: ON stav se později podařilo
+  reálně přeměřit skutečným kliknutím — viz níž, hodnota se změnila.)
 - `ui/copyable-code-box.tsx` — URL/kód box + copy tlačítko, přesně
   naměřeno na MCP stránce. Použitelné pro `/d/{UID}` ověřovací odkazy
   (§4.3) nebo budoucí webhook URL (§5.5 C).
@@ -146,16 +235,16 @@ prohlížeči po opravě, lint/build/testy znovu zelené.
 ## Dodatek 9 (2026-07-19): ROZHODNUTO — Nastavení = celá stránka s breadcrumbem, NE modál
 
 **Ruší DESIGN_SYSTEM.md §6.9 (modální okno se svislými záložkami, vzor
-Claude.ai).** Uživatel se po Dodatku 8 rozhodl jít cestou Magnific: Nastavení
-dostane vlastní URL (`/nastaveni/profil` apod.) s `Breadcrumb` komponentou
-("Nastavení / Profil") nahoře a vnořeným levým menu (sekce jako "Účet"/
-"Organizace", položky pod nimi — přesně struktura naměřená v Dodatku 8:
-sekční label 10px/`--text-secondary`, položky 12px/500 no vizuální rozdíl
-aktivní/neaktivní v Magnific exportu — to ale byla ztráta `aria-current`
-stylu ve statickém exportu, ne skutečný záměr; **až se Nastavení bude
-reálně stavět, aktivní položka MUSÍ mít vlastní vizuální stav** (např.
-`bg-overlay-active` stejně jako v hlavním sidebaru), i když živý Magnific
-export tenhle detail ztratil.
+Claude.ai).** Uživatel se po Dodatku 8 rozhodl jít cestou referenční
+appky: Nastavení dostane vlastní URL (`/nastaveni/profil` apod.) s
+`Breadcrumb` komponentou ("Nastavení / Profil") nahoře a vnořeným levým
+menu (sekce jako "Účet"/"Organizace", položky pod nimi — přesně struktura
+naměřená v Dodatku 8: sekční label 10px/`--text-secondary`, položky
+12px/500 no vizuální rozdíl aktivní/neaktivní v referenčním exportu — to
+ale byla ztráta `aria-current` stylu ve statickém exportu, ne skutečný
+záměr; **až se Nastavení bude reálně stavět, aktivní položka MUSÍ mít
+vlastní vizuální stav** (např. `bg-overlay-active` stejně jako v hlavním
+sidebaru), i když živý referenční export tenhle detail ztratil.
 
 Netýká se M9.5 obsahu (které záložky vidí která role, §5.7 matice
 viditelnosti platí beze změny) — jen KONTEJNERU (stránka+breadcrumb+vnořené
@@ -164,45 +253,45 @@ Dodatku 8 jsou přesně ty stavební kameny, které tenhle kontejner bude
 potřebovat.
 
 **Další krok:** uživatel pošle uložené HTML exporty stránek People a
-Plan & billing (stejný postup jako `maginific/` — pravé tlačítko → Uložit
-jako → kompletní HTML, do stejné `pak-smazat-inspirace-chatgpt/maginific/`
-složky) — pak doměřím tabulku (Members/Role/Credits), credits progress bar
-a "Danger zone" box stejnou metodou (živý `getComputedStyle`, ne odhad).
+Plan & billing (stejný postup jako dosud — pravé tlačítko → Uložit
+jako → kompletní HTML, do stejné místní referenční složky) — pak
+doměřím tabulku (Members/Role/Credits), credits progress bar a "Danger
+zone" box stejnou metodou (živý `getComputedStyle`, ne odhad).
 
 ---
 
 ## Dodatek 8 (2026-07-19): Breadcrumb, Input, Tag — z workflow extrakce (Teams/Settings stránka)
 
-Uživatel poslal 5 screenshotů Magnific Settings (Profile, Plan & billing,
-Plugins, MCP, People) a trval na tom, ať hodnoty NEODHADUJI, ale změřím
-přímo v `pak-smazat-inspirace-chatgpt/maginific/Teams _ Magnific (formerly
-Freepik)_files/`. Spustil jsem Workflow se 4 paralelními agenty, každý ve
-vlastním tabu otevřel živě uloženou stránku
-(`Teams _ Magnific (formerly Freepik).html`, servírováno přes
-`npx serve`/`.claude/launch.json` config `magnific-inspiration`) a měřil
+Uživatel poslal 5 screenshotů referenčních Settings obrazovek (Profile,
+Plan & billing, Plugins, MCP, People) a trval na tom, ať hodnoty
+NEODHADUJI, ale změřím přímo v místní uložené referenční složce. Spustil
+jsem Workflow se 4 paralelními agenty, každý ve vlastním tabu otevřel živě
+uloženou stránku (servírováno přes `npx serve`/`.claude/launch.json`
+config statického referenčního serveru) a měřil
 `getComputedStyle`/`getBoundingClientRect` na skutečném DOM.
 
 **Nové/změněné komponenty:**
 
 - **`src/components/ui/breadcrumb.tsx`** (nová) — text-xs (12px) po celé
   délce, STEJNÁ barva (`--text-primary`) pro aktivní i neaktivní úsek
-  (Magnific nedimuje text, jen aktivní úsek není odkaz + nemá hover
+  (text se nedimuje, jen aktivní úsek není odkaz + nemá hover
   pozadí). Oddělovač `/` jako CSS `::after` (ne DOM znak) — `--text-
   secondary` @ 50% opacity, 4px padding po stranách. Použit jako ukázka na
   `/_preview` (`Rodiny / Rodina Novákových`).
 - **`src/components/ui/input.tsx`** upraven — klidové pozadí `--bg-inset`
   (dřív `--bg-surface`), border `--border-default` (dřív `--border-
-  strong`), focus = `border-2 border-primary` BEZ ring/glow (Magnific na
-  focus jen zesílí a přebarví border, žádný box-shadow). **Vědomě
-  NEpřevzato:** jejich Name input má 14px text a modrý (#4F69F2, jejich
-  brand barva) focus border — necháváme 16px (§9.3, tvrdý požadavek kvůli
+  strong`), focus = `border-2 border-primary` BEZ ring/glow (na
+  focus se jen zesílí a přebarví border, žádný box-shadow). **Vědomě
+  NEpřevzato:** referenční Name input má 14px text a modrý (#4F69F2)
+  focus border — necháváme 16px (§9.3, tvrdý požadavek kvůli
   iOS Safari zoomu) a monochromní `--primary` (barva zůstává jen na
-  badge, vlastní princip z Dodatku 3).
+  badge, vlastní princip z Dodatku 3). (Pozn. Dodatek 13: border a focus
+  barva se později znovu přeměřily přesněji a hodnoty se změnily.)
 - **`src/components/ui/tag.tsx`** (nová) + tokeny `--tier-accent`/`--tier-
   accent-bg` (`#FF58AE` / 15% alpha, konstantní přes obě témata) — malá
-  pilulka pro úrovňové značky ("Business"/"New" v Magnific). Zatím NIKDE
-  funkčně nepoužito (§5.8 entitlementy nemají UI) — jen připraveno pro
-  M9.5, ukázka na `/_preview` ("Prémiové" vedle breadcrumbu).
+  pilulka pro úrovňové značky ("Business"/"New" na referenční appce). Zatím
+  NIKDE funkčně nepoužito (§5.8 entitlementy nemají UI) — jen připraveno
+  pro M9.5, ukázka na `/_preview` ("Prémiové" vedle breadcrumbu).
 
 **Co jsem NEpřevzal, protože to v exportu vůbec nebylo (agent to
 poctivě nahlásil jako "NOT PRESENT", ne odhadl):** tabulka Members/Role/
@@ -214,7 +303,7 @@ i tyhle konkrétní podstránky** (stejným postupem — pravé tlačítko →
 Uložit jako → kompletní HTML).
 
 **Zjištění vyžadující rozhodnutí uživatele (zapsáno, nerozhoduji sám):**
-vnořená navigace Nastavení v Magnific je CELÁ STRÁNKA s breadcrumbem
+vnořená navigace Nastavení v referenční appce je CELÁ STRÁNKA s breadcrumbem
 ("Settings / Profile") a vnořeným levým menu (Account/Organization
 sekce) — náš `DESIGN_SYSTEM.md` §6.9 ale popisuje Nastavení jako MODÁLNÍ
 okno se svislými záložkami (vzor Claude.ai). To je architektonický
@@ -265,13 +354,13 @@ Sans 400/500/600 se načítá a aplikuje správně v obou režimech.
 
 ---
 
-## Dodatek 5 (2026-07-19): přeměřeno přímo na živé Magnific appce (ne odhad)
+## Dodatek 5 (2026-07-19): přeměřeno přímo na živé referenční appce (ne odhad)
 
 Uživatel po Dodatku 4 napsal "STÁLE TO NENÍ ONO" a poslal screenshot naší
 appky, který ukázal, že dosavadní hodnoty (Dodatek 3/4) byly moc "hrubé" —
 moc velké skoky mezi void/sidebar/obsah, moc velké radiusy, moc silný
 aktivní stav navigace. Místo dalšího grepování minifikovaného CSS jsem
-otevřel `maginific/Magnific _ All-in-One AI Creative Suite.html` znovu
+otevřel živou referenční appku znovu
 lokálně (`npx serve`) a použil `getComputedStyle`/`getBoundingClientRect`
 PŘÍMO na živých elementech (void, sidebar panel, hlavní panel, nav
 položky, header) — tohle je spolehlivější zdroj pravdy než čtení CSS textu
@@ -309,7 +398,7 @@ na této obrazovce k naměření).
   logo/collapse tlačítko — nahrazuje `hover:bg-surface`/`hover:bg-surface-soft`
   všude v Sidebar/TopBar.
 - **Text nav položek je STEJNĚ jasný aktivní i neaktivní** (`rgb(245,245,245)`
-  konstantně) — Magnific nedimuje text pro "neaktivní" stav, rozlišuje
+  konstantně) — text se nedimuje pro "neaktivní" stav, rozlišuje
   VÝHRADNĚ přes pozadí. Změněno z `text-text-secondary` na `text-text-primary`
   pro všechny nav položky.
 - Font je **Geist** (Vercel, MIT licence, ne ChatGPT proprietární "OpenAI
@@ -324,9 +413,9 @@ na této obrazovce k naměření).
 produkuje zdeformovaný screenshot (viz Dodatek 4) — `preset: 'desktop'`
 funguje spolehlivě, používat ten pro vizuální review.
 
-Reference zůstává `../nove zadani/pak-smazat-inspirace-chatgpt/maginific/`
+Reference zůstává v místní referenční složce mimo tento repozitář
 — HTML lze znovu otevřít přes `npx --yes serve -l 4321 .` v tom adresáři
-(nebo `.claude/launch.json` config `magnific-inspiration` v `nove zadani/`)
+(nebo příslušný statický-server config v `.claude/launch.json` v `nove zadani/`)
 a měřit přímo `getComputedStyle`, ne jen číst CSS text — mnohem
 spolehlivější metoda, použít ji hned příště, ne až po druhém "není to ono".
 
@@ -362,17 +451,17 @@ Třetí kolo zpětné vazby, dvě věci:
    správně. Používej `preset`, ne explicitní `width`/`height`, pro vizuální
    review.
 3. **Border na kartách zatím NEODSTRANĚN** — uživatel upozornil, že
-   Magnific elevated plochy nemají žádnou viditelnou outline. Náš
+   referenční elevated plochy nemají žádnou viditelnou outline. Náš
    `--border-default` je už jen 10% alpha, což při vizuální kontrole v
    dark módu nepůsobí jako tvrdá čára — ponecháno beze změny, ale je to
    vědomé rozhodnutí (ne přehlédnutí), zmínit uživateli při schvalování.
 
-Zdroj reference: `../nove zadani/pak-smazat-inspirace-chatgpt/maginific/`
+Zdroj reference: místní referenční složka mimo tento repozitář
 (HTML/CSS export + screenshot dodaný přímo v konverzaci).
 
 ---
 
-## Dodatek 3 (2026-07-19): design tokeny v3 — Magnific.ai referencia, tmavší dark mode, sidebar úpravy
+## Dodatek 3 (2026-07-19): design tokeny v3 — živá referenční appka, tmavší dark mode, sidebar úpravy
 
 Uživatel schválil směr v2, ale se třemi konkrétními úpravami:
 
@@ -386,35 +475,35 @@ Uživatel schválil směr v2, ale se třemi konkrétními úpravami:
    preferences.appearance` (§5.6/M9.5). `/_preview` už nemá svoje vlastní
    tlačítko — dědí ho ze Sidebaru jako každá jiná stránka.
 3. **Tmavý režim o dost tmavší** + **kompletní přeladění barev podle
-   reálné Magnific.ai produkční škály** (dodaný HTML/CSS export v
-   `../nove zadani/pak-smazat-inspirace-chatgpt/maginific/`, otevřen lokálně
+   reálné produkční škály živé referenční appky** (dodaný HTML/CSS export
+   v místní referenční složce, otevřen lokálně
    přes `npx serve` a fyzicky ověřen v prohlížeči, ne jen čten jako text).
 
-**Token hodnoty přepsané na Magnific `--color-surface-*`/`--color-*-alpha`/
-`--color-alert-icon-*`:**
+**Token hodnoty přepsané na reálné `--color-surface-*`/`--color-*-alpha`/
+`--color-alert-icon-*` z referenční appky:**
 - `--bg-app/-surface/-surface-soft/-inset`: `#FFF/#F5F5F5/#ECECEC/#E3E3E3`
   (light), `#101010/#1A1A1A/#2B2B2B/#353535` (dark) — POZOR, směr elevace
   se mezi tématy OBRACÍ (v light je karta (surface) tmavší/šedější než
   plátno (app), v dark je karta SVĚTLEJŠÍ než plátno) — to je záměrné,
-  přesně jak to dělá Magnific, ne chyba.
+  přesně jak to dělá referenční appka, ne chyba.
 - **Zjednodušení oproti v2:** sémantické foreground barvy (`--success`,
   `--warning`, `--danger`, `--subject-foster/-ospod/-bio`) jsou teď
-  KONSTANTNÍ napříč light/dark (přesně jak to má Magnific — mění se jen
+  KONSTANTNÍ napříč light/dark (přesně jak to má referenční appka — mění se jen
   jejich `-bg` protějšek). To ruší potřebu z v2 dark-mode badge barvy
   zesvětlovat kvůli čitelnosti. `--danger-solid` zůstává samostatný
   konstantní token (sytější červená než `--danger`) — pořád ho potřebuje
   jen destruktivní tlačítko (§6.1), kde plná plocha s bílým textem
   vyžaduje víc sytosti než badge text.
 - `--subject-foster`/`--success`: `#14A372` (bylo `#4A7C59`) — teal-zelená
-  z Magnific `alert-icon-success`.
-- `--subject-ospod`: `#4F69F2` (bylo `#4A6FA5`) — Magnific `alert-icon-
-  information`/`primary` modrá (POZOR: tohle je i jejich brand primary —
+  z referenční appky (`alert-icon-success`).
+- `--subject-ospod`: `#4F69F2` (bylo `#4A6FA5`) — referenční appka
+  (`alert-icon-information`/`primary` modrá, POZOR: tohle je i jejich brand primary —
   u nás je unikátní jen pro OSPOD badge, naše `--primary` zůstává
   monochromní, žádná kolize).
 - `--subject-bio`/`--warning`: `#E7AD16` (bylo `#A8752A`).
 - `--crisis`/`--danger`: `#F66950` (bylo `#C05B4D`), `--danger-solid`:
-  `#DA2A0B` (Magnific `destructive-1` dark).
-- `--subject-court`: beze změny (`#6B7280`) — nemá magnific ekvivalent,
+  `#DA2A0B` (referenční appka, `destructive-1` dark).
+- `--subject-court`: beze změny (`#6B7280`) — nemá odpovídající ekvivalent,
   zůstává náš vlastní neutrální tón.
 - `--primary-foreground` (light): `#FAFAFA` (ne čistá bílá) — drobný
   detail z jejich `primary-foreground-0`.
@@ -422,8 +511,8 @@ Uživatel schválil směr v2, ale se třemi konkrétními úpravami:
 Ověřeno v prohlížeči (`/_preview`, computed styles i vizuálně, oba
 režimy) — hodnoty sedí přesně na tokeny výše.
 
-**Poznámka k `pak-smazat-inspirace-chatgpt/`:** obsahuje teď DVĚ reference
-(ChatGPT dump + `maginific/` podsložka) — obojí zůstává smazat, jakmile
+**Poznámka k místní referenční složce:** obsahuje teď DVĚ reference
+(ChatGPT dump + druhá referenční podsložka) — obojí zůstává smazat, jakmile
 uživatel potvrdí, že už je nepotřebuje.
 
 ---

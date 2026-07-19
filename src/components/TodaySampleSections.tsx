@@ -12,7 +12,7 @@ export function TodaySampleSections() {
   return (
     <>
       <section className="mt-8">
-        <h2 className="text-[18px] font-semibold text-text-primary">Čeká na vás</h2>
+        <h2 className="text-lg font-normal leading-tight text-text-primary">Čeká na vás</h2>
         <div className="mt-3 flex flex-col gap-3">
           <FamilyCard
             initials="NK"
@@ -32,7 +32,7 @@ export function TodaySampleSections() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-[18px] font-semibold text-text-primary">Poslední zápisy</h2>
+        <h2 className="text-lg font-normal leading-tight text-text-primary">Poslední zápisy</h2>
         <div className="mt-3">
           <EmptyState
             icon={NotebookPen}

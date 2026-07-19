@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 
 /**
- * Breadcrumb — přeměřeno 2026-07-19 přímo na živé Magnific Settings
+ * Breadcrumb — přeměřeno 2026-07-19 přímo na živé referenční Settings
  * stránce (getComputedStyle): text-xs (12px) po celé délce, STEJNÁ barva
- * (--text-primary) pro aktivní i neaktivní úsek — Magnific text nedimuje,
+ * (--text-primary) pro aktivní i neaktivní úsek — text se nedimuje,
  * odlišuje jen přes klikatelnost (odkaz + hover pozadí u neaktivních,
  * prostý text bez podkladu u aktivního posledního úseku). Oddělovač "/" je
  * CSS ::after generated content, ne DOM znak — barva --text-secondary při
