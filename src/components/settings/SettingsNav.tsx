@@ -11,6 +11,12 @@ import { cn } from '@/lib/utils'
  * `people.html` potvrdilo `aria-current="page"` + přesně tenhle overlay,
  * takže naše dřívější volba `bg-overlay-active` pro aktivní stav byla
  * správná i předtím, než se to potvrdilo.
+ *
+ * Bez vlastní šířky/pozadí/scrollu (Dodatek 12) — o to se teď stará
+ * `AppShell`ův `secondaryPanel` wrapper (`<nav>`), aby stejný obsah šel
+ * použít i pro budoucí vyhledávání+seznam (Rodiny/Pěstouni/Děti) beze
+ * změny této komponenty. Vnější `<nav>` už poskytuje AppShell, takže
+ * tady je jen `<div>` — dvě vnořené `<nav>` by byly sémanticky zbytečné.
  */
 export interface SettingsNavGroup {
   label: string
@@ -19,7 +25,7 @@ export interface SettingsNavGroup {
 
 export function SettingsNav({ groups }: { groups: SettingsNavGroup[] }) {
   return (
-    <nav className="w-full shrink-0 space-y-4 lg:w-[184px]">
+    <div className="space-y-4">
       {groups.map((group) => (
         <div key={group.label}>
           <p className="px-2.5 py-1.5 text-[10px] leading-none text-text-secondary">{group.label}</p>
@@ -41,6 +47,6 @@ export function SettingsNav({ groups }: { groups: SettingsNavGroup[] }) {
           </div>
         </div>
       ))}
-    </nav>
+    </div>
   )
 }

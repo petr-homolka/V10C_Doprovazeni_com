@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { AuthContext } from '@/contexts/auth-context'
-import RequireAuth from '@/routes/RequireAuth'
 import { MOCK_AUTH_VALUE } from '@/routes/_mockAuth'
 
 // Code-split lazy routes — §10 provozní úspornost (statická SPA, code-split
@@ -12,10 +11,6 @@ const LoginPage = lazy(() => import('@/routes/LoginPage'))
 const DashboardPage = lazy(() => import('@/routes/DashboardPage'))
 // DOČASNÉ — viz komentář v DesignPreviewPage.tsx, smazat s M1.
 const DesignPreviewPage = lazy(() => import('@/routes/DesignPreviewPage'))
-// DOČASNÉ — reálné budoucí /nastaveni/* stránky (Dodatek 9), zatím mimo
-// RequireAuth přes stejný mock jako DesignPreviewPage, protože backend
-// (Auth emulátor) na tomhle stroji nestartuje. Přesunout pod RequireAuth
-// a smazat mock wrapper, jakmile M1 přinese reálné přihlášení.
 const AppearanceSettingsPage = lazy(() => import('@/routes/settings/AppearanceSettingsPage'))
 const AccountSettingsPage = lazy(() => import('@/routes/settings/AccountSettingsPage'))
 
@@ -35,6 +30,14 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/_preview" element={<DesignPreviewPage />} />
+            {/*
+              DOČASNĚ mimo RequireAuth (viz src/routes/_mockAuth.ts) — na
+              tomhle stroji nejde spustit Auth emulátor, takže reálné
+              přihlášení nejde ověřit, a uživatel se bez něj nedostane
+              přes RequireAuth k žádné obrazovce k review. Až M1 přinese
+              funkční přihlášení, vrátit "/" pod <RequireAuth /> (soubor
+              zůstává na disku beze změny) a smazat tenhle mock wrapper.
+            */}
             <Route
               element={
                 <AuthContext.Provider value={MOCK_AUTH_VALUE}>
@@ -42,11 +45,9 @@ export default function App() {
                 </AuthContext.Provider>
               }
             >
+              <Route path="/" element={<DashboardPage />} />
               <Route path="/nastaveni/vzhled" element={<AppearanceSettingsPage />} />
               <Route path="/nastaveni/ucet" element={<AccountSettingsPage />} />
-            </Route>
-            <Route element={<RequireAuth />}>
-              <Route path="/" element={<DashboardPage />} />
             </Route>
           </Routes>
         </Suspense>

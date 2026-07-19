@@ -5,6 +5,61 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 12 (2026-07-19): OPRAVA — druhá úroveň menu je samostatný panel, ne vnořená karta; dočasně vypnut auth gate
+
+Uživatel po review Nastavení narazil na dvě věci:
+
+1. **Strukturální chyba v layoutu.** Druhá úroveň menu (SettingsNav) byla
+   vnořená JAKO SOUČÁST obsahu — jeden sdílený `bg-surface-soft` box s
+   `p-5`, uvnitř kterého žily vedle sebe nav a content (Dodatek 9). Uživatel
+   správně poukázal, že v Magnificu je to jinak: nav sloupec je SAMOSTATNÝ
+   panel vedle sidebaru, obsah je DALŠÍ samostatný panel, oba nižší než
+   sidebar (začínají pod TopBarem, ne od úplného vrchu). Přeměřeno znovu
+   NEZÁVISLE na dvou uložených stránkách (`Profile-details.html` a
+   `people.html` — identická struktura na obou, takže je to sdílený layout
+   komponent Magnificu, ne shoda náhodou): `NAV` element a content panel
+   jsou DVA samostatné `rounded-xl bg-panel-4` (= naše `bg-surface-soft`)
+   boxy s `gap-1` (4px) mezerou mezi sebou, KAŽDÝ s vlastním nezávislým
+   scrollem (`overflow-y-auto`), oba stejné výšky, TopBar (`sticky top-0`)
+   žije NAD oběma napříč celou šířkou (breadcrumb začíná na X souřadnici
+   nav sloupce, ne až u obsahu — to už jsme měli správně). NAV šířka
+   naměřena přesně 224px → `w-56` (Tailwindová hodnota, žádný odhad).
+   Mezeru mezi sloupci jsme vědomě sjednotili na naši existující `gap-2`
+   (8px) místo naměřených 4px, kvůli konzistenci s vnějším sidebar/main
+   gapem — jediná vědomá odchylka od přeměřené hodnoty, zapsaná proto,
+   aby byla průhledná.
+
+   **Oprava:** `AppShell` dostal nový volitelný prop `secondaryPanel`. Když
+   je zadaný, `AppShell` sám vykreslí dva nezávislé `bg-surface-soft`
+   panely (nav `w-56 shrink-0`, content `flex-1 min-w-0`), oba s vlastním
+   `overflow-y-auto`, pod společným TopBarem. `SettingsLayout.tsx` (celá
+   komponenta) smazána — její práci teď dělá `AppShell` přímo.
+   `SettingsNav` už nenese vlastní šířku/pozadí/scroll (to dřív dělalo
+   `<nav className="w-full ... lg:w-[184px]">`), jen `<div className="space-y-4">`
+   s obsahem — díky tomu jde `secondaryPanel` použít i pro BUDOUCÍ
+   vyhledávání+seznam (Rodiny/Pěstouni/Děti, viz uživatelův požadavek)
+   beze změny `AppShell`u, jen jiný obsah uvnitř téhož panelu.
+   `AppearanceSettingsPage`/`AccountSettingsPage` upraveny na
+   `<AppShell secondaryPanel={<SettingsNav .../>}>`.
+
+2. **Auth gate blokoval review.** `/` byla pod `RequireAuth`, který bez
+   funkčního Auth emulátoru (nejde spustit na tomhle stroji) přesměroval
+   na `/login` — a tam žádné použitelné přihlašovací údaje nejsou (mock
+   uživatel, ne reálný Firebase účet). Uživatel to nahlásil jako "nějak
+   se nám tam dostal login". **Oprava:** `/` přesunuto do stejné dočasné
+   mock-auth skupiny jako `/nastaveni/*` a `/_preview` (`src/routes/_mockAuth.ts`),
+   `RequireAuth` už se v `App.tsx` nepoužívá (soubor `RequireAuth.tsx`
+   zůstává nedotčený na disku pro M1). Až M1 přinese reálné přihlášení,
+   vrátit `/` pod `RequireAuth` a mock wrapper smazat.
+
+Ověřeno v prohlížeči (`/`, `/nastaveni/vzhled`, `/nastaveni/ucet`, `/_preview`)
+v obou režimech, `getBoundingClientRect` potvrzuje nav (224px) a content
+panel stejné výšky a nezávislé jako dva samostatné boxy, klik-navigace
+mezi Vzhled/Účet funguje, `/_preview` beze změny (nepoužívá `secondaryPanel`,
+takže běží starou jednosloupcovou cestou). Lint/build/7 testů zelené.
+
+---
+
 ## Dodatek 11 (2026-07-19): Table, ProgressBar, Switch, SegmentedTabs, CopyableCodeBox + první reálné Nastavení stránky
 
 Uživatel uložil 6 dalších Magnific stránek (people.html, myteam.html,
