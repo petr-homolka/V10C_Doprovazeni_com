@@ -17,6 +17,12 @@ const buttonVariants = cva(
         primary: 'bg-primary text-primary-foreground hover:bg-primary-hover',
         secondary:
           'bg-surface border border-border-strong text-text-primary hover:bg-surface-soft',
+        /* Naměřeno 2026-07-19 (Dodatek 11, "Learn more"/"Delete account"
+           tlačítka) — průhledné pozadí + border, na rozdíl od "secondary"
+           (plné --bg-surface pozadí). Použij, když tlačítko sedí na
+           plovoucí/upsell ploše, kde plné pozadí sekundárního tlačítka
+           splývá s okolím. */
+        outline: 'border border-border-medium text-text-primary hover:bg-overlay-active',
         ghost: 'text-text-secondary hover:bg-surface-soft',
         destructive: 'bg-danger-solid text-white hover:opacity-90',
       },

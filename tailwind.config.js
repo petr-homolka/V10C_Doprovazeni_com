@@ -17,7 +17,9 @@ export default {
         'text-inverse': 'var(--text-inverse)',
 
         border: {
+          subtle: 'var(--border-subtle)',
           DEFAULT: 'var(--border-default)',
+          medium: 'var(--border-medium)',
           strong: 'var(--border-strong)',
         },
 
@@ -74,6 +76,10 @@ export default {
       },
       fontFamily: {
         sans: ['Geist Sans', 'system-ui', 'sans-serif'],
+        mono: [
+          'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas',
+          '"Liberation Mono"', '"Courier New"', 'monospace',
+        ],
       },
       transitionDuration: {
         150: '150ms',

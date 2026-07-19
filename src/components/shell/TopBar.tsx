@@ -1,4 +1,5 @@
 import { Bell, Moon, Settings, Sun } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { useTheme } from '@/hooks/useTheme'
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb'
@@ -18,7 +19,9 @@ import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb'
  *
  * Nastavení a přepínač Světlý/Tmavý žijí tady, jen ikony (bez textového
  * labelu), v tomhle pořadí před avatarem: motiv/téma → nastavení →
- * oznámení → účet.
+ * oznámení → účet. Ikona Nastavení vede na /nastaveni/vzhled (Nastavení
+ * = celá stránka s breadcrumbem, ne modál — viz CURRENT_STATE.md
+ * Dodatek 9).
  *
  * DŮLEŽITÝ PRINCIP pro budoucí stavové ikony (zapsáno na žádost uživatele):
  * pokud ikona představuje zapnutou/vypnutou "službu" (např. ztlumená
@@ -29,7 +32,7 @@ import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb'
  * Theme toggle princip už splňuje (ikona = cílový stav, Moon/Sun).
  */
 export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
-  const { theme, toggleTheme } = useTheme()
+  const { resolvedTheme, toggleTheme } = useTheme()
   const { userDoc, firebaseUser } = useAuth()
   const displayName = userDoc?.displayName ?? firebaseUser?.email ?? ''
   const initials = displayName
@@ -38,6 +41,8 @@ export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
     .slice(0, 2)
     .join('')
     .toUpperCase()
+  const themeLabel =
+    resolvedTheme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'
 
   return (
     <div className="flex h-14 items-center justify-between gap-4 px-4">
@@ -47,21 +52,21 @@ export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
         <button
           type="button"
           onClick={toggleTheme}
-          aria-label={theme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'}
-          title={theme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'}
+          aria-label={themeLabel}
+          title={themeLabel}
           className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
         >
-          {theme === 'light' ? <Moon size={18} strokeWidth={1.75} /> : <Sun size={18} strokeWidth={1.75} />}
+          {resolvedTheme === 'light' ? <Moon size={18} strokeWidth={1.75} /> : <Sun size={18} strokeWidth={1.75} />}
         </button>
 
-        <button
-          type="button"
+        <Link
+          to="/nastaveni/vzhled"
           aria-label="Nastavení"
           title="Nastavení"
           className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
         >
           <Settings size={18} strokeWidth={1.75} />
-        </button>
+        </Link>
 
         <button
           type="button"

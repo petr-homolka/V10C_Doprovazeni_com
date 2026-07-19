@@ -41,8 +41,14 @@
   --text-tertiary: #737373;
   --text-inverse: #FFFFFF;
 
-  /* Čáry — alpha-black (Magnific surface-border-alpha-1/2) */
+  /* Čáry — alpha-black. 4 úrovně teď podložené opakovaným měřením napříč
+     komponentami (Dodatek 11): subtle (Plugins list border, surface-
+     border-alpha-0), default (beze změny), medium (Input/URL box border —
+     stejná hodnota naměřena na DVOU nezávislých komponentách), strong
+     (table/card divider, surface-border-alpha-2/surface-3). */
+  --border-subtle: rgba(16, 16, 16, .05);
   --border-default: rgba(16, 16, 16, .10);
+  --border-medium: rgba(16, 16, 16, .15);
   --border-strong: rgba(16, 16, 16, .20);
 
   /* Primární akcent — monochromní (skoro černá v light, skoro bílá v
@@ -118,7 +124,9 @@
     --text-tertiary: #737373;
     --text-inverse: #101010;
 
+    --border-subtle: rgba(255, 255, 255, .05);
     --border-default: rgba(255, 255, 255, .10);
+    --border-medium: rgba(255, 255, 255, .15);
     --border-strong: rgba(255, 255, 255, .20);
 
     --primary: #F5F5F5;

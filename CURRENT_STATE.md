@@ -5,6 +5,75 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Dodatek 11 (2026-07-19): Table, ProgressBar, Switch, SegmentedTabs, CopyableCodeBox + první reálné Nastavení stránky
+
+Uživatel uložil 6 dalších Magnific stránek (people.html, myteam.html,
+Subscription .html, MCP.html, Preferences/apikeys/ssc/Projects/Plugins/
+Following). Druhé kolo Workflow (5 agentů) je proměřilo — s poctivým
+výsledkem: **Plan & billing a My Team se v uloženém exportu nepodařilo
+vůbec zobrazit** (SPA routing v statické kopii spadává na Profil stránku
+bez ohledu na to, co se otevře) — agenti to nahlásili jako "NOT PRESENT",
+nefabrikovali Danger zone ani plán/billing hodnoty. **People tabulku
+naopak jeden agent dokázal zrekonstruovat** (vytáhl syrové HTML+CSS,
+vyčistil `<script>` tagy co způsobovaly špatný redirect, vykreslil v
+iframe) — odtud pochází reálné hodnoty tabulky.
+
+**Klíčové zjištění — aktivní položka menu KONEČNĚ jednoznačně potvrzena:**
+na `people.html` má aktivní "People" položka `aria-current="page"` +
+`bg-overlay-active` ekvivalent (`rgba(255,255,255,.15)`) — PŘESNĚ to, co
+jsme si už v Dodatku 5 vybrali z opatrnosti/intuice. Dřívější "žádný
+rozdíl nenalezen" (Dodatek 8) byl artefakt konkrétní staticky uložené
+stránky, ne skutečnost — potvrzeno, naše volba byla správná.
+
+**Nové tokeny** (`src/index.css`): `--border-subtle` (5% alpha, Plugins
+list) a `--border-medium` (15% alpha — naměřeno NEZÁVISLE na dvou
+komponentách: Input i MCP URL box, proto povýšeno na skutečný token).
+
+**Nové komponenty:**
+- `ui/table.tsx` — `Table`/`TableHeaderRow`/`TableRow`, CSS grid (ne
+  `<table>`), naměřeno na People. Použito na `/_preview` s VLASTNÍM
+  příkladem z DESIGN_SYSTEM.md §6.5 (vzdělávání pěstounů hodiny vs.
+  limit), ne cizím Magnific obsahem.
+- `ui/progress-bar.tsx` — track `--bg-surface-soft`, fill **monochromní
+  `--primary`** (Magnific má jejich brand modrou `#4F69F2` — tu jsme
+  vědomě NEpřevzali, koliduje s `--subject-ospod`, což by porušilo
+  "jedna barva = jeden význam").
+- `ui/segmented-tabs.tsx` — přesně naměřeno na MCP klient-selectoru:
+  ŽÁDNÝ obalový pilulkový kontejner, každá volba samostatně `rounded-full`.
+- `ui/switch.tsx` — track/thumb rozměry naměřené (Preferences), ale
+  **ON stav NEBYL naměřitelný** (mock backend agentovi vracel chybu) —
+  navržen podle vlastního principu (`--primary`/`--bg-surface`+stín),
+  ne fabrikovaná Magnific hodnota.
+- `ui/copyable-code-box.tsx` — URL/kód box + copy tlačítko, přesně
+  naměřeno na MCP stránce. Použitelné pro `/d/{UID}` ověřovací odkazy
+  (§4.3) nebo budoucí webhook URL (§5.5 C).
+- `Button` nová varianta `outline` (průhledné pozadí + border-medium) —
+  naměřeno na "Learn more"/"Delete account" tlačítkách.
+- `fontFamily.mono` (system monospace stack) v tailwind.config.js.
+
+**Vědomě NEpostaveno** (žádná ground truth k dispozici, viz výše):
+Danger zone box, Plan & billing card, My Team tabulka, upsell/funnel
+banner (přítomný na 3 stránkách, ale je to marketingová komponenta pro
+prodejní přesvědčování — nemáme pro ni teď reálné využití v CRM).
+
+**Nastavení — první REÁLNÉ stránky** (ne jen `/_preview` vzorek):
+`src/routes/settings/AppearanceSettingsPage.tsx` (`/nastaveni/vzhled`) a
+`AccountSettingsPage.tsx` (`/nastaveni/ucet`), obě postavené na nových
+`SettingsLayout`+`SettingsNav`+`Breadcrumb` komponentách. `useTheme.ts`
+přepracován na skutečné 3-stavové `light|dark|system` (dřív jen binární
+přepínač) — `SegmentedTabs` na stránce Vzhled je naplno funkční, ověřeno
+klikem v prohlížeči (přepnutí funguje, perzistuje přes navigaci). Ikona
+Nastavení v TopBaru teď vede na `/nastaveni/vzhled` (dřív nikam).
+**DOČASNĚ mimo `RequireAuth`** stejným mock-auth mechanismem jako
+`/_preview` (sdílený `src/routes/_mockAuth.ts`, role `org_admin` — aby šly
+vidět OBĚ skupiny nested menu, "Obecné" i "Organizace") — přesunout pod
+`RequireAuth` a smazat mock, jakmile M1 přinese reálné přihlášení.
+
+Ověřeno v prohlížeči (`/_preview`, `/nastaveni/vzhled`, `/nastaveni/ucet`),
+lint/build/testy zelené.
+
+---
+
 ## Dodatek 9 (2026-07-19): ROZHODNUTO — Nastavení = celá stránka s breadcrumbem, NE modál
 
 **Ruší DESIGN_SYSTEM.md §6.9 (modální okno se svislými záložkami, vzor
