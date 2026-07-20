@@ -5,6 +5,68 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## UX přestavba profilových stránek (2026-07-20): rodina/Dohoda/pěstoun/dítě
+
+Po ověření M6+M7 dávky poslal Petr ostrou zpětnou vazbu se 4 body a dvěma
+Magnific screenshoty — `FamilyDetailPage` byla jedna obrovská souvisle
+scrollovatelná stránka (Dohoda+Pěstouni+Děti+Časová osa+Dokumenty+Report+
+7 M6/M7 sekcí za sebou), vůbec nepodobná tomu, jak appka řeší Nastavení
+(`AppShell` `secondaryPanel`, schválený vzor). Přestavěno na PLÁN
+schválený přes `EnterPlanMode`/`ExitPlanMode` (soubor
+`crystalline-percolating-ripple.md`), pak implementován beze změn oproti
+plánu:
+
+**4 stránky místo 1** — `FamilyDetailPage.tsx` je teď HUB
+(`secondaryPanel`: Přehled/Časová osa/Dokumenty) odkazující na 3 NOVÉ
+profilové stránky: `AgreementDetailPage.tsx` (`/rodiny/:uid/dohoda` —
+Přehled + IPPD + nová **Nebezpečná zóna** komponenta, kde teprve teď žije
+"Ukončit Dohodu", dřív hned vedle nadpisu na hubu),
+`FosterPersonDetailPage.tsx` (`/rodiny/:uid/pestoun/:id` — Přehled +
+Vzdělávání a dávky + Přihlášky na kurzy + Plán vzdělávání, tři
+již existující samostatné M7 komponenty jen přestěhované z `.map()`
+smyčky na hubu), `ChildDetailPage.tsx` (`/rodiny/:uid/dite/:id` — Přehled
++ Podpůrné aktivity a výdaje). `FamilyCareEventsSection` (respit/
+asistovaný kontakt/předání) ZŮSTÁVÁ na hubu — respit typicky pokrývá víc
+dětí najednou, nedá se čistě rozdělit na jedno dítě (vědomá volba,
+zdokumentovaná v plánu, dá se přehodnotit).
+
+**Druhá úroveň navigace BEZ vlastních rout** — na rozdíl od `SettingsNav`
+(skutečné `NavLink` routy) používá nová `ProfileSectionNav.tsx`
+komponenta lokální React state (`useState` sekce), ne URL — sekce jedné
+entity sdílejí JEDNO načtení dat, přepnutí sekce nemá znovu fetchovat
+rodinu/pěstouna/dítě. Vizuálně identické `SettingsNav` (stejné CSS
+třídy), jen `button` místo `NavLink`.
+
+**Editovatelný název rodiny** — `FamilyDoc.displayName?: string` (nové
+volitelné pole, ŽÁDNÁ migrace stovek seedovaných rodin nepotřeba, fallback
+řetězec `resolveFamilyDisplayName()` v `src/lib/familyDisplayName.ts`:
+`displayName ?? primární pěstoun ?? adresa ?? UID`). Tužka vedle H1 →
+inline `Input` + Uložit/Zrušit → `familyService.updateFamilyDisplayName`.
+Použito i v breadcrumbu na všech 4 stránkách a v `FamilyListPage`
+sloupci (dřív "Adresa", teď "Rodina").
+
+**`src/components/ui/danger-zone.tsx`** — nová, znovupoužitelná
+komponenta (`DangerZone`/`DangerZoneAction`) přesně dle Magnific
+screenshotu (orámovaný box, varovný text nahoře, potvrzovací krok před
+samotnou akcí) — zatím jediné použití je "Ukončit Dohodu", ale Magnific
+má tenhle vzor na víc věcí, počítáno dopředu s dalším použitím.
+
+**Živě ověřeno** na reálných seedovaných datech (`cechy-family-1`,
+přihlášení jako `hana.bartosova@cechy-doprovazeni.cz`): editace názvu
+rodiny se uloží a přežije reload, Dohoda/pěstoun/dítě odkazy správně
+navigují, IPPD/Vzdělávání/Kurzy/Plán/Podpůrné aktivity na nových
+stránkách správně ukazují dřívější seedovaná data (potvrzuje, že přesun
+z `.map()` smyčky na samostatné stránky nic neztratil). Danger Zone
+vizuálně ověřena (potvrzovací krok, popisky) — samotné kliknutí "Ukončit
+Dohodu" na živých seed datech ZÁMĚRNĚ nevyzkoušeno (nevratná změna stavu
+Dohody na datech, která si Petr chce sám projít).
+
+**Nasazeno:** jen Hosting (`npm run deploy:hosting`) — žádná nová/
+změněná Firestore rules ani index (nové pole `displayName` je pod
+existujícím `families/{familyId}` update pravidlem, které nerestrikuje
+jednotlivá pole mimo `orgAccessList`, ověřeno čtením pravidla PŘED
+nasazením, ne až po chybě).
+
 ## M6+M7 hotové — NOVE-ZADANI-M6-AZ-KONEC.md (2026-07-20)
 
 Po retrofitu Petr poslal `NOVE-ZADANI-M6-AZ-KONEC.md` (722 řádků) jako

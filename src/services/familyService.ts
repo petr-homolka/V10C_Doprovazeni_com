@@ -106,6 +106,13 @@ export async function updateFamilyPartnerSharingDefault(
   await updateDoc(doc(db, 'families', familyId), { partnerSharingDefault })
 }
 
+/** Editovatelný název profilu rodiny (UX zpětná vazba 2026-07-20) —
+ * volitelné pole, prázdný `updateDoc` bez validace stejně jako
+ * `updateFamilyPartnerSharingDefault` výš. */
+export async function updateFamilyDisplayName(familyId: string, displayName: string): Promise<void> {
+  await updateDoc(doc(db, 'families', familyId), { displayName })
+}
+
 /**
  * Vrací i Firestore document ID (ne jen `uid` na dokumentu) — potřebuje ho
  * M3 avatar/hlasový zápis (`SubjectRef.id`, Storage cesta avataru), ta
@@ -119,6 +126,14 @@ export async function listFosterPersonsByRefs(
   return docs
     .filter((d) => d.exists())
     .map((d) => ({ docId: d.id, fosterPerson: d.data() as FosterPersonDoc }))
+}
+
+/** Jeden pěstoun pro jeho vlastní profilovou stránku (UX zpětná vazba
+ * 2026-07-20, `FosterPersonDetailPage`) — přímý `getDoc`, ne dotaz, takže
+ * žádná "list dotaz vs. pole v pravidle" past. */
+export async function getFosterPerson(fosterPersonId: string): Promise<FosterPersonDoc | null> {
+  const snap = await getDoc(doc(db, 'fosterPersons', fosterPersonId))
+  return snap.exists() ? (snap.data() as FosterPersonDoc) : null
 }
 
 export interface AddFosterPersonInput {
@@ -175,6 +190,13 @@ export async function listChildrenForFamily(
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ docId: d.id, child: d.data() as ChildDoc }))
+}
+
+/** Jedno dítě pro jeho vlastní profilovou stránku (UX zpětná vazba
+ * 2026-07-20, `ChildDetailPage`) — přímý `getDoc`, žádná list-dotaz past. */
+export async function getChild(childId: string): Promise<ChildDoc | null> {
+  const snap = await getDoc(doc(db, 'children', childId))
+  return snap.exists() ? (snap.data() as ChildDoc) : null
 }
 
 export interface AddChildInput {

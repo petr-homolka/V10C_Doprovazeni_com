@@ -15,6 +15,7 @@ import {
   listFamiliesWithDocIds,
   listFosterPersonsByRefs,
 } from '@/services/familyService'
+import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
 import type { SubjectRef } from '@/types/timelineEntry'
 import { Users } from 'lucide-react'
@@ -160,26 +161,27 @@ export default function FamilyListPage() {
           <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
         ) : (
           <Table>
-            <TableHeaderRow columns={TABLE_COLUMNS} labels={['', 'Adresa', 'Pěstouni']} />
-            {families.map(({ docId, family }) => (
-              <Link key={family.uid} to={`/rodiny/${family.uid}`} className="contents">
-                <TableRow columns={TABLE_COLUMNS}>
-                  <EntityAvatar
-                    photoURL={family.avatarUrl}
-                    label={family.address || 'Spis'}
-                    fallbackIcon={Users}
-                    onQuickRecord={() => handleOpenRecorder(docId, family)}
-                    quickRecordDisabledReason={recorderLoadingDocId === docId ? 'Načítám…' : undefined}
-                  />
-                  <span className="truncate text-sm text-text-secondary">
-                    {family.address || '—'}
-                  </span>
-                  <span className="text-sm text-text-secondary">
-                    {family.fosterPersonRefs.length}
-                  </span>
-                </TableRow>
-              </Link>
-            ))}
+            <TableHeaderRow columns={TABLE_COLUMNS} labels={['', 'Rodina', 'Pěstouni']} />
+            {families.map(({ docId, family }) => {
+              const name = resolveFamilyDisplayName(family)
+              return (
+                <Link key={family.uid} to={`/rodiny/${family.uid}`} className="contents">
+                  <TableRow columns={TABLE_COLUMNS}>
+                    <EntityAvatar
+                      photoURL={family.avatarUrl}
+                      label={name}
+                      fallbackIcon={Users}
+                      onQuickRecord={() => handleOpenRecorder(docId, family)}
+                      quickRecordDisabledReason={recorderLoadingDocId === docId ? 'Načítám…' : undefined}
+                    />
+                    <span className="truncate text-sm text-text-secondary">{name}</span>
+                    <span className="text-sm text-text-secondary">
+                      {family.fosterPersonRefs.length}
+                    </span>
+                  </TableRow>
+                </Link>
+              )
+            })}
           </Table>
         )}
       </div>

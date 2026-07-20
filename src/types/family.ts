@@ -42,4 +42,9 @@ export interface FamilyDoc {
    * jen pro rodiny, kde chce pracovník tenhle výchozí stav trvale
    * změnit, ne pro každou rodinu zvlášť nastavovat. */
   partnerSharingDefault?: boolean
+  /** UX zpětná vazba 2026-07-20 — profil rodiny se nemá jmenovat podle
+   * syrového UID, ale podle čitelného, editovatelného jména. Nenastavené =
+   * padá na jméno primárního pěstouna, pak adresu, pak UID (viz
+   * FamilyDetailPage/FamilyListPage `resolveFamilyDisplayName` helper). */
+  displayName?: string
 }

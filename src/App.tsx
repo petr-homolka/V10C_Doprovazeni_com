@@ -27,6 +27,9 @@ const MojeDashboardPage = lazy(() => import('@/routes/moje/MojeDashboardPage'))
 const PlatformSettingsPage = lazy(() => import('@/routes/PlatformSettingsPage'))
 const InspectionsPage = lazy(() => import('@/routes/InspectionsPage'))
 const FosterProspectsPage = lazy(() => import('@/routes/FosterProspectsPage'))
+const AgreementDetailPage = lazy(() => import('@/routes/AgreementDetailPage'))
+const FosterPersonDetailPage = lazy(() => import('@/routes/FosterPersonDetailPage'))
+const ChildDetailPage = lazy(() => import('@/routes/ChildDetailPage'))
 
 function RouteFallback() {
   return (
@@ -54,6 +57,9 @@ export default function App() {
               <Route path="/rodiny" element={<FamilyListPage />} />
               <Route path="/dokumenty" element={<DocumentListPage />} />
               <Route path="/rodiny/:familyUid" element={<FamilyDetailPage />} />
+              <Route path="/rodiny/:familyUid/dohoda" element={<AgreementDetailPage />} />
+              <Route path="/rodiny/:familyUid/pestoun/:fosterPersonId" element={<FosterPersonDetailPage />} />
+              <Route path="/rodiny/:familyUid/dite/:childId" element={<ChildDetailPage />} />
               <Route path="/rodiny/:familyUid/navsteva" element={<VisitTimerPage />} />
               <Route path="/rodiny/:familyUid/dokumenty/:docId" element={<DocumentDetailPage />} />
               <Route path="/d/:uid" element={<DocumentVerifyPage />} />
