@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck, NotebookPen } from 'lucide-react'
+import { AlertTriangle, CalendarCheck, NotebookPen } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FamilyCard } from '@/components/FamilyCard'
 import { useAuth } from '@/hooks/useAuth'
-import { listFamiliesAwaitingVisit, type FamilyAwaitingVisit } from '@/services/dashboardService'
+import {
+  listFamiliesAwaitingVisit,
+  listOperationalAlerts,
+  type FamilyAwaitingVisit,
+  type OperationalAlert,
+} from '@/services/dashboardService'
 
 function initialsFor(label: string): string {
   const parts = label.trim().split(/\s+/)
@@ -34,12 +39,17 @@ export function TodaySections() {
   const navigate = useNavigate()
   const [families, setFamilies] = useState<FamilyAwaitingVisit[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [alerts, setAlerts] = useState<OperationalAlert[] | null>(null)
+  const [alertsError, setAlertsError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!userDoc?.organizationId) return
     listFamiliesAwaitingVisit(userDoc.organizationId)
       .then(setFamilies)
       .catch(() => setError('Přehled čekajících návštěv se nepodařilo načíst.'))
+    listOperationalAlerts(userDoc.organizationId)
+      .then(setAlerts)
+      .catch(() => setAlertsError('Provozní upozornění se nepodařilo načíst.'))
   }, [userDoc?.organizationId])
 
   return (
@@ -72,6 +82,33 @@ export function TodaySections() {
                 badgeKind="foster"
                 badgeLabel="Pěstounská rodina"
               />
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-normal leading-tight text-text-primary">Provozní upozornění</h2>
+        <div className="mt-3 flex flex-col gap-2">
+          {alertsError ? (
+            <p className="text-sm text-danger" role="alert">
+              {alertsError}
+            </p>
+          ) : alerts === null ? (
+            <p className="text-sm text-text-secondary">Načítám…</p>
+          ) : alerts.length === 0 ? (
+            <EmptyState icon={AlertTriangle} text="Žádná provozní upozornění." />
+          ) : (
+            alerts.map((alert, i) => (
+              <div
+                key={`${alert.kind}-${i}`}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                  alert.overdue ? 'bg-danger-bg text-danger' : 'bg-warning-bg text-warning'
+                }`}
+              >
+                <AlertTriangle className="size-4 shrink-0" />
+                <span>{alert.text}</span>
+              </div>
             ))
           )}
         </div>

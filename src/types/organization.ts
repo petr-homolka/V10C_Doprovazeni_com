@@ -17,4 +17,28 @@ export interface OrganizationDoc {
   createdByUid: string
   createdAt: string
   koCapacityThreshold?: number
+  /** §5.8 — nikdy dosud postavené v kódu (M0-M5 ho jen předjímalo). `plan`
+   * samotný zůstává SEAM (`tier`/`billingNote` bez UI — "byznysové
+   * rozhodnutí padne později", potvrzeno v NOVE-ZADANI-M6-AZ-KONEC.md) —
+   * jen `entitlements` mapa se teď skutečně používá, a jen pro dva nové
+   * M7 klíče (`qualityStandardsSelfAssessment`, `fosterProspectPipeline`).
+   * Chybějící klíč = `false` (kromě `fosterProspectPipeline`, jehož
+   * chybějící hodnota se čte jako `true`, dle zadání "výchozí true"). */
+  plan?: {
+    tier?: 'zakladni' | 'premium'
+    entitlements?: Partial<Record<EntitlementKey, boolean>>
+    billingNote?: string
+  }
 }
+
+export const ENTITLEMENT_KEYS = [
+  'aiAssistedImport',
+  'scanExtraction',
+  'serviceCatalog',
+  'checklistFramework',
+  'customTerminology',
+  'accountingExport',
+  'qualityStandardsSelfAssessment',
+  'fosterProspectPipeline',
+] as const
+export type EntitlementKey = (typeof ENTITLEMENT_KEYS)[number]

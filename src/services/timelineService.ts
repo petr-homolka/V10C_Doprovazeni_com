@@ -157,3 +157,35 @@ export async function listTimelineEntries(
     .map((d) => ({ docId: d.id, entry: d.data() as TimelineEntryDoc }))
     .filter(({ entry }) => entry.sharingLevel !== 'private' || entry.createdByUid === currentUid)
 }
+
+/**
+ * M6 §A2 — "stránkovaně, early-stop": `where(occurredAt >= from/<= to)`
+ * VLASTNÍ index-bounded rozsah je tu ten "early-stop" (Firestore nečte nic
+ * mimo rozsah) — samostatná cursor-pagination nad tím by byla nadstavba
+ * bez reálného přínosu pro report jedné rodiny za pár měsíců. Report pro
+ * OSPOD NIKDY necituje `private` zápisy (jsou osobní pro autora, ne pro
+ * úřad) — na rozdíl od `listTimelineEntries` výš je vyřazuje VŽDY, ne jen
+ * cizí.
+ */
+export async function listTimelineEntriesForPeriod(
+  familyDocId: string,
+  organizationId: string,
+  periodFrom: string,
+  periodTo: string,
+): Promise<Array<{ docId: string; entry: TimelineEntryDoc }>> {
+  // orderBy('occurredAt','desc') zrcadlí přesně existující index
+  // (createdByOrgId ASC + occurredAt DESC) — chronologicky (staré→nové) se
+  // otočí až klientsky (.reverse()), žádný nový index kvůli směru řazení.
+  const q = query(
+    collection(db, 'families', familyDocId, 'timeline'),
+    where('createdByOrgId', '==', organizationId),
+    where('occurredAt', '>=', periodFrom),
+    where('occurredAt', '<=', periodTo),
+    orderBy('occurredAt', 'desc'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs
+    .map((d) => ({ docId: d.id, entry: d.data() as TimelineEntryDoc }))
+    .filter(({ entry }) => entry.sharingLevel !== 'private')
+    .reverse()
+}

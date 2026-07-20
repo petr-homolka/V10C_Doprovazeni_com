@@ -26,6 +26,13 @@ import { checkKoCapacity, createAgreement, endAgreement, getActiveAgreement } fr
 import { sendFosterInvitation } from '@/services/fosterInvitationService'
 import { createDocument, listFamilyDocuments } from '@/services/documentService'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
+import { OspodReportSection } from '@/components/family/OspodReportSection'
+import { FosterPersonEducationSection } from '@/components/family/FosterPersonEducationSection'
+import { FosterPersonCourseEnrollmentsSection } from '@/components/family/FosterPersonCourseEnrollmentsSection'
+import { EducationPlanSection } from '@/components/family/EducationPlanSection'
+import { IppdSection } from '@/components/family/IppdSection'
+import { FamilyCareEventsSection } from '@/components/family/FamilyCareEventsSection'
+import { ChildSupportSection } from '@/components/family/ChildSupportSection'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -849,6 +856,80 @@ export default function FamilyDetailPage() {
           )}
         </div>
       </section>
+
+      {/* M6+M7 — report pro OSPOD + satelitní moduly (NOVE-ZADANI-M6-AZ-KONEC.md).
+          Stejný "jeden kontextový celek" princip jako zbytek stránky (viz
+          komentář nahoře u FamilyDetailPage) — všechno žije tady, ne na
+          samostatných podstránkách pěstouna/dítěte. */}
+      {docId && organizationId && userDoc && (
+        <>
+          <OspodReportSection
+            familyDocId={docId}
+            familyUid={familyUid ?? ''}
+            organizationId={organizationId}
+            createdByUid={userDoc.uid}
+            childIds={children.map((c) => c.docId)}
+            fosterPersons={fosterPersons}
+          />
+
+          {fosterPersons.map(({ docId: fpId, fosterPerson }) => (
+            <FosterPersonEducationSection
+              key={`education-${fpId}`}
+              fosterPersonId={fpId}
+              fosterPerson={fosterPerson}
+              organizationId={organizationId}
+              currentUid={userDoc.uid}
+            />
+          ))}
+
+          {fosterPersons.map(({ docId: fpId }) => (
+            <FosterPersonCourseEnrollmentsSection
+              key={`enrollments-${fpId}`}
+              fosterPersonId={fpId}
+              organizationId={organizationId}
+              currentUid={userDoc.uid}
+              currentRole={userDoc.role}
+            />
+          ))}
+
+          {fosterPersons.map(({ docId: fpId, fosterPerson }) => (
+            <EducationPlanSection
+              key={`plan-${fpId}`}
+              fosterPersonId={fpId}
+              fosterPersonName={`${fosterPerson.firstName} ${fosterPerson.lastName}`}
+              organizationId={organizationId}
+              agreementId={organizationId}
+              currentUid={userDoc.uid}
+              children={children}
+            />
+          ))}
+
+          <IppdSection
+            familyDocId={docId}
+            organizationId={organizationId}
+            currentUid={userDoc.uid}
+            fosterPersons={fosterPersons}
+            children={children}
+          />
+
+          <FamilyCareEventsSection
+            familyDocId={docId}
+            organizationId={organizationId}
+            currentUid={userDoc.uid}
+            children={children}
+          />
+
+          {children.map(({ docId: childId, child }) => (
+            <ChildSupportSection
+              key={`support-${childId}`}
+              childId={childId}
+              childName={`${child.firstName} ${child.lastName}`}
+              organizationId={organizationId}
+              currentUid={userDoc.uid}
+            />
+          ))}
+        </>
+      )}
 
       {recorder && docId && organizationId && userDoc && (
         <VoiceRecorderPanel

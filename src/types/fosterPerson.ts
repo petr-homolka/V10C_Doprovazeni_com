@@ -1,3 +1,5 @@
+import type { EducationOfficialWindow, StateBenefitsMap } from './course'
+
 /**
  * fosterPersons/{fosterId} — TOP-LEVEL, TT=10, ZADANI §4.4.A. Pěstoun jako
  * OSOBA nezávislá na Dohodě/rodině — M1 ho zatím zakládá jen jako záznam
@@ -36,4 +38,12 @@ export interface FosterPersonDoc {
    * pole odchýlí a dává smysl samo o sobě. Nenastavené (starší záznamy
    * před tímhle polem) = "stejné jako Dohoda", NE "nikdy navštíven". */
   lastVisitAt?: string | null
+  /** M7 §4.4.A — compliance počítadlo, resetuje se s každou novou Dohodou
+   * (§47a odst. 3 ZSPOD "bankuje" přebytek). Nenastavené = žádná Dohoda
+   * ještě nezaložila okno. */
+  educationOfficial?: EducationOfficialWindow
+  /** M7 §4.4.A — NEZÁVISLÝ na `educationOfficial`, nikdy se nenuluje. */
+  educationLifetimeHours?: number
+  /** M7 §3.1/§4.4.D — POUZE stav dávek, nikdy částka. */
+  stateBenefits?: StateBenefitsMap
 }

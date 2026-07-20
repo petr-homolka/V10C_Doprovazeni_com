@@ -114,6 +114,18 @@ service cloud.firestore {
         get(/databases/$(database)/documents/organizations/$(userDoc().organizationId)/importJobs/$(importJobRef)).data.status == 'committed';
     }
 
+    // M7 — stejný `orgAccessList`/`organizationId` vzor jako `fosterPersons`/
+    // `children` samotné, jen jako znovupoužitelná funkce pro jejich nové
+    // podkolekce (courses, educationPlans, scheduledActivities, ...).
+    function hasFosterPersonAccess(fosterPersonId) {
+      return isStaff() &&
+        userDoc().organizationId in get(/databases/$(database)/documents/fosterPersons/$(fosterPersonId)).data.orgAccessList;
+    }
+    function hasChildAccess(childId) {
+      return isStaff() &&
+        sameOrg(get(/databases/$(database)/documents/children/$(childId)).data.organizationId);
+    }
+
     // ---- users/{uid} ---------------------------------------------------
 
     match /users/{uid} {
@@ -652,6 +664,214 @@ service cloud.firestore {
         request.resource.data.createdByOrgId == userDoc().organizationId &&
         hasActiveAgreementFor(path[1]);
       allow update, delete: if false; // append-only, §5
+    }
+
+    // ==== M6+M7 — NOVE-ZADANI-M6-AZ-KONEC.md ============================
+    //
+    // Všechny nové podkolekce používají PEVNOU (ne `{path=**}` wildcard)
+    // cestu, i tam, kde by to teoreticky šlo zkrátit — živě objevený bug
+    // dřív v tomhle souboru byl přesně o VNOŘENÉM matchi uvnitř `{path=**}`
+    // bloku (viz `documents/versions` komentář výš); žádný z těchhle bloků
+    // není vnořený, ale radši žádné nové riziko, nedá se to tuhle dávku
+    // živě odladit stejným tempem jako dřív (Petr testuje na seed datech
+    // teprve PO nasazení).
+
+    // ---- legislativeParameters/{key}/history — §B.1, vrchol VŠECH kaskád
+
+    match /legislativeParameters/{key}/history/{entryId} {
+      allow read: if isSignedIn();
+      allow create: if isSuperadmin();
+      allow update, delete: if false; // append-only, verzované
+    }
+
+    // ---- fosterPersons/{fosterId}/rateOverrides + policyOverrides — §B.5/B.5.1
+
+    match /fosterPersons/{fosterPersonId}/rateOverrides/{key}/history/{entryId} {
+      allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
+      allow create: if hasFosterPersonAccess(fosterPersonId);
+      allow update, delete: if false;
+    }
+    match /fosterPersons/{fosterPersonId}/policyOverrides/{key}/history/{entryId} {
+      allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
+      allow create: if hasFosterPersonAccess(fosterPersonId);
+      allow update, delete: if false;
+    }
+
+    // ---- families/{familyId}/agreements/{agreementId}/rateOverrides + policyOverrides
+    //
+    // `agreementId` JE `organizationId` (deterministické ID Dohody, M2) —
+    // `sameOrg(agreementId)` je tedy přesně "vlastní organizace týhle Dohody".
+
+    match /families/{familyId}/agreements/{agreementId}/rateOverrides/{key}/history/{entryId} {
+      allow read: if isSuperadmin() || sameOrg(agreementId);
+      allow create: if sameOrg(agreementId);
+      allow update, delete: if false;
+    }
+    match /families/{familyId}/agreements/{agreementId}/policyOverrides/{key}/history/{entryId} {
+      allow read: if isSuperadmin() || sameOrg(agreementId);
+      allow create: if sameOrg(agreementId);
+      allow update, delete: if false;
+    }
+
+    // ---- organizations/{orgId}/rateOverrides + policyOverrides — org_admin only zápis
+
+    match /organizations/{orgId}/rateOverrides/{key}/history/{entryId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId);
+      allow update, delete: if false;
+    }
+    match /organizations/{orgId}/policyOverrides/{key}/history/{entryId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId);
+      allow update, delete: if false;
+    }
+
+    // ---- users/{koUid}/policyOverrides — NOVÁ úroveň kaskády, §B.5.1
+
+    match /users/{koUid}/policyOverrides/{key}/history/{entryId} {
+      allow read: if isSuperadmin() ||
+        (isStaff() && sameOrg(get(/databases/$(database)/documents/users/$(koUid)).data.organizationId));
+      allow create: if isStaff() && userDoc().role == 'org_admin' &&
+        sameOrg(get(/databases/$(database)/documents/users/$(koUid)).data.organizationId);
+      allow update, delete: if false;
+    }
+
+    // ---- fosterPersons/{fosterId} vzdělávání/dávky — §4.4.A/§4.4.D, §6 A10a
+
+    match /fosterPersons/{fosterPersonId}/courses/{courseId} {
+      allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
+      allow create: if hasFosterPersonAccess(fosterPersonId);
+      allow update, delete: if false; // trvalá historie, nikdy se nemaže
+    }
+    match /fosterPersons/{fosterPersonId}/benefitChecks/{id} {
+      allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
+      allow create: if hasFosterPersonAccess(fosterPersonId);
+      allow update, delete: if false; // append-only audit
+    }
+    match /fosterPersons/{fosterPersonId}/educationPlans/{id} {
+      allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
+      allow create, update: if hasFosterPersonAccess(fosterPersonId);
+      allow delete: if false;
+    }
+    // §6 A10a/A10b + §B.5.1 anti-fraud: `isFosterReimbursement=true` BEZ
+    // `reimbursementReason` musí selhat i při přímém volání API, ne jen v
+    // UI — vynuceno tady, ne jen v `courseService.ts`.
+    match /fosterPersons/{fosterPersonId}/courseEnrollments/{id} {
+      allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
+      allow create: if hasFosterPersonAccess(fosterPersonId) &&
+        (request.resource.data.isFosterReimbursement != true || request.resource.data.reimbursementReason != null);
+      allow update: if isSuperadmin() || (
+        hasFosterPersonAccess(fosterPersonId) &&
+        (request.resource.data.isFosterReimbursement != true || request.resource.data.reimbursementReason != null)
+      );
+      allow delete: if false;
+    }
+
+    // ---- children/{childId} podkolekce — §4.4.B.1/§4.4.E
+
+    match /children/{childId}/scheduledActivities/{activityId} {
+      allow read: if isSuperadmin() || hasChildAccess(childId);
+      allow create, update: if hasChildAccess(childId);
+      allow delete: if false;
+    }
+    match /children/{childId}/scheduledActivities/{activityId}/occurrences/{occId} {
+      allow read: if isSuperadmin() || hasChildAccess(childId);
+      allow create, update: if hasChildAccess(childId);
+      allow delete: if false;
+    }
+    match /children/{childId}/supportExpenses/{id} {
+      allow read: if isSuperadmin() || hasChildAccess(childId);
+      allow create: if hasChildAccess(childId);
+      allow update, delete: if false; // append-only doklady
+    }
+
+    // ---- families/{familyId} podkolekce — respit/asistovaný kontakt/handover
+
+    match /families/{familyId}/respitEvents/{id} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        hasActiveAgreementFor(familyId);
+      allow update: if isSuperadmin() || sameOrg(resource.data.organizationId); // vedení doplňuje doklady u Pobytu
+      allow delete: if false;
+    }
+    match /families/{familyId}/assistedContactSeries/{id} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        hasActiveAgreementFor(familyId);
+      allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow delete: if false;
+    }
+    match /families/{familyId}/assistedContactSeries/{seriesId}/occurrences/{id} {
+      allow read: if isSuperadmin() ||
+        (isStaff() && sameOrg(get(/databases/$(database)/documents/families/$(familyId)/assistedContactSeries/$(seriesId)).data.organizationId));
+      allow create, update: if isStaff() &&
+        sameOrg(get(/databases/$(database)/documents/families/$(familyId)/assistedContactSeries/$(seriesId)).data.organizationId);
+      allow delete: if false;
+    }
+    match /families/{familyId}/childHandovers/{id} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        hasActiveAgreementFor(familyId);
+      allow update, delete: if false;
+    }
+
+    // ---- families/{familyId}/agreements/{agreementId}/ippd — §B.4
+
+    match /families/{familyId}/agreements/{agreementId}/ippd/{id} {
+      allow read: if isSuperadmin() || sameOrg(agreementId);
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == agreementId &&
+        hasActiveAgreementFor(familyId);
+      allow update: if isSuperadmin() || sameOrg(agreementId);
+      allow delete: if false;
+    }
+
+    // ---- organizations/{orgId} podkolekce — SPVPP/inspekce, §4.4.C/§B.6
+
+    match /organizations/{orgId}/spvpp/{year} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create, update: if isStaff() && sameOrg(orgId);
+      allow delete: if false;
+    }
+    match /organizations/{orgId}/spvpp/{year}/expenses/{id} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isStaff() && sameOrg(orgId);
+      allow update, delete: if false; // append-only
+    }
+    match /organizations/{orgId}/inspections/{id} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isStaff() && sameOrg(orgId);
+      allow update: if isSuperadmin() || sameOrg(orgId); // nápravná opatření se doplňují
+      allow delete: if false;
+    }
+
+    // ---- fosterProspects/{id} — TOP-LEVEL, obyčejné Firestore ID, §B.7
+
+    match /fosterProspects/{id} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() && request.resource.data.organizationId == userDoc().organizationId;
+      allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow delete: if false;
+    }
+    match /fosterProspects/{prospectId}/notes/{id} {
+      allow read: if isSuperadmin() ||
+        (isStaff() && sameOrg(get(/databases/$(database)/documents/fosterProspects/$(prospectId)).data.organizationId));
+      allow create: if isStaff() &&
+        sameOrg(get(/databases/$(database)/documents/fosterProspects/$(prospectId)).data.organizationId);
+      allow update, delete: if false;
+    }
+
+    // ---- external_participants/{id} — TOP-LEVEL, §5.1 základ (jen CRUD;
+    // plný 3-krokový grant engine je M8, samostatný modul)
+
+    match /external_participants/{id} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() && request.resource.data.organizationId == userDoc().organizationId;
+      allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow delete: if false;
     }
 
     // ---- Vše ostatní: default deny, dokud modul nepřidá vlastní match ---

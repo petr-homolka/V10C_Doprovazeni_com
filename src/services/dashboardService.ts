@@ -3,6 +3,10 @@ import { db } from '@/lib/firebase'
 import type { AgreementDoc } from '@/types/agreement'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
+import { listIppdsNeedingAttention } from '@/services/ippdService'
+import { listInspections, findOverdueCorrectiveActions } from '@/services/inspectionService'
+import { listFosterProspects, suggestDormantProspects } from '@/services/fosterProspectService'
+import { findForgottenOccurrencesForOrg } from '@/services/assistedContactService'
 
 /**
  * "Dnes" (§1/§4/§14) — M3.4 nahrazuje ukázková data v TodaySections
@@ -174,4 +178,65 @@ export async function listFamiliesAwaitingVisit(organizationId: string): Promise
   })
 
   return withNames
+}
+
+/**
+ * §B.8 "Provozní upozornění" — 4 nová hlídání navíc k "Čeká na vás":
+ * IPPD vyhodnocení, nápravná opatření z inspekcí, uspávající se zájemci
+ * (§B.7), zapomenutá zaznamenání asistovaného kontaktu (§B.10.2). Každé
+ * hlídání je JEDNODUCHÝ text řádek (bez proklikávání do detailu) — plný
+ * navigační kontext (odkaz na konkrétní Spis/pěstouna) by vyžadoval další
+ * dotazy jen kvůli deep-linku, mimo rozsah týhle lehké "dnes" obrazovky.
+ */
+export interface OperationalAlert {
+  kind: 'ippd' | 'inspection' | 'prospect' | 'assistedContact'
+  text: string
+  overdue: boolean
+}
+
+export async function listOperationalAlerts(organizationId: string): Promise<OperationalAlert[]> {
+  const [ippds, inspections, prospects, forgottenOccurrences] = await Promise.all([
+    listIppdsNeedingAttention(organizationId),
+    listInspections(organizationId),
+    listFosterProspects(organizationId),
+    findForgottenOccurrencesForOrg(organizationId),
+  ])
+
+  const alerts: OperationalAlert[] = []
+
+  for (const { docId, overdue } of ippds) {
+    alerts.push({
+      kind: 'ippd',
+      text: overdue
+        ? `IPPD ${docId.slice(0, 6)} má po termínu vyhodnocení.`
+        : `IPPD ${docId.slice(0, 6)} se blíží termínu vyhodnocení.`,
+      overdue,
+    })
+  }
+
+  for (const { docId, criterionCode, overdue } of findOverdueCorrectiveActions(inspections)) {
+    alerts.push({
+      kind: 'inspection',
+      text: `Nápravné opatření ${criterionCode} (inspekce ${docId.slice(0, 6)}) ${overdue ? 'je po termínu' : 'se blíží termínu'}.`,
+      overdue,
+    })
+  }
+
+  for (const { prospect } of suggestDormantProspects(prospects)) {
+    alerts.push({
+      kind: 'prospect',
+      text: `Zájemce ${prospect.name}: bez kontaktu 60+ dní, zvažte "uspáno".`,
+      overdue: false,
+    })
+  }
+
+  for (const { docId } of forgottenOccurrences) {
+    alerts.push({
+      kind: 'assistedContact',
+      text: `Asistovaný kontakt (${docId.slice(0, 6)}) proběhl, ale záznam chybí.`,
+      overdue: true,
+    })
+  }
+
+  return alerts
 }

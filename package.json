@@ -13,7 +13,8 @@
     "emulators": "firebase emulators:start --project demo-doprovazeni",
     "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes --project production",
     "deploy:hosting": "npm run build && firebase deploy --only hosting --project production",
-    "seed:demo": "node scripts/seed-demo-org.mjs"
+    "seed:demo": "node scripts/seed-demo-org.mjs",
+    "seed:large": "node scripts/seed-large.mjs"
   },
   "dependencies": {
     "@fontsource/geist-sans": "^5.2.5",

@@ -28,4 +28,8 @@ export interface ChildDoc {
   createdByImportJobRef?: string
   /** Viz stejnojmenné pole na FamilyDoc — Cloud Storage avatar URL (M3). */
   avatarUrl?: string | null
+  /** M7 §4.4.B — respit je NEZÁVISLÝ na počtu pěstounů rodiny, žije PER
+   * DÍTĚ, ne na rodině/pěstounovi. Klíč = kalendářní rok (string, ne
+   * rolující 12 měsíců), hodnota = počet vykázaných dnů toho roku. */
+  respitDaysUsed?: Record<string, number>
 }

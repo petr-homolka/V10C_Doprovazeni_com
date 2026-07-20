@@ -23,6 +23,7 @@ import {
   type AgreementDoc,
   type CareType,
 } from '@/types/agreement'
+import { resetEducationWindowForNewAgreement } from '@/services/courseService'
 
 /**
  * Barrel service (ZADANI §11 bod 3) pro Dohodu — M2. Dohoda má
@@ -103,6 +104,20 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
   await Promise.all(
     fosterPersonRefs.map((fosterId) =>
       updateDoc(doc(db, 'fosterPersons', fosterId), { orgAccessList: arrayUnion(organizationId) }),
+    ),
+  )
+
+  // 2b) §47a odst. 3 ZSPOD: nová Dohoda resetuje vzdělávací okno KAŽDÉHO
+  // pěstouna rodiny (přebytek hodin se "bankuje" do nového okna) — viz
+  // courseService.resetEducationWindowForNewAgreement komentář.
+  await Promise.all(
+    fosterPersonRefs.map((fosterId) =>
+      resetEducationWindowForNewAgreement(
+        fosterId,
+        `families/${familyDocId}/agreements/${organizationId}`,
+        careType,
+        data.validFrom,
+      ),
     ),
   )
 

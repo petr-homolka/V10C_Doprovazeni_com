@@ -25,6 +25,8 @@ const BackupSettingsPage = lazy(() => import('@/routes/settings/BackupSettingsPa
 const MojeLoginPage = lazy(() => import('@/routes/moje/MojeLoginPage'))
 const MojeDashboardPage = lazy(() => import('@/routes/moje/MojeDashboardPage'))
 const PlatformSettingsPage = lazy(() => import('@/routes/PlatformSettingsPage'))
+const InspectionsPage = lazy(() => import('@/routes/InspectionsPage'))
+const FosterProspectsPage = lazy(() => import('@/routes/FosterProspectsPage'))
 
 function RouteFallback() {
   return (
@@ -61,6 +63,8 @@ export default function App() {
               <Route path="/nastaveni/import" element={<ImportSettingsPage />} />
               <Route path="/nastaveni/zalohy" element={<BackupSettingsPage />} />
               <Route path="/platforma" element={<PlatformSettingsPage />} />
+              <Route path="/kvalita" element={<InspectionsPage />} />
+              <Route path="/zajemci" element={<FosterProspectsPage />} />
             </Route>
           </Routes>
         </Suspense>

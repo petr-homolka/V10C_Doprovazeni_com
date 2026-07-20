@@ -5,6 +5,128 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## M6+M7 hotové — NOVE-ZADANI-M6-AZ-KONEC.md (2026-07-20)
+
+Po retrofitu Petr poslal `NOVE-ZADANI-M6-AZ-KONEC.md` (722 řádků) jako
+JEDINÝ zdroj pravdy pro M6 dál — starý `ZADANI-PRO-NOVEHO-PROGRAMATORA.md`
+přejmenován na `old__ZADANI-PRO-NOVEHO-PROGRAMATORA (2).md` a platí jen pro
+M0-M5. Zadání: "udělej dohromady M6 a M7, pak vytvoř rozsáhlý seed data...
+tvoje testy až po dokončení programování... pokud narazíš na něco co ti
+nebude jasné, vymysli to" — celá dávka (backend + UI + seed + verify +
+deploy) proběhla v jednom průchodu bez mezipauzy na schválení.
+
+**M6 (§A.1/§A.2) — report pro OSPOD:** `ospodReportService.ts` — report
+NENÍ zvláštní entita, jen vygenerovaný `document` (M5 stroj beze změny) s
+markdownem sestaveným z `timelineService.listTimelineEntriesForPeriod`
+(nový, period-bounded dotaz, VŽDY vyřazuje `sharingLevel:'private'`, ne jen
+cizí jako `listTimelineEntries`). UI: `OspodReportSection.tsx` na
+FamilyDetailPage, tlačítko "Vyplnit report" → formulář (období, název) →
+naviguje rovnou na editor dokumentu.
+
+**M7 satelitní moduly (§B.1-B.10) — typy/služby/rules/indexy pro:**
+rate/policy kaskáda (`legislativeParameterService.ts`, obecný
+`cascadeResolution.ts` znovupoužitý pro obě), plán vzdělávání
+(`educationPlanService.ts`), kurzy/dávky/přihlášky
+(`courseService.ts`), IPPD (`ippdService.ts`), respit + oprava směru
+platby u Pobytu (`respitEventService.ts`, RODINA platí stravu/ubytování,
+organizace jen doplácí nad §5f strop), naplánované aktivity + podpůrné
+výdaje (`scheduledActivityService.ts`/`supportExpenseService.ts`), SPVPP
+koše (`spvppService.ts`), inspekce kvality (`inspectionService.ts`,
+sebehodnocení odloženo na M12 checklist engine dle vlastní sekvence
+zadání), zájemci o pěstounství (`fosterProspectService.ts`), asistovaný
+kontakt + předání dítěte (`assistedContactService.ts`), minimální
+`externalParticipantService.ts` (plný grant engine je M8).
+
+**Vědomě odloženo (SEAM, ne přehlédnuto):** poskytovatelský portál
+(`/poskytovatel/*`, magic-link bez loginu) — status přechody řídí přímo
+KO v appce; katalog institucí (`institutions/{id}`); checklist engine +
+sebehodnocení standardů (M12); plný externalParticipant grant/permission
+engine (M8); UI pro entitlements/billing (`plan.tier` zůstává bez
+enforcementu, jako celou dobu předtím).
+
+**UI vrstva** (dodatečně, po backendu) — 7 nových sekcí na
+`FamilyDetailPage.tsx` (Report pro OSPOD, Vzdělávání a dávky ×per
+pěstoun, Přihlášky na kurzy ×per pěstoun, Plán vzdělávání ×per pěstoun,
+IPPD ×1, Respit/asistovaný kontakt/předání ×1, Podpůrné aktivity a výdaje
+×per dítě) + 2 nové organizační stránky (`/kvalita`, `/zajemci`) + 4 nová
+dashboard hlídání (`dashboardService.listOperationalAlerts` — IPPD po
+termínu, nápravná opatření inspekcí, uspávající se zájemci, zapomenutá
+asistovaná setkání). Courses/enrollments/education-plan/IPPD workflow UI
+jsou zjednodušené (KO/staff přímo spouští kroky, co v zadání patří
+foster-portálu/magic-linku — ten není postavený, viz seam výš).
+
+**Živé nálezy a opravy (živě ověřeno v prohlížeči, ne jen tsc/build):**
+1. `assistedContactService.listAssistedContactSeries`/`listChildHandovers`
+   PŮVODNĚ dotazovaly bez `where('organizationId', ...)`, i když jejich
+   `firestore.rules` čtou `resource.data.organizationId` přímo — 4. nález
+   stejné "list dotaz musí zrcadlit pravidlo" pasti v týhle kódové bázi
+   (po M3 timeline, M4 timeline, M5 versions). Opraveno přidáním filtru.
+2. `dashboardService.findForgottenOccurrencesForOrg` PŮVODNĚ dělal
+   `collectionGroup(db,'assistedContactSeries')` — bez explicitního
+   indexu (na rozdíl od `agreements`/`documents`, které TAKOVÝ index už
+   měly z dřívějška) spadl na `failed-precondition`. Opraveno přepsáním na
+   stejný trik jako `ippdService.listIppdsNeedingAttention` (fanout přes
+   existující indexovaný `agreements` collectionGroup + přímé, ne-group
+   dotazy per rodina) — žádný nový index nakonec nebyl potřeba.
+3. **Stale-closure bug** v `FamilyCareEventsSection.tsx` (`RespitSubsection`)
+   — `reloadStats()` čte `children` prop uvnitř `useEffect` závislého jen
+   na `[familyDocId]`; `familyDocId` je dostupné z FamilyDetailPage DŘÍV
+   než `children` (samostatný state update přes `await` hranici, stejný
+   jev jako u `recordablePeople`/Giant Timeru), takže efekt jednou proběhl
+   s prázdným polem a nikdy znovu — "0 dní čerpáno" i pro dítě se
+   seedovaným respitem. Opraveno přidáním `children` do pole závislostí.
+   **Objeveno jen díky živému testu na seed datech s reálným dítětem** —
+   tsc/lint/build/vitest tohle nezachytí, žádný z nich nespouští komponentu.
+
+**Seed data** (`scripts/seed-large.mjs`, `npm run seed:large`) — REST API +
+`gcloud auth print-access-token` (stejná technika jako `seed-demo-org.mjs`,
+žádné firebase-admin). 3 organizace (`org-cechy`/`org-morava`/`org-slezsko`,
+orgCode alokován ze SKUTEČNÉHO `systemCounters/orgCode`), každá 1 ředitel/
+ředitelka (org_admin) + 5 klíčových osob (VŠECHNY reálné Firebase Auth účty,
+heslo `heslo123`), rozložení Dohod na KO záměrně [15,16,17,20,24] apod. —
+vždy aspoň 2 KO nad platformní výchozí práh 19. Celkem 269 rodin, ~430
+pěstounů, ~390 dětí (0-3 na rodinu, vážené rozdělení), `careType`/
+`lastVisitAt` (krize/blíží se lhůta/v klidu/nikdy) náhodně rozmanité pro
+smysluplné testování dashboardu. Jedna "vzorová" rodina na organizaci
+navíc dostala PO JEDNOM příkladu z každého M6/M7 modulu (IPPD, kurz,
+plán vzdělávání, respit, aktivita, výdaj, asistovaný kontakt, předání,
+inspekce, zájemce) — živě ověřeno přihlášením jako `hana.bartosova@
+cechy-doprovazeni.cz` (heslo `heslo123`): kapacitní varování "2 klíčových
+osob má překročenou kapacitu (20/19, 24/19)" i "Provozní upozornění"
+(nápravné opatření + uspávající se zájemce) se objevily přesně dle
+seedovaných dat.
+
+**Nasazeno:** `firestore.rules` + `firestore.indexes.json` (jen JEDEN
+nový composite index, `fosterProspects` organizationId+createdAt) i
+Hosting (`https://v10c-doprovazeni-com.web.app`) — `npm run deploy:rules`
++ `npm run deploy:hosting`, oba zelené.
+
+**Ověřeno:** `npx tsc -b --force` (0 chyb), `npm run lint` (0 chyb, jen 4
+staré/kosmetické warningy — `no-children-prop` na 3 nových sekcích, co
+mají prop doslova jmenovaný `children`, a 1 předexistující
+`exhaustive-deps` na `DocumentDetailPage.tsx`), `npm run build`, `npm run
+test -- --run` (7/7). **`npm run test:rules` NELZE spustit na tomhle
+stroji** (JDK < 21, stejný předexistující blokér jako M0 — Firestore
+emulátor vyžaduje Java 21+, nikdy se nepodařilo rozchodit na tomhle
+stroji přes M0-M7). Rules review proto proběhl jen manuální (systematická
+kontrola KAŽDÉHO nového list dotazu proti odpovídajícímu pravidlu) + živé
+ověření v prohlížeči proti produkci — ne automatizovaná sada.
+
+### TODO / otevřené seamy (M6+M7)
+
+- UI pro courseEnrollment pokročilé podtoky (`travelReimbursement`,
+  `multiDayAccommodation`, `isFosterReimbursement`) je jen read-only
+  poznámka, žádný editor — data model existuje, formulář ne.
+- Historie respitEvents (tabulka minulých záznamů) není na FamilyDetailPage
+  postavená, jen aktuální součet dní za rok.
+- `legislativeParameters` admin UI (superadmin nastavuje sazby/politiky)
+  není postavené — kaskáda funguje, ale jen s `DEFAULT_RATE_VALUES`
+  (většina jsou ROZUMNÉ ODHADY, ne ověřené právní částky, viz komentář v
+  `types/legislativeParameter.ts`) dokud někdo neuloží první override.
+- `respitEventService`/`assistedContactService`/`scheduledActivityService`
+  nemají žádnou vlastní rules-unit-test sadu (stejný stav jako zbytek M6+M7
+  — blokováno JDK, viz výš).
+
 ## Retrofit na M0–M5 hotový — DOPLNENI_ZADANI-DO-M5.md (2026-07-20)
 
 Petr po M5 poslal `nove zadani/DOPLNENI_ZADANI-DO-M5.md` — cílený seznam
@@ -1663,16 +1785,19 @@ dokud nepadne potvrzení.
 - Žádný skutečný Firebase/GCP projekt zatím neexistuje — `.env.local` si
   každý vývojář založí sám z `.env.example`, produkční nasazení řeší M11+.
 
-### Jak pokračovat (M1+M2 hotové, viz sekce nahoře souboru → M1.5/M3)
+### Jak pokračovat (M0–M7 hotové, viz sekce "M6+M7 hotové" úplně nahoře souboru)
 
-M1 a M2 jsou hotové — detaily, seamy a co zůstává neověřené jsou v
-sekcích "Modul M1 hotový"/"Modul M2 hotový" úplně nahoře souboru, čti tu,
-ne tohle staré shrnutí. Další v pořadí dle §11.1 tabulky: **M1.5
-(Import/Export/Záloha)**, nebo rovnou **M3 (Časová osa a hlasový
-zápisník)** — M3 přímo naváže na `families`/M2 (skutečné `timeline`
-záznamy + konečně zapojí `historyDigest` generování, které M2 nechalo
-jen jako pravidla). Než začneš M3, přečti si `ZADANI §7` (hlasový
-zápisník) a `§4.4.A` (vzdělávání pěstounů, dvojí evidence) znovu — ne
-celý dokument. Pokud se ještě NEPODAŘILO rozchodit lokální Firestore
-emulátor, zkus napřed `hash -r` v bashi (viz "Modul M2 hotový" — reálný
-nález, mohlo to celou dobu tiše maskovat skutečnou chybovou hlášku).
+M0 až M7 (vč. retrofitu DOPLNENI_ZADANI-DO-M5.md) jsou hotové — detaily,
+seamy a co zůstává neověřené jsou v sekci "M6+M7 hotové" úplně nahoře
+souboru, čti tu, ne tohle staré shrnutí (zbytek souboru pod ním je
+historický log jednotlivých modulů, užitečný pro kontext KDYŽ potřebuješ
+vědět PROČ něco vypadá, jak vypadá). Řiď se `NOVE-ZADANI-M6-AZ-KONEC.md`
+(NE starým `old__ZADANI-PRO-NOVEHO-PROGRAMATORA (2).md`) pro cokoli od
+M8 dál. Další v pořadí dle jeho vlastní sekvence: **M8 (externí
+spolupracovníci — plný grant/permission engine + §5.1 povinná rules test
+sada)** — `externalParticipantService.ts` už má MINIMÁLNÍ CRUD (§5.1
+základ), M8 na to naváže plným `requestGrant→approveGrant→activateGrant`
+tokem a `externalRoleTemplates`. Firestore emulátor se na tomhle stroji
+STÁLE nepodařilo rozchodit (JDK < 21, blokér od M0) — než začneš psát
+rules testy pro M8, zkus napřed jiný stroj / novější JDK, jinak skončíš
+jako M6+M7: manuální review + živé ověření místo automatizované sady.
