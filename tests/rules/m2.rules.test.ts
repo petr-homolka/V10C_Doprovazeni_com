@@ -197,12 +197,12 @@ beforeEach(async () => {
     // would test the wrong direction entirely.
     await setDoc(doc(db, 'families', FAMILY, 'documents', 'doc-draft'), {
       createdByOrgId: DO2,
-      status: 'koncept',
+      status: 'draft', // M5: FamilyDocumentStatus, viz types/familyDocument.ts
       title: 'Zpráva pro OSPOD (rozpracovaná)',
     })
     await setDoc(doc(db, 'families', FAMILY, 'documents', 'doc-sent'), {
       createdByOrgId: DO2,
-      status: 'odeslano_ospod',
+      status: 'sent', // M5: 'odeslano_ospod' přejmenováno na 'sent' + sentTo:'ospod'
       title: 'Zpráva pro OSPOD',
     })
     await setDoc(doc(db, 'families', FAMILY, 'historyDigest', 'digest-doc-sent'), {
@@ -223,7 +223,7 @@ describe('§4.5 povinná matice — plný timeline záznam', () => {
     await assertSucceeds(getDoc(doc(asDo3.firestore(), 'families', FAMILY, 'timeline', 'entry-do3')))
   })
 
-  it('1b. DO2 čte VLASTNÍ dokument, i ve stavu koncept (draft) → assertSucceeds', async () => {
+  it('1b. DO2 čte VLASTNÍ dokument, i ve stavu draft → assertSucceeds', async () => {
     const asDo2 = testEnv.authenticatedContext('staff-do2')
     await assertSucceeds(getDoc(doc(asDo2.firestore(), 'families', FAMILY, 'documents', 'doc-draft')))
   })
@@ -290,19 +290,19 @@ describe('§4.5 povinná matice — poznámka/hlasový přepis nikdy nemá diges
   })
 })
 
-describe('§4.5 povinná matice — dokument: koncept vs. odeslano_ospod', () => {
-  it('7a. dokument ve stavu koncept nemá digest (viz test 6 pro vysvětlení withSecurityRulesDisabled)', async () => {
+describe('§4.5 povinná matice — dokument: draft vs. sent (OSPOD)', () => {
+  it('7a. dokument ve stavu draft nemá digest (viz test 6 pro vysvětlení withSecurityRulesDisabled)', async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const snap = await getDoc(
         doc(ctx.firestore(), 'families', FAMILY, 'historyDigest', 'digest-doc-draft'),
       )
       if (snap.exists()) {
-        throw new Error('koncept dokument nemělo mít digest, ale existuje')
+        throw new Error('draft dokument nemělo mít digest, ale existuje')
       }
     })
   })
 
-  it('7b. po přechodu do odeslano_ospod digest existuje a je čitelný cizí organizací s POZDĚJŠÍ Dohodou (DO3 čte DO2, jehož Dohoda skončila dřív)', async () => {
+  it('7b. po přechodu do sent (OSPOD) digest existuje a je čitelný cizí organizací s POZDĚJŠÍ Dohodou (DO3 čte DO2, jehož Dohoda skončila dřív)', async () => {
     const asDo3 = testEnv.authenticatedContext('staff-do3')
     await assertSucceeds(
       getDoc(doc(asDo3.firestore(), 'families', FAMILY, 'historyDigest', 'digest-doc-sent')),

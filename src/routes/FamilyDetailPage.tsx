@@ -22,11 +22,14 @@ import {
 } from '@/services/familyService'
 import { checkKoCapacity, createAgreement, endAgreement, getActiveAgreement } from '@/services/agreementService'
 import { sendFosterInvitation } from '@/services/fosterInvitationService'
+import { createDocument, listFamilyDocuments } from '@/services/documentService'
+import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
 import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
+import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
 import { Baby, Clock, FileText, Handshake, Home, Mic, StickyNote, UserRound } from 'lucide-react'
 
@@ -107,6 +110,12 @@ export default function FamilyDetailPage() {
   const [invitingFosterId, setInvitingFosterId] = useState<string | null>(null)
   const [inviteMessage, setInviteMessage] = useState<{ fpId: string; text: string } | null>(null)
 
+  const [documents, setDocuments] = useState<Array<{ docId: string; document: FamilyDocumentDoc }>>([])
+  const [showDocumentForm, setShowDocumentForm] = useState(false)
+  const [docTitle, setDocTitle] = useState('')
+  const [docBody, setDocBody] = useState('')
+  const [docSubjectKeys, setDocSubjectKeys] = useState<Set<string>>(new Set())
+
   async function reload() {
     if (!familyUid || !organizationId) return
     setError(null)
@@ -118,12 +127,13 @@ export default function FamilyDetailPage() {
       }
       setDocId(found.docId)
       setFamily(found.family)
-      const [fosters, kids, activeAgreement, staff, entries] = await Promise.all([
+      const [fosters, kids, activeAgreement, staff, entries, docs] = await Promise.all([
         listFosterPersonsByRefs(found.family.fosterPersonRefs),
         listChildrenForFamily(found.docId, organizationId),
         getActiveAgreement(found.docId, organizationId),
         listStaff(organizationId),
         listTimelineEntries(found.docId, organizationId, userDoc?.uid ?? ''),
+        listFamilyDocuments(found.docId, organizationId),
       ])
       setFosterPersons(fosters)
       setChildren(kids)
@@ -131,6 +141,7 @@ export default function FamilyDetailPage() {
       setStaffList(staff)
       setKoOptions(staff.filter((s) => s.role === 'klicova_osoba'))
       setTimelineEntries(entries)
+      setDocuments(docs)
       // `docId` je nastavené (setDocId výš) v samostatném, DŘÍVĚJŠÍM render
       // batchi než `fosterPersons`/`children` tady (React nebatchuje napříč
       // `await` hranicí) — efekt otevírající recorder po návratu z Giant
@@ -360,6 +371,50 @@ export default function FamilyDetailPage() {
       await reload()
     } catch {
       setError('Přidání dítěte se nezdařilo.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function toggleDocSubject(key: string) {
+    setDocSubjectKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  /** §6 A1 bod 1: KO založí dokument (`draft`). "Zařadit k" je VOLITELNÉ
+   * (na rozdíl od hlasového zápisníku) — ne každý dokument se týká
+   * konkrétní osoby (§6 A2 report ovšem typicky ano). */
+  async function handleCreateDocument(e: FormEvent) {
+    e.preventDefault()
+    if (!docId || !organizationId || !userDoc) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      const org = await getOrganization(organizationId)
+      if (!org) throw new Error('org not found')
+      const subjectRefs: SubjectRef[] = recordablePeople
+        .filter((p) => docSubjectKeys.has(`${p.kind}:${p.id}`))
+        .map(({ kind, id }) => ({ kind, id }))
+      const { docId: newDocId } = await createDocument({
+        familyDocId: docId,
+        organizationId,
+        orgCode: org.orgCode,
+        createdByUid: userDoc.uid,
+        title: docTitle,
+        body: docBody,
+        subjectRefs,
+      })
+      setDocTitle('')
+      setDocBody('')
+      setDocSubjectKeys(new Set())
+      setShowDocumentForm(false)
+      navigate(`/rodiny/${familyUid}/dokumenty/${newDocId}`)
+    } catch {
+      setError('Založení dokumentu se nezdařilo.')
     } finally {
       setSubmitting(false)
     }
@@ -674,6 +729,95 @@ export default function FamilyDetailPage() {
                   </button>
                 )
               })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-lg font-normal leading-tight text-text-primary">Dokumenty</h2>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowDocumentForm((v) => !v)}
+            disabled={!agreement || agreement.status !== 'active'}
+            title={!agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined}
+          >
+            {showDocumentForm ? 'Zrušit' : '+ Nový dokument'}
+          </Button>
+        </div>
+
+        {showDocumentForm && (
+          <form
+            onSubmit={handleCreateDocument}
+            className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+          >
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
+              <Input required value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah (markdown)</span>
+              <textarea
+                value={docBody}
+                onChange={(e) => setDocBody(e.target.value)}
+                rows={8}
+                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
+              />
+            </label>
+            {recordablePeople.length > 0 && (
+              <div>
+                <p className="text-xs font-medium leading-none text-text-secondary">Zařadit k (volitelné)</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {recordablePeople.map((p) => {
+                    const key = `${p.kind}:${p.id}`
+                    const checked = docSubjectKeys.has(key)
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleDocSubject(key)}
+                        className={
+                          checked
+                            ? 'inline-flex h-7 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground'
+                            : 'inline-flex h-7 items-center rounded-full border border-border-strong px-3 text-xs font-medium text-text-secondary hover:bg-overlay-active'
+                        }
+                      >
+                        {p.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            <Button type="submit" disabled={submitting} className="w-fit">
+              {submitting ? 'Zakládám…' : 'Založit koncept'}
+            </Button>
+          </form>
+        )}
+
+        <div className="mt-4">
+          {documents.length === 0 ? (
+            <EmptyState icon={FileText} text="Zatím žádné dokumenty." />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {documents.map(({ docId: fdId, document: fd }) => (
+                <button
+                  key={fdId}
+                  type="button"
+                  onClick={() => navigate(`/rodiny/${familyUid}/dokumenty/${fdId}`)}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-text-primary">{fd.title}</p>
+                    <p className="mt-0.5 text-xs text-text-tertiary">
+                      {fd.uid} · v{fd.currentVersion}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs text-text-secondary">{DOCUMENT_STATUS_LABELS[fd.status]}</span>
+                </button>
+              ))}
             </div>
           )}
         </div>

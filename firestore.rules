@@ -204,7 +204,13 @@ service cloud.firestore {
     // ---- counters/{orgId}_{typ} — §4.3 pozn. 2 (UID sekvenční čítač) ----
 
     match /counters/{counterId} {
-      allow read: if sameOrg(resource.data.organizationId);
+      // `resource == null` (čítač ještě nikdy nebyl založen — první alokace
+      // UID daného entity typu v týhle organizaci, viz M5 nový `document`
+      // typ) MUSÍ projít stejně jako ve `write` pravidlu níž, jinak
+      // `resource.data.organizationId` spadne na chybě vyhodnocení pravidla
+      // (ne na čisté "not found") a transakce v allocateUid() selže
+      // s permission-denied — živě odhaleno při prvním vytvoření dokumentu.
+      allow read: if resource == null || sameOrg(resource.data.organizationId);
       // Zápis jen přes transakci ze service vrstvy (allocateUid) — libovolný
       // isStaff v dané organizaci smí spustit transakci, samotné zvýšení
       // hodnoty i tak zůstává atomické na úrovni Firestore transakce.
@@ -494,20 +500,87 @@ service cloud.firestore {
       allow update, delete: if false; // append-only, §5
     }
 
-    // ---- families/{familyId}/documents/{docId} — ZADANI §6 A1/§4.5, M2 ---
+    // ---- families/{familyId}/documents/{docId} — ZADANI §6 A1, M5 --------
     //
-    // Stejný princip jako `timeline` — plný dokument čte jen tvůrce,
-    // status řídí JEN kdy vznikne `historyDigest` (M5 job), ne kdo smí
-    // číst tenhle plný záznam. M2 staví jen pravidla + typ
-    // (`FamilyDocumentDoc`) — celý schvalovací automat přichází s M5.
+    // Plný automat (M2 měla jen pravidla + zjednodušený český placeholder
+    // typ pro §4.5 fixtures, viz FamilyDocumentDoc komentář pro celý
+    // stavový diagram + interpretační rozhodnutí ohledně
+    // `closed_ko_unapproved`). Tři oddělené `update` cesty podle role —
+    // KAŽDÁ smí zapsat JEN status hodnoty vyhrazené jejímu kroku, nikdy
+    // status cizího kroku (pěstoun nikdy `closed`, staff nikdy
+    // `commented`/`approved_foster`, vedení jen z `mgmt_review`). Přesná
+    // posloupnost/odvození `closed_*_unapproved` z `fosterApprovedAt`/
+    // `assignedKoApprovedAt` hlídá `documentService.ts`, ne rules — rules
+    // tady hlídají KDO smí psát KTEROU cílovou hodnotu (bezpečnostní
+    // hranice), ne přesnou obchodní logiku přechodu (stejný dělicí vzor
+    // jako `organizations/{orgId}/importJobs` update výš).
+    //
+    // Čtení pěstounem (§6 A1 "pěstoun jen krok 4 a jen u viditelných
+    // dokumentů"): NIKDY `draft` (ještě není poslaný), cokoli pozdějšího
+    // ANO — jednou viditelný zápis zůstává viditelný i po uzavření
+    // (stejná logika jako u ostatních §4.5 vzorů, ne mizí po schválení).
 
     match /{path=**}/documents/{docId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId) ||
+        (
+          isFoster() && resource.data.familyId == userDoc().fosterFamilyId &&
+          resource.data.status != 'draft'
+        );
+
+      allow create: if isStaff() &&
+        request.resource.data.createdByOrgId == userDoc().organizationId &&
+        request.resource.data.status == 'draft' &&
+        hasActiveAgreementFor(path[1]);
+
+      allow update: if isSuperadmin() ||
+        (
+          // KO/staff — kroky 1–6 a 8 (editace, poslání pěstounovi, Konečný,
+          // poslání vedení, odeslání na úřad/založení do spisu).
+          isStaff() && sameOrg(resource.data.createdByOrgId) &&
+          request.resource.data.createdByOrgId == resource.data.createdByOrgId &&
+          request.resource.data.familyId == resource.data.familyId &&
+          request.resource.data.status in
+            ['draft', 'foster_review', 'final', 'mgmt_review', 'sent', 'filed']
+        ) ||
+        (
+          // Pěstoun — VÝHRADNĚ krok 4, VÝHRADNĚ z `foster_review`, VÝHRADNĚ
+          // vlastní rodina, NIKDY nesahá na obsah (`body`/`title`).
+          isFoster() && resource.data.familyId == userDoc().fosterFamilyId &&
+          resource.data.status == 'foster_review' &&
+          request.resource.data.status in ['commented', 'approved_foster'] &&
+          request.resource.data.createdByOrgId == resource.data.createdByOrgId &&
+          request.resource.data.familyId == resource.data.familyId &&
+          request.resource.data.body == resource.data.body &&
+          request.resource.data.title == resource.data.title
+        ) ||
+        (
+          // Vedení — VÝHRADNĚ krok 7, VÝHRADNĚ z `mgmt_review`. §5.7
+          // "vedení READ-ONLY" má tady VĚDOMOU výjimku (schvalování
+          // dokumentů JE jejich práce), stejně jako u prodlužování
+          // legislativních lhůt jinde v projektu.
+          isStaff() && sameOrg(resource.data.createdByOrgId) &&
+          (userDoc().role == 'org_admin' || isReadOnlyManager()) &&
+          resource.data.status == 'mgmt_review' &&
+          request.resource.data.status in
+            ['closed', 'closed_foster_unapproved', 'closed_ko_unapproved', 'closed_both_unapproved', 'draft']
+        );
+
+      allow delete: if false;
+    }
+
+    // `versions` jako SAMOSTATNÝ (ne vnořený) match — vnořené `match
+    // /versions/{versionId}` uvnitř `{path=**}/documents/{docId}` bloku
+    // výš se živě ukázalo jako nefunkční (`hasActiveAgreementFor(path[1])`
+    // uvnitř dvojitě vnořeného matche vždy spadlo na permission-denied,
+    // i když identická podmínka na `documents/{docId}` samotném prošla) —
+    // ploché zápis o úroveň výš, stejný `{path=**}` vzor, ale BEZ vnoření,
+    // věc funguje spolehlivě.
+    match /{path=**}/documents/{docId}/versions/{versionId} {
       allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
       allow create: if isStaff() &&
         request.resource.data.createdByOrgId == userDoc().organizationId &&
         hasActiveAgreementFor(path[1]);
-      allow update: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
-      allow delete: if false;
+      allow update, delete: if false; // append-only, §5
     }
 
     // ---- families/{familyId}/historyDigest/{id} — "nutné minimum", §4.5, M2

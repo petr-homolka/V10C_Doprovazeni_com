@@ -5,6 +5,67 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## M5 hotový — Dokumenty, schvalovací workflow §6 A1 (2026-07-20)
+
+Plný 12-stavový automat: `draft → foster_review → (commented|approved_foster)
+→ final → mgmt_review → closed*|sent|filed`. Typy/rules/indexy/service
+vrstva + čtyři UI plochy: sekce na `FamilyDetailPage`, `DocumentDetailPage`
+(editor + všechny KO/vedení akce podle stavu), globální `/dokumenty`
+(napříč rodinami organizace, dřív mrtvý odkaz v Sidebaru), a `/moje`
+schvalovací pohled pro pěstouna (Schválit/Okomentovat).
+
+**Dvě interpretační rozhodnutí** (zadání nedefinuje přesně, řešeno
+odůvodněnou volbou, ne mlčky):
+1. `closed_ko_unapproved` sleduje, jestli krok 5 provedl PŘÍMO přiřazený
+   KO Dohody (`agreement.assignedTo`), ne jen libovolný staff — dva
+   nezávislé příznaky (`fosterApprovedAt`/`assignedKoApprovedAt`), ze
+   kterých `documentService.deriveClosedStatus()` odvodí koncový stav;
+   vedení nevybírá ručně ze 4 tlačítek.
+2. PDF/DOCX export s UID/verzí/hashem/QR (001-IDENTITY_MODEL.md §7) je
+   SEAM — UID/hash/verze/QR se ukazují na obrazovce a v `/d/:uid`
+   ověřovací stránce od prvního uložení, ale generování staženého
+   PDF/DOCX souboru je mimo rozsah týhle dávky (potřebuje novou knihovnu).
+
+**Tři skutečné produkční bugy odhalené a opravené živým testem** (ne
+uhodnuté, viz `feedback_firestore_list_query_and_index_gotchas.md`):
+1. `counters/{orgId}_{typ}` čtecí pravidlo (`sameOrg(resource.data...)`)
+   spadlo na `permission-denied`, když čítač pro daný entity typ v dané
+   organizaci ještě NIKDY neexistoval (`resource == null`) — `document`
+   (typ `95`) byl první entity typ, co tohle živě narazil (ostatní typy
+   měly čítač už dávno založený demo daty). Oprava: `allow read: if
+   resource == null || sameOrg(...)`, stejný vzor jako `write` pravidlo o
+   pár řádků níž.
+2. Vnořený `match /versions/{versionId}` UVNITŘ `match
+   /{path=**}/documents/{docId}` bloku živě selhával na `create` s
+   `permission-denied`, i když identická podmínka
+   (`hasActiveAgreementFor(path[1])`) na rodičovském `documents/{docId}`
+   samotném procházela bez problémů — dvojité vnoření rekurzivního
+   wildcardu `{path=**}` napříč DVĚMA úrovněmi `match` bloků se ukázalo
+   jako nespolehlivé. Oprava: `versions` jako SAMOSTATNÝ (neshnízděný)
+   match blok s plným vzorem `{path=**}/documents/{docId}/versions/
+   {versionId}` — funkčně identické podmínky, jen bez vnoření.
+3. `listDocumentVersions` dotaz neměl `where('createdByOrgId','==',...)`
+   filtr, i když `versions` read pravidlo přesně tohle pole testuje — §5
+   "list dotaz musí zrcadlit pole v pravidle" past, potkaná už potřetí v
+   projektu (M3 timeline, M4 timeline, teď M5 versions). Oprava: přidán
+   `where()` filtr + nový composite index (`createdByOrgId`+`version`,
+   `queryScope: COLLECTION`) — nasazen a doběhl.
+
+**Co bylo živě ověřeno:** založení konceptu (včetně UID/hash), editace,
+odeslání pěstounovi (`foster_review`), zobrazení QR kódu a historie verzí,
+globální `/dokumenty` seznam (bez potřeby dalšího indexu).
+
+**Co NEBYLO živě ověřeno (SEAM, stejná kategorie limitace jako M4):**
+pěstounská strana (Schválit/Okomentovat) a všechny navazující kroky
+(Konečný → vedení → uzavření → odeslání na úřad/spis) — chybí reálný
+pěstounský účet (stejný blokér jako M4 magic link) a pokus posunout stav
+dokumentu přímo přes admin přístup (jen pro účely testu, ne jako trvalá
+změna) zablokoval bezpečnostní klasifikátor session jako rizikovou akci —
+respektováno, ne obcházeno. `/moje` schvalovací UI je napsané podle
+stejného already-verified vzoru (`fosterApproveDocument`/
+`fosterCommentDocument`, rules-gated `isFoster()`), ale skutečné
+kliknutí přes reálný pěstounský účet **Petr sám ještě nevyzkoušel.**
+
 ## Oprava: duplicitní React key v `TableHeaderRow` (2026-07-19)
 
 Flagnutý úkol z konce M4 dořešen hned: `components/ui/table.tsx`

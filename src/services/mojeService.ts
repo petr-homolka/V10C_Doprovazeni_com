@@ -3,6 +3,7 @@ import { db } from '@/lib/firebase'
 import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
 import type { TimelineEntryDoc } from '@/types/timelineEntry'
+import type { FamilyDocumentDoc } from '@/types/familyDocument'
 
 /**
  * Barrel service (ZADANI §11 bod 3) pro pěstounovu appku `/moje` — M4.
@@ -41,4 +42,26 @@ export async function listFosterVisibleTimelineEntries(
   )
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ docId: d.id, entry: d.data() as TimelineEntryDoc }))
+}
+
+/**
+ * M5.5 — stejná past jako u timeline výš: `documents` read pravidlo pro
+ * pěstouna testuje `familyId == fosterFamilyId` A `status != 'draft'`,
+ * dotaz proto musí mít OBĚ podmínky jako skutečné `where()` filtry, jinak
+ * Firestore zamítne celý list dotaz. Bez `orderBy` (řazení podle
+ * `updatedAt` řeší klient) — `!=` kombinovaný s `orderBy` na JINÉM poli by
+ * vyžadoval, aby první `orderBy` bylo na `status`, což tu nedává smysl.
+ */
+export async function listFosterVisibleDocuments(
+  familyDocId: string,
+): Promise<Array<{ docId: string; document: FamilyDocumentDoc }>> {
+  const q = query(
+    collection(db, 'families', familyDocId, 'documents'),
+    where('familyId', '==', familyDocId),
+    where('status', '!=', 'draft'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs
+    .map((d) => ({ docId: d.id, document: d.data() as FamilyDocumentDoc }))
+    .sort((a, b) => b.document.updatedAt.localeCompare(a.document.updatedAt))
 }

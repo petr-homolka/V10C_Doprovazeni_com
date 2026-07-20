@@ -16,6 +16,7 @@ export const ENTITY_TYPE_CODES = {
   educationProvider: '70', // Poskytovatel vzdělávání pěstounů
   childServiceProvider: '80', // Poskytovatel služby dítěti (přejmenováno z "respitní péče")
   agreement: '90', // Dohoda o výkonu pěstounské péče
+  document: '95', // Dokument (schvalovací workflow, §6 A1) — M5, mezera mezi 90/99 dle §4.3 "prostor pro budoucí rozšíření"
   familyFile: '99', // Spis (rodinná složka)
 } as const
 
