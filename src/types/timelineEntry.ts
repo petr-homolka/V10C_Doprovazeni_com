@@ -16,10 +16,11 @@ import type { SharingLevel } from './sharing'
  * `sharingLevel` (§7.4) výchozí `internal`, viz sharing.ts pro sdílený
  * model napříč timeline/chatem/dokumenty.
  *
- * `type: 'visit'` (GPS Giant Timer, §A3) je STRUKTURÁLNĚ připravené tady
- * (`startedAt`/`endedAt`/`durationSeconds`/`location`), ale samotný Giant
- * Timer UI/flow ještě není postavený — tahle dávka práce staví jen
- * `type: 'voice_entry'` cestu (spontánní záznam z avataru), ne návštěvu.
+ * `type: 'visit'` (GPS Giant Timer, §A3) — M3 stavěla postupně: nejdřív jen
+ * `type: 'voice_entry'` (spontánní záznam z avataru), pak `startedAt`/
+ * `endedAt`/`durationSeconds`/`location` skutečně naplnil Giant Timer flow
+ * (VisitTimerPage.tsx + timelineService.createVisitTimelineEntry) — obě
+ * cesty jsou teď plně postavené, ne jen jedna z nich.
  *
  * Editace existujícího zápisu (§7.7 "immutabilita pozastavena, ale audit
  * stopa povinná") NENÍ součástí týhle dávky — `firestore.rules` má pořád

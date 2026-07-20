@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
-import { useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
-import { VoiceRecorderPanel, type RecordablePerson } from '@/components/timeline/VoiceRecorderPanel'
+import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/components/timeline/VoiceRecorderPanel'
+import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { useAuth } from '@/hooks/useAuth'
 import { getOrganization } from '@/services/organizationService'
 import { listStaff } from '@/services/staffService'
 import { uploadEntityAvatar } from '@/services/avatarService'
+import { listTimelineEntries } from '@/services/timelineService'
 import {
   addChildToFamily,
   addFosterPersonToFamily,
@@ -24,10 +26,24 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
 import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
-import type { SubjectRef } from '@/types/timelineEntry'
-import { Baby, FileText, Handshake, Home, UserRound } from 'lucide-react'
+import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
+import { Baby, Clock, FileText, Handshake, Home, Mic, StickyNote, UserRound } from 'lucide-react'
 
 const FOSTER_COLUMNS = '40px 1.2fr 1fr 1.2fr'
+const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
+  note: 'Poznámka',
+  visit: 'Návštěva',
+  voice_entry: 'Hlasový zápis',
+  system: 'Systémová událost',
+  document: 'Dokument',
+}
+const TIMELINE_TYPE_ICONS: Record<TimelineEntryKind, typeof Mic> = {
+  note: StickyNote,
+  visit: Clock,
+  voice_entry: Mic,
+  system: FileText,
+  document: FileText,
+}
 const CHILD_COLUMNS = '40px 1fr'
 const NO_ACTIVE_AGREEMENT_REASON = 'Tahle rodina nemá s vaší organizací aktivní Dohodu — zápis by nešlo uložit.'
 
@@ -45,6 +61,8 @@ export default function FamilyDetailPage() {
   const { familyUid } = useParams<{ familyUid: string }>()
   const { userDoc } = useAuth()
   const organizationId = userDoc?.organizationId
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const [docId, setDocId] = useState<string | null>(null)
   const [family, setFamily] = useState<FamilyDoc | null>(null)
@@ -52,6 +70,9 @@ export default function FamilyDetailPage() {
   const [children, setChildren] = useState<Array<{ docId: string; child: ChildDoc }>>([])
   const [agreement, setAgreement] = useState<AgreementDoc | null>(null)
   const [koOptions, setKoOptions] = useState<UserDoc[]>([])
+  const [staffList, setStaffList] = useState<UserDoc[]>([])
+  const [timelineEntries, setTimelineEntries] = useState<Array<{ docId: string; entry: TimelineEntryDoc }>>([])
+  const [selectedEntry, setSelectedEntry] = useState<{ docId: string; entry: TimelineEntryDoc } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
 
@@ -74,11 +95,13 @@ export default function FamilyDetailPage() {
   const [recorder, setRecorder] = useState<{
     implicitSubjects: SubjectRef[]
     preselectedPeopleKeys: string[]
+    visit?: VisitContext
   } | null>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const familyAvatarInputRef = useRef<HTMLInputElement>(null)
 
   const [submitting, setSubmitting] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
   async function reload() {
     if (!familyUid || !organizationId) return
@@ -91,16 +114,27 @@ export default function FamilyDetailPage() {
       }
       setDocId(found.docId)
       setFamily(found.family)
-      const [fosters, kids, activeAgreement, staff] = await Promise.all([
+      const [fosters, kids, activeAgreement, staff, entries] = await Promise.all([
         listFosterPersonsByRefs(found.family.fosterPersonRefs),
         listChildrenForFamily(found.docId, organizationId),
         getActiveAgreement(found.docId, organizationId),
         listStaff(organizationId),
+        listTimelineEntries(found.docId, organizationId, userDoc?.uid ?? ''),
       ])
       setFosterPersons(fosters)
       setChildren(kids)
       setAgreement(activeAgreement)
+      setStaffList(staff)
       setKoOptions(staff.filter((s) => s.role === 'klicova_osoba'))
+      setTimelineEntries(entries)
+      // `docId` je nastavené (setDocId výš) v samostatném, DŘÍVĚJŠÍM render
+      // batchi než `fosterPersons`/`children` tady (React nebatchuje napříč
+      // `await` hranicí) — efekt otevírající recorder po návratu z Giant
+      // Timeru NESMÍ se spouštět jen na `docId` (viz níž), potřebuje vlastní
+      // příznak potvrzující, že `recordablePeople` je už opravdu hotové,
+      // jinak se "Zařadit k" předvybere jako PRÁZDNÉ (skutečně nalezený bug
+      // při živém ověření M3.2 — návštěva se uložila bez jediné osoby).
+      setLoaded(true)
     } catch {
       setError('Detail rodiny se nepodařilo načíst.')
     }
@@ -118,6 +152,22 @@ export default function FamilyDetailPage() {
     }
     return people
   }, [fosterPersons, children])
+
+  /** §A3 bod 3: Giant Timer (VisitTimerPage) po ukončení návštěvy naviguje
+   * sem se stavem `openVisitRecorder` — otevře se stejný VoiceRecorderPanel
+   * jako z avatarů, jen v `visit` režimu, s implicitně předvybranými VŠEMI
+   * osobami rodiny (návštěva se týká rodiny jako celku, ne jedné osoby). */
+  useEffect(() => {
+    const state = location.state as { openVisitRecorder?: VisitContext } | null
+    if (!state?.openVisitRecorder || !docId || !loaded) return
+    setRecorder({
+      implicitSubjects: [{ kind: 'family', id: docId }],
+      preselectedPeopleKeys: recordablePeople.map((p) => `${p.kind}:${p.id}`),
+      visit: state.openVisitRecorder,
+    })
+    navigate(location.pathname, { replace: true, state: null })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, docId, loaded])
 
   /**
    * §7.3: klik na avatar rodiny předvybere VŠECHNY osoby (pěstouny + děti),
@@ -238,6 +288,26 @@ export default function FamilyDetailPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function resolveAuthorName(uid: string): string {
+    return staffList.find((s) => s.uid === uid)?.displayName ?? 'Neznámý uživatel'
+  }
+
+  /** Chipy v detailu zápisu ukazují jen OSOBY (stejné pravidlo jako "Zařadit
+   * k" ve VoiceRecorderPanel) — rodina/Dohoda jsou implicitní, needitovatelné. */
+  function resolveSubjectLabels(subjectRefs: SubjectRef[]): string[] {
+    const labels: string[] = []
+    for (const ref of subjectRefs) {
+      if (ref.kind === 'fosterPerson') {
+        const fp = fosterPersons.find((f) => f.docId === ref.id)?.fosterPerson
+        if (fp) labels.push(`${fp.firstName} ${fp.lastName}`)
+      } else if (ref.kind === 'child') {
+        const c = children.find((ch) => ch.docId === ref.id)?.child
+        if (c) labels.push(`${c.firstName} ${c.lastName}`)
+      }
+    }
+    return labels
   }
 
   async function handleAddChild(e: FormEvent) {
@@ -516,6 +586,59 @@ export default function FamilyDetailPage() {
         </div>
       </section>
 
+      <section className="mt-8">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-lg font-normal leading-tight text-text-primary">Časová osa</h2>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => navigate(`/rodiny/${familyUid}/navsteva`)}
+            disabled={!agreement || agreement.status !== 'active'}
+            title={!agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined}
+          >
+            + Návštěva
+          </Button>
+        </div>
+
+        <div className="mt-4">
+          {timelineEntries.length === 0 ? (
+            <EmptyState icon={Clock} text="Zatím žádné zápisy v časové ose." />
+          ) : (
+            <div className="flex flex-col gap-2">
+              {timelineEntries.map(({ docId: entryId, entry }) => {
+                const Icon = TIMELINE_TYPE_ICONS[entry.type]
+                const subjectLabels = resolveSubjectLabels(entry.subjectRefs)
+                return (
+                  <button
+                    key={entryId}
+                    type="button"
+                    onClick={() => setSelectedEntry({ docId: entryId, entry })}
+                    className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
+                  >
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
+                      <Icon className="size-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-medium text-text-primary">{TIMELINE_TYPE_LABELS[entry.type]}</p>
+                        <p className="shrink-0 text-xs text-text-tertiary">
+                          {new Date(entry.occurredAt).toLocaleString('cs-CZ')}
+                        </p>
+                      </div>
+                      <p className="mt-0.5 truncate text-sm text-text-secondary">
+                        {resolveAuthorName(entry.createdByUid)}
+                        {subjectLabels.length > 0 && ` · ${subjectLabels.join(', ')}`}
+                      </p>
+                      {entry.body && <p className="mt-1 line-clamp-2 text-sm text-text-secondary">{entry.body}</p>}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
       {recorder && docId && organizationId && userDoc && (
         <VoiceRecorderPanel
           familyDocId={docId}
@@ -524,8 +647,18 @@ export default function FamilyDetailPage() {
           implicitSubjects={recorder.implicitSubjects}
           people={recordablePeople}
           preselectedPeopleKeys={recorder.preselectedPeopleKeys}
+          visit={recorder.visit}
           onClose={() => setRecorder(null)}
           onSaved={reload}
+        />
+      )}
+
+      {selectedEntry && (
+        <TimelineEntryDetail
+          entry={selectedEntry.entry}
+          authorName={resolveAuthorName(selectedEntry.entry.createdByUid)}
+          subjectLabels={resolveSubjectLabels(selectedEntry.entry.subjectRefs)}
+          onClose={() => setSelectedEntry(null)}
         />
       )}
     </AppShell>

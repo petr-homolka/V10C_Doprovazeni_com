@@ -55,4 +55,22 @@ export interface AgreementDoc {
   createdByImportJobRef?: string
   /** Viz FamilyDoc stejnojmenné pole — Cloud Storage avatar URL (M3). */
   avatarUrl?: string | null
+  /**
+   * §A3 bod 4: denormalizace z poslední `timeline` návštěvy (`type:
+   * 'visit'`) TÉTO organizace, nastavuje `createVisitTimelineEntry` v
+   * JEDNOM batchi se zápisem samotným. Základ pro "Čeká na vás" (§A3
+   * bod 5) — M3.4.
+   *
+   * ŽIJE na Dohodě, NE na `FamilyDoc` (kde bydlelo v prvním návrhu M3.4,
+   * živě opraveno 2026-07-19) — `families/{familyId}` čte NAVŽDY celá
+   * `orgAccessList` (i organizace, jejichž Dohoda dávno skončila, §4.5),
+   * takže poslední-návštěva ČASOVÝ ÚDAJ jiné, aktivní organizace by
+   * unikal organizaci, která už s rodinou nemá vůbec nic společného —
+   * přesně to, čemu má segmentovaný `historyDigest` model zabránit pro
+   * VŠECHNA historická fakta. Dohoda (`families/{familyId}/agreements/
+   * {organizationId}`) je čitelná JEN vlastní organizací
+   * (`sameOrg(resource.data.organizationId)`), takže je to tady
+   * strukturálně bezpečné bez jakékoli další rules změny.
+   */
+  lastVisitAt?: string | null
 }

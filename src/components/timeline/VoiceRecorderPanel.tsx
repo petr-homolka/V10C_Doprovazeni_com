@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
-import { createVoiceTimelineEntry } from '@/services/timelineService'
+import { createVisitTimelineEntry, createVoiceTimelineEntry } from '@/services/timelineService'
 import type { SharingLevel } from '@/types/sharing'
 import type { SubjectRef } from '@/types/timelineEntry'
 
@@ -13,8 +13,26 @@ export interface RecordablePerson extends SubjectRef {
   label: string
 }
 
+/** §A3 bod 3: konec Giant Timeru vede PŘÍMO sem — stejný panel, jen jinak
+ * uloží (`createVisitTimelineEntry` místo `createVoiceTimelineEntry`) a
+ * zobrazí délku/GPS návštěvy jako kontext nad zápisem. */
+export interface VisitContext {
+  startedAt: string
+  endedAt: string
+  durationSeconds: number
+  location: { lat: number; lng: number } | null
+}
+
 function subjectKey(ref: SubjectRef): string {
   return `${ref.kind}:${ref.id}`
+}
+
+function formatDuration(seconds: number): string {
+  const min = Math.round(seconds / 60)
+  if (min < 1) return '<1 min'
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return h > 0 ? `${h} h ${m} min` : `${m} min`
 }
 
 /**
@@ -39,6 +57,7 @@ export function VoiceRecorderPanel({
   implicitSubjects,
   people,
   preselectedPeopleKeys,
+  visit,
   onClose,
   onSaved,
 }: {
@@ -48,6 +67,7 @@ export function VoiceRecorderPanel({
   implicitSubjects: SubjectRef[]
   people: RecordablePerson[]
   preselectedPeopleKeys: string[]
+  visit?: VisitContext
   onClose: () => void
   onSaved?: () => void
 }) {
@@ -95,14 +115,30 @@ export function VoiceRecorderPanel({
         .filter((p) => checkedKeys.has(subjectKey(p)))
         .map(({ kind, id }) => ({ kind, id }))
       const sharingLevel: SharingLevel = isPrivate ? 'private' : 'internal'
-      await createVoiceTimelineEntry({
-        familyDocId,
-        organizationId,
-        createdByUid,
-        subjectRefs: [...implicitSubjects, ...personRefs],
-        sharingLevel,
-        body: body.trim(),
-      })
+      const subjectRefs = [...implicitSubjects, ...personRefs]
+      if (visit) {
+        await createVisitTimelineEntry({
+          familyDocId,
+          organizationId,
+          createdByUid,
+          subjectRefs,
+          sharingLevel,
+          body: body.trim(),
+          startedAt: visit.startedAt,
+          endedAt: visit.endedAt,
+          durationSeconds: visit.durationSeconds,
+          location: visit.location,
+        })
+      } else {
+        await createVoiceTimelineEntry({
+          familyDocId,
+          organizationId,
+          createdByUid,
+          subjectRefs,
+          sharingLevel,
+          body: body.trim(),
+        })
+      }
       onSaved?.()
       onClose()
     } catch {
@@ -117,7 +153,17 @@ export function VoiceRecorderPanel({
   return (
     <Drawer onClose={onClose}>
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="text-lg font-normal leading-normal text-text-primary">Hlasový zápis</h2>
+        <div>
+          <h2 className="text-lg font-normal leading-normal text-text-primary">
+            {visit ? 'Zápis z návštěvy' : 'Hlasový zápis'}
+          </h2>
+          {visit && (
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Délka {formatDuration(visit.durationSeconds)}
+              {visit.location && ' · GPS zaznamenáno'}
+            </p>
+          )}
+        </div>
         <button
           type="button"
           onClick={onClose}

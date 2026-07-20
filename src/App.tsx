@@ -12,6 +12,7 @@ const DashboardPage = lazy(() => import('@/routes/DashboardPage'))
 const StaffPage = lazy(() => import('@/routes/StaffPage'))
 const FamilyListPage = lazy(() => import('@/routes/FamilyListPage'))
 const FamilyDetailPage = lazy(() => import('@/routes/FamilyDetailPage'))
+const VisitTimerPage = lazy(() => import('@/routes/VisitTimerPage'))
 const AppearanceSettingsPage = lazy(() => import('@/routes/settings/AppearanceSettingsPage'))
 const AccountSettingsPage = lazy(() => import('@/routes/settings/AccountSettingsPage'))
 const NotificationsSettingsPage = lazy(() => import('@/routes/settings/NotificationsSettingsPage'))
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/zamestnanci" element={<StaffPage />} />
               <Route path="/rodiny" element={<FamilyListPage />} />
               <Route path="/rodiny/:familyUid" element={<FamilyDetailPage />} />
+              <Route path="/rodiny/:familyUid/navsteva" element={<VisitTimerPage />} />
               <Route path="/nastaveni/vzhled" element={<AppearanceSettingsPage />} />
               <Route path="/nastaveni/ucet" element={<AccountSettingsPage />} />
               <Route path="/nastaveni/oznameni" element={<NotificationsSettingsPage />} />

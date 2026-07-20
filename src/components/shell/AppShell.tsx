@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { ActiveVisitBanner } from './ActiveVisitBanner'
 import type { BreadcrumbItem } from '@/components/ui/breadcrumb'
 
 /**
@@ -50,6 +51,7 @@ export function AppShell({
       </div>
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg bg-app">
         <TopBar breadcrumb={breadcrumb} />
+        <ActiveVisitBanner />
         {secondaryPanel ? (
           <div className="flex min-h-0 flex-1 gap-2 p-2">
             <nav className="w-56 shrink-0 overflow-y-auto rounded-lg bg-surface-soft p-4">

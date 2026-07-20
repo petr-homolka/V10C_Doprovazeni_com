@@ -5,6 +5,110 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## M3 hotový — Časová osa, GPS Giant Timer, "Čeká na vás" (2026-07-19)
+
+Postaveno v noci bez zpětné vazby (Petr šel spát, zadal "pokračuj bez
+otázek") — proto tahle sekce dokumentuje víc než obvykle, včetně
+skutečných bezpečnostních chyb, co jsem nechtěně sám zavedl a pak i
+opravil, ne jen hotový výsledek.
+
+**M3.1 — Časová osa + detail zápisu.** `TimelineEntryDetail.tsx` (pravý
+panel, stejný `Drawer` primitiv jako recorder, dvě záložky Přehled/
+Historie, §7.6). `FamilyDetailPage` dostala kartovou (ne tabulkovou, §6.5)
+"Časovou osu" — každý zápis klikací, otevírá detail. `listTimelineEntries`
+nový v `timelineService.ts`, vyžaduje složený index (`createdByOrgId` +
+`occurredAt`).
+
+**M3.2 — GPS Giant Timer (§A3, DESIGN_SYSTEM §8.1).** Nová stránka
+`VisitTimerPage.tsx` (`/rodiny/:familyUid/navsteva`), celá obrazovka BEZ
+AppShellu, velký kruhový časovač (`font-mono`, Source Serif 4 zatím SEAM —
+appka nemá self-hostovaný serif font vůbec). `useActiveVisit.ts` —
+`startedAt`+GPS do `localStorage` (rozjetá návštěva NENÍ ve Firestore,
+dokud neskončí), perzistentní banner (`ActiveVisitBanner.tsx`) v
+`AppShell` napříč appkou. Konec vede přímo do `VoiceRecorderPanel` v novém
+`visit` režimu (rozšířeno o `VisitContext` prop) — stejný panel jako
+spontánní zápis, jen jinak uloží a zobrazí délku/GPS.
+
+**M3.3 — historyDigest generování.** `timelineService.createVisitTimelineEntry`
+— JEDEN atomický batch: timeline zápis (`type: 'visit'`) + `historyDigest`
+(jen fakta, nikdy text) + `lastVisitAt` denormalizace. `segmentValidTo` je
+vždy `null` při vzniku (Dohoda musí být aktivní) — zpětné dorovnání při
+konci Dohody je SEAM (viz `agreementService.endAgreement` komentář).
+
+**M3.4 — "Čeká na vás" reálný dotaz.** `dashboardService.ts` nahrazuje
+ukázková data — `collectionGroup('agreements')` filtrovaný na aktivní
+Dohody, práh odvozený z `agreement.visitIntervalDays` (ne natvrdo 45/60),
+"Krize" vizuální odlišení (`--crisis` token) při přesažení samotné
+zákonné lhůty. "Poslední zápisy" zůstává placeholder (SEAM, vlastní
+collectionGroup dotaz nad `timeline`, samostatný průchod).
+
+### Skutečné chyby nalezené a opravené
+
+**Race condition (React state batching):** efekt otevírající recorder po
+návratu z Giant Timeru se spouštěl na `docId` samotném — `docId` se ale
+nastaví v SAMOSTATNÉM, dřívějším render batchi než `fosterPersons`/
+`children` (React nebatchuje napříč `await` hranicí), takže "Zařadit k"
+se občas předvybralo jako prázdné. Oprava: vlastní `loaded` flag nastavený
+až na konci `reload()`.
+
+**Firestore composite index `queryScope`:** `collectionGroup('agreements')`
+dotazy (`dashboardService`, `agreementService.checkKoCapacity`) vyžadují
+index se `queryScope: "COLLECTION_GROUP"` — `checkKoCapacity` měl tuhle
+mezeru odjakživa (od M2), nikdy ji ale žádná live cesta nevyžádala natolik,
+aby se projevila. Živě ověřeno (opakovaně, dokud jsem si nevšiml vlastní
+chyby — nejdřív jsem index omylem nasadil s `"COLLECTION"` scope, zkopírované
+z `timeline` indexu, kde je to schválně jinak).
+
+**Multi-dimenzionální revize před commitem (`Workflow`, 4 nezávislí
+recenzenti + adversariální verify pass, poslední fáze bohužel spadla na
+session limit — verifikoval jsem nálezy sám ručně proti kódu):**
+
+1. **KRITICKÉ — `historyDigest` create pravidlo nemělo `hasActiveAgreementFor`
+   gate** (na rozdíl od sesterských `timeline`/`documents` pravidel) —
+   libovolný staff účet JAKÉKOLI organizace mohl založit `historyDigest`
+   pod cizí rodinou bez jakékoli Dohody. M2 mezera, poprvé reálně
+   vystavená až `createVisitTimelineEntry` (M3). **Opraveno** — přidán
+   stejný gate.
+2. **KRITICKÉ — `lastVisitAt` na `FamilyDoc` unikalo cross-org.**
+   `families/{id}` čte navždy CELÁ `orgAccessList` (i dávno skončené
+   Dohody, §4.5) — časový údaj poslední návštěvy JINÉ, aktivní organizace
+   by tak unikal organizaci bez jakéhokoli současného vztahu k rodině.
+   **Opraveno** — přesunuto na `AgreementDoc.lastVisitAt` (čitelné jen
+   vlastní organizací, navíc snižuje počet čtení v dashboardu).
+3. **VYSOKÉ — pokus o opravu `sharingLevel: 'private'` v `timeline` read
+   pravidle ŽIVĚ ROZBIL `listTimelineEntries` napříč appkou** (Firestore u
+   `list` dotazu zamítne CELÝ dotaz, když pravidlo čte pole mimo dotazovy
+   vlastní filtry — stejná past, co je v projektu opakovaně zdokumentovaná,
+   tentokrát jsem na ni sám nedbal). Vráceno zpět, **"Soukromá poznámka" je
+   dnes vynucená jen na klientovi** (`listTimelineEntries` filtruje), NE na
+   úrovni Firestore pravidel — SEAM, skutečná oprava potřebuje `or()` query
+   filtr zrcadlený v pravidle (nový index) nebo samostatnou podkolekci.
+4. **VisitTimerPage `handleDiscardOther` nechávalo obrazovku navždy na
+   "Spouštím návštěvu…"** (start-logika žila jen uvnitř efektu, co se po
+   kliknutí nikdy znovu nespustil). **Opraveno** — `startAttempt` čítač.
+5. **VisitTimerPage nekontrolovala aktivní Dohodu před spuštěním** (jen
+   FamilyDetailPage tlačítko to hlídalo, přímá URL to obcházela — KO by
+   celý GPS timer + diktovaný zápis zbytečně dokončil). **Opraveno** —
+   `getActiveAgreement` kontrola hned na začátku.
+6. Menší: `TodaySections` tichě polykalo chyby dotazu jako "nic nečeká"
+   (opraveno, teď ukazuje chybu); zastaralé komentáře v `timelineEntry.ts`/
+   `historyDigest.ts` (opraveno); duplicitní `formatElapsed` (sjednoceno do
+   `lib/utils.ts`); překlep v komentáři.
+
+**Vědomě NEOPRAVENO teď (SEAM, dokumentováno v kódu):** `lastVisitAt`
+zápis je "poslední vyhraje" bez porovnání s aktuální hodnotou (nízká
+pravděpodobnost, mírná komplikace opravy); "Čeká na vás" nescopuje na
+`assignedTo` KO (org_admin by jinak viděl prázdný seznam); mobilní vs.
+desktopové odlišení Giant Timeru/banneru (§8 "jen mobil/PWA") — patří do
+M11.
+
+**Ověřeno živě:** kompletní tok (start→GPS/timer→konec→diktát→uložení)
+třikrát na dvou různých rodinách, včetně konfliktní obrazovky (dvě
+souběžné návštěvy) a jejího "Zahodit a začít novou" tlačítka, dashboardu
+"Čeká na vás" (krize i normální stav), a regresního ověření po KAŽDÉ
+opravě nálezu revize (rules redeploy → index rebuild → live re-test).
+lint/build/testy zelené po celou dobu.
+
 ## Hlasový zápis — redesign na pravý panel dle Petrovy vizuální zpětné vazby (2026-07-19)
 
 Petr po vyzkoušení první verze (viz sekce níž) poslal 7 konkrétních

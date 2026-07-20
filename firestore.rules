@@ -380,6 +380,24 @@ service cloud.firestore {
     // pro `path[1]` vs. `.split('/')[1]` — tohle je opravená verze, M3).
 
     match /{path=**}/timeline/{entryId} {
+      // §7.4 "private (sobě)" — SEAM: zkusil jsem sem 2026-07-19 přidat
+      // podmínku `sharingLevel != 'private' || createdByUid == volající`,
+      // aby cizí "Soukromá poznámka" nešla přečíst kolegovi ze STEJNÉ
+      // organizace (co dnes projde přes tohle pravidlo). ŽIVĚ TO ALE
+      // ROZBILO `listTimelineEntries` napříč appkou — Firestore u `list`
+      // dotazu zamítne CELÝ dotaz (ne jen tiše vynechá pár dokumentů),
+      // pokud pravidlo čte pole, které dotaz sám nefiltruje (§5 "List
+      // dotaz vs. pole v pravidle" past, stejná co je zdokumentovaná
+      // jinde v tomhle souboru — jen jsem na ni tentokrát sám nedbal).
+      // Vráceno zpátky na jen `sameOrg`. Skutečná oprava vyžaduje BUD
+      // query `or()` filtr zrcadlený i v pravidle (nový composite index),
+      // NEBO přesun `private` poznámek do samostatné podkolekce — obojí
+      // je SEAM pro budoucí průchod, ne narychlo teď v noci bez možnosti
+      // to nechat doběhnout index a ověřit. Do té doby je "Soukromá
+      // poznámka" vynucená jen na úrovni KLIENTA (`listTimelineEntries`
+      // filtruje `sharingLevel==='private' && createdByUid!==aktuální`),
+      // ne na úrovni Firestore pravidel — stejná důvěra ve staff jako
+      // jinde v appce, ne tvrdá bezpečnostní hranice.
       allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
       allow create: if isStaff() &&
         request.resource.data.createdByOrgId == userDoc().organizationId &&
@@ -429,7 +447,19 @@ service cloud.firestore {
           resource.data.segmentValidTo <= ownAgreementPeriod(path[1]).validFrom
         );
 
-      allow create: if isStaff() && request.resource.data.createdByOrgId == userDoc().organizationId;
+      // M3 živě ověřeno (2026-07-19): tohle pravidlo (M2) chybělo zrcadlit
+      // sesterská `timeline`/`documents` pravidla o řádek výš — nekontrolovalo
+      // `hasActiveAgreementFor(path[1])`, takže LIBOVOLNÝ staff účet JAKÉKOLI
+      // organizace mohl založit `historyDigest` záznam pod CIZÍ rodinou, se
+      // kterou jeho organizace nikdy neměla vůbec žádnou Dohodu — M2 na tohle
+      // nedopadlo, protože žádný kód historyDigest reálně nezakládal až do
+      // M3 (`timelineService.createVisitTimelineEntry`), takže mezera se
+      // nikdy neprojevila. `createVisitTimelineEntry` už tuhle podmínku sama
+      // splňuje (stejný batch má i `timeline` zápis, který ji vyžaduje) —
+      // tahle oprava jen uzavírá cestu MIMO app (přímé volání Firestore SDK).
+      allow create: if isStaff() &&
+        request.resource.data.createdByOrgId == userDoc().organizationId &&
+        hasActiveAgreementFor(path[1]);
       allow update, delete: if false; // append-only, §5
     }
 

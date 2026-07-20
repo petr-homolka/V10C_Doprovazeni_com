@@ -117,6 +117,19 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
   return data
 }
 
+/**
+ * SEAM (M3.3, viz timelineService.createVisitTimelineEntry komentář):
+ * NEDOROVNÁVÁ zpětně `historyDigest.segmentValidTo` z `null` na tohle
+ * `validTo` pro digesty, co tahle organizace pro tenhle Spis vytvořila —
+ * `historyDigest` je append-only (`update: if false`), takže dokud tahle
+ * reconciliace neexistuje (a s ní úzká rules výjimka pro přesně tenhle
+ * jeden přechod null→validTo, ne libovolný update), zůstávají všechny
+ * digesty téhle organizace pro tenhle Spis čitelné JEN jí samotné, i po
+ * skončení Dohody — §4.5 bod 2 (cizí organizace čte digest dřívějšího
+ * segmentu) se tak zatím nikdy neaktivuje. Bezpečně přísná odchylka
+ * (míň sdílení, ne víc), ne díra — ale patří sem zpět, až přijde WF-3
+ * (Předání rodiny jiné organizaci, §12).
+ */
 export async function endAgreement(familyDocId: string, organizationId: string): Promise<void> {
   await updateDoc(agreementRef(familyDocId, organizationId), {
     status: 'ended',

@@ -1,11 +1,11 @@
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/shell/AppShell'
-import { TodaySampleSections } from '@/components/TodaySampleSections'
+import { TodaySections } from '@/components/TodaySections'
 
 /**
- * "Dnes" — DESIGN_SYSTEM.md vzorová obrazovka (§1, §4, §14). Obsah sekcí
- * (TodaySampleSections) je zatím ukázková data pro ověření vizuálu, ne
- * reálný dotaz — viz ZADANI §6 A3 bod 5, přijde s M2/M3.
+ * "Dnes" — DESIGN_SYSTEM.md vzorová obrazovka (§1, §4, §14). "Čeká na vás"
+ * (TodaySections) je od M3.4 reálný dotaz nad Dohodami/`lastVisitAt`, viz
+ * ZADANI §6 A3 bod 5 a dashboardService.ts.
  */
 export default function DashboardPage() {
   const { userDoc, firebaseUser } = useAuth()
@@ -22,7 +22,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <TodaySampleSections />
+      <TodaySections />
     </AppShell>
   )
 }
