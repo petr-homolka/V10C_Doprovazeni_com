@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { GraduationCap } from 'lucide-react'
+import { GraduationCap, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   activateEducationPlan,
@@ -43,10 +44,6 @@ const ITEM_STATUS_LABELS: Record<EducationPlanItem['status'], string> = {
 }
 
 const CATEGORY_LABEL_BY_CODE = new Map(EDUCATION_TOPIC_CATEGORIES.map((c) => [c.code as string, c.label]))
-
-const SELECT_CLASSNAME =
-  'h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-[16px] text-text-primary ' +
-  'focus:border-2 focus:border-accent focus:outline-none'
 
 interface ItemRow {
   id: string
@@ -215,7 +212,7 @@ export function EducationPlanSection({
             if (showForm) resetForm()
           }}
         >
-          {showForm ? 'Zrušit' : '+ Navrhnout nový plán'}
+          {showForm ? 'Zrušit' : (<><Plus size={16} /> Navrhnout nový plán</>)}
         </Button>
       </div>
 
@@ -247,24 +244,22 @@ export function EducationPlanSection({
                 <div className="grid grid-cols-2 gap-3">
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-medium text-text-secondary">Kategorie</span>
-                    <select
+                    <Select
                       value={row.categoryCode}
                       onChange={(e) => updateRow(row.id, { categoryCode: e.target.value })}
-                      className={SELECT_CLASSNAME}
                     >
                       {EDUCATION_TOPIC_CATEGORIES.map((c) => (
                         <option key={c.code} value={c.code}>
                           {c.code}: {c.label}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-medium text-text-secondary">Dítě (volitelné)</span>
-                    <select
+                    <Select
                       value={row.childRef}
                       onChange={(e) => updateRow(row.id, { childRef: e.target.value })}
-                      className={SELECT_CLASSNAME}
                     >
                       <option value="">—</option>
                       {children.map((c) => (
@@ -272,7 +267,7 @@ export function EducationPlanSection({
                           {c.child.firstName} {c.child.lastName}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                 </div>
                 <label className="flex flex-col gap-1">
@@ -308,7 +303,7 @@ export function EducationPlanSection({
           </div>
 
           <Button type="button" variant="secondary" size="sm" onClick={addRow} className="w-fit">
-            + Přidat téma
+            <Plus size={16} /> Přidat téma
           </Button>
 
           {formError && (

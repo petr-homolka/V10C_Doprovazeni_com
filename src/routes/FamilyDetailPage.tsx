@@ -37,7 +37,7 @@ import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
-import { Baby, Clock, FileText, Handshake, Home, Mic, Pencil, StickyNote, UserRound } from 'lucide-react'
+import { Baby, Clock, FileText, Handshake, Home, Mic, Pencil, Plus, StickyNote, UserRound } from 'lucide-react'
 
 const FOSTER_COLUMNS = '40px 1.4fr 1fr 24px'
 const CHILD_COLUMNS = '40px 1fr 24px'
@@ -483,7 +483,13 @@ export default function FamilyDetailPage() {
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-lg font-normal leading-tight text-text-primary">Pěstouni</h2>
               <Button variant="secondary" size="sm" onClick={() => setShowFosterForm((v) => !v)}>
-                {showFosterForm ? 'Zrušit' : '+ Přidat pěstouna'}
+                {showFosterForm ? (
+                  'Zrušit'
+                ) : (
+                  <>
+                    <Plus size={16} /> Přidat pěstouna
+                  </>
+                )}
               </Button>
             </div>
             {family && family.fosterPersonRefs.length >= 2 && (
@@ -560,7 +566,13 @@ export default function FamilyDetailPage() {
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-lg font-normal leading-tight text-text-primary">Svěřené děti</h2>
               <Button variant="secondary" size="sm" onClick={() => setShowChildForm((v) => !v)}>
-                {showChildForm ? 'Zrušit' : '+ Přidat dítě'}
+                {showChildForm ? (
+                  'Zrušit'
+                ) : (
+                  <>
+                    <Plus size={16} /> Přidat dítě
+                  </>
+                )}
               </Button>
             </div>
 
@@ -707,7 +719,13 @@ export default function FamilyDetailPage() {
                 disabled={!agreement || agreement.status !== 'active'}
                 title={!agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined}
               >
-                {showDocumentForm ? 'Zrušit' : '+ Nový dokument'}
+                {showDocumentForm ? (
+                  'Zrušit'
+                ) : (
+                  <>
+                    <Plus size={16} /> Nový dokument
+                  </>
+                )}
               </Button>
             </div>
 

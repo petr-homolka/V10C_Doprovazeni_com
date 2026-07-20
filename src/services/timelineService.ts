@@ -101,7 +101,7 @@ export interface CreateVisitEntryInput {
  * spadl na permission-denied) — SEAM: zpětné dorovnání na `validTo` při
  * ukončení Dohody (aby cizí organizace po skončení téhle Dohody získala
  * §4.5 bod 2 přístup k digestu) NENÍ v týhle dávce postavené, viz
- * `agreementService.endAgreement` komentář. Než tenhle SEAM existuje,
+ * `agreementService.getActiveAgreement` komentář. Než tenhle SEAM existuje,
  * `historyDigest` z aktivní Dohody zůstává čitelný JEN vlastní organizaci —
  * bezpečná (příliš přísná, ne děravá) prozatímní odchylka od §4.5.
  */

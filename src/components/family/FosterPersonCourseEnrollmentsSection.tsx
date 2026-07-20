@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { GraduationCap } from 'lucide-react'
+import { GraduationCap, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   approveCourseEnrollment,
@@ -52,7 +53,6 @@ const COURSE_TYPE_LABELS: Record<CourseDoc['type'], string> = {
   hybrid: 'Hybridně',
 }
 
-const SELECT_CLASSNAME = 'h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary'
 const TEXTAREA_CLASSNAME =
   'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none'
 
@@ -298,17 +298,16 @@ export function FosterPersonCourseEnrollmentsSection({
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-text-secondary">Forma</span>
-              <select
+              <Select
                 value={completeType}
                 onChange={(e) => setCompleteType(e.target.value as CourseDoc['type'])}
-                className={SELECT_CLASSNAME}
               >
                 {(Object.keys(COURSE_TYPE_LABELS) as CourseDoc['type'][]).map((t) => (
                   <option key={t} value={t}>
                     {COURSE_TYPE_LABELS[t]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </div>
           <label className="flex flex-col gap-1">
@@ -391,7 +390,13 @@ export function FosterPersonCourseEnrollmentsSection({
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-normal leading-tight text-text-primary">Přihlášky na kurzy</h2>
         <Button variant="secondary" size="sm" onClick={() => setShowNewForm((v) => !v)}>
-          {showNewForm ? 'Zrušit' : '+ Nová přihláška'}
+          {showNewForm ? (
+            'Zrušit'
+          ) : (
+            <>
+              <Plus size={16} /> Nová přihláška
+            </>
+          )}
         </Button>
       </div>
 
@@ -405,14 +410,13 @@ export function FosterPersonCourseEnrollmentsSection({
         <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Podnět</span>
-            <select
+            <Select
               value={newInitiatedBy}
               onChange={(e) => setNewInitiatedBy(e.target.value as CourseEnrollmentDoc['initiatedBy'])}
-              className={SELECT_CLASSNAME}
             >
               <option value="ko">KO</option>
               <option value="foster">Pěstoun</option>
-            </select>
+            </Select>
           </label>
           <Button type="submit" disabled={creating} className="w-fit">
             {creating ? 'Zakládám…' : 'Založit'}

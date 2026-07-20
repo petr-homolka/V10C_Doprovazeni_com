@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Check, GraduationCap, Minus } from 'lucide-react'
+import { Check, GraduationCap, Minus, Plus } from 'lucide-react'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { addCourse, listCourses, recordBenefitCheck, type AddCourseInput } from '@/services/courseService'
@@ -205,7 +206,13 @@ export function FosterPersonEducationSection({
       <div className="mt-6 flex items-center justify-between gap-4">
         <h3 className="text-sm font-medium text-text-primary">Kurzy</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowCourseForm((v) => !v)}>
-          {showCourseForm ? 'Zrušit' : '+ Přidat kurz'}
+          {showCourseForm ? (
+            'Zrušit'
+          ) : (
+            <>
+              <Plus size={16} /> Přidat kurz
+            </>
+          )}
         </Button>
       </div>
 
@@ -221,15 +228,14 @@ export function FosterPersonEducationSection({
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Typ</span>
-              <select
+              <Select
                 value={courseType}
                 onChange={(e) => setCourseType(e.target.value as CourseDoc['type'])}
-                className="h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-[16px] text-text-primary"
               >
                 <option value="prezencne">Prezenčně</option>
                 <option value="online">Online</option>
                 <option value="hybrid">Hybridně</option>
-              </select>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Hodiny</span>
@@ -316,15 +322,15 @@ export function FosterPersonEducationSection({
             <div key={key} className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm text-text-primary">{BENEFIT_LABELS[key]}</span>
               <div className="flex items-center gap-3">
-                <select
+                <Select
+                  className="w-44"
                   value={benefitDrafts[key].status}
                   onChange={(e) => updateBenefitStatus(key, e.target.value as BenefitCheckEntry['status'])}
-                  className="h-10 rounded-sm border border-border-medium bg-inset px-3 text-[16px] text-text-primary"
                 >
                   <option value="chodi">Chodí</option>
                   <option value="nechodi">Nechodí</option>
                   <option value="nezjisteno">Nezjištěno</option>
-                </select>
+                </Select>
                 <label className="flex items-center gap-2">
                   <input
                     type="checkbox"

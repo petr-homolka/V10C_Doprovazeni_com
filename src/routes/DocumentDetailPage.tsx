@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
@@ -310,10 +311,9 @@ export default function DocumentDetailPage() {
         <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Schvalovatel (volitelné)</span>
-            <select
+            <Select
               value={reviewerUid}
               onChange={(e) => setReviewerUid(e.target.value)}
-              className="h-10 w-full max-w-xs rounded-sm border border-border-medium bg-inset px-3 text-text-primary"
             >
               <option value="">Nevybráno</option>
               {reviewerOptions.map((r) => (
@@ -321,7 +321,7 @@ export default function DocumentDetailPage() {
                   {r.displayName}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <Button onClick={handleSendToMgmt} disabled={submitting} className="w-fit">
             Poslat vedení
@@ -370,14 +370,13 @@ export default function DocumentDetailPage() {
         <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
           <p className="text-sm text-text-primary">{DOCUMENT_STATUS_LABELS[status]}</p>
           <div className="flex items-center gap-2">
-            <select
+            <Select
               value={sentTo}
               onChange={(e) => setSentTo(e.target.value as 'ospod' | 'soud')}
-              className="h-10 rounded-sm border border-border-medium bg-inset px-3 text-text-primary"
             >
               <option value="ospod">OSPOD</option>
               <option value="soud">Soud</option>
-            </select>
+            </Select>
             <Button onClick={handleSendToAuthority} disabled={submitting}>
               Odeslat na úřad
             </Button>

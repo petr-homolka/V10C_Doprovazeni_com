@@ -49,12 +49,44 @@ export function agreementRef(familyDocId: string, organizationId: string) {
   return doc(db, 'families', familyDocId, 'agreements', organizationId)
 }
 
+/**
+ * UX zpětná vazba 2026-07-20 — Dohoda se nikdy neukončuje okamžitě
+ * (`scheduleAgreementEnd` jen naplánuje budoucí `pendingEndDate`). Žádný
+ * cron/Cloud Function v týhle appce neexistuje, takže přechod na
+ * `status:'ended'` provádí LÍNĚ tenhle čtecí endpoint — jakmile naplánované
+ * datum uplyne, PRVNÍ příští čtení Dohody (odkudkoli) transakčně dopíše
+ * `status`/`validTo` a vrátí už aktualizovaný stav, ne stará data.
+ */
 export async function getActiveAgreement(
   familyDocId: string,
   organizationId: string,
 ): Promise<AgreementDoc | null> {
-  const snap = await getDoc(agreementRef(familyDocId, organizationId))
-  return snap.exists() ? (snap.data() as AgreementDoc) : null
+  const ref = agreementRef(familyDocId, organizationId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) return null
+  const data = snap.data() as AgreementDoc
+  if (data.status === 'active' && data.pendingEndDate && new Date(data.pendingEndDate) <= new Date()) {
+    const applied = { status: 'ended' as const, validTo: data.pendingEndDate, pendingEndDate: null }
+    await updateDoc(ref, applied)
+    return { ...data, ...applied }
+  }
+  return data
+}
+
+/** Naplánuje budoucí ukončení Dohody — `status` zůstává `'active'` po
+ * celou dobu čekací lhůty, viz `AgreementDoc.pendingEndDate` komentář. */
+export async function scheduleAgreementEnd(
+  familyDocId: string,
+  organizationId: string,
+  endDate: string,
+): Promise<void> {
+  await updateDoc(agreementRef(familyDocId, organizationId), { pendingEndDate: endDate })
+}
+
+/** Zruší naplánované ukončení (dostupné, dokud naplánované datum
+ * neuplyne — po uplynutí `getActiveAgreement` ukončení už NEVRATNĚ uplatní). */
+export async function cancelPendingAgreementEnd(familyDocId: string, organizationId: string): Promise<void> {
+  await updateDoc(agreementRef(familyDocId, organizationId), { pendingEndDate: null })
 }
 
 export interface CreateAgreementInput {
@@ -137,7 +169,8 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
 
 /**
  * SEAM (M3.3, viz timelineService.createVisitTimelineEntry komentář):
- * NEDOROVNÁVÁ zpětně `historyDigest.segmentValidTo` z `null` na tohle
+ * `getActiveAgreement`'s líný přechod na `status:'ended'` výš
+ * NEDOROVNÁVÁ zpětně `historyDigest.segmentValidTo` z `null` na
  * `validTo` pro digesty, co tahle organizace pro tenhle Spis vytvořila —
  * `historyDigest` je append-only (`update: if false`), takže dokud tahle
  * reconciliace neexistuje (a s ní úzká rules výjimka pro přesně tenhle
@@ -148,12 +181,6 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
  * (míň sdílení, ne víc), ne díra — ale patří sem zpět, až přijde WF-3
  * (Předání rodiny jiné organizaci, §12).
  */
-export async function endAgreement(familyDocId: string, organizationId: string): Promise<void> {
-  await updateDoc(agreementRef(familyDocId, organizationId), {
-    status: 'ended',
-    validTo: new Date().toISOString(),
-  })
-}
 
 /**
  * §6 A9 / DOPLNENI_ZADANI-DO-M5 §1: kapacita KO je orientační (NIKDY

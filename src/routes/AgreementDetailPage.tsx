@@ -3,21 +3,29 @@ import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
-import { DangerZone, DangerZoneAction } from '@/components/ui/danger-zone'
+import { DangerZone } from '@/components/ui/danger-zone'
 import { IppdSection } from '@/components/family/IppdSection'
 import { useAuth } from '@/hooks/useAuth'
 import { getOrganization } from '@/services/organizationService'
 import { listStaff } from '@/services/staffService'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
-import { checkKoCapacity, createAgreement, endAgreement, getActiveAgreement } from '@/services/agreementService'
+import {
+  cancelPendingAgreementEnd,
+  checkKoCapacity,
+  createAgreement,
+  getActiveAgreement,
+  scheduleAgreementEnd,
+} from '@/services/agreementService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
 import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
-import { FileText } from 'lucide-react'
+import { FileText, Plus } from 'lucide-react'
 
 const CARE_TYPE_LABELS: Record<CareType, string> = {
   zprostredkovana: 'Zprostředkovaná (24 h/12 měsíců)',
@@ -27,13 +35,23 @@ const CARE_TYPE_LABELS: Record<CareType, string> = {
 const SECTIONS: ProfileSection[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'ippd', label: 'IPPD' },
+  { key: 'ukonceni', label: 'Ukončení Dohody' },
 ]
+
+function tomorrowIsoDate(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
 
 /**
  * /rodiny/:familyUid/dohoda — UX zpětná vazba 2026-07-20 (§4). Dohoda má
- * VLASTNÍ profil, oddělený od rodiny — "Ukončit Dohodu" žije až tady, v
- * jasně označené nebezpečné zóně na konci Přehledu, ne hned vedle
- * nadpisu jako dřív na FamilyDetailPage.
+ * VLASTNÍ profil, oddělený od rodiny. "Ukončení Dohody" je VLASTNÍ
+ * položka druhé úrovně menu (druhé kolo zpětné vazby, ne hned vedle
+ * nadpisu Přehledu) — Dohoda se navíc nikdy neukončuje OKAMŽITĚ, jen se
+ * naplánuje k budoucímu datu, do kterého jde ukončení kdykoli zrušit
+ * (viz `agreementService.getActiveAgreement`/`scheduleAgreementEnd`
+ * komentáře pro líný přechod bez cronu).
  */
 export default function AgreementDetailPage() {
   const { familyUid } = useParams<{ familyUid: string }>()
@@ -56,6 +74,9 @@ export default function AgreementDetailPage() {
   const [assignedTo, setAssignedTo] = useState('')
   const [capacityNote, setCapacityNote] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
+  const [endDateDraft, setEndDateDraft] = useState('')
+  const [endSubmitting, setEndSubmitting] = useState(false)
 
   const primaryFosterName = fosterPersons[0]
     ? `${fosterPersons[0].fosterPerson.firstName} ${fosterPersons[0].fosterPerson.lastName}`
@@ -130,10 +151,33 @@ export default function AgreementDetailPage() {
     }
   }
 
-  async function handleEndAgreement() {
+  async function handleScheduleEnd() {
+    if (!docId || !organizationId || !endDateDraft) return
+    setEndSubmitting(true)
+    setError(null)
+    try {
+      await scheduleAgreementEnd(docId, organizationId, new Date(endDateDraft).toISOString())
+      setEndDateDraft('')
+      await reload()
+    } catch {
+      setError('Naplánování ukončení se nezdařilo.')
+    } finally {
+      setEndSubmitting(false)
+    }
+  }
+
+  async function handleCancelPendingEnd() {
     if (!docId || !organizationId) return
-    await endAgreement(docId, organizationId)
-    await reload()
+    setEndSubmitting(true)
+    setError(null)
+    try {
+      await cancelPendingAgreementEnd(docId, organizationId)
+      await reload()
+    } catch {
+      setError('Zrušení naplánovaného ukončení se nezdařilo.')
+    } finally {
+      setEndSubmitting(false)
+    }
   }
 
   if (notFound) {
@@ -175,6 +219,12 @@ export default function AgreementDetailPage() {
                 Návštěva min. 1× za {agreement.visitIntervalDays} dní · vzdělávání{' '}
                 {agreement.educationHoursTarget} h/12 měsíců · zápis do {agreement.noteDeadlineHours} h
               </p>
+              {agreement.pendingEndDate && (
+                <p className="mt-2 text-sm text-warning">
+                  Naplánováno k ukončení dne {new Date(agreement.pendingEndDate).toLocaleDateString('cs-CZ')} —
+                  viz záložka „Ukončení Dohody“.
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -182,7 +232,7 @@ export default function AgreementDetailPage() {
                 <div className="flex flex-col items-center gap-3">
                   <EmptyState icon={FileText} text="Zatím žádná Dohoda s vaší organizací." />
                   <Button variant="secondary" size="sm" onClick={() => setShowAgreementForm(true)}>
-                    + Založit Dohodu
+                    <Plus size={16} /> Založit Dohodu
                   </Button>
                 </div>
               )}
@@ -194,32 +244,24 @@ export default function AgreementDetailPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <label className="flex flex-col gap-1.5">
                       <span className="text-sm font-medium leading-relaxed text-text-primary">Typ péče</span>
-                      <select
-                        value={careType}
-                        onChange={(e) => setCareType(e.target.value as CareType)}
-                        className="h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary"
-                      >
+                      <Select value={careType} onChange={(e) => setCareType(e.target.value as CareType)}>
                         {(Object.keys(CARE_TYPE_LABELS) as CareType[]).map((ct) => (
                           <option key={ct} value={ct}>
                             {CARE_TYPE_LABELS[ct]}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                     <label className="flex flex-col gap-1.5">
                       <span className="text-sm font-medium leading-relaxed text-text-primary">Klíčová osoba</span>
-                      <select
-                        value={assignedTo}
-                        onChange={(e) => handleAssignedToChange(e.target.value)}
-                        className="h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary"
-                      >
+                      <Select value={assignedTo} onChange={(e) => handleAssignedToChange(e.target.value)}>
                         <option value="">Nepřiřazeno</option>
                         {koOptions.map((ko) => (
                           <option key={ko.uid} value={ko.uid}>
                             {ko.displayName}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                   </div>
                   {capacityNote && <p className="text-sm text-warning">{capacityNote}</p>}
@@ -240,17 +282,6 @@ export default function AgreementDetailPage() {
               )}
             </>
           )}
-
-          {agreement && (
-            <DangerZone>
-              <DangerZoneAction
-                label="Ukončit Dohodu"
-                description="Dohoda skončí k dnešnímu dni. Historie (časová osa, dokumenty) zůstane zachovaná."
-                actionLabel="Ukončit Dohodu"
-                onAction={handleEndAgreement}
-              />
-            </DangerZone>
-          )}
         </div>
       )}
 
@@ -263,6 +294,59 @@ export default function AgreementDetailPage() {
             fosterPersons={fosterPersons}
             children={children}
           />
+        </div>
+      )}
+
+      {activeSection === 'ukonceni' && (
+        <div className="mt-6">
+          {!agreement ? (
+            <p className="text-sm text-text-secondary">Nejdřív založte Dohodu na záložce Přehled.</p>
+          ) : agreement.pendingEndDate ? (
+            <div className="rounded-lg bg-warning-bg p-4">
+              <p className="text-sm text-text-primary">
+                Dohoda je naplánovaná k ukončení dne {new Date(agreement.pendingEndDate).toLocaleDateString('cs-CZ')}.
+              </p>
+              <p className="mt-1 text-sm text-text-secondary">
+                Do tohoto data lze naplánované ukončení kdykoli zrušit — Dohoda mezitím dál platí.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+                onClick={handleCancelPendingEnd}
+                disabled={endSubmitting}
+              >
+                {endSubmitting ? 'Ruším…' : 'Zrušit ukončení'}
+              </Button>
+            </div>
+          ) : (
+            <DangerZone>
+              <div className="flex flex-col gap-2 rounded-md border border-border-subtle p-3">
+                <p className="text-sm text-text-primary">Ukončit Dohodu</p>
+                <p className="text-xs text-text-secondary">
+                  Dohoda se neukončí okamžitě — vyberte datum v budoucnosti. Do tohoto data půjde naplánované
+                  ukončení kdykoli zrušit.
+                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <Input
+                    type="date"
+                    min={tomorrowIsoDate()}
+                    value={endDateDraft}
+                    onChange={(e) => setEndDateDraft(e.target.value)}
+                    className="w-auto"
+                  />
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleScheduleEnd}
+                    disabled={!endDateDraft || endSubmitting}
+                  >
+                    {endSubmitting ? 'Ukládám…' : 'Naplánovat ukončení'}
+                  </Button>
+                </div>
+              </div>
+            </DangerZone>
+          )}
         </div>
       )}
     </AppShell>

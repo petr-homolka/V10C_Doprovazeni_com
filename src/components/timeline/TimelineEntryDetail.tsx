@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import { Drawer } from '@/components/ui/drawer'
 import { SegmentedTabs } from '@/components/ui/segmented-tabs'
 import { SHARING_LEVEL_LABELS } from '@/types/sharing'
@@ -40,7 +41,7 @@ export function TimelineEntryDetail({
           aria-label="Zavřít"
           className="flex size-8 items-center justify-center rounded-sm text-text-secondary transition-colors duration-150 hover:bg-overlay-active"
         >
-          ×
+          <X size={18} strokeWidth={1.75} />
         </button>
       </div>
 

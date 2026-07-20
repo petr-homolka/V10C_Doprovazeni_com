@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { CalendarClock, Receipt } from 'lucide-react'
+import { CalendarClock, Plus, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
@@ -59,8 +60,6 @@ const EXPENSE_CATEGORY_LABELS: Record<SupportExpenseCategory, string> = {
   supervizePodpurna: 'Podpůrná supervize',
 }
 const EXPENSE_SOURCE_LABELS: Record<SupportExpenseSource, string> = { interni: 'Interní', smluvni: 'Smluvní', rucni: 'Ruční' }
-
-const SELECT_CLASSNAME = 'h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary'
 
 function StatusBadge({ label }: { label: string }) {
   return (
@@ -203,7 +202,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-medium text-text-primary">Naplánované aktivity</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Naplánovat aktivitu'}
+          {showForm ? 'Zrušit' : (<><Plus size={16} /> Naplánovat aktivitu</>)}
         </Button>
       </div>
 
@@ -212,24 +211,23 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Typ aktivity
-              <select value={activityType} onChange={(e) => setActivityType(e.target.value as ScheduledActivityType)} className={SELECT_CLASSNAME}>
+              <Select value={activityType} onChange={(e) => setActivityType(e.target.value as ScheduledActivityType)}>
                 {Object.entries(ACTIVITY_TYPE_LABELS).map(([k, label]) => (
                   <option key={k} value={k}>
                     {label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Poskytovatel
-              <select
+              <Select
                 value={providerKind}
                 onChange={(e) => setProviderKind(e.target.value as ScheduledActivityProviderKind)}
-                className={SELECT_CLASSNAME}
               >
                 <option value="interni">Interní</option>
                 <option value="externi">Externí</option>
-              </select>
+              </Select>
             </label>
           </div>
 
@@ -249,17 +247,16 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
 
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Potvrzování termínů
-            <select
+            <Select
               value={confirmationMode}
               onChange={(e) => setConfirmationMode(e.target.value as ScheduledActivityConfirmationMode)}
-              className={SELECT_CLASSNAME}
             >
               {Object.entries(CONFIRMATION_MODE_LABELS).map(([k, label]) => (
                 <option key={k} value={k}>
                   {label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <div className="flex gap-3">
@@ -275,10 +272,10 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
 
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Opakování
-            <select value={frequency} onChange={(e) => setFrequency(e.target.value as 'weekly' | 'daily')} className={SELECT_CLASSNAME}>
+            <Select value={frequency} onChange={(e) => setFrequency(e.target.value as 'weekly' | 'daily')}>
               <option value="weekly">Týdně</option>
               <option value="daily">Denně</option>
-            </select>
+            </Select>
           </label>
 
           <div className="flex flex-col gap-1">
@@ -392,7 +389,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
                     className="w-auto"
                   />
                   <Button variant="ghost" size="sm" onClick={() => handleAddOccurrence(activityId)}>
-                    + Přidat termín
+                    <Plus size={16} /> Přidat termín
                   </Button>
                 </div>
               </div>
@@ -482,7 +479,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-medium text-text-primary">Podpůrné výdaje</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Přidat doklad'}
+          {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat doklad</>)}
         </Button>
       </div>
 
@@ -508,21 +505,21 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Kategorie
-              <select value={category} onChange={(e) => setCategory(e.target.value as SupportExpenseCategory)} className={SELECT_CLASSNAME}>
+              <Select value={category} onChange={(e) => setCategory(e.target.value as SupportExpenseCategory)}>
                 {Object.entries(EXPENSE_CATEGORY_LABELS).map(([k, label]) => (
                   <option key={k} value={k}>
                     {label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Zdroj
-              <select value={source} onChange={(e) => setSource(e.target.value as SupportExpenseSource)} className={SELECT_CLASSNAME}>
+              <Select value={source} onChange={(e) => setSource(e.target.value as SupportExpenseSource)}>
                 <option value="interni">Interní</option>
                 <option value="smluvni">Smluvní</option>
                 <option value="rucni">Ruční</option>
-              </select>
+              </Select>
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">

@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { HeartHandshake } from 'lucide-react'
+import { HeartHandshake, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
@@ -63,7 +64,6 @@ const RECURRENCE_LABELS: Record<AssistedContactScheduleRecurrence['frequency'], 
   monthly: 'Měsíčně',
 }
 
-const SELECT_CLASSNAME = 'h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary'
 const TEXTAREA_CLASSNAME =
   'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed ' +
   'text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none'
@@ -191,7 +191,7 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-medium text-text-primary">Respit (§4.4.B)</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Zaznamenat respit'}
+          {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat respit</>)}
         </Button>
       </div>
 
@@ -211,10 +211,10 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
         <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Druh
-            <select value={kind} onChange={(e) => setKind(e.target.value as RespitEventKind)} className={SELECT_CLASSNAME}>
+            <Select value={kind} onChange={(e) => setKind(e.target.value as RespitEventKind)}>
               <option value="celodenni_pece">Celodenní péče</option>
               <option value="pobyt">Pobyt</option>
-            </select>
+            </Select>
           </label>
 
           <div className="flex flex-col gap-1">
@@ -476,7 +476,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-medium text-text-primary">Asistovaný kontakt (§B.10.2)</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Založit sérii'}
+          {showForm ? 'Zrušit' : (<><Plus size={16} /> Založit sérii</>)}
         </Button>
       </div>
 
@@ -484,14 +484,14 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
         <form onSubmit={handleCreateSeries} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Dítě
-            <select value={childRef} onChange={(e) => setChildRef(e.target.value)} className={SELECT_CLASSNAME}>
+            <Select value={childRef} onChange={(e) => setChildRef(e.target.value)}>
               <option value="">Vyberte…</option>
               {children.map((c) => (
                 <option key={c.docId} value={c.docId}>
                   {c.child.firstName} {c.child.lastName}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Účel
@@ -508,15 +508,14 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Opakování
-              <select
+              <Select
                 value={frequency}
                 onChange={(e) => setFrequency(e.target.value as AssistedContactScheduleRecurrence['frequency'])}
-                className={SELECT_CLASSNAME}
               >
                 <option value="weekly">Týdně</option>
                 <option value="biweekly">Jednou za 2 týdny</option>
                 <option value="monthly">Měsíčně</option>
-              </select>
+              </Select>
             </label>
             <label className="flex w-24 flex-col gap-1 text-sm text-text-secondary">
               Interval
@@ -575,7 +574,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
                     className="w-auto"
                   />
                   <Button variant="secondary" size="sm" onClick={() => handleSchedule(seriesId)}>
-                    + Naplánovat termín
+                    <Plus size={16} /> Naplánovat termín
                   </Button>
                 </div>
 
@@ -775,7 +774,7 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
       <div className="flex items-center justify-between gap-4">
         <h3 className="text-base font-medium text-text-primary">Předání dítěte</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Zaznamenat předání'}
+          {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat předání</>)}
         </Button>
       </div>
 
@@ -783,14 +782,14 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
         <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Dítě
-            <select value={childRef} onChange={(e) => setChildRef(e.target.value)} className={SELECT_CLASSNAME}>
+            <Select value={childRef} onChange={(e) => setChildRef(e.target.value)}>
               <option value="">Vyberte…</option>
               {children.map((c) => (
                 <option key={c.docId} value={c.docId}>
                   {c.child.firstName} {c.child.lastName}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
@@ -799,10 +798,10 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Komu
-              <select value={toWhom} onChange={(e) => setToWhom(e.target.value as ChildHandoverDoc['toWhom'])} className={SELECT_CLASSNAME}>
+              <Select value={toWhom} onChange={(e) => setToWhom(e.target.value as ChildHandoverDoc['toWhom'])}>
                 <option value="biologicka_rodina">Biologická rodina</option>
                 <option value="jina_nahradni_rodina">Jiná náhradní rodina</option>
-              </select>
+              </Select>
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">

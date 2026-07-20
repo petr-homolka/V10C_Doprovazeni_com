@@ -3,6 +3,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { CapacityRing } from '@/components/ui/capacity-ring'
 import { useAuth } from '@/hooks/useAuth'
@@ -12,7 +13,7 @@ import { listActiveCaseloadByKo } from '@/services/agreementService'
 import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
 import { computeEffectiveCapacityThreshold } from '@/lib/capacityThreshold'
 import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
-import { UserCog } from 'lucide-react'
+import { Plus, UserCog } from 'lucide-react'
 
 // Org_admin nepřiděluje `superadmin` (platformní role) — viz firestore.rules.
 const ASSIGNABLE_ROLES = STAFF_ROLES.filter((r) => r !== 'superadmin')
@@ -140,7 +141,7 @@ export default function StaffPage() {
         <h1 className="text-lg font-normal leading-normal text-text-primary">Zaměstnanci</h1>
         {isOrgAdmin && (
           <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? 'Zrušit' : '+ Přidat zaměstnance'}
+            {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zaměstnance</>)}
           </Button>
         )}
       </div>
@@ -163,17 +164,16 @@ export default function StaffPage() {
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Role</span>
-              <select
+              <Select
                 value={role}
                 onChange={(e) => setRole(e.target.value as StaffRole)}
-                className="h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary"
               >
                 {ASSIGNABLE_ROLES.map((r) => (
                   <option key={r} value={r}>
                     {STAFF_ROLE_LABELS[r]}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>

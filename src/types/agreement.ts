@@ -73,4 +73,12 @@ export interface AgreementDoc {
    * strukturálně bezpečné bez jakékoli další rules změny.
    */
   lastVisitAt?: string | null
+  /** UX zpětná vazba 2026-07-20 — Dohoda se nikdy neukončuje okamžitě.
+   * Nastavené = ukončení je NAPLÁNOVANÉ k tomuhle budoucímu datu, `status`
+   * mezitím zůstává `'active'` (Dohoda dál platí). Do tohoto data lze
+   * naplánované ukončení kdykoli zrušit (`cancelPendingAgreementEnd`).
+   * Skutečný přechod na `status:'ended'` provede LÍNĚ (bez cronu/Cloud
+   * Function, žádné v týhle appce nejsou) `getActiveAgreement` při
+   * dalším čtení, jakmile datum uplyne — viz agreementService.ts. */
+  pendingEndDate?: string | null
 }

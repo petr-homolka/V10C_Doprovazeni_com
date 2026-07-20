@@ -18,7 +18,7 @@ import {
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
 import type { SubjectRef } from '@/types/timelineEntry'
-import { Users } from 'lucide-react'
+import { Plus, Users } from 'lucide-react'
 
 const TABLE_COLUMNS = '40px 2fr 1fr'
 
@@ -127,7 +127,13 @@ export default function FamilyListPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-lg font-normal leading-normal text-text-primary">Rodiny</h1>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Nová rodina'}
+          {showForm ? (
+            'Zrušit'
+          ) : (
+            <>
+              <Plus size={16} /> Nová rodina
+            </>
+          )}
         </Button>
       </div>
 

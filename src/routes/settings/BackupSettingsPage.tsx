@@ -5,6 +5,7 @@ import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -228,19 +229,18 @@ export default function BackupSettingsPage() {
             <div className="mt-3 grid grid-cols-2 gap-4">
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium leading-relaxed text-text-primary">Den v týdnu</span>
-                <select
+                <Select
                   value={config.schedule.dayOfWeek ?? 'ne'}
                   onChange={(e) =>
                     setConfig((c) => ({ ...c, schedule: { ...c.schedule, dayOfWeek: e.target.value } }))
                   }
-                  className="h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary"
                 >
                   {Object.entries(DAY_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium leading-relaxed text-text-primary">Čas</span>
@@ -257,7 +257,7 @@ export default function BackupSettingsPage() {
 
           <label className="mt-4 flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Kam ukládat</span>
-            <select
+            <Select
               value={config.destination.type}
               onChange={(e) =>
                 setConfig((c) => ({
@@ -265,14 +265,13 @@ export default function BackupSettingsPage() {
                   destination: { ...c.destination, type: e.target.value as BackupDestinationType },
                 }))
               }
-              className="h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary"
             >
               {Object.entries(DESTINATION_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           {config.destination.type !== 'download' && (
             <p className="mt-1 text-xs text-text-tertiary">

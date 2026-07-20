@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -11,7 +12,7 @@ import {
   markCorrectiveActionCompleted,
 } from '@/services/inspectionService'
 import type { InspectionDoc, InspectionFinding, QualityStandardRef } from '@/types/inspection'
-import { ClipboardCheck } from 'lucide-react'
+import { ClipboardCheck, Plus } from 'lucide-react'
 
 const STANDARD_REF_LABELS: Record<QualityStandardRef, string> = { priloha_2: 'Příloha 2', priloha_4: 'Příloha 4' }
 const SCORE_LABELS: Record<InspectionFinding['score'], string> = {
@@ -20,7 +21,6 @@ const SCORE_LABELS: Record<InspectionFinding['score'], string> = {
   2: '2 – Dobře',
   3: '3 – Výborně',
 }
-const SELECT_CLASSNAME = 'h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary'
 
 interface FindingDraft {
   criterionCode: string
@@ -154,7 +154,7 @@ export default function InspectionsPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-lg font-normal leading-normal text-text-primary">Kvalita — evidence inspekcí</h1>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Zaznamenat inspekci'}
+          {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat inspekci</>)}
         </Button>
       </div>
 
@@ -200,10 +200,10 @@ export default function InspectionsPage() {
           </label>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Standard
-            <select value={standardRef} onChange={(e) => setStandardRef(e.target.value as QualityStandardRef)} className={SELECT_CLASSNAME}>
+            <Select value={standardRef} onChange={(e) => setStandardRef(e.target.value as QualityStandardRef)}>
               <option value="priloha_2">Příloha 2</option>
               <option value="priloha_4">Příloha 4</option>
-            </select>
+            </Select>
           </label>
 
           <div className="flex flex-col gap-3">
@@ -217,17 +217,16 @@ export default function InspectionsPage() {
                   </label>
                   <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
                     Skóre
-                    <select
+                    <Select
                       value={draft.score}
                       onChange={(e) => updateFindingDraft(idx, { score: Number(e.target.value) as InspectionFinding['score'] })}
-                      className={SELECT_CLASSNAME}
                     >
                       {([0, 1, 2, 3] as const).map((s) => (
                         <option key={s} value={s}>
                           {SCORE_LABELS[s]}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </label>
                 </div>
                 <label className="flex flex-col gap-1 text-sm text-text-secondary">
@@ -249,7 +248,7 @@ export default function InspectionsPage() {
               </div>
             ))}
             <Button type="button" variant="ghost" size="sm" className="w-fit" onClick={() => setFindingDrafts((prev) => [...prev, emptyFindingDraft()])}>
-              + Přidat kritérium
+              <Plus size={16} /> Přidat kritérium
             </Button>
           </div>
 

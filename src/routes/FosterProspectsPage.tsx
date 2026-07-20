@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -13,7 +14,7 @@ import {
   updateFosterProspectStatus,
 } from '@/services/fosterProspectService'
 import type { FosterProspectDoc, FosterProspectExistingStatus, FosterProspectNoteDoc, FosterProspectStatus } from '@/types/fosterProspect'
-import { UserPlus } from 'lucide-react'
+import { Plus, UserPlus } from 'lucide-react'
 
 const STATUS_LABELS: Record<FosterProspectStatus, string> = {
   v_jednani: 'V jednání',
@@ -30,7 +31,6 @@ const EXISTING_STATUS_LABELS: Record<FosterProspectExistingStatus, string> = {
   noveschvaleny_bez_do: 'Nově schválený bez Dohody',
   neznamo: 'Neznámo',
 }
-const SELECT_CLASSNAME = 'h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary'
 
 /**
  * /zajemci — M7 §B.7. Pipeline zájemců o pěstounství PŘED vznikem Dohody.
@@ -156,7 +156,7 @@ export default function FosterProspectsPage() {
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-lg font-normal leading-normal text-text-primary">Zájemci o pěstounství</h1>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Přidat zájemce'}
+          {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zájemce</>)}
         </Button>
       </div>
 
@@ -198,17 +198,16 @@ export default function FosterProspectsPage() {
           </label>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Stávající stav
-            <select
+            <Select
               value={existingFosterStatus}
               onChange={(e) => setExistingFosterStatus(e.target.value as FosterProspectExistingStatus)}
-              className={SELECT_CLASSNAME}
             >
               {Object.entries(EXISTING_STATUS_LABELS).map(([k, label]) => (
                 <option key={k} value={k}>
                   {label}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           {formError && (
             <p className="text-sm text-danger" role="alert">
@@ -261,17 +260,16 @@ export default function FosterProspectsPage() {
                               </p>
                             )}
                           </div>
-                          <select
+                          <Select
                             value={prospect.status}
                             onChange={(e) => handleStatusChange(docId, e.target.value as FosterProspectStatus)}
-                            className="h-9 rounded-sm border border-border-medium bg-inset px-2 text-sm text-text-primary"
                           >
                             {STATUS_ORDER.map((s) => (
                               <option key={s} value={s}>
                                 {STATUS_LABELS[s]}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                         </div>
 
                         <Button variant="ghost" size="sm" className="mt-2 w-fit" onClick={() => toggleExpand(docId)}>

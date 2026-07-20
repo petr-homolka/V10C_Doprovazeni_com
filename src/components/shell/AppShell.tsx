@@ -57,13 +57,17 @@ export function AppShell({
             <nav className="w-56 shrink-0 overflow-y-auto rounded-lg bg-surface-soft p-4">
               {secondaryPanel}
             </nav>
-            <div className="min-w-0 flex-1 overflow-y-auto rounded-lg bg-surface-soft p-6">
-              {children}
+            <div className="relative min-w-0 flex-1 overflow-hidden rounded-lg bg-surface-soft">
+              <div className="h-full overflow-y-auto p-6">{children}</div>
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-surface-soft to-transparent" />
             </div>
           </div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1200px] px-8 pb-8">{children}</div>
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <div className="h-full overflow-y-auto">
+              <div className="mx-auto max-w-[1200px] px-8 pb-8">{children}</div>
+            </div>
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-app to-transparent" />
           </div>
         )}
       </main>

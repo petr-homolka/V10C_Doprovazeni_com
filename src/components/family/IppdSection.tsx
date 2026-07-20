@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { closeIppd, createIppd, evaluateIppd, listIppds } from '@/services/ippdService'
@@ -54,7 +55,6 @@ function StatusBadge({ label }: { label: string }) {
   )
 }
 
-const SELECT_CLASSNAME = 'h-10 w-full rounded-sm border border-border-medium bg-inset px-3 text-text-primary'
 const TEXTAREA_CLASSNAME =
   'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed ' +
   'text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none'
@@ -193,7 +193,13 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-lg font-normal leading-tight text-text-primary">IPPD — individuální plán ochrany dítěte</h2>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : '+ Založit nový IPPD'}
+          {showForm ? (
+            'Zrušit'
+          ) : (
+            <>
+              <Plus size={16} /> Založit nový IPPD
+            </>
+          )}
         </Button>
       </div>
 
@@ -237,23 +243,21 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
                 <div className="flex gap-3">
                   <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
                     Odpovědná osoba
-                    <select
+                    <Select
                       value={draft.kind}
                       onChange={(e) => updateGoalDraft(idx, { kind: e.target.value as ResponsibleKind, refId: '' })}
-                      className={SELECT_CLASSNAME}
                     >
                       <option value="fosterPerson">Pěstoun</option>
                       <option value="staff">Zaměstnanec</option>
                       <option value="child">Dítě</option>
-                    </select>
+                    </Select>
                   </label>
                   {draft.kind === 'fosterPerson' && (
                     <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
                       Pěstoun
-                      <select
+                      <Select
                         value={draft.refId}
                         onChange={(e) => updateGoalDraft(idx, { refId: e.target.value })}
-                        className={SELECT_CLASSNAME}
                       >
                         <option value="">Vyberte…</option>
                         {fosterPersons.map((f) => (
@@ -261,16 +265,15 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
                             {f.fosterPerson.firstName} {f.fosterPerson.lastName}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                   )}
                   {draft.kind === 'child' && (
                     <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
                       Dítě
-                      <select
+                      <Select
                         value={draft.refId}
                         onChange={(e) => updateGoalDraft(idx, { refId: e.target.value })}
-                        className={SELECT_CLASSNAME}
                       >
                         <option value="">Vyberte…</option>
                         {children.map((c) => (
@@ -278,14 +281,14 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
                             {c.child.firstName} {c.child.lastName}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                     </label>
                   )}
                 </div>
               </div>
             ))}
             <Button type="button" variant="ghost" size="sm" onClick={addGoalRow} className="w-fit">
-              + Přidat cíl
+              <Plus size={16} /> Přidat cíl
             </Button>
           </div>
 
