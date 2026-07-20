@@ -19,8 +19,14 @@ export function TableHeaderRow({ columns, labels }: { columns: string; labels: s
       className="grid items-center gap-x-2 border-b border-border-strong px-4 py-3"
       style={gridStyle(columns)}
     >
-      {labels.map((label) => (
-        <span key={label} className="text-xs font-medium text-text-primary">
+      {/* Index jako key je tu správně, ne zkratka — `labels` je pevná,
+       * neřazená sada sloupců (stejná délka/pořadí po celou dobu života
+       * tabulky), ne dynamický seznam entit. Klíčování podle TEXTU labelu
+       * selhalo naživo (FamilyDetailPage FOSTER_COLUMNS má dva sloupce
+       * bez nadpisu, '' se objevilo dvakrát → React "duplicate key"
+       * varování v konzoli na každé stránce s touhle tabulkou). */}
+      {labels.map((label, i) => (
+        <span key={i} className="text-xs font-medium text-text-primary">
           {label}
         </span>
       ))}

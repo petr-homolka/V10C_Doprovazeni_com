@@ -5,6 +5,21 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Oprava: duplicitní React key v `TableHeaderRow` (2026-07-19)
+
+Flagnutý úkol z konce M4 dořešen hned: `components/ui/table.tsx`
+`TableHeaderRow` klíčoval hlavičkové buňky podle TEXTU labelu
+(`key={label}`) — `FamilyDetailPage`'s `FOSTER_COLUMNS` má od M4 (nový
+sloupec "Pozvat") DVA sloupce bez nadpisu (`['', 'Jméno', 'Telefon',
+'E-mail', '']`), takže `''` jako klíč vzniklo dvakrát → React "duplicate
+key" varování na každé stránce, co tuhle tabulku vykreslí. Živě ověřeno
+(čerstvý tab, bez nahromaděné konzole z předchozí navigace — jinak
+snadno zavádějící, viz jinde v tomhle souboru), že "totéž" varování na
+`/zamestnanci` byl jen starý řádek v konzoli z dřívější návštěvy
+FamilyDetailPage ve STEJNÉM tabu, ne skutečný nezávislý výskyt tam.
+Oprava: `labels.map((label, i) => ... key={i})` — index jako klíč je tu
+správně (pevná, neřazená sada sloupců, ne dynamický seznam entit).
+
 ## M4 hotový — Pěstounský účet, magic link, `/moje` portál (2026-07-19)
 
 §6 A6 "Pozvání pěstouna" + §2 "vlastní omezená appka `/moje`". Datové
