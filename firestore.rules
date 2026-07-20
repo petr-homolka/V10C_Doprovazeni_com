@@ -31,6 +31,16 @@ service cloud.firestore {
       return isSignedIn() && userDoc().role in ['vedouci_pobocky', 'teamleader'];
     }
 
+    // M4 (§6 A6): pěstoun má VLASTNÍ, úzký profil (role 'pestoun', mimo
+    // `isStaff()` seznam) — `fosterFamilyId`/`fosterPersonRef` na jeho
+    // `users/{uid}` dokumentu (src/types/user.ts) ukazují na PŘESNĚ jednu
+    // rodinu/osobu. Nikdy nekombinovat s `sameOrg()` (ta je jen pro staff,
+    // viz "Klíčová past" komentář výš) — pěstounovo scoping jde vždy přes
+    // tuhle funkci + přímé porovnání `familyId`.
+    function isFoster() {
+      return isSignedIn() && userDoc().role == 'pestoun';
+    }
+
     function isSuperadmin() {
       return isSignedIn() && userDoc().role == 'superadmin';
     }
@@ -110,13 +120,22 @@ service cloud.firestore {
       allow read: if isSignedIn() &&
         (request.auth.uid == uid || sameOrg(resource.data.organizationId));
 
-      // M1 (§6 A9) — dvě oddělené cesty, `if false` už neplatí plošně:
+      // M1 (§6 A9) — tři oddělené cesty, `if false` už neplatí plošně:
       // 1) Bootstrap self-registrace: úplně nový uživatel zakládá SVŮJ
       //    VLASTNÍ profil s rolí `org_admin`, a to jen k organizaci, kterou
       //    (jak dokazuje `createdByUid`) sám před chvílí založil. Nejde
       //    takhle vytvořit cizí/druhý profil ani jinou roli.
       // 2) Org_admin zakládá dalšího zaměstnance (nikdy `superadmin`) ve
       //    SVÉ organizaci — `role` v požadavku musí být validní staff role.
+      // 3) M4 (§6 A6): pěstoun po kliknutí na magic link zakládá SVŮJ
+      //    VLASTNÍ profil s rolí `pestoun` — ale JEN pokud existuje
+      //    odpovídající, dosud NEPOUŽITÁ pozvánka (`foster_invitations/
+      //    {email}`, doc ID = e-mail) na PŘESNĚ tu organizaci/rodinu/osobu,
+      //    kterou si do vlastního profilu zapisuje. Bez týhle vazby by si
+      //    kdokoli mohl založit `pestoun` profil s libovolným
+      //    `fosterFamilyId` a číst cizí rodinu — stejný sekvenční vzor
+      //    jako bod 1 (pozvánka musí existovat DŘÍV, ne se jen tvarově
+      //    podobat).
       allow create: if
         (request.auth.uid == uid && request.resource.data.role == 'org_admin' &&
          get(/databases/$(database)/documents/organizations/$(request.resource.data.organizationId)).data.createdByUid == request.auth.uid) ||
@@ -125,7 +144,14 @@ service cloud.firestore {
          request.resource.data.role in [
            'org_admin', 'vedouci_pobocky', 'teamleader',
            'klicova_osoba', 'asistent_ko', 'zamestnanec'
-         ]);
+         ]) ||
+        (request.auth.uid == uid && request.resource.data.role == 'pestoun' &&
+         request.auth.token.email == request.resource.data.email &&
+         exists(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)) &&
+         get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.consumedAt == null &&
+         get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.organizationId == request.resource.data.organizationId &&
+         get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.familyId == request.resource.data.fosterFamilyId &&
+         get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.fosterPersonRef == request.resource.data.fosterPersonRef);
 
       // Sebeúprava: jen `displayName` (žádná cesta k vlastnímu povýšení role).
       // Org_admin nad zaměstnancem své organizace: jen `role`/`disabledAt`
@@ -140,6 +166,39 @@ service cloud.firestore {
 
       // Žádný hard delete profilu — jen `disabledAt` (viz update výše).
       allow delete: if false;
+    }
+
+    // ---- foster_invitations/{email} — §6 A6, M4 ------------------------
+    //
+    // Doc ID JE e-mail (viz FosterInvitationDoc komentář). Umožňuje jak
+    // staffu spravovat pozvánku, tak nově přihlášenému (ale ještě
+    // profil-less) pěstounovi ji přečíst PŘED tím, než si založí vlastní
+    // `users/{uid}` profil (`users/{uid}` create pravidlo výš na ni
+    // odkazuje přes `get()`).
+
+    match /foster_invitations/{email} {
+      allow read: if isSuperadmin() ||
+        (isStaff() && sameOrg(resource.data.organizationId)) ||
+        (isSignedIn() && request.auth.token.email == email);
+
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        request.resource.data.email == email &&
+        request.resource.data.consumedAt == null;
+
+      // Staff (stejná organizace) smí pozvánku kdykoli spravovat/odvolat.
+      // Nově přihlášený pěstoun smí NASTAVIT jen `consumedAt`/
+      // `consumedByUid` (a jen jednou — `resource.data.consumedAt == null`
+      // brání druhému "spotřebování" téže pozvánky), nic jiného.
+      allow update: if isSuperadmin() ||
+        (isStaff() && sameOrg(resource.data.organizationId)) ||
+        (
+          isSignedIn() && request.auth.token.email == email &&
+          resource.data.consumedAt == null &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['consumedAt', 'consumedByUid'])
+        );
+
+      allow delete: if isSuperadmin() || (isStaff() && sameOrg(resource.data.organizationId));
     }
 
     // ---- counters/{orgId}_{typ} — §4.3 pozn. 2 (UID sekvenční čítač) ----
@@ -263,7 +322,12 @@ service cloud.firestore {
     // jen předpokládají.
 
     match /families/{familyId} {
-      allow read: if isSuperadmin() || (isStaff() && userDoc().organizationId in resource.data.orgAccessList);
+      // M4: pěstoun čte VÝHRADNĚ svou vlastní rodinu (`fosterFamilyId` na
+      // jeho `users/{uid}` profilu, vyplněné jen z ověřené pozvánky — viz
+      // `users/{uid}` create pravidlo výš).
+      allow read: if isSuperadmin() ||
+        (isStaff() && userDoc().organizationId in resource.data.orgAccessList) ||
+        (isFoster() && familyId == userDoc().fosterFamilyId);
 
       allow create: if isStaff() &&
         request.resource.data.orgAccessList == [userDoc().organizationId];
@@ -296,7 +360,12 @@ service cloud.firestore {
     // pole z M1.
 
     match /children/{childId} {
-      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      // M4: pěstoun čte děti VLASTNÍ rodiny (read-only, §2 "své děti
+      // read-only") — porovnává se `familyId` na dítěti, ne organizace
+      // (dítě může mít jinou aktuální `organizationId` než pěstounův
+      // vlastní vztah, viz §4.2 bod 7 denormalizace, ale rodina zůstává).
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId) ||
+        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId);
       allow create: if isStaff() &&
         request.resource.data.organizationId == userDoc().organizationId;
       allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
@@ -317,7 +386,11 @@ service cloud.firestore {
     // Dohody, pro VŠECHNY pěstouny dané rodiny.
 
     match /fosterPersons/{fosterId} {
-      allow read: if isSuperadmin() || (isStaff() && userDoc().organizationId in resource.data.orgAccessList);
+      // M4: pěstoun čte VLASTNÍ osobu i případného spolupěstouna stejné
+      // rodiny (stejné `familyId`) — ne cizí rodiny.
+      allow read: if isSuperadmin() ||
+        (isStaff() && userDoc().organizationId in resource.data.orgAccessList) ||
+        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId);
 
       allow create: if isStaff() &&
         request.resource.data.orgAccessList == [userDoc().organizationId];
@@ -398,7 +471,23 @@ service cloud.firestore {
       // filtruje `sharingLevel==='private' && createdByUid!==aktuální`),
       // ne na úrovni Firestore pravidel — stejná důvěra ve staff jako
       // jinde v appce, ne tvrdá bezpečnostní hranice.
-      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId);
+      // M4 (§13.3 sjednocení): pěstoun čte VÝHRADNĚ zápisy vlastní rodiny
+      // se sharingLevel 'foster' — jediná úroveň, kterou smí vidět (§7.4:
+      // "foster (KO↔pěstoun, jediná úroveň viditelná pěstounovi)").
+      // Podmínka MUSÍ přesně zrcadlit klientský dotaz
+      // (`listFosterVisibleTimelineEntries`, `where('sharingLevel','==',
+      // 'foster')` + `where('subjectRefs','array-contains',{kind:'family',
+      // id:familyId})`) — jinak Firestore zamítne CELÝ list dotaz (živě
+      // ověřeno na vlastní kůži hodinu předtím, viz komentář výš u
+      // "Soukromá poznámka" SEAMu). Rodina je VŽDY v `subjectRefs`
+      // (implicitní subjekt, viz FamilyDetailPage.openRecorderFor), takže
+      // tahle jedna podmínka pokrývá i zápisy o konkrétním dítěti/pěstounovi.
+      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId) ||
+        (
+          isFoster() && path[1] == userDoc().fosterFamilyId &&
+          resource.data.sharingLevel == 'foster' &&
+          resource.data.subjectRefs.hasAny([{'kind': 'family', 'id': userDoc().fosterFamilyId}])
+        );
       allow create: if isStaff() &&
         request.resource.data.createdByOrgId == userDoc().organizationId &&
         hasActiveAgreementFor(path[1]);

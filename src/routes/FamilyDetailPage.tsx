@@ -21,6 +21,7 @@ import {
   listFosterPersonsByRefs,
 } from '@/services/familyService'
 import { checkKoCapacity, createAgreement, endAgreement, getActiveAgreement } from '@/services/agreementService'
+import { sendFosterInvitation } from '@/services/fosterInvitationService'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -29,7 +30,7 @@ import type { UserDoc } from '@/types/user'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
 import { Baby, Clock, FileText, Handshake, Home, Mic, StickyNote, UserRound } from 'lucide-react'
 
-const FOSTER_COLUMNS = '40px 1.2fr 1fr 1.2fr'
+const FOSTER_COLUMNS = '40px 1.1fr 0.9fr 1.1fr 120px'
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
   note: 'Poznámka',
   visit: 'Návštěva',
@@ -102,6 +103,9 @@ export default function FamilyDetailPage() {
 
   const [submitting, setSubmitting] = useState(false)
   const [loaded, setLoaded] = useState(false)
+
+  const [invitingFosterId, setInvitingFosterId] = useState<string | null>(null)
+  const [inviteMessage, setInviteMessage] = useState<{ fpId: string; text: string } | null>(null)
 
   async function reload() {
     if (!familyUid || !organizationId) return
@@ -287,6 +291,32 @@ export default function FamilyDetailPage() {
       setError('Přidání pěstouna se nezdařilo.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  /** §6 A6: magic link pozvánka — vyžaduje e-mail na FosterPersonDoc (viz
+   * "Přidat pěstouna" formulář výš), tlačítko je jinak vypnuté s tooltipem
+   * místo skrytého/matoucího chování. */
+  async function handleInviteFoster(fpId: string, email: string | undefined) {
+    if (!docId || !organizationId || !userDoc || !email) return
+    setInvitingFosterId(fpId)
+    setInviteMessage(null)
+    try {
+      const fp = fosterPersons.find((f) => f.docId === fpId)?.fosterPerson
+      await sendFosterInvitation({
+        email,
+        organizationId,
+        familyId: docId,
+        fosterPersonRef: fpId,
+        fosterPersonDisplayName: fp ? `${fp.firstName} ${fp.lastName}` : email,
+        invitedByUid: userDoc.uid,
+        invitedByDisplayName: userDoc.displayName,
+      })
+      setInviteMessage({ fpId, text: `Pozvánka odeslána na ${email}.` })
+    } catch {
+      setInviteMessage({ fpId, text: 'Pozvánku se nepodařilo odeslat.' })
+    } finally {
+      setInvitingFosterId(null)
     }
   }
 
@@ -504,7 +534,7 @@ export default function FamilyDetailPage() {
             <EmptyState icon={UserRound} text="Zatím žádní pěstouni." />
           ) : (
             <Table>
-              <TableHeaderRow columns={FOSTER_COLUMNS} labels={['', 'Jméno', 'Telefon', 'E-mail']} />
+              <TableHeaderRow columns={FOSTER_COLUMNS} labels={['', 'Jméno', 'Telefon', 'E-mail', '']} />
               {fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => (
                 <TableRow key={fpId} columns={FOSTER_COLUMNS}>
                   <EntityAvatar
@@ -520,10 +550,20 @@ export default function FamilyDetailPage() {
                   </span>
                   <span className="text-sm text-text-secondary">{fp.phone || '—'}</span>
                   <span className="truncate text-sm text-text-secondary">{fp.email || '—'}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!fp.email || invitingFosterId === fpId}
+                    onClick={() => handleInviteFoster(fpId, fp.email)}
+                    title={!fp.email ? 'Pěstoun nemá vyplněný e-mail' : undefined}
+                  >
+                    {invitingFosterId === fpId ? 'Odesílám…' : 'Pozvat'}
+                  </Button>
                 </TableRow>
               ))}
             </Table>
           )}
+          {inviteMessage && <p className="mt-2 text-sm text-text-secondary">{inviteMessage.text}</p>}
         </div>
       </section>
 

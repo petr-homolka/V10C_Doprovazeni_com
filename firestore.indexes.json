@@ -24,6 +24,15 @@
         { "fieldPath": "assignedTo", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "timeline",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sharingLevel", "order": "ASCENDING" },
+        { "fieldPath": "subjectRefs", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "occurredAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

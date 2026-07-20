@@ -5,6 +5,79 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## M4 hotový — Pěstounský účet, magic link, `/moje` portál (2026-07-19)
+
+§6 A6 "Pozvání pěstouna" + §2 "vlastní omezená appka `/moje`". Datové
+základy (`UserDoc.fosterFamilyId`/`fosterPersonRef`, role `pestoun` mimo
+`isStaff()`) byly už připravené od M0/M1 — M4 je z velké části skutečně
+JEN dostavěl to, co bylo předjímané.
+
+**Magic link (§6 A6):** Firebase Auth Email Link (passwordless) sign-in —
+Firebase e-mail odesílá SÁM (vlastní šablona, server-side), žádná Cloud
+Function (§10). `foster_invitations/{email}` (doc ID = e-mail) nese
+`organizationId`/`familyId`/`fosterPersonRef`/`fosterPersonDisplayName` +
+`consumedAt` (append-once ochrana proti druhému použití). Tok:
+1. KO klikne "Pozvat" u řádku pěstouna na `FamilyDetailPage` (vyžaduje
+   vyplněný e-mail na `FosterPersonDoc`, jinak tlačítko vypnuté s
+   tooltipem) → `fosterInvitationService.sendFosterInvitation`.
+2. Pěstoun klikne na odkaz v e-mailu → `/moje/prihlaseni`
+   (`MojeLoginPage.tsx`) dokončí `signInWithEmailLink`, načte
+   `foster_invitations/{email}`, založí `users/{uid}` s rolí `pestoun` a
+   označí pozvánku spotřebovanou → přesměruje na `/moje`.
+3. `RequireFosterAuth` chrání zbytek `/moje/*` (vyžaduje roli `pestoun`,
+   ne jen jakékoli přihlášení); staffová `RequireAuth` naopak přesměruje
+   `pestoun` roli pryč ze staffového shellu na `/moje`.
+
+**`firestore.rules`:** nová `isFoster()` funkce + třetí `users/{uid}`
+create disjunkt (self-bootstrap, gatovaný existující NEspotřebovanou
+pozvánkou přesně na tu organizaci/rodinu/osobu, stejný sekvenční vzor
+jako M1 org_admin bootstrap) + `foster_invitations/{email}` match +
+čtecí disjunkty pro `families`/`children`/`fosterPersons`/`timeline`
+scoped na `userDoc().fosterFamilyId`. `timeline` čtení pro pěstouna
+vyžaduje PŘESNĚ `sharingLevel=='foster' && subjectRefs array-contains
+{kind:family,id:familyId}` — musí zrcadlit klientský dotaz 1:1 (viz M3
+"List dotaz vs. pole v pravidle" — tahle past byla ještě čerstvá z
+předchozí noci, takže tentokrát navržena rovnou správně, ne opravena až
+po rozbití). Nový composite index (`sharingLevel`+`subjectRefs`
+array-contains+`occurredAt`) nasazen a doběhl.
+
+**`/moje` portál:** vlastní `MojeShell` (žádný staffový sidebar, jen
+header s odhlášením), `MojeDashboardPage` — vlastní děti (read-only
+karty), sdílené zápisy (`sharingLevel:'foster'`, znovupoužívá
+`TimelineEntryDetail` ze M3). Jméno autora zápisu se zobrazuje jako
+generické "Klíčová osoba", ne jmenovitě — pěstoun nemá (a nepotřebuje)
+čtecí právo na `users/{staffUid}`. Chat (M9) a Dokumenty (M5) jsou
+zřetelně popsané "připravujeme" karty, ne mlčky vynechané — ani jedno
+zatím neexistuje pro STAFF stranu appky vůbec, natož pro pěstouna.
+
+**Co bylo živě ověřeno:** odeslání pozvánky (Firebase Email Link sign-in
+je v projektu už povolený, žádný další ruční Console krok nebyl potřeba
+— na rozdíl od Auth/Storage "Get started" dřív v projektu), zápis
+`foster_invitations` dokumentu, `RequireFosterAuth`/`RequireAuth`
+přesměrování v obou směrech (org_admin na `/moje` nedostane staffový
+shell ani prázdný pěstounský, `pestoun` route bez profilu skončí na
+`/moje/prihlaseni` s jasnou chybou "odkaz není platný").
+
+**Co NEBYLO živě ověřeno (SEAM, potřebuje Petrovu ruční akci):** samotné
+kliknutí na magic link e-mail a navazující založení `users/{uid}` profilu
++ vykreslení `/moje` s reálnými daty. Nešlo to otestovat beze schránky na
+reálný e-mail — a založení zkušebního Firebase Auth účtu přes REST API
+(jako obchvat) odmítl bezpečnostní klasifikátor session jako rizikovou
+akci, což jsem respektoval, ne obcházel. **Než tenhle tok Petr sám
+nevyzkouší (poslat si pozvánku na vlastní e-mail a kliknout na odkaz),
+berte založení `pestoun` profilu a vykreslení `/moje` s reálnými daty
+jako pečlivě odůvodněné, ale NEOVĚŘENÉ.** Pravidla i logika jsou navržená
+stejným, už jednou živě ověřeným vzorem (org_admin self-bootstrap, M1),
+což riziko snižuje, ale nenahrazuje skutečný test.
+
+Mimochodem odhaleno (mimo rozsah M4, samostatně zaznamenáno): trvalé
+"Encountered two children with the same key" React varování v konzoli
+napříč VŠEMI staffovými stránkami (potvrzeno na `/zamestnanci` i
+`/rodiny/:familyUid`, tedy sdílená komponenta v `AppShell`/`Sidebar`/
+`TopBar`/`AccountMenu` — zdroj se rychlou kontrolou nenašel, žádný z
+těchhle čtyř souborů nemá zjevně duplicitní `key`). Nekritické (appka
+funguje), ale stojí za doladění — flagnuto jako samostatný úkol.
+
 ## M3 hotový — Časová osa, GPS Giant Timer, "Čeká na vás" (2026-07-19)
 
 Postaveno v noci bez zpětné vazby (Petr šel spát, zadal "pokračuj bez

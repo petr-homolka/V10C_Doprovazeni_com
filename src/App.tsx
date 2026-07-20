@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import RequireAuth from '@/routes/RequireAuth'
+import RequireFosterAuth from '@/routes/moje/RequireFosterAuth'
 
 // Code-split lazy routes — §10 provozní úspornost (statická SPA, code-split
 // lazy routes). Přidávej sem novou stránku pro každý modul (M1+), ne do
@@ -18,6 +19,8 @@ const AccountSettingsPage = lazy(() => import('@/routes/settings/AccountSettings
 const NotificationsSettingsPage = lazy(() => import('@/routes/settings/NotificationsSettingsPage'))
 const ImportSettingsPage = lazy(() => import('@/routes/settings/ImportSettingsPage'))
 const BackupSettingsPage = lazy(() => import('@/routes/settings/BackupSettingsPage'))
+const MojeLoginPage = lazy(() => import('@/routes/moje/MojeLoginPage'))
+const MojeDashboardPage = lazy(() => import('@/routes/moje/MojeDashboardPage'))
 
 function RouteFallback() {
   return (
@@ -35,6 +38,10 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/registrace" element={<RegisterPage />} />
+            <Route path="/moje/prihlaseni" element={<MojeLoginPage />} />
+            <Route element={<RequireFosterAuth />}>
+              <Route path="/moje" element={<MojeDashboardPage />} />
+            </Route>
             <Route element={<RequireAuth />}>
               <Route path="/" element={<DashboardPage />} />
               <Route path="/zamestnanci" element={<StaffPage />} />
