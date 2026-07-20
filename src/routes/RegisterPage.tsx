@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { addDoc, collection, doc, setDoc } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
 import { allocateOrgCode } from '@/lib/orgCode'
-import { DEFAULT_CAPACITY_WARNING_THRESHOLD, type OrganizationDoc } from '@/types/organization'
+import type { OrganizationDoc } from '@/types/organization'
 import type { UserDoc } from '@/types/user'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,7 +43,6 @@ export default function RegisterPage() {
         name: orgName,
         createdByUid: credential.user.uid,
         createdAt: new Date().toISOString(),
-        capacityWarningThreshold: DEFAULT_CAPACITY_WARNING_THRESHOLD,
       }
       const orgRef = await addDoc(collection(db, 'organizations'), orgData)
 

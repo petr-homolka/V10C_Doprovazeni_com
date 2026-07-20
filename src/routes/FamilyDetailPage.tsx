@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { Switch } from '@/components/ui/switch'
 import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/components/timeline/VoiceRecorderPanel'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { useAuth } from '@/hooks/useAuth'
@@ -19,6 +20,7 @@ import {
   getFamilyByUid,
   listChildrenForFamily,
   listFosterPersonsByRefs,
+  updateFamilyPartnerSharingDefault,
 } from '@/services/familyService'
 import { checkKoCapacity, createAgreement, endAgreement, getActiveAgreement } from '@/services/agreementService'
 import { sendFosterInvitation } from '@/services/fosterInvitationService'
@@ -231,6 +233,19 @@ export default function FamilyDetailPage() {
       setCapacityNote(
         `Pozor: tahle klíčová osoba už má ${capacity.activeCaseload} aktivních rodin (orientační práh je ${capacity.threshold}) — zvažte přerozdělení.`,
       )
+    }
+  }
+
+  /** DOPLNENI_ZADANI-DO-M5 §2 — výchozí stav "Sdílet s oběma pěstouny" pro
+   * příští záznamy v týhle rodině (optimistický update, ověřeno reloadem). */
+  async function handlePartnerSharingDefaultChange(next: boolean) {
+    if (!docId) return
+    setFamily((prev) => (prev ? { ...prev, partnerSharingDefault: next } : prev))
+    try {
+      await updateFamilyPartnerSharingDefault(docId, next)
+    } catch {
+      setError('Výchozí sdílení se nepodařilo uložit.')
+      await reload()
     }
   }
 
@@ -554,6 +569,18 @@ export default function FamilyDetailPage() {
             {showFosterForm ? 'Zrušit' : '+ Přidat pěstouna'}
           </Button>
         </div>
+        {family && family.fosterPersonRefs.length >= 2 && (
+          <div className="mt-3 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4">
+            <span className="text-sm text-text-primary">
+              Nové zápisy výchozí sdílet s oběma pěstouny
+            </span>
+            <Switch
+              checked={family.partnerSharingDefault ?? true}
+              onChange={handlePartnerSharingDefaultChange}
+              label="Nové zápisy výchozí sdílet s oběma pěstouny"
+            />
+          </div>
+        )}
 
         {showFosterForm && (
           <form
@@ -831,6 +858,7 @@ export default function FamilyDetailPage() {
           implicitSubjects={recorder.implicitSubjects}
           people={recordablePeople}
           preselectedPeopleKeys={recorder.preselectedPeopleKeys}
+          partnerSharingDefault={family?.partnerSharingDefault ?? true}
           visit={recorder.visit}
           onClose={() => setRecorder(null)}
           onSaved={reload}

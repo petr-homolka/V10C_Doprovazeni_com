@@ -62,7 +62,7 @@ export default function MojeDashboardPage() {
     Promise.all([
       getFosterFamily(familyId),
       listFosterChildren(familyId),
-      listFosterVisibleTimelineEntries(familyId),
+      listFosterVisibleTimelineEntries(familyId, userDoc?.fosterPersonRef),
       listFosterVisibleDocuments(familyId),
     ])
       .then(([f, kids, timelineEntries, docs]) => {
@@ -74,6 +74,7 @@ export default function MojeDashboardPage() {
       .catch(() => setError('Data se nepodařilo načíst.'))
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fosterPersonRef je stabilní po přihlášení
   useEffect(reload, [userDoc?.fosterFamilyId])
 
   async function handleApproveDocument(docId: string) {

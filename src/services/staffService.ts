@@ -1,4 +1,4 @@
-import { doc, collection, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore'
+import { doc, collection, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { createStaffAuthAccount } from '@/lib/secondaryAuth'
 import { STAFF_ROLES, type StaffRole, type UserDoc } from '@/types/user'
@@ -43,6 +43,7 @@ export async function createStaffMember(input: CreateStaffMemberInput): Promise<
     displayName: input.displayName,
     email: input.email,
     organizationId: input.organizationId,
+    fte: 1, // §6 A9 — výchozí plný úvazek, org_admin může upravit později
     createdAt: new Date().toISOString(),
   }
   await setDoc(doc(db, 'users', uid), userData)
@@ -58,4 +59,20 @@ export async function setStaffMemberDisabled(uid: string, disabled: boolean): Pr
 
 export async function updateStaffMemberRole(uid: string, role: StaffRole): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { role })
+}
+
+export async function getStaffMember(uid: string): Promise<UserDoc | null> {
+  const snap = await getDoc(doc(db, 'users', uid))
+  return snap.exists() ? (snap.data() as UserDoc) : null
+}
+
+/** §6 A9 kapacita KO (DOPLNENI_ZADANI-DO-M5 §1) — org_admin nastavuje
+ * úvazek a/nebo per-KO override prahu. `null` u override = smazat
+ * (spadnout na organizační/platformní úroveň kaskády). */
+export async function updateStaffCapacitySettings(
+  uid: string,
+  fte: number,
+  capacityThresholdOverride: number | null,
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { fte, capacityThresholdOverride })
 }

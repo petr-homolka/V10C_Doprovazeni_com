@@ -70,6 +70,13 @@ export interface CreateVisitEntryInput {
   endedAt: string
   durationSeconds: number
   location: { lat: number; lng: number } | null
+  /** DOPLNENI_ZADANI-DO-M5 §2 — `fosterPersons/{id}.lastVisitAt` per OSOBU,
+   * NEZÁVISLE na `sharingLevel` (jestli o návštěvě pěstoun uvidí zápis, je
+   * jiná otázka než komu se návštěva reálně týkala). Volající
+   * (VoiceRecorderPanel) je odvodí ze STEJNÉ logiky, co postavila
+   * `subjectRefs` — oba pěstouni při "Sdílet s oběma" (výchozí), jen
+   * vybraný jeden při vypnutém přepínači. */
+  stampFosterPersonIds?: string[]
 }
 
 /**
@@ -129,6 +136,9 @@ export async function createVisitTimelineEntry(input: CreateVisitEntryInput): Pr
   batch.set(entryRef, entryData)
   batch.set(digestRef, digestData)
   batch.update(agreementRef, { lastVisitAt: input.endedAt })
+  for (const fosterPersonId of input.stampFosterPersonIds ?? []) {
+    batch.update(doc(db, 'fosterPersons', fosterPersonId), { lastVisitAt: input.endedAt })
+  }
   await batch.commit()
 }
 

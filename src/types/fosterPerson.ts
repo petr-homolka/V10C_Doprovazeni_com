@@ -28,4 +28,12 @@ export interface FosterPersonDoc {
   createdByImportJobRef?: string
   /** Viz stejnojmenné pole na FamilyDoc — Cloud Storage avatar URL (M3). */
   avatarUrl?: string | null
+  /** DOPLNENI_ZADANI-DO-M5 §2 — lhůta osobního kontaktu PER OSOBU, ne jen
+   * per Dohoda (`AgreementDoc.lastVisitAt`). Dokud partneři "v souladu"
+   * (sdílené návštěvy, výchozí stav), obě hodnoty zůstávají stejné jako
+   * Dohoda — teprve když se pracovník rozhodne navštívit/zaznamenat jen
+   * JEDNOHO partnera (`partnerSharingDefault` toggle vypnutý), se tohle
+   * pole odchýlí a dává smysl samo o sobě. Nenastavené (starší záznamy
+   * před tímhle polem) = "stejné jako Dohoda", NE "nikdy navštíven". */
+  lastVisitAt?: string | null
 }

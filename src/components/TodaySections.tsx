@@ -56,14 +56,19 @@ export function TodaySections() {
           ) : families.length === 0 ? (
             <EmptyState icon={CalendarCheck} text="Žádná rodina teď nečeká na návštěvu." />
           ) : (
-            families.map(({ docId, family, primaryFosterName, lastVisitAt, crisis }) => (
+            families.map(({ docId, family, primaryFosterName, lastVisitAt, visitStatus, divergentFosterPerson }) => (
               <FamilyCard
                 key={docId}
                 onClick={() => navigate(`/rodiny/${family.uid}`)}
                 initials={initialsFor(primaryFosterName ?? family.address ?? family.uid)}
                 name={primaryFosterName ?? family.address ?? family.uid}
                 lastContactText={lastContactText(lastVisitAt)}
-                crisis={crisis}
+                secondaryWarning={
+                  divergentFosterPerson
+                    ? `${divergentFosterPerson.name}: lhůta běží zvlášť (${lastContactText(divergentFosterPerson.lastVisitAt)})`
+                    : undefined
+                }
+                visitStatus={visitStatus === 'waiting' ? undefined : visitStatus}
                 badgeKind="foster"
                 badgeLabel="Pěstounská rodina"
               />

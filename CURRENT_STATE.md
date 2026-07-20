@@ -5,6 +5,93 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Retrofit na M0–M5 hotový — DOPLNENI_ZADANI-DO-M5.md (2026-07-20)
+
+Petr po M5 poslal `nove zadani/DOPLNENI_ZADANI-DO-M5.md` — cílený seznam
+tří doplnění k už postaveným modulům (kapacita KO, partnerské sdílení,
+45denní varování), NE nové zadání od nuly. Zpracováno přes průzkumný
+Workflow (4 paralelní research agenti zmapovali přesný současný stav před
+jakoukoli editací) + přímá implementace + živé ověření. **Petr výslovně
+požádal počkat s M6 a dál** — pracuje na aktualizovaném zadání, tohle je
+poslední krok před pauzou.
+
+**§1 Kapacita KO — FTE váha, tříúrovňová kaskáda:**
+`checkKoCapacity` teď počítá efektivní práh = `(per-KO
+capacityThresholdOverride ?? organizace.koCapacityThreshold ?? platformDefaults.
+koCapacityThreshold) × users/{uid}.fte` (`src/lib/capacityThreshold.ts`,
+zaokrouhleno dolů). Platformní výchozí = 19 (dřív flat 25 na organizaci).
+`organizations.capacityWarningThreshold` PŘEJMENOVÁNO na
+`koCapacityThreshold` a nově VOLITELNÉ (dřív se vždy nastavovalo na 25 při
+registraci — teď se nenastavuje vůbec, aby kaskáda mohla spadnout na
+platformní úroveň). Nová `platformDefaults/global` kolekce (superadmin-only
+zápis, čtení pro každého přihlášeného) — **první superadmin-only stránka v
+celé appce** (`/platforma`, nikdy dřív nic takového neexistovalo, ověřeno
+před stavbou). Nová `CapacityRing` komponenta (`components/ui/capacity-ring.tsx`,
+Dodatek §6.10 do `DESIGN_SYSTEM.md`) — kruhový ukazatel, `--danger-solid` +
+jemný pulz nad prahem (NE `--crisis`, ta je podle §2.3 vyhrazená rodinné
+krizi). `/zamestnanci` teď má sloupec "Kapacita" (ring + kliknutím
+otevíratelná úprava FTE/override) a `/` (Dnes) souhrnný banner "N klíčových
+osob má překročenou kapacitu" pro org_admin/vedení
+(`agreementService.listOverCapacityKos`, jeden `collectionGroup` dotaz nad
+CELOU organizací, ne N dotazů na KO). **Živě ověřeno**: nastavení
+override (2/3 → uloženo, reload potvrdil), banner se objevil po překročení
+a zmizel po vyčištění testovacího override.
+
+**§2 Partnerské sdílení — KRITICKÝ NÁLEZ před implementací:** `sharingLevel:
+'foster'` se dnes NIKDE reálně nenastavoval — `VoiceRecorderPanel` měl jen
+binární "Soukromá poznámka" (private/internal), M3 zjednodušení (viz starší
+Dodatek) plný 4-úrovňový model odložilo "na budoucí chat/dokumenty", které
+teprve TEĎ přišly. Znamená to, že "Sdílené zápisy" na `/moje` byly od M4
+VŽDY prázdné, bez ohledu na cokoli — zadání §2 implicitně předpokládalo, že
+tahle cesta už funguje ("žádná retrofit práce pro [toggle ZAPNUTO]
+případ"), což v týhle kódové bázi nebyla pravda. **Rozhodnutí (odůvodněné,
+ne tiché):** přidán NOVÝ, samostatný přepínač "Sdílet s pěstounem" (výchozí
+VYPNUTO, mutually exclusive se "Soukromá poznámka"), který teprve
+umožňuje `sharingLevel:'foster'` vůbec nastat — "Sdílet s oběma pěstouny"
+(přesně dle zadání, výchozí z `family.partnerSharingDefault`) je pak
+NEZÁVISLÝ sub-přepínač, co řídí JEN `subjectRefs` scoping (family-level
+vs. konkrétní `{kind:'fosterPerson'}`, nahrazuje, ne doplňuje) — a tenhle
+scoping platí i pro `fosterPersons.lastVisitAt` stamping u návštěv,
+NEZÁVISLE na sharingLevel (návštěva proběhla, ať se zápis sdílí nebo ne).
+Nová `firestore.rules` `or()` větev pro fosterPerson-scoped čtení (zrcadlí
+family-branch vzor, žádný nový index — existující `sharingLevel`+
+`subjectRefs`+`occurredAt` index má stejný tvar polí). `mojeService`
+spouští DVA paralelní dotazy (family-scoped + fosterPerson-scoped) a
+merguje/dedupuje klientsky — vědomě NE jeden `array-contains-any` dotaz,
+i když by teoreticky mohl fungovat, protože tenhle projekt už 3× narazil
+na "list dotaz musí přesně zrcadlit pravidlo" past a tady radši
+obezřetnost než elegance.
+
+**Živě ověřeno (§2):** výchozí chování (žádný toggle) → `sharingLevel:
+'internal'`, `subjectRefs` obsahuje family-level ref — BEZE ZMĚNY, přesně
+jak zadání žádalo. "Sdílet s pěstounem" ZAPNUTO + "Sdílet s oběma"
+VYPNUTO + vybraná Marie → `sharingLevel:'foster'`,
+`subjectRefs:[{kind:'fosterPerson',id:'demo-foster-1a'}]` (family ref
+SPRÁVNĚ chybí) — ověřeno přímým čtením zapsaného Firestore dokumentu, ne
+jen UI. Validace (musí vybrat přesně jednoho pěstouna, když je "oběma"
+vypnuté) funguje.
+
+**Co NEBYLO živě ověřeno (SEAM, stejná kategorie jako M4/M5):** že
+pěstoun s `fosterPersonRef:'demo-foster-1a'` skutečně VIDÍ tenhle
+fosterPerson-scoped zápis na `/moje` a že DRUHÝ partner (`demo-foster-1b`)
+ho VIDĚT NEMŮŽE — chybí reálný pěstounský testovací účet (stejný
+dlouhodobý blokér jako M4 magic link). Rules logika je odvozená 1:1 ze
+stejného, už ověřeného family-branch vzoru a je bezpečná "by construction"
+(`hasAny` proti poli, co fosterPerson-scoped zápis nikdy neobsahuje pro
+druhého partnera), ale skutečné dvoustranné ověření zůstává na Petrovi.
+
+**§3 Dashboard, 45denní mezistupeň:** `listFamiliesAwaitingVisit` teď vrací
+`visitStatus: 'waiting'|'warning'|'crisis'` místo `crisis: boolean` —
+`'warning'` při PLOCHÝCH 45 dnech (zadání: "natvrdo, ne konfigurovatelné"),
+nezávisle na `visitIntervalDays` dané Dohody (na rozdíl od "waiting"
+prahu, který zůstává relativní, `visitIntervalDays - 15`). `FamilyCard`
+dostal nový žlutý badge "Blíží se lhůta" (`--warning`/`--warning-bg`,
+stejný token už použitý jinde v appce, žádná nová barva) vedle
+nezměněného červeného "Krize". Zároveň integrováno s §2: pokud se
+`fosterPersons.lastVisitAt` mezi partnery rozejde (nesdílená návštěva),
+zobrazí se DRUHÝ, samostatný řádek varování jmenovitě za toho partnera,
+komu lhůta reálně běží (`FamilyCard.secondaryWarning`).
+
 ## M5 hotový — Dokumenty, schvalovací workflow §6 A1 (2026-07-20)
 
 Plný 12-stavový automat: `draft → foster_review → (commented|approved_foster)

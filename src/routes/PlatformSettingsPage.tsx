@@ -1,0 +1,88 @@
+import { useEffect, useState, type FormEvent } from 'react'
+import { AppShell } from '@/components/shell/AppShell'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { useAuth } from '@/hooks/useAuth'
+import { getPlatformDefaults, setPlatformKoCapacityThreshold } from '@/services/organizationService'
+import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
+
+/**
+ * /platforma — DOPLNENI_ZADANI-DO-M5 §1 bod 3. PRVNÍ superadmin-only
+ * stránka v celé appce (dosud žádná neexistovala, viz research před touhle
+ * dávkou) — mimo `/nastaveni/*` (ty jsou vždy org-scoped, §5.7 matice),
+ * proto vlastní top-level route bez `secondaryPanel` nav.
+ */
+export default function PlatformSettingsPage() {
+  const { userDoc } = useAuth()
+  const [threshold, setThreshold] = useState('')
+  const [loaded, setLoaded] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  const isSuperadmin = userDoc?.role === 'superadmin'
+
+  useEffect(() => {
+    if (!isSuperadmin) return
+    getPlatformDefaults()
+      .then((defaults) => setThreshold(String(defaults?.koCapacityThreshold ?? DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD)))
+      .catch(() => setError('Platformní nastavení se nepodařilo načíst.'))
+      .finally(() => setLoaded(true))
+  }, [isSuperadmin])
+
+  async function handleSave(e: FormEvent) {
+    e.preventDefault()
+    setSubmitting(true)
+    setError(null)
+    setSaved(false)
+    try {
+      await setPlatformKoCapacityThreshold(Math.max(1, Number(threshold) || DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD))
+      setSaved(true)
+    } catch {
+      setError('Uložení se nezdařilo.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (!isSuperadmin) {
+    return (
+      <AppShell breadcrumb={[{ label: 'Platforma' }]}>
+        <h1 className="text-lg font-normal leading-normal text-text-primary">Platforma</h1>
+        <p className="mt-4 text-sm text-text-secondary">Tahle stránka je jen pro superadmina.</p>
+      </AppShell>
+    )
+  }
+
+  return (
+    <AppShell breadcrumb={[{ label: 'Platforma' }]}>
+      <h1 className="text-lg font-normal leading-normal text-text-primary">Platforma</h1>
+      <p className="mt-1 text-sm text-text-secondary">
+        Výchozí hodnoty pro všechny organizace, dokud si je organizace sama nepřepíše.
+      </p>
+
+      {error && (
+        <p className="mt-3 text-sm text-danger" role="alert">
+          {error}
+        </p>
+      )}
+
+      {loaded && (
+        <form onSubmit={handleSave} className="mt-6 max-w-[420px] space-y-5">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">
+              Výchozí práh kapacity klíčové osoby
+            </span>
+            <Input type="number" min={1} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+          </label>
+          <div className="flex items-center gap-3">
+            <Button type="submit" variant="secondary" size="sm" disabled={submitting}>
+              {submitting ? 'Ukládám…' : 'Uložit'}
+            </Button>
+            {saved && <span className="text-sm text-success">Uloženo.</span>}
+          </div>
+        </form>
+      )}
+    </AppShell>
+  )
+}

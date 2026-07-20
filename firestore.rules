@@ -154,15 +154,19 @@ service cloud.firestore {
          get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.fosterPersonRef == request.resource.data.fosterPersonRef);
 
       // Sebeúprava: jen `displayName` (žádná cesta k vlastnímu povýšení role).
-      // Org_admin nad zaměstnancem své organizace: jen `role`/`disabledAt`
+      // Org_admin nad zaměstnancem své organizace: `role`/`disabledAt`
       // (soft-delete přes `disabledAt`, nikdy hard delete — audit stopa),
-      // nikdy nesahá na `superadmin` roli žádným směrem.
+      // nikdy nesahá na `superadmin` roli žádným směrem. DOPLNENI_ZADANI-
+      // DO-M5 §1: `fte`/`capacityThresholdOverride` přidány do stejného
+      // org_admin disjunktu (kapacita KO, žádný nový bezpečnostní vzor).
       allow update: if
         (request.auth.uid == uid &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])) ||
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(resource.data.organizationId) &&
          resource.data.role != 'superadmin' && request.resource.data.role != 'superadmin' &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role', 'disabledAt', 'displayName']));
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+           ['role', 'disabledAt', 'displayName', 'fte', 'capacityThresholdOverride']
+         ));
 
       // Žádný hard delete profilu — jen `disabledAt` (viz update výše).
       allow delete: if false;
@@ -250,6 +254,18 @@ service cloud.firestore {
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
 
       allow delete: if false;
+    }
+
+    // ---- platformDefaults/{docId} — DOPLNENI_ZADANI-DO-M5 §1 bod 3 -----
+    //
+    // Jediný globální singleton (`global`), nejnižší úroveň kaskády prahu
+    // kapacity KO. Čtou VŠICHNI přihlášení (potřebují ho k dopočtu
+    // efektivního prahu, viz computeEffectiveCapacityThreshold), zapisuje
+    // VÝHRADNĚ superadmin — žádná organizace nemá jinou cestu k platformní
+    // konfiguraci.
+    match /platformDefaults/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperadmin();
     }
 
     // ---- organizations/{orgId}/importJobs/{jobId} — §5.5, M1.5 -----------
@@ -488,11 +504,24 @@ service cloud.firestore {
       // "Soukromá poznámka" SEAMu). Rodina je VŽDY v `subjectRefs`
       // (implicitní subjekt, viz FamilyDetailPage.openRecorderFor), takže
       // tahle jedna podmínka pokrývá i zápisy o konkrétním dítěti/pěstounovi.
+      //
+      // DOPLNENI_ZADANI-DO-M5 §2 (2026-07-20): druhý disjunkt PRO
+      // fosterPerson-scoped zápisy — "Sdílet s oběma pěstouny" VYPNUTO v
+      // zápisníku nahrazuje family-level subjectRef konkrétním
+      // `{kind:'fosterPerson', id}`, takže druhý partner ho vůbec nemá
+      // vidět. Musí přesně zrcadlit `mojeService.
+      // listFosterVisiblePersonalTimelineEntries` dotaz stejným způsobem
+      // jako family-branch výš.
       allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId) ||
         (
           isFoster() && path[1] == userDoc().fosterFamilyId &&
           resource.data.sharingLevel == 'foster' &&
           resource.data.subjectRefs.hasAny([{'kind': 'family', 'id': userDoc().fosterFamilyId}])
+        ) ||
+        (
+          isFoster() && path[1] == userDoc().fosterFamilyId &&
+          resource.data.sharingLevel == 'foster' &&
+          resource.data.subjectRefs.hasAny([{'kind': 'fosterPerson', 'id': userDoc().fosterPersonRef}])
         );
       allow create: if isStaff() &&
         request.resource.data.createdByOrgId == userDoc().organizationId &&

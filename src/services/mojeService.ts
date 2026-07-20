@@ -31,17 +31,48 @@ export async function listFosterChildren(familyDocId: string): Promise<Array<{ d
   return snap.docs.map((d) => ({ docId: d.id, child: d.data() as ChildDoc }))
 }
 
+/**
+ * DOPLNENI_ZADANI-DO-M5 §2 — `fosterPersonRef` (volitelné, chybí-li se
+ * dotazuje jen family-scoped větev) přidává DRUHÝ dotaz pro zápisy, kde
+ * "Sdílet s oběma pěstouny" bylo VYPNUTO (subjectRefs nese konkrétní
+ * `{kind:'fosterPerson', id}` MÍSTO family-level ref) — musí zrcadlit
+ * DRUHÝ disjunkt `timeline` read pravidla stejně přesně jako ten první.
+ * Dva samostatné dotazy (ne jeden `array-contains-any`) — bezpečnější a
+ * ověřitelnější než spoléhat na to, že Firestore dokáže OR dvou `hasAny`
+ * podmínek v pravidle proti jednomu combined klientskému filtru (viz
+ * `feedback_firestore_list_query_and_index_gotchas` — tahle past se v
+ * projektu potkala už 3×, tady se jí radši vyhýbáme obezřetněji).
+ */
 export async function listFosterVisibleTimelineEntries(
   familyDocId: string,
+  fosterPersonRef?: string,
 ): Promise<Array<{ docId: string; entry: TimelineEntryDoc }>> {
-  const q = query(
+  const familyScoped = query(
     collection(db, 'families', familyDocId, 'timeline'),
     where('sharingLevel', '==', 'foster'),
     where('subjectRefs', 'array-contains', { kind: 'family', id: familyDocId }),
     orderBy('occurredAt', 'desc'),
   )
-  const snap = await getDocs(q)
-  return snap.docs.map((d) => ({ docId: d.id, entry: d.data() as TimelineEntryDoc }))
+  const snaps = await Promise.all([
+    getDocs(familyScoped),
+    fosterPersonRef
+      ? getDocs(
+          query(
+            collection(db, 'families', familyDocId, 'timeline'),
+            where('sharingLevel', '==', 'foster'),
+            where('subjectRefs', 'array-contains', { kind: 'fosterPerson', id: fosterPersonRef }),
+            orderBy('occurredAt', 'desc'),
+          ),
+        )
+      : null,
+  ])
+  const entries = snaps
+    .filter((s): s is NonNullable<typeof s> => s !== null)
+    .flatMap((snap) => snap.docs.map((d) => ({ docId: d.id, entry: d.data() as TimelineEntryDoc })))
+  const seen = new Set<string>()
+  return entries
+    .filter((e) => (seen.has(e.docId) ? false : (seen.add(e.docId), true)))
+    .sort((a, b) => Date.parse(b.entry.occurredAt) - Date.parse(a.entry.occurredAt))
 }
 
 /**

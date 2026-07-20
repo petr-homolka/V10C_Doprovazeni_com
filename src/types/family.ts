@@ -36,4 +36,10 @@ export interface FamilyDoc {
    * Ručně založené entity tohle pole nikdy nemají.
    */
   createdByImportJobRef?: string
+  /** DOPLNENI_ZADANI-DO-M5 §2 — výchozí stav přepínače "Sdílet s oběma
+   * pěstouny" v zápisníku (`VoiceRecorderPanel`) pro tenhle Spis.
+   * Nenastavené = `true` (běžný případ, sdíleno s oběma) — pole existuje
+   * jen pro rodiny, kde chce pracovník tenhle výchozí stav trvale
+   * změnit, ne pro každou rodinu zvlášť nastavovat. */
+  partnerSharingDefault?: boolean
 }

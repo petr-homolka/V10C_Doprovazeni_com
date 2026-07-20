@@ -95,6 +95,17 @@ export async function createFamily(
   return { docId: ref.id, family: data }
 }
 
+/** DOPLNENI_ZADANI-DO-M5 §2 — výchozí stav přepínače "Sdílet s oběma
+ * pěstouny" pro tuhle rodinu v zápisníku. Žádné pole-restrikce v rules
+ * update pravidle families/{familyId} (jen orgAccessList je hlídané), tak
+ * prostý updateDoc stačí. */
+export async function updateFamilyPartnerSharingDefault(
+  familyId: string,
+  partnerSharingDefault: boolean,
+): Promise<void> {
+  await updateDoc(doc(db, 'families', familyId), { partnerSharingDefault })
+}
+
 /**
  * Vrací i Firestore document ID (ne jen `uid` na dokumentu) — potřebuje ho
  * M3 avatar/hlasový zápis (`SubjectRef.id`, Storage cesta avataru), ta

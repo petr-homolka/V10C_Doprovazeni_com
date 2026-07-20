@@ -12,7 +12,10 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { allocateUid } from '@/lib/counters'
-import { getOrganization } from '@/services/organizationService'
+import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
+import { getStaffMember, listStaff } from '@/services/staffService'
+import { computeEffectiveCapacityThreshold } from '@/lib/capacityThreshold'
+import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
 import {
   DEFAULT_NOTE_DEADLINE_HOURS,
   DEFAULT_VISIT_INTERVAL_DAYS,
@@ -138,12 +141,14 @@ export async function endAgreement(familyDocId: string, organizationId: string):
 }
 
 /**
- * §6 A9: kapacita KO je orientační (výchozí 25 rodin), NIKDY tvrdý limit
- * — vrací jen počet + práh, volající (UI) rozhodne, jestli zobrazí jemné
- * upozornění. Collection-group dotaz MUSÍ filtrovat i na `organizationId`
- * (ne jen `assignedTo`+`status`) ze STEJNÉHO důvodu jako jinde v tomhle
- * souboru — firestore.rules `agreements` read čte `organizationId`,
- * dotaz ho musí zrcadlit.
+ * §6 A9 / DOPLNENI_ZADANI-DO-M5 §1: kapacita KO je orientační (NIKDY
+ * tvrdý limit) — vrací jen počet + efektivní práh, volající (UI)
+ * rozhodne, jestli zobrazí jemné upozornění. Efektivní práh = kaskáda
+ * (per-KO override ?? org práh ?? platformní výchozí) × FTE dané KO,
+ * viz `computeEffectiveCapacityThreshold`. Collection-group dotaz MUSÍ
+ * filtrovat i na `organizationId` (ne jen `assignedTo`+`status`) ze
+ * STEJNÉHO důvodu jako jinde v tomhle souboru — firestore.rules
+ * `agreements` read čte `organizationId`, dotaz ho musí zrcadlit.
  */
 export interface KoCapacityCheck {
   activeCaseload: number
@@ -155,8 +160,10 @@ export async function checkKoCapacity(
   organizationId: string,
   koUid: string,
 ): Promise<KoCapacityCheck> {
-  const [org, snap] = await Promise.all([
+  const [org, koUserDoc, platformDefaults, snap] = await Promise.all([
     getOrganization(organizationId),
+    getStaffMember(koUid),
+    getPlatformDefaults(),
     getDocs(
       query(
         collectionGroup(db, 'agreements'),
@@ -166,7 +173,68 @@ export async function checkKoCapacity(
       ),
     ),
   ])
-  const threshold = org?.capacityWarningThreshold ?? 25
+  const threshold = computeEffectiveCapacityThreshold(
+    koUserDoc?.fte,
+    koUserDoc?.capacityThresholdOverride,
+    org?.koCapacityThreshold,
+    platformDefaults?.koCapacityThreshold ?? DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD,
+  )
   const activeCaseload = snap.size
   return { activeCaseload, threshold, overThreshold: activeCaseload >= threshold }
+}
+
+/**
+ * Souhrnný přehled zatížení VŠECH KO organizace najednou (DOPLNENI_ZADANI-
+ * DO-M5 §1 bod 5) — JEDEN dotaz (`organizationId`+`status`, žádný
+ * `assignedTo` filtr), seskupení po `assignedTo` proběhne až klientsky
+ * (ne N dotazů, jeden na KO — §10 provozní úspornost). Používá už existující
+ * composite index (`organizationId`+`status`, `firestore.indexes.json`) —
+ * žádný nový index není potřeba.
+ */
+export async function listActiveCaseloadByKo(organizationId: string): Promise<Record<string, number>> {
+  const snap = await getDocs(
+    query(
+      collectionGroup(db, 'agreements'),
+      where('organizationId', '==', organizationId),
+      where('status', '==', 'active'),
+    ),
+  )
+  const counts: Record<string, number> = {}
+  for (const d of snap.docs) {
+    const assignedTo = (d.data() as AgreementDoc).assignedTo
+    if (assignedTo) counts[assignedTo] = (counts[assignedTo] ?? 0) + 1
+  }
+  return counts
+}
+
+export interface OverCapacityKo {
+  uid: string
+  displayName: string
+  activeCaseload: number
+  threshold: number
+}
+
+/** Souhrnné varování org_adminovi/vedení (DOPLNENI_ZADANI-DO-M5 §1 bod
+ * 5) — kdo z organizace má PRÁVĚ TEĎ přeplněnou kapacitu, efektivní práh
+ * počítaný stejnou kaskádou jako `checkKoCapacity`. */
+export async function listOverCapacityKos(organizationId: string): Promise<OverCapacityKo[]> {
+  const [staff, caseloadByKo, org, platformDefaults] = await Promise.all([
+    listStaff(organizationId),
+    listActiveCaseloadByKo(organizationId),
+    getOrganization(organizationId),
+    getPlatformDefaults(),
+  ])
+  const platformThreshold = platformDefaults?.koCapacityThreshold ?? DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD
+  return staff
+    .map((member) => {
+      const activeCaseload = caseloadByKo[member.uid] ?? 0
+      const threshold = computeEffectiveCapacityThreshold(
+        member.fte,
+        member.capacityThresholdOverride,
+        org?.koCapacityThreshold,
+        platformThreshold,
+      )
+      return { uid: member.uid, displayName: member.displayName, activeCaseload, threshold }
+    })
+    .filter((k) => k.activeCaseload > 0 && k.activeCaseload >= k.threshold)
 }

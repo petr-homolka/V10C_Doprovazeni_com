@@ -55,6 +55,15 @@ export interface UserDoc {
   externalParticipantId?: string // jen role 'external'
   providerInstitutionRef?: string // jen role 'provider' — → institutions/{id}
   docApprover?: boolean
+  /** §6 A9 kapacita KO (DOPLNENI_ZADANI-DO-M5 §1) — úvazek 0,1–1,0,
+   * výchozí 1,0 (plný). Násobí efektivní práh kapacity — poloviční
+   * úvazek → poloviční práh. Relevantní jen pro role, co mohou být
+   * `assignedTo` na Dohodě, ale nezakazujeme ho vyplnit ostatním. */
+  fte?: number
+  /** Per-KO override prahu kapacity — NEJVYŠŠÍ priorita v kaskádě
+   * (override ?? organizationId.koCapacityThreshold ?? platformDefaults),
+   * nastavuje org_admin. Flat číslo PŘED FTE násobením. */
+  capacityThresholdOverride?: number
   createdAt: string
   disabledAt?: string | null
   /** Jen na jednom (Petrově) účtu — povolí přepínač náhledu role v avataru

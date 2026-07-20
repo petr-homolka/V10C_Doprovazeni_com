@@ -14,8 +14,16 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
  * (`agreement.visitIntervalDays`), ne natvrdo:
  * - "čeká" (waiting): `visitIntervalDays - WAITING_BUFFER_DAYS` (60-15=45
  *   pro výchozí Dohodu — dvoutýdenní předstih před zákonnou lhůtou).
- * - "krize" (`crisis: true`): `daysSinceLastVisit > visitIntervalDays` —
- *   Dohoda už reálně porušuje svou vlastní zákonnou lhůtu (§3).
+ * - "krize": `daysSinceLastVisit > visitIntervalDays` — Dohoda už reálně
+ *   porušuje svou vlastní zákonnou lhůtu (§3).
+ * DOPLNENI_ZADANI-DO-M5 §3 přidává MEZISTUPEŇ "warning" (žluté
+ * upozornění) při dosažení 45 dní — na rozdíl od "waiting"/"crisis"
+ * (odvozené z KONKRÉTNÍ `visitIntervalDays` Dohody) je 45 dní záměrně
+ * PLOCHÉ/natvrdo napříč všemi Dohodami, bez ohledu na jejich vlastní
+ * interval (zadání: "Práh 45 dní je zatím natvrdo, ne konfigurovatelný").
+ * Pro výchozí 60denní Dohodu se to shoduje se stávajícím "waiting" prahem
+ * (60-15=45), ale u Dohody s jiným `visitIntervalDays` se rozejdou — proto
+ * `visitStatus` (3 hodnoty), NE už jen `crisis: boolean`.
  * "Statistika návštěv týdne" (druhá půlka §A3 bodu 5) je SEAM — mimo
  * rozsah M3.4, samostatný krok (potřebuje jinou agregaci, ne overdue-check).
  *
@@ -58,14 +66,28 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
  * pohledu dle role.
  */
 const WAITING_BUFFER_DAYS = 15
+const WARNING_THRESHOLD_DAYS = 45
 const DAY_MS = 24 * 60 * 60 * 1000
+
+export type VisitStatusTier = 'waiting' | 'warning' | 'crisis'
+
+export interface DivergentFosterPersonWarning {
+  fosterPersonId: string
+  name: string
+  lastVisitAt: string | null
+  visitStatus: VisitStatusTier
+}
 
 export interface FamilyAwaitingVisit {
   docId: string
   family: FamilyDoc
   primaryFosterName: string | null
   lastVisitAt: string | null
-  crisis: boolean
+  visitStatus: VisitStatusTier
+  /** DOPLNENI_ZADANI-DO-M5 §2 — vyplněno JEN když se `fosterPersons.
+   * lastVisitAt` mezi partnery rozešly (nesdílená návštěva jen jednoho
+   * partnera) — varování zvlášť za toho, komu lhůta reálně běží. */
+  divergentFosterPerson: DivergentFosterPersonWarning | null
 }
 
 export async function listFamiliesAwaitingVisit(organizationId: string): Promise<FamilyAwaitingVisit[]> {
@@ -81,6 +103,11 @@ export async function listFamiliesAwaitingVisit(organizationId: string): Promise
   function daysSince(lastVisitAt: string | null | undefined): number {
     return lastVisitAt ? (now - Date.parse(lastVisitAt)) / DAY_MS : Infinity
   }
+  function computeVisitStatus(daysSinceVisit: number, visitIntervalDays: number): VisitStatusTier {
+    if (daysSinceVisit > visitIntervalDays) return 'crisis'
+    if (daysSinceVisit >= WARNING_THRESHOLD_DAYS) return 'warning'
+    return 'waiting'
+  }
 
   const overdueAgreements = agreementsSnap.docs
     .map((d) => d.data() as AgreementDoc)
@@ -95,15 +122,45 @@ export async function listFamiliesAwaitingVisit(organizationId: string): Promise
         const snap = await getDoc(doc(db, 'families', agreement.familyId))
         if (!snap.exists()) return null
         const family = snap.data() as FamilyDoc
-        const firstRef = family.fosterPersonRefs[0]
-        const fpSnap = firstRef ? await getDoc(doc(db, 'fosterPersons', firstRef)) : null
-        const fp = fpSnap?.exists() ? (fpSnap.data() as FosterPersonDoc) : null
+
+        const fosterPersons = (
+          await Promise.all(family.fosterPersonRefs.map((id) => getDoc(doc(db, 'fosterPersons', id))))
+        )
+          .filter((d) => d.exists())
+          .map((d) => ({ id: d.id, ...(d.data() as FosterPersonDoc) }))
+
+        const fp = fosterPersons[0] ?? null
+
+        let divergentFosterPerson: DivergentFosterPersonWarning | null = null
+        if (fosterPersons.length >= 2) {
+          const withEffectiveDate = fosterPersons.map((p) => ({
+            ...p,
+            effectiveLastVisitAt: p.lastVisitAt ?? agreement.lastVisitAt ?? null,
+          }))
+          const distinctDates = new Set(withEffectiveDate.map((p) => p.effectiveLastVisitAt ?? 'never'))
+          if (distinctDates.size > 1) {
+            // Ten s nejdřívějším (nejstarším) efektivním datem = komu lhůta reálně běží.
+            const mostOverdue = withEffectiveDate.reduce((oldest, p) => {
+              const pTime = p.effectiveLastVisitAt ? Date.parse(p.effectiveLastVisitAt) : -Infinity
+              const oldestTime = oldest.effectiveLastVisitAt ? Date.parse(oldest.effectiveLastVisitAt) : -Infinity
+              return pTime < oldestTime ? p : oldest
+            })
+            divergentFosterPerson = {
+              fosterPersonId: mostOverdue.id,
+              name: `${mostOverdue.firstName} ${mostOverdue.lastName}`,
+              lastVisitAt: mostOverdue.effectiveLastVisitAt,
+              visitStatus: computeVisitStatus(daysSince(mostOverdue.effectiveLastVisitAt), agreement.visitIntervalDays),
+            }
+          }
+        }
+
         return {
           docId: agreement.familyId,
           family,
           primaryFosterName: fp ? `${fp.firstName} ${fp.lastName}` : null,
           lastVisitAt: agreement.lastVisitAt ?? null,
-          crisis: daysSince(agreement.lastVisitAt) > agreement.visitIntervalDays,
+          visitStatus: computeVisitStatus(daysSince(agreement.lastVisitAt), agreement.visitIntervalDays),
+          divergentFosterPerson,
         }
       }),
     )

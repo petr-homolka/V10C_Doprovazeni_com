@@ -57,6 +57,7 @@ export function VoiceRecorderPanel({
   implicitSubjects,
   people,
   preselectedPeopleKeys,
+  partnerSharingDefault = true,
   visit,
   onClose,
   onSaved,
@@ -67,15 +68,27 @@ export function VoiceRecorderPanel({
   implicitSubjects: SubjectRef[]
   people: RecordablePerson[]
   preselectedPeopleKeys: string[]
+  /** DOPLNENI_ZADANI-DO-M5 §2 — `family.partnerSharingDefault`, výchozí
+   * hodnota přepínače "Sdílet s oběma pěstouny" pro tuhle rodinu. */
+  partnerSharingDefault?: boolean
   visit?: VisitContext
   onClose: () => void
   onSaved?: () => void
 }) {
   const recognizer = useSpeechRecognition()
+  const fosterPeople = people.filter((p) => p.kind === 'fosterPerson')
   const [stopped, setStopped] = useState(false)
   const [body, setBody] = useState('')
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(() => new Set(preselectedPeopleKeys))
   const [isPrivate, setIsPrivate] = useState(false)
+  /** DOPLNENI_ZADANI-DO-M5 §2 — SEAM uzavřený touhle dávkou: `sharingLevel:
+   * 'foster'` se dřív nikdy nenastavoval (M3 zjednodušení nechalo jen
+   * private/internal binárku), takže "Sdílené zápisy" na `/moje` byly
+   * VŽDY prázdné bez ohledu na cokoli jiného. Tenhle přepínač je proto
+   * NUTNÁ podmínka pro to, aby "Sdílet s oběma pěstouny" níž mělo vůbec
+   * nějaký efekt — zjištěno a rozšířeno vědomě, viz CURRENT_STATE.md. */
+  const [shareWithFoster, setShareWithFoster] = useState(false)
+  const [shareBothPartners, setShareBothPartners] = useState(partnerSharingDefault)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -103,9 +116,16 @@ export function VoiceRecorderPanel({
     })
   }
 
+  const showPartnerToggle = fosterPeople.length >= 2
+  const usePartnerScoped = showPartnerToggle && !shareBothPartners
+
   async function handleSave() {
     if (!body.trim()) {
       setError('Zápis je prázdný.')
+      return
+    }
+    if (usePartnerScoped && !fosterPeople.some((p) => checkedKeys.has(subjectKey(p)))) {
+      setError('Vyberte v „Zařadit k", kterého pěstouna se zápis týká.')
       return
     }
     setSaving(true)
@@ -114,9 +134,21 @@ export function VoiceRecorderPanel({
       const personRefs: SubjectRef[] = people
         .filter((p) => checkedKeys.has(subjectKey(p)))
         .map(({ kind, id }) => ({ kind, id }))
-      const sharingLevel: SharingLevel = isPrivate ? 'private' : 'internal'
-      const subjectRefs = [...implicitSubjects, ...personRefs]
+      const sharingLevel: SharingLevel = isPrivate ? 'private' : shareWithFoster ? 'foster' : 'internal'
+      // §2: "Sdílet s oběma pěstouny" VYPNUTO → family-level implicitní
+      // subjekt se NAHRAZUJE (ne doplňuje) konkrétně vybraným pěstounem —
+      // ten už je v `personRefs` díky zaškrtnuté chipě výš.
+      const subjectRefs = usePartnerScoped
+        ? [...implicitSubjects.filter((r) => r.kind !== 'family'), ...personRefs]
+        : [...implicitSubjects, ...personRefs]
+
       if (visit) {
+        // Lhůta osobního kontaktu (§2) je NEZÁVISLÁ na sharingLevel — návštěva
+        // proběhla, ať se zápis sdílí s pěstounem nebo ne. Komu se stamp
+        // týká, plyne ze STEJNÉ partner-scoping logiky jako subjectRefs.
+        const stampFosterPersonIds = usePartnerScoped
+          ? personRefs.filter((r) => r.kind === 'fosterPerson').map((r) => r.id)
+          : fosterPeople.map((p) => p.id)
         await createVisitTimelineEntry({
           familyDocId,
           organizationId,
@@ -128,6 +160,7 @@ export function VoiceRecorderPanel({
           endedAt: visit.endedAt,
           durationSeconds: visit.durationSeconds,
           location: visit.location,
+          stampFosterPersonIds,
         })
       } else {
         await createVoiceTimelineEntry({
@@ -242,6 +275,30 @@ export function VoiceRecorderPanel({
               <span className="text-sm text-text-primary">Soukromá poznámka</span>
               <Switch checked={isPrivate} onChange={setIsPrivate} label="Soukromá poznámka" />
             </div>
+
+            {!isPrivate && (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm text-text-primary">Sdílet s pěstounem</span>
+                <Switch checked={shareWithFoster} onChange={setShareWithFoster} label="Sdílet s pěstounem" />
+              </div>
+            )}
+
+            {showPartnerToggle && (
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm text-text-primary">Sdílet s oběma pěstouny</span>
+                <Switch
+                  checked={shareBothPartners}
+                  onChange={setShareBothPartners}
+                  label="Sdílet s oběma pěstouny"
+                />
+              </div>
+            )}
+
+            {usePartnerScoped && (
+              <p className="text-xs text-text-tertiary">
+                Vyberte výš v „Zařadit k", kterého pěstouna se zápis týká — druhý partner ho neuvidí.
+              </p>
+            )}
 
             {error && (
               <p className="text-sm text-danger" role="alert">
