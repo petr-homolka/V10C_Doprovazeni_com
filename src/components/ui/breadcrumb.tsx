@@ -22,7 +22,7 @@ export function Breadcrumb({ items }: { items: BreadcrumbItem[] }) {
           const isLast = i === items.length - 1
           return (
             <li
-              key={item.label}
+              key={i}
               className={
                 isLast
                   ? 'flex items-center gap-2.5 px-2 py-1 text-text-primary'
