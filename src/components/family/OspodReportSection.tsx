@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DatePicker } from '@/components/ui/date-picker'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { generateOspodReport } from '@/services/ospodReportService'
 import { getOrganization } from '@/services/organizationService'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -89,16 +89,10 @@ export function OspodReportSection({
             Název dokumentu
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
           </label>
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Období od
-              <DatePicker value={period.from} onChange={(v) => setPeriod((p) => ({ ...p, from: v }))} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Období do
-              <DatePicker value={period.to} onChange={(v) => setPeriod((p) => ({ ...p, to: v }))} />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+            Období
+            <DateRangePicker from={period.from} to={period.to} onChange={setPeriod} />
+          </label>
           {error && (
             <p className="text-sm text-danger" role="alert">
               {error}

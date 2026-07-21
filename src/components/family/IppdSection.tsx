@@ -3,7 +3,7 @@ import { ClipboardList, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { DatePicker } from '@/components/ui/date-picker'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
 import { closeIppd, createIppd, evaluateIppd, listIppds } from '@/services/ippdService'
@@ -207,16 +207,10 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
           onSubmit={handleCreateSubmit}
           className="mt-3 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
         >
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Období od
-              <DatePicker value={period.from} onChange={(v) => setPeriod((p) => ({ ...p, from: v }))} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Období do
-              <DatePicker value={period.to} onChange={(v) => setPeriod((p) => ({ ...p, to: v }))} />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+            Období
+            <DateRangePicker from={period.from} to={period.to} onChange={setPeriod} />
+          </label>
 
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium leading-relaxed text-text-primary">Cíle</p>

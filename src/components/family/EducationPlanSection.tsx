@@ -3,7 +3,7 @@ import { GraduationCap, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { DatePicker } from '@/components/ui/date-picker'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
@@ -228,16 +228,10 @@ export function EducationPlanSection({
           onSubmit={handleSubmit}
           className="mt-4 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
         >
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Období od</span>
-              <DatePicker value={windowStart} onChange={setWindowStart} />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Období do</span>
-              <DatePicker value={windowEnd} onChange={setWindowEnd} />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Období</span>
+            <DateRangePicker from={windowStart} to={windowEnd} onChange={({ from, to }) => { setWindowStart(from); setWindowEnd(to) }} />
+          </label>
 
           <div className="flex flex-col gap-3">
             {itemRows.map((row) => (

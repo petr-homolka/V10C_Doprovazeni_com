@@ -11,7 +11,9 @@ import { DangerZone } from '@/components/ui/danger-zone'
 import { IppdSection } from '@/components/family/IppdSection'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
-import { getOrganization } from '@/services/organizationService'
+import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
+import { computeEffectiveAgreementDurationMonths, addMonthsToDateValue } from '@/lib/agreementDuration'
+import { DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS } from '@/types/platformDefaults'
 import { listStaff } from '@/services/staffService'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
 import {
@@ -77,6 +79,12 @@ export default function AgreementDetailPage() {
   const [capacityNote, setCapacityNote] = useState<string | null>(null)
   const { loading: submitting, success, run } = useAsyncSubmit()
 
+  const todayIsoDate = new Date().toISOString().slice(0, 10)
+  const [validFrom, setValidFrom] = useState(todayIsoDate)
+  const [validTo, setValidTo] = useState('')
+  const [validToTouched, setValidToTouched] = useState(false)
+  const [durationMonths, setDurationMonths] = useState(DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS)
+
   const [endDateDraft, setEndDateDraft] = useState('')
   const { loading: endSubmitting, success: endSuccess, run: runEnd } = useAsyncSubmit()
 
@@ -128,6 +136,28 @@ export default function AgreementDetailPage() {
     }
   }
 
+  async function openAgreementForm() {
+    setShowAgreementForm(true)
+    setValidFrom(todayIsoDate)
+    setValidToTouched(false)
+    if (!organizationId) return
+    const [org, platformDefaults] = await Promise.all([getOrganization(organizationId), getPlatformDefaults()])
+    const months = computeEffectiveAgreementDurationMonths(
+      org?.agreementDefaultDurationMonths,
+      platformDefaults?.agreementDefaultDurationMonths ?? DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS,
+    )
+    setDurationMonths(months)
+    setValidTo(addMonthsToDateValue(todayIsoDate, months))
+  }
+
+  function handleValidFromChange(next: string) {
+    setValidFrom(next)
+    // §47b zákona 359/1999 Sb. — appka jen NABÍZÍ odhad, dokud KO/vedení
+    // sama neupraví "Platí do" — pak už predikci dál nepřepisujeme, i
+    // když se "Platí od" ještě jednou změní (respektuje ruční volbu).
+    if (!validToTouched) setValidTo(addMonthsToDateValue(next, durationMonths))
+  }
+
   async function handleCreateAgreement(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId) return
@@ -142,6 +172,8 @@ export default function AgreementDetailPage() {
           orgCode: org.orgCode,
           careType,
           assignedTo: assignedTo || undefined,
+          validFrom: new Date(validFrom).toISOString(),
+          validTo: validTo ? new Date(validTo).toISOString() : null,
         })
         await reload()
       })
@@ -230,7 +262,7 @@ export default function AgreementDetailPage() {
               {!showAgreementForm && (
                 <div className="flex flex-col items-center gap-3">
                   <EmptyState icon={FileText} text="Zatím žádná Dohoda s vaší organizací." />
-                  <Button variant="secondary" size="sm" onClick={() => setShowAgreementForm(true)}>
+                  <Button variant="secondary" size="sm" onClick={openAgreementForm}>
                     <Plus size={16} /> Založit Dohodu
                   </Button>
                 </div>
@@ -261,6 +293,25 @@ export default function AgreementDetailPage() {
                           { value: '', label: 'Nepřiřazeno' },
                           ...koOptions.map((ko) => ({ value: ko.uid, label: ko.displayName })),
                         ]}
+                      />
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium leading-relaxed text-text-primary">Platí od</span>
+                      <DatePicker value={validFrom} onChange={handleValidFromChange} />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium leading-relaxed text-text-primary">
+                        Platí do <span className="font-normal text-text-tertiary">(odhad, uprav dle potřeby)</span>
+                      </span>
+                      <DatePicker
+                        value={validTo}
+                        onChange={(v) => {
+                          setValidTo(v)
+                          setValidToTouched(true)
+                        }}
+                        min={validFrom}
                       />
                     </label>
                   </div>

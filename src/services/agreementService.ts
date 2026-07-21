@@ -100,12 +100,17 @@ export interface CreateAgreementInput {
    * skutečné datum ze zdrojových dat organizace. Ruční založení (UI) tohle
    * pole nepředává, chová se tedy přesně jako dřív (výchozí "teď"). */
   validFrom?: string
+  /** §47b zákona 359/1999 Sb. — Dohoda se standardně uzavírá na dobu
+   * určitou (viz src/lib/agreementDuration.ts pro odhad délky), ale appka
+   * nikdy nevynucuje konkrétní datum — `null` = zatím bez plánovaného
+   * konce (stejné chování jako dřív, když tohle pole neexistovalo). */
+  validTo?: string | null
   /** Viz FamilyDoc stejnojmenné pole — import rollback (§5.5, M1.5). */
   createdByImportJobRef?: string
 }
 
 export async function createAgreement(input: CreateAgreementInput): Promise<AgreementDoc> {
-  const { familyDocId, organizationId, orgCode, careType, assignedTo, validFrom, createdByImportJobRef } = input
+  const { familyDocId, organizationId, orgCode, careType, assignedTo, validFrom, validTo, createdByImportJobRef } = input
   const uid = await allocateUid(organizationId, orgCode, 'agreement')
   const data: AgreementDoc = {
     uid,
@@ -114,7 +119,7 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
     careType,
     status: 'active',
     validFrom: validFrom ?? new Date().toISOString(),
-    validTo: null,
+    validTo: validTo ?? null,
     assignedTo: assignedTo ?? null,
     visitIntervalDays: DEFAULT_VISIT_INTERVAL_DAYS,
     educationHoursTarget: EDUCATION_HOURS_TARGET[careType],

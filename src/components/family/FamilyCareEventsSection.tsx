@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
@@ -230,16 +231,10 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Od
-              <DatePicker value={dateFrom} onChange={setDateFrom} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Do
-              <DatePicker value={dateTo} onChange={setDateTo} />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+            Období
+            <DateRangePicker from={dateFrom} to={dateTo} onChange={({ from, to }) => { setDateFrom(from); setDateTo(to) }} />
+          </label>
 
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Důvod (povinné nad 14 dní/rok)

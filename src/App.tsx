@@ -22,6 +22,7 @@ const AccountSettingsPage = lazy(() => import('@/routes/settings/AccountSettings
 const NotificationsSettingsPage = lazy(() => import('@/routes/settings/NotificationsSettingsPage'))
 const ImportSettingsPage = lazy(() => import('@/routes/settings/ImportSettingsPage'))
 const BackupSettingsPage = lazy(() => import('@/routes/settings/BackupSettingsPage'))
+const OrganizationSettingsPage = lazy(() => import('@/routes/settings/OrganizationSettingsPage'))
 const MojeLoginPage = lazy(() => import('@/routes/moje/MojeLoginPage'))
 const MojeDashboardPage = lazy(() => import('@/routes/moje/MojeDashboardPage'))
 const PlatformSettingsPage = lazy(() => import('@/routes/PlatformSettingsPage'))
@@ -69,6 +70,7 @@ export default function App() {
               <Route path="/nastaveni/oznameni" element={<NotificationsSettingsPage />} />
               <Route path="/nastaveni/import" element={<ImportSettingsPage />} />
               <Route path="/nastaveni/zalohy" element={<BackupSettingsPage />} />
+              <Route path="/nastaveni/organizace" element={<OrganizationSettingsPage />} />
               <Route path="/platforma" element={<PlatformSettingsPage />} />
               <Route path="/kvalita" element={<InspectionsPage />} />
               <Route path="/zajemci" element={<FosterProspectsPage />} />

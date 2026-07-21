@@ -3,6 +3,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -181,16 +182,14 @@ export default function InspectionsPage() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Datum od
-              <DatePicker value={inspectionDateFrom} onChange={setInspectionDateFrom} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Datum do
-              <DatePicker value={inspectionDateTo} onChange={setInspectionDateTo} />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+            Období inspekce
+            <DateRangePicker
+              from={inspectionDateFrom}
+              to={inspectionDateTo}
+              onChange={({ from, to }) => { setInspectionDateFrom(from); setInspectionDateTo(to) }}
+            />
+          </label>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Kontrolující orgán
             <Input required value={inspectingAuthorityName} onChange={(e) => setInspectingAuthorityName(e.target.value)} />

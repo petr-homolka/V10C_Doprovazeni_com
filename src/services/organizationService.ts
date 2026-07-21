@@ -24,5 +24,19 @@ export async function getPlatformDefaults(): Promise<PlatformDefaultsDoc | null>
 
 /** Superadmin-only (viz firestore.rules) — platformní výchozí práh kapacity KO. */
 export async function setPlatformKoCapacityThreshold(koCapacityThreshold: number): Promise<void> {
-  await setDoc(doc(db, 'platformDefaults', PLATFORM_DEFAULTS_DOC_ID), { koCapacityThreshold })
+  await setDoc(doc(db, 'platformDefaults', PLATFORM_DEFAULTS_DOC_ID), { koCapacityThreshold }, { merge: true })
+}
+
+/** Org-level výchozí délka Dohody v měsících — `null` = smazat override,
+ * spadnout na platformní výchozí (stejný vzor jako `updateOrgCapacityThreshold`). */
+export async function updateOrgAgreementDurationMonths(
+  orgId: string,
+  agreementDefaultDurationMonths: number | null,
+): Promise<void> {
+  await updateDoc(doc(db, 'organizations', orgId), { agreementDefaultDurationMonths })
+}
+
+/** Superadmin-only (viz firestore.rules) — platformní výchozí délka Dohody v měsících. */
+export async function setPlatformAgreementDefaultDurationMonths(agreementDefaultDurationMonths: number): Promise<void> {
+  await setDoc(doc(db, 'platformDefaults', PLATFORM_DEFAULTS_DOC_ID), { agreementDefaultDurationMonths }, { merge: true })
 }

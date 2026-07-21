@@ -4,8 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
-import { getPlatformDefaults, setPlatformKoCapacityThreshold } from '@/services/organizationService'
-import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
+import {
+  getPlatformDefaults,
+  setPlatformAgreementDefaultDurationMonths,
+  setPlatformKoCapacityThreshold,
+} from '@/services/organizationService'
+import { DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS, DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
 
 /**
  * /platforma — DOPLNENI_ZADANI-DO-M5 §1 bod 3. PRVNÍ superadmin-only
@@ -16,6 +20,7 @@ import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults
 export default function PlatformSettingsPage() {
   const { userDoc } = useAuth()
   const [threshold, setThreshold] = useState('')
+  const [agreementDuration, setAgreementDuration] = useState('')
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { loading: submitting, success, run } = useAsyncSubmit()
@@ -25,7 +30,10 @@ export default function PlatformSettingsPage() {
   useEffect(() => {
     if (!isSuperadmin) return
     getPlatformDefaults()
-      .then((defaults) => setThreshold(String(defaults?.koCapacityThreshold ?? DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD)))
+      .then((defaults) => {
+        setThreshold(String(defaults?.koCapacityThreshold ?? DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD))
+        setAgreementDuration(String(defaults?.agreementDefaultDurationMonths ?? DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS))
+      })
       .catch(() => setError('Platformní nastavení se nepodařilo načíst.'))
       .finally(() => setLoaded(true))
   }, [isSuperadmin])
@@ -35,7 +43,12 @@ export default function PlatformSettingsPage() {
     setError(null)
     try {
       await run(async () => {
-        await setPlatformKoCapacityThreshold(Math.max(1, Number(threshold) || DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD))
+        await Promise.all([
+          setPlatformKoCapacityThreshold(Math.max(1, Number(threshold) || DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD)),
+          setPlatformAgreementDefaultDurationMonths(
+            Math.max(1, Number(agreementDuration) || DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS),
+          ),
+        ])
       })
     } catch {
       setError('Uložení se nezdařilo.')
@@ -71,6 +84,17 @@ export default function PlatformSettingsPage() {
               Výchozí práh kapacity klíčové osoby
             </span>
             <Input type="number" min={1} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">
+              Výchozí délka Dohody (měsíce)
+            </span>
+            <Input
+              type="number"
+              min={1}
+              value={agreementDuration}
+              onChange={(e) => setAgreementDuration(e.target.value)}
+            />
           </label>
           <div className="flex items-center gap-3">
             <Button type="submit" variant="secondary" size="sm" loading={submitting} success={success}>
