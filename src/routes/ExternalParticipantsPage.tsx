@@ -99,7 +99,7 @@ export default function ExternalParticipantsPage() {
     if (!name.trim() || !organizationId) return
     setSubmitting(true)
     try {
-      await createExternalParticipant({ organizationId, name, email, phone: phone || undefined, relationLabel })
+      await createExternalParticipant({ organizationId, name, email, relationLabel, ...(phone ? { phone } : {}) })
       setShowForm(false)
       setName('')
       setEmail('')
