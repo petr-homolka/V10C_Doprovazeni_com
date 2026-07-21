@@ -5,6 +5,69 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Kalendář hotový (2026-07-21) — mimo dosud číslovanou M-řadu
+
+Přímý požadavek 2026-07-21 ("skvěle udělaný kalendář s mnoha pohledy včetně
+agendy a s možností přetahování… a s napojením na Google Kalendář"), NENÍ
+to číslované M — sidebar odkaz `/kalendar` (`Sidebar.tsx`) byl od M0 mrtvý
+(žádná routa, žádná stránka).
+
+**Rozsah agregace (vědomě zúžený, viz `calendarAggregation.ts` pro plné
+zdůvodnění):** kalendář agreguje ze DVOU zdrojů — vlastní
+`organizations/{orgId}/calendarEvents` (nová kolekce, plně editovatelná
+staff událost) a "další návštěva splatná" připomínky z aktivních Dohod
+(READ-ONLY, počítáno stejnou logikou jako štítek na seznamu Rodin,
+`familyAlertStatus.ts`, ne duplikováno). `scheduledActivities`/
+`assistedContactSeries`/respit/předání dítěte VYNECHÁNY — jejich výskyty
+nemají `organizationId` na samotném dokumentu (jen na rodiči), agregace
+napříč celou organizací by vyžadovala buď N+1 dotazy, nebo denormalizaci
+do už otestovaných kolekcí (schema změna se skutečným rizikem regrese) —
+mimo rozsah týhle dávky, SEAM pro budoucí rozšíření.
+
+**`firestore.rules`** — `organizations/{orgId}/calendarEvents/{id}`, jediná
+kolekce v appce (mimo M1.5 importJobs rollback výjimku) se SKUTEČNÝM
+`update` (na rozdíl od většiny appky, append-only) — potřebné pro
+přetažení na jiný čas/den. `delete: if false` zůstává (§5 audit stopa),
+"zrušit" v UI nastaví `status:'zruseno'`. Sdílený týmový kalendář —
+KTERÝKOLI staff stejné organizace smí přesunout/upravit cizí událost.
+`tests/rules/m9.calendarEvents.rules.test.ts`, 12 testů (119/119 celkem).
+
+**UI (`CalendarPage.tsx`)** — `react-big-calendar` + `date-fns` (nové
+závislosti, appka dřív neměla žádnou datumovou knihovnu) + drag-and-drop
+addon, 4 pohledy (Měsíc/Týden/Den/Agenda), plně česká lokalizace,
+barevné odlišení podle zaměstnance (deterministický hash uid→paleta) s
+klikacím legend-přepínačem viditelnosti. Klik na volný slot = rychlé
+založení (Modal), klik na vlastní událost = úprava/zrušení, klik na
+agreement připomínku = deep-link na rodinu.
+
+Živě odhalený a opravený bug: `withDragAndDrop` (CJS-only addon, žádný ESM
+build) se přes Vite dev-server dep-optimizer importoval jako dvojitě
+zabalený `{default:{default: fn}}` místo funkce — `unwrapDefault` helper
+v `CalendarPage.tsx` odbaluje, dokud nenarazí na funkci. Druhý bug: pohledy
+(Měsíc/Týden/Den/Agenda) se neuncontrolled `defaultView` nepřepínaly vůbec
+(kliknutí na "Agenda" nic nedělalo) — opraveno na plně controlled `view`/
+`onView`+`date`/`onNavigate`.
+
+**Živě ověřeno** (Playwright, emulátor, skripty smazány po testu):
+založení/úprava/zrušení události, přepínač viditelnosti podle zaměstnance
+(skrytí správně schová událost), přepínání všech 4 pohledů. **NEOVĚŘENO
+end-to-end**: samotné myší tažení (drag) v prohlížeči — tři pokusy
+nasimulovat skutečné mouse down/move/up nespustily knihovnino vnitřní
+rozpoznání gesta (headless Playwright vs. tahle konkrétní non-React
+event-listener knihovna je známý třecí bod). Zapojení (`draggableAccessor`,
+`onEventDrop`/`onEventResize` → `rescheduleCalendarEvent`) je podle kódu
+správné a `.rbc-addons-dnd-resizable` wrapper se na události skutečně
+vykresluje (potvrzuje funkční `draggableAccessor`) — ale samotné tažení
+myší v reálném prohlížeči Petr sám ještě neověřil.
+
+**"Synchronizovat s Google Kalendářem"** — viditelné, ale VYPNUTÉ tlačítko
+(SEAM, stejný vzor jako "AI souhrn"), tooltip vysvětluje proč: vyžaduje
+OAuth souhlasovou obrazovku v Google Cloud Console, infrastrukturní krok
+mimo tuhle dávku.
+
+**Nedeployováno** (produkce zatím běží beze změny) — čeká na uživatelovo
+"deploy asi necháme až po M10 a nebo i dál".
+
 ## M9 hotové — Chat (2026-07-21)
 
 Navazuje přímo na `sharing.ts` §7.4 doc komentář ("budoucím chatem

@@ -33,6 +33,7 @@ const AgreementDetailPage = lazy(() => import('@/routes/AgreementDetailPage'))
 const FosterPersonDetailPage = lazy(() => import('@/routes/FosterPersonDetailPage'))
 const ChildDetailPage = lazy(() => import('@/routes/ChildDetailPage'))
 const SpolupracovnikDashboardPage = lazy(() => import('@/routes/SpolupracovnikDashboardPage'))
+const CalendarPage = lazy(() => import('@/routes/CalendarPage'))
 
 function RouteFallback() {
   return (
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="/zajemci" element={<FosterProspectsPage />} />
               <Route path="/externiste" element={<ExternalParticipantsPage />} />
               <Route path="/spolupracovnik" element={<SpolupracovnikDashboardPage />} />
+              <Route path="/kalendar" element={<CalendarPage />} />
             </Route>
           </Routes>
         </Suspense>
