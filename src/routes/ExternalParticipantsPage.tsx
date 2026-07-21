@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -18,6 +19,7 @@ import {
 } from '@/services/externalParticipantService'
 import { PERMISSION_KEYS, isSensitivePermission, type ExternalParticipantDoc, type GrantDoc, type PermissionKey } from '@/types/externalParticipant'
 import { checkEmail, checkPhone } from '@/lib/contactValidation'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { Plus, UserSquare2 } from 'lucide-react'
 
 const PERMISSION_LABELS: Record<PermissionKey, string> = {
@@ -72,7 +74,7 @@ export default function ExternalParticipantsPage() {
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [relationLabel, setRelationLabel] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [childId, setChildId] = useState('')
@@ -81,6 +83,16 @@ export default function ExternalParticipantsPage() {
   const [newPermission, setNewPermission] = useState<PermissionKey>('viewDocuments')
   const [newValidFrom, setNewValidFrom] = useState(() => new Date().toISOString().slice(0, 10))
   const [actionError, setActionError] = useState<string | null>(null)
+  const { loading: addingGrant, success: addGrantSuccess, run: runAddGrant } = useAsyncSubmit()
+  const { loading: actionLoading, success: actionSuccess, run: runAction } = useAsyncSubmit()
+  const [pendingGrantId, setPendingGrantId] = useState<string | null>(null)
+
+  // Jakmile hook dokončí loading i success záblesk, uvolni řádkový příznak
+  // — jinak by po dalším kliknutí na JINÝ grant zůstal "přilepený" na tom
+  // starém, protože actionLoading/actionSuccess jsou sdílené pro celou sekci.
+  useEffect(() => {
+    if (!actionLoading && !actionSuccess) setPendingGrantId(null)
+  }, [actionLoading, actionSuccess])
 
   async function reload() {
     if (!organizationId) return
@@ -107,25 +119,24 @@ export default function ExternalParticipantsPage() {
     setEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
     setPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
     if (!emailCheck.ok || !phoneCheck.ok) return
-    setSubmitting(true)
     try {
-      await createExternalParticipant({
-        organizationId,
-        name,
-        email: emailCheck.value,
-        relationLabel,
-        ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
+      await run(async () => {
+        await createExternalParticipant({
+          organizationId,
+          name,
+          email: emailCheck.value,
+          relationLabel,
+          ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
+        })
+        await reload()
       })
       setShowForm(false)
       setName('')
       setEmail('')
       setPhone('')
       setRelationLabel('')
-      await reload()
     } catch {
       setError('Přidání externisty se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -149,29 +160,38 @@ export default function ExternalParticipantsPage() {
   }
 
   async function handleAddGrant(epId: string) {
-    if (!loadedChildId || !userDoc) return
+    const childId = loadedChildId
+    const uid = userDoc?.uid
+    if (!childId || !uid) return
     setActionError(null)
     try {
-      if (isSensitivePermission(newPermission)) {
-        await requestGrant(epId, loadedChildId, newPermission, newValidFrom, userDoc.uid)
-      } else {
-        await grantDirect(epId, loadedChildId, newPermission, newValidFrom, userDoc.uid)
-      }
-      setGrants(await listGrantsForChild(epId, loadedChildId))
+      await runAddGrant(async () => {
+        if (isSensitivePermission(newPermission)) {
+          await requestGrant(epId, childId, newPermission, newValidFrom, uid)
+        } else {
+          await grantDirect(epId, childId, newPermission, newValidFrom, uid)
+        }
+        setGrants(await listGrantsForChild(epId, childId))
+      })
     } catch {
       setActionError('Přidání přístupu se nezdařilo.')
     }
   }
 
   async function handleAction(epId: string, action: 'approve' | 'reject' | 'activate' | 'revoke', grantId: string) {
-    if (!loadedChildId || !userDoc) return
+    const childId = loadedChildId
+    const uid = userDoc?.uid
+    if (!childId || !uid) return
     setActionError(null)
+    setPendingGrantId(grantId)
     try {
-      if (action === 'approve') await approveGrant(epId, loadedChildId, grantId, userDoc.uid)
-      if (action === 'reject') await rejectGrant(epId, loadedChildId, grantId, userDoc.uid)
-      if (action === 'activate') await activateGrant(epId, loadedChildId, grantId, userDoc.uid)
-      if (action === 'revoke') await revokeGrant(epId, loadedChildId, grantId, userDoc.uid)
-      setGrants(await listGrantsForChild(epId, loadedChildId))
+      await runAction(async () => {
+        if (action === 'approve') await approveGrant(epId, childId, grantId, uid)
+        if (action === 'reject') await rejectGrant(epId, childId, grantId, uid)
+        if (action === 'activate') await activateGrant(epId, childId, grantId, uid)
+        if (action === 'revoke') await revokeGrant(epId, childId, grantId, uid)
+        setGrants(await listGrantsForChild(epId, childId))
+      })
     } catch {
       setActionError('Akce se nezdařila.')
     }
@@ -244,8 +264,8 @@ export default function ExternalParticipantsPage() {
             <Input required value={relationLabel} onChange={(e) => setRelationLabel(e.target.value)} />
           </label>
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -310,9 +330,14 @@ export default function ExternalParticipantsPage() {
                             </label>
                             <label className="flex flex-col gap-1 text-sm text-text-secondary">
                               Platí od
-                              <Input type="date" value={newValidFrom} onChange={(e) => setNewValidFrom(e.target.value)} />
+                              <DatePicker value={newValidFrom} onChange={setNewValidFrom} />
                             </label>
-                            <Button size="sm" onClick={() => handleAddGrant(docId)}>
+                            <Button
+                              size="sm"
+                              loading={addingGrant}
+                              success={addGrantSuccess}
+                              onClick={() => handleAddGrant(docId)}
+                            >
                               {isSensitivePermission(newPermission) ? 'Požádat o schválení' : 'Udělit přístup'}
                             </Button>
                           </div>
@@ -333,21 +358,45 @@ export default function ExternalParticipantsPage() {
                                 <div className="flex gap-2">
                                   {grant.status === 'requested' && canApprove && (
                                     <>
-                                      <Button size="sm" variant="secondary" onClick={() => handleAction(docId, 'approve', grantId)}>
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        loading={actionLoading && pendingGrantId === grantId}
+                                        success={actionSuccess && pendingGrantId === grantId}
+                                        onClick={() => handleAction(docId, 'approve', grantId)}
+                                      >
                                         Schválit
                                       </Button>
-                                      <Button size="sm" variant="ghost" onClick={() => handleAction(docId, 'reject', grantId)}>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        loading={actionLoading && pendingGrantId === grantId}
+                                        success={actionSuccess && pendingGrantId === grantId}
+                                        onClick={() => handleAction(docId, 'reject', grantId)}
+                                      >
                                         Zamítnout
                                       </Button>
                                     </>
                                   )}
                                   {grant.status === 'approved' && canActivate && (
-                                    <Button size="sm" variant="secondary" onClick={() => handleAction(docId, 'activate', grantId)}>
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      loading={actionLoading && pendingGrantId === grantId}
+                                      success={actionSuccess && pendingGrantId === grantId}
+                                      onClick={() => handleAction(docId, 'activate', grantId)}
+                                    >
                                       Aktivovat
                                     </Button>
                                   )}
                                   {grant.status === 'active' && canApprove && (
-                                    <Button size="sm" variant="destructive" onClick={() => handleAction(docId, 'revoke', grantId)}>
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      loading={actionLoading && pendingGrantId === grantId}
+                                      success={actionSuccess && pendingGrantId === grantId}
+                                      onClick={() => handleAction(docId, 'revoke', grantId)}
+                                    >
                                       Odebrat
                                     </Button>
                                   )}

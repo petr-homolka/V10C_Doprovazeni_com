@@ -3,9 +3,11 @@ import { HeartHandshake, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   computeDaysCount,
   computeStravaUbytovaniSplit,
@@ -103,7 +105,7 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
   const [includeStravaUbytovani, setIncludeStravaUbytovani] = useState(false)
   const [skutecneNaklady, setSkutecneNaklady] = useState('')
   const [includeUbytovani, setIncludeUbytovani] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   async function reloadStats() {
     setError(null)
@@ -143,29 +145,31 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
       setError('Vyberte aspoň jedno dítě.')
       return
     }
-    setSubmitting(true)
     try {
-      const stravaUbytovani =
-        kind === 'pobyt' && includeStravaUbytovani && skutecneNaklady
-          ? await computeStravaUbytovaniSplit(
-              organizationId,
-              computeDaysCount(new Date(dateFrom).toISOString(), new Date(dateTo).toISOString()),
-              Number(skutecneNaklady),
-              includeUbytovani,
-            )
-          : null
-      await createRespitEvent({
-        familyId: familyDocId,
-        organizationId,
-        childIds: Array.from(selectedChildIds),
-        dateFrom: new Date(dateFrom).toISOString(),
-        dateTo: new Date(dateTo).toISOString(),
-        reason: reason || undefined,
-        kind,
-        cost: kind === 'celodenni_pece' && cost ? Number(cost) : null,
-        costCoveredByOrg: kind === 'pobyt' && costCoveredByOrg ? Number(costCoveredByOrg) : null,
-        stravaUbytovani,
-        createdBy: currentUid,
+      await run(async () => {
+        const stravaUbytovani =
+          kind === 'pobyt' && includeStravaUbytovani && skutecneNaklady
+            ? await computeStravaUbytovaniSplit(
+                organizationId,
+                computeDaysCount(new Date(dateFrom).toISOString(), new Date(dateTo).toISOString()),
+                Number(skutecneNaklady),
+                includeUbytovani,
+              )
+            : null
+        await createRespitEvent({
+          familyId: familyDocId,
+          organizationId,
+          childIds: Array.from(selectedChildIds),
+          dateFrom: new Date(dateFrom).toISOString(),
+          dateTo: new Date(dateTo).toISOString(),
+          reason: reason || undefined,
+          kind,
+          cost: kind === 'celodenni_pece' && cost ? Number(cost) : null,
+          costCoveredByOrg: kind === 'pobyt' && costCoveredByOrg ? Number(costCoveredByOrg) : null,
+          stravaUbytovani,
+          createdBy: currentUid,
+        })
+        await reloadStats()
       })
       setShowForm(false)
       setKind('celodenni_pece')
@@ -178,11 +182,8 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
       setIncludeStravaUbytovani(false)
       setSkutecneNaklady('')
       setIncludeUbytovani(false)
-      await reloadStats()
     } catch {
       setError('Respit se nepodařilo zaznamenat.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -232,11 +233,11 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Od
-              <Input type="date" required value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+              <DatePicker value={dateFrom} onChange={setDateFrom} />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Do
-              <Input type="date" required value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+              <DatePicker value={dateTo} onChange={setDateTo} />
             </label>
           </div>
 
@@ -288,8 +289,8 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -328,7 +329,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
   const [frequency, setFrequency] = useState<AssistedContactScheduleRecurrence['frequency']>('weekly')
   const [interval, setInterval] = useState('1')
   const [defaultLocation, setDefaultLocation] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [formError, setFormError] = useState<string | null>(null)
 
   const [scheduleDates, setScheduleDates] = useState<Record<string, string>>({})
@@ -365,23 +366,25 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
       setFormError('Vyberte dítě.')
       return
     }
-    setSubmitting(true)
     try {
       // participantRefs → external_participants (§5.1) NENÍ v týhle dávce
       // napojeno na výběr existujících účastníků (plný grant engine je M8),
       // takže se tu jen textově zapíše "kdo" do `purpose`, samotné pole
       // zůstává prázdné pole.
-      await createAssistedContactSeries(familyDocId, {
-        organizationId,
-        childRef,
-        participantRefs: [],
-        purpose: participants ? `${purpose} (účastní se: ${participants})` : purpose,
-        schedule: {
-          startDate: new Date(startDate).toISOString(),
-          recurrence: { frequency, interval: Number(interval) },
-        },
-        ...(defaultLocation ? { defaultLocation } : {}),
-        createdBy: currentUid,
+      await run(async () => {
+        await createAssistedContactSeries(familyDocId, {
+          organizationId,
+          childRef,
+          participantRefs: [],
+          purpose: participants ? `${purpose} (účastní se: ${participants})` : purpose,
+          schedule: {
+            startDate: new Date(startDate).toISOString(),
+            recurrence: { frequency, interval: Number(interval) },
+          },
+          ...(defaultLocation ? { defaultLocation } : {}),
+          createdBy: currentUid,
+        })
+        await reload()
       })
       setShowForm(false)
       setChildRef('')
@@ -391,11 +394,8 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
       setFrequency('weekly')
       setInterval('1')
       setDefaultLocation('')
-      await reload()
     } catch {
       setFormError('Založení série se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -504,7 +504,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Začátek
-              <Input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <DatePicker value={startDate} onChange={setStartDate} />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Opakování
@@ -532,8 +532,8 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Zakládám…' : 'Založit sérii'}
+            <Button type="submit" loading={submitting} success={success}>
+              Založit sérii
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -567,10 +567,9 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={scheduleDates[seriesId] ?? ''}
-                    onChange={(e) => setScheduleDates((prev) => ({ ...prev, [seriesId]: e.target.value }))}
+                    onChange={(v) => setScheduleDates((prev) => ({ ...prev, [seriesId]: v }))}
                     className="w-auto"
                   />
                   <Button variant="secondary" size="sm" onClick={() => handleSchedule(seriesId)}>
@@ -717,7 +716,7 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
   const [transportCost, setTransportCost] = useState('')
   const [accommodationNights, setAccommodationNights] = useState('')
   const [accommodationCost, setAccommodationCost] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   async function reload() {
     setError(null)
@@ -740,18 +739,20 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
       setError('Vyberte dítě a vyplňte důvod.')
       return
     }
-    setSubmitting(true)
     try {
-      await createChildHandover(familyDocId, {
-        organizationId,
-        childRef,
-        handoverDate: new Date(handoverDate).toISOString(),
-        toWhom,
-        reason,
-        transportCost: transportCost ? Number(transportCost) : undefined,
-        accommodationNights: accommodationNights ? Number(accommodationNights) : undefined,
-        accommodationCost: accommodationCost ? Number(accommodationCost) : undefined,
-        createdBy: currentUid,
+      await run(async () => {
+        await createChildHandover(familyDocId, {
+          organizationId,
+          childRef,
+          handoverDate: new Date(handoverDate).toISOString(),
+          toWhom,
+          reason,
+          transportCost: transportCost ? Number(transportCost) : undefined,
+          accommodationNights: accommodationNights ? Number(accommodationNights) : undefined,
+          accommodationCost: accommodationCost ? Number(accommodationCost) : undefined,
+          createdBy: currentUid,
+        })
+        await reload()
       })
       setShowForm(false)
       setChildRef('')
@@ -761,11 +762,8 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
       setTransportCost('')
       setAccommodationNights('')
       setAccommodationCost('')
-      await reload()
     } catch {
       setError('Zaznamenání předání se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -794,7 +792,7 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Datum předání
-              <Input type="date" required value={handoverDate} onChange={(e) => setHandoverDate(e.target.value)} />
+              <DatePicker value={handoverDate} onChange={setHandoverDate} />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Komu
@@ -828,8 +826,8 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit

@@ -13,6 +13,7 @@ import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { OspodReportSection } from '@/components/family/OspodReportSection'
 import { FamilyCareEventsSection } from '@/components/family/FamilyCareEventsSection'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getOrganization } from '@/services/organizationService'
 import { listStaff } from '@/services/staffService'
 import { uploadEntityAvatar } from '@/services/avatarService'
@@ -104,7 +105,7 @@ export default function FamilyDetailPage() {
 
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
-  const [savingName, setSavingName] = useState(false)
+  const { loading: savingName, success: savingNameSuccess, run: runSaveName } = useAsyncSubmit()
 
   const [showFosterForm, setShowFosterForm] = useState(false)
   const [fosterFirstName, setFosterFirstName] = useState('')
@@ -127,7 +128,9 @@ export default function FamilyDetailPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const familyAvatarInputRef = useRef<HTMLInputElement>(null)
 
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: addingFoster, success: addingFosterSuccess, run: runAddFoster } = useAsyncSubmit()
+  const { loading: addingChild, success: addingChildSuccess, run: runAddChild } = useAsyncSubmit()
+  const { loading: creatingDocument, success: creatingDocumentSuccess, run: runCreateDocument } = useAsyncSubmit()
   const [loaded, setLoaded] = useState(false)
 
   const [documents, setDocuments] = useState<Array<{ docId: string; document: FamilyDocumentDoc }>>([])
@@ -244,16 +247,15 @@ export default function FamilyDetailPage() {
   async function handleSaveName() {
     if (!docId) return
     const next = nameDraft.trim()
-    setSavingName(true)
     setFamily((prev) => (prev ? { ...prev, displayName: next || undefined } : prev))
-    setEditingName(false)
     try {
-      await updateFamilyDisplayName(docId, next)
+      await runSaveName(async () => {
+        await updateFamilyDisplayName(docId, next)
+      })
+      setEditingName(false)
     } catch {
       setError('Název se nepodařilo uložit.')
       await reload()
-    } finally {
-      setSavingName(false)
     }
   }
 
@@ -285,27 +287,26 @@ export default function FamilyDetailPage() {
     setFosterPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
     setFosterEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
     if (!phoneCheck.ok || !emailCheck.ok) return
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await addFosterPersonToFamily(docId, organizationId, org.orgCode, {
-        firstName: fosterFirstName,
-        lastName: fosterLastName,
-        ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
-        ...(emailCheck.value ? { email: emailCheck.value } : {}),
+      await runAddFoster(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        await addFosterPersonToFamily(docId, organizationId, org.orgCode, {
+          firstName: fosterFirstName,
+          lastName: fosterLastName,
+          ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
+          ...(emailCheck.value ? { email: emailCheck.value } : {}),
+        })
+        await reload()
       })
       setFosterFirstName('')
       setFosterLastName('')
       setFosterPhone('')
       setFosterEmail('')
       setShowFosterForm(false)
-      await reload()
     } catch {
       setError('Přidání pěstouna se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -330,25 +331,24 @@ export default function FamilyDetailPage() {
   async function handleAddChild(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId) return
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await addChildToFamily(docId, organizationId, org.orgCode, {
-        firstName: childFirstName,
-        lastName: childLastName,
-        birthNumber: childBirthNumber,
+      await runAddChild(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        await addChildToFamily(docId, organizationId, org.orgCode, {
+          firstName: childFirstName,
+          lastName: childLastName,
+          birthNumber: childBirthNumber,
+        })
+        await reload()
       })
       setChildFirstName('')
       setChildLastName('')
       setChildBirthNumber('')
       setShowChildForm(false)
-      await reload()
     } catch {
       setError('Přidání dítěte se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -364,22 +364,25 @@ export default function FamilyDetailPage() {
   async function handleCreateDocument(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId || !userDoc) return
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      const subjectRefs: SubjectRef[] = recordablePeople
-        .filter((p) => docSubjectKeys.has(`${p.kind}:${p.id}`))
-        .map(({ kind, id }) => ({ kind, id }))
-      const { docId: newDocId } = await createDocument({
-        familyDocId: docId,
-        organizationId,
-        orgCode: org.orgCode,
-        createdByUid: userDoc.uid,
-        title: docTitle,
-        body: docBody,
-        subjectRefs,
+      let newDocId = ''
+      await runCreateDocument(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        const subjectRefs: SubjectRef[] = recordablePeople
+          .filter((p) => docSubjectKeys.has(`${p.kind}:${p.id}`))
+          .map(({ kind, id }) => ({ kind, id }))
+        const result = await createDocument({
+          familyDocId: docId,
+          organizationId,
+          orgCode: org.orgCode,
+          createdByUid: userDoc.uid,
+          title: docTitle,
+          body: docBody,
+          subjectRefs,
+        })
+        newDocId = result.docId
       })
       setDocTitle('')
       setDocBody('')
@@ -388,8 +391,6 @@ export default function FamilyDetailPage() {
       navigate(`/rodiny/${familyUid}/dokumenty/${newDocId}`)
     } catch {
       setError('Založení dokumentu se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -424,7 +425,7 @@ export default function FamilyDetailPage() {
                 className="h-9 w-64"
                 placeholder={primaryFosterName ?? family?.address ?? ''}
               />
-              <Button size="sm" onClick={handleSaveName} disabled={savingName}>
+              <Button size="sm" onClick={handleSaveName} loading={savingName} success={savingNameSuccess}>
                 Uložit
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
@@ -555,8 +556,8 @@ export default function FamilyDetailPage() {
                     {fosterEmailError && <span className="text-xs text-danger">{fosterEmailError}</span>}
                   </label>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-fit">
-                  {submitting ? 'Přidávám…' : 'Přidat'}
+                <Button type="submit" loading={addingFoster} success={addingFosterSuccess} className="w-fit">
+                  Přidat
                 </Button>
               </form>
             )}
@@ -624,8 +625,8 @@ export default function FamilyDetailPage() {
                     <Input required value={childBirthNumber} onChange={(e) => setChildBirthNumber(e.target.value)} />
                   </label>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-fit">
-                  {submitting ? 'Přidávám…' : 'Přidat'}
+                <Button type="submit" loading={addingChild} success={addingChildSuccess} className="w-fit">
+                  Přidat
                 </Button>
               </form>
             )}
@@ -801,8 +802,8 @@ export default function FamilyDetailPage() {
                     </div>
                   </div>
                 )}
-                <Button type="submit" disabled={submitting} className="w-fit">
-                  {submitting ? 'Zakládám…' : 'Založit koncept'}
+                <Button type="submit" loading={creatingDocument} success={creatingDocumentSuccess} className="w-fit">
+                  Založit koncept
                 </Button>
               </form>
             )}

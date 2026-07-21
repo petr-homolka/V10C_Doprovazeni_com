@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
+import { Check, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
@@ -42,16 +43,31 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+    VariantProps<typeof buttonVariants> {
+  /** Ukládání/odesílání probíhá — spinner místo obsahu, tlačítko zamčené.
+   * Použij s `useAsyncSubmit` (src/hooks/useAsyncSubmit.ts), ať "Ukládám…"
+   * neproblikne rychleji, než si toho uživatel stihne všimnout. */
+  loading?: boolean
+  /** Krátký potvrzovací záblesk hned po úspěšném uložení. */
+  success?: boolean
+}
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
+  ({ className, variant, size, loading, success, disabled, children, ...props }, ref) => {
     return (
       <button
         ref={ref}
+        disabled={disabled || loading || success}
         className={cn(buttonVariants({ variant, size, className }))}
         {...props}
-      />
+      >
+        {loading ? (
+          <Loader2 size={16} className="shrink-0 animate-spin" />
+        ) : success ? (
+          <Check size={16} className="shrink-0" />
+        ) : null}
+        {children}
+      </button>
     )
   },
 )

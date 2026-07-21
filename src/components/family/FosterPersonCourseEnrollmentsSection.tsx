@@ -3,6 +3,7 @@ import { GraduationCap, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   approveCourseEnrollment,
@@ -312,7 +313,7 @@ export function FosterPersonCourseEnrollmentsSection({
           </div>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-text-secondary">Datum konání</span>
-            <Input type="date" value={completeOccurredAt} onChange={(e) => setCompleteOccurredAt(e.target.value)} />
+            <DatePicker value={completeOccurredAt} onChange={setCompleteOccurredAt} />
           </label>
           <div className="flex gap-2">
             <Button

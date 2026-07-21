@@ -2,9 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   createInspection,
   findOverdueCorrectiveActions,
@@ -55,7 +57,7 @@ export default function InspectionsPage() {
   const [subject, setSubject] = useState('')
   const [standardRef, setStandardRef] = useState<QualityStandardRef>('priloha_2')
   const [findingDrafts, setFindingDrafts] = useState<FindingDraft[]>([emptyFindingDraft()])
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [formError, setFormError] = useState<string | null>(null)
 
   async function reload() {
@@ -94,22 +96,24 @@ export default function InspectionsPage() {
       return
     }
     if (!organizationId) return
-    setSubmitting(true)
     try {
-      await createInspection(
-        organizationId,
-        {
-          inspectionDateFrom: new Date(inspectionDateFrom).toISOString(),
-          inspectionDateTo: new Date(inspectionDateTo).toISOString(),
-          inspectingAuthorityName,
-          subject,
-          standardRef,
-          findings,
-          resultDocumentRef: null,
-          createdBy: userDoc!.uid,
-        },
-        userDoc!.uid,
-      )
+      await run(async () => {
+        await createInspection(
+          organizationId,
+          {
+            inspectionDateFrom: new Date(inspectionDateFrom).toISOString(),
+            inspectionDateTo: new Date(inspectionDateTo).toISOString(),
+            inspectingAuthorityName,
+            subject,
+            standardRef,
+            findings,
+            resultDocumentRef: null,
+            createdBy: userDoc!.uid,
+          },
+          userDoc!.uid,
+        )
+        await reload()
+      })
       setShowForm(false)
       setInspectionDateFrom('')
       setInspectionDateTo('')
@@ -117,11 +121,8 @@ export default function InspectionsPage() {
       setSubject('')
       setStandardRef('priloha_2')
       setFindingDrafts([emptyFindingDraft()])
-      await reload()
     } catch {
       setFormError('Zaznamenání inspekce se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -183,11 +184,11 @@ export default function InspectionsPage() {
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Datum od
-              <Input type="date" required value={inspectionDateFrom} onChange={(e) => setInspectionDateFrom(e.target.value)} />
+              <DatePicker value={inspectionDateFrom} onChange={setInspectionDateFrom} />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Datum do
-              <Input type="date" required value={inspectionDateTo} onChange={(e) => setInspectionDateTo(e.target.value)} />
+              <DatePicker value={inspectionDateTo} onChange={setInspectionDateTo} />
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
@@ -239,10 +240,9 @@ export default function InspectionsPage() {
                 </label>
                 <label className="flex flex-col gap-1 text-sm text-text-secondary">
                   Termín nápravy (volitelné)
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={draft.correctiveDeadline}
-                    onChange={(e) => updateFindingDraft(idx, { correctiveDeadline: e.target.value })}
+                    onChange={(v) => updateFindingDraft(idx, { correctiveDeadline: v })}
                   />
                 </label>
               </div>
@@ -259,8 +259,8 @@ export default function InspectionsPage() {
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit inspekci'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit inspekci
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit

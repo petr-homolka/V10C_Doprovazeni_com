@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from './button'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 
 /**
  * "Nebezpečná zóna" — UX zpětná vazba 2026-07-20, přesně dle Magnific
@@ -36,19 +37,16 @@ export function DangerZoneAction({
   onAction: () => Promise<void> | void
 }) {
   const [confirming, setConfirming] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading, success, run } = useAsyncSubmit()
   const [error, setError] = useState<string | null>(null)
 
   async function handleConfirm() {
-    setSubmitting(true)
     setError(null)
     try {
-      await onAction()
+      await run(() => Promise.resolve(onAction()))
       setConfirming(false)
     } catch {
       setError('Akce se nezdařila.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -68,10 +66,10 @@ export function DangerZoneAction({
       {confirming && (
         <div className="flex items-center gap-2">
           <p className="text-xs text-text-secondary">Opravdu? Tuhle akci nejde vzít zpět.</p>
-          <Button variant="destructive" size="sm" onClick={handleConfirm} disabled={submitting}>
-            {submitting ? 'Provádím…' : confirmLabel}
+          <Button variant="destructive" size="sm" onClick={handleConfirm} loading={loading} success={success}>
+            {confirmLabel}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={submitting}>
+          <Button variant="ghost" size="sm" onClick={() => setConfirming(false)} disabled={loading}>
             Zrušit
           </Button>
         </div>

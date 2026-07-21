@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   addFosterProspectNote,
   createFosterProspect,
@@ -49,6 +50,7 @@ export default function FosterProspectsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [notes, setNotes] = useState<Array<{ docId: string; note: FosterProspectNoteDoc }> | null>(null)
   const [newNoteText, setNewNoteText] = useState('')
+  const { loading: noteSubmitting, success: noteSuccess, run: runAddNote } = useAsyncSubmit()
 
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
@@ -58,8 +60,15 @@ export default function FosterProspectsPage() {
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [source, setSource] = useState('')
   const [existingFosterStatus, setExistingFosterStatus] = useState<FosterProspectExistingStatus>('neznamo')
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [formError, setFormError] = useState<string | null>(null)
+
+  // Stav se mění per-řádek (Select ve výpisu), ne globálně — sdílená
+  // loading proměnná by při změně jednoho zájemce vizuálně "zamkla" i
+  // selecty ostatních řádků. Sledujeme tedy jen ID právě probíhající
+  // změny, useAsyncSubmit hlídá jen samotný běh akce.
+  const [statusChangingId, setStatusChangingId] = useState<string | null>(null)
+  const { run: runStatusChange } = useAsyncSubmit()
 
   async function reload() {
     if (!organizationId) return
@@ -87,16 +96,18 @@ export default function FosterProspectsPage() {
     setEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
     setPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
     if (!emailCheck.ok || !phoneCheck.ok) return
-    setSubmitting(true)
     try {
-      await createFosterProspect({
-        organizationId,
-        name,
-        ...(emailCheck.value ? { contactEmail: emailCheck.value } : {}),
-        ...(phoneCheck.value ? { contactPhone: phoneCheck.value } : {}),
-        ...(source ? { source } : {}),
-        existingFosterStatus,
-        assignedTo: userDoc.uid,
+      await run(async () => {
+        await createFosterProspect({
+          organizationId,
+          name,
+          ...(emailCheck.value ? { contactEmail: emailCheck.value } : {}),
+          ...(phoneCheck.value ? { contactPhone: phoneCheck.value } : {}),
+          ...(source ? { source } : {}),
+          existingFosterStatus,
+          assignedTo: userDoc.uid,
+        })
+        await reload()
       })
       setShowForm(false)
       setName('')
@@ -104,21 +115,23 @@ export default function FosterProspectsPage() {
       setContactPhone('')
       setSource('')
       setExistingFosterStatus('neznamo')
-      await reload()
     } catch {
       setFormError('Přidání zájemce se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
   async function handleStatusChange(prospectId: string, status: FosterProspectStatus) {
     setActionError(null)
+    setStatusChangingId(prospectId)
     try {
-      await updateFosterProspectStatus(prospectId, status)
-      await reload()
+      await runStatusChange(async () => {
+        await updateFosterProspectStatus(prospectId, status)
+        await reload()
+      })
     } catch {
       setActionError('Změna stavu se nezdařila.')
+    } finally {
+      setStatusChangingId(null)
     }
   }
 
@@ -141,10 +154,12 @@ export default function FosterProspectsPage() {
     if (!newNoteText.trim() || !userDoc) return
     setActionError(null)
     try {
-      await addFosterProspectNote(prospectId, userDoc.uid, newNoteText.trim())
+      await runAddNote(async () => {
+        await addFosterProspectNote(prospectId, userDoc.uid, newNoteText.trim())
+        setNotes(await listFosterProspectNotes(prospectId))
+        await reload()
+      })
       setNewNoteText('')
-      setNotes(await listFosterProspectNotes(prospectId))
-      await reload()
     } catch {
       setActionError('Poznámku se nepodařilo uložit.')
     }
@@ -244,8 +259,8 @@ export default function FosterProspectsPage() {
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -292,6 +307,7 @@ export default function FosterProspectsPage() {
                           <Select
                             value={prospect.status}
                             onChange={(e) => handleStatusChange(docId, e.target.value as FosterProspectStatus)}
+                            disabled={statusChangingId === docId}
                           >
                             {STATUS_ORDER.map((s) => (
                               <option key={s} value={s}>
@@ -325,7 +341,12 @@ export default function FosterProspectsPage() {
                                 value={newNoteText}
                                 onChange={(e) => setNewNoteText(e.target.value)}
                               />
-                              <Button size="sm" onClick={() => handleAddNote(docId)}>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAddNote(docId)}
+                                loading={noteSubmitting}
+                                success={noteSuccess}
+                              >
                                 Přidat
                               </Button>
                             </div>

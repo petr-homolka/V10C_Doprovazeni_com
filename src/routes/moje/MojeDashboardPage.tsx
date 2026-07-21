@@ -15,6 +15,7 @@ import {
   listFosterVisibleTimelineEntries,
 } from '@/services/mojeService'
 import { fosterApproveDocument, fosterCommentDocument } from '@/services/documentService'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
@@ -53,8 +54,17 @@ export default function MojeDashboardPage() {
   const [selectedEntry, setSelectedEntry] = useState<{ docId: string; entry: TimelineEntryDoc } | null>(null)
   const [documents, setDocuments] = useState<Array<{ docId: string; document: FamilyDocumentDoc }>>([])
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
-  const [submittingDocId, setSubmittingDocId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const { loading: docLoading, success: docSuccess, run: runDocAction } = useAsyncSubmit()
+  const [pendingDocId, setPendingDocId] = useState<string | null>(null)
+
+  // Loading/success jsou sdílené pro celou sekci (jeden useAsyncSubmit), proto
+  // teprve až doběhne celý cyklus (loading i success záblesk), uvolníme, na
+  // který dokument se to vztahovalo — jinak by "success" zůstal přilepený na
+  // předchozím docId při dalším kliknutí.
+  useEffect(() => {
+    if (!docLoading && !docSuccess) setPendingDocId(null)
+  }, [docLoading, docSuccess])
 
   function reload() {
     const familyId = userDoc?.fosterFamilyId
@@ -78,32 +88,35 @@ export default function MojeDashboardPage() {
   useEffect(reload, [userDoc?.fosterFamilyId])
 
   async function handleApproveDocument(docId: string) {
-    if (!userDoc?.fosterFamilyId) return
-    setSubmittingDocId(docId)
+    const familyId = userDoc?.fosterFamilyId
+    const uid = userDoc?.uid
+    if (!familyId || !uid) return
     setError(null)
+    setPendingDocId(docId)
     try {
-      await fosterApproveDocument(userDoc.fosterFamilyId, docId, userDoc.uid)
-      reload()
+      await runDocAction(async () => {
+        await fosterApproveDocument(familyId, docId, uid)
+        reload()
+      })
     } catch {
       setError('Schválení se nezdařilo.')
-    } finally {
-      setSubmittingDocId(null)
     }
   }
 
   async function handleCommentDocument(docId: string) {
+    const familyId = userDoc?.fosterFamilyId
     const comment = commentDrafts[docId]?.trim()
-    if (!userDoc?.fosterFamilyId || !comment) return
-    setSubmittingDocId(docId)
+    if (!familyId || !comment) return
     setError(null)
+    setPendingDocId(docId)
     try {
-      await fosterCommentDocument(userDoc.fosterFamilyId, docId, comment)
+      await runDocAction(async () => {
+        await fosterCommentDocument(familyId, docId, comment)
+        reload()
+      })
       setCommentDrafts((prev) => ({ ...prev, [docId]: '' }))
-      reload()
     } catch {
       setError('Odeslání komentáře se nezdařilo.')
-    } finally {
-      setSubmittingDocId(null)
     }
   }
 
@@ -211,8 +224,9 @@ export default function MojeDashboardPage() {
                     <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
                       <Button
                         size="sm"
+                        loading={docLoading && pendingDocId === docId}
+                        success={docSuccess && pendingDocId === docId}
                         onClick={() => handleApproveDocument(docId)}
-                        disabled={submittingDocId === docId}
                       >
                         Schválit
                       </Button>
@@ -226,8 +240,10 @@ export default function MojeDashboardPage() {
                       <Button
                         variant="secondary"
                         size="sm"
+                        loading={docLoading && pendingDocId === docId}
+                        success={docSuccess && pendingDocId === docId}
                         onClick={() => handleCommentDocument(docId)}
-                        disabled={submittingDocId === docId || !commentDrafts[docId]?.trim()}
+                        disabled={!commentDrafts[docId]?.trim()}
                         className="w-fit"
                       >
                         Odeslat komentář

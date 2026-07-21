@@ -3,12 +3,14 @@ import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
+import { Combobox } from '@/components/ui/combobox'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DangerZone } from '@/components/ui/danger-zone'
 import { IppdSection } from '@/components/family/IppdSection'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getOrganization } from '@/services/organizationService'
 import { listStaff } from '@/services/staffService'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
@@ -73,10 +75,10 @@ export default function AgreementDetailPage() {
   const [careType, setCareType] = useState<CareType>('zprostredkovana')
   const [assignedTo, setAssignedTo] = useState('')
   const [capacityNote, setCapacityNote] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   const [endDateDraft, setEndDateDraft] = useState('')
-  const [endSubmitting, setEndSubmitting] = useState(false)
+  const { loading: endSubmitting, success: endSuccess, run: runEnd } = useAsyncSubmit()
 
   const primaryFosterName = fosterPersons[0]
     ? `${fosterPersons[0].fosterPerson.firstName} ${fosterPersons[0].fosterPerson.lastName}`
@@ -129,54 +131,51 @@ export default function AgreementDetailPage() {
   async function handleCreateAgreement(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId) return
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await createAgreement({
-        familyDocId: docId,
-        organizationId,
-        orgCode: org.orgCode,
-        careType,
-        assignedTo: assignedTo || undefined,
+      await run(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        await createAgreement({
+          familyDocId: docId,
+          organizationId,
+          orgCode: org.orgCode,
+          careType,
+          assignedTo: assignedTo || undefined,
+        })
+        await reload()
       })
       setShowAgreementForm(false)
       setCapacityNote(null)
-      await reload()
     } catch {
       setError('Založení Dohody se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
   async function handleScheduleEnd() {
     if (!docId || !organizationId || !endDateDraft) return
-    setEndSubmitting(true)
     setError(null)
     try {
-      await scheduleAgreementEnd(docId, organizationId, new Date(endDateDraft).toISOString())
+      await runEnd(async () => {
+        await scheduleAgreementEnd(docId, organizationId, new Date(endDateDraft).toISOString())
+        await reload()
+      })
       setEndDateDraft('')
-      await reload()
     } catch {
       setError('Naplánování ukončení se nezdařilo.')
-    } finally {
-      setEndSubmitting(false)
     }
   }
 
   async function handleCancelPendingEnd() {
     if (!docId || !organizationId) return
-    setEndSubmitting(true)
     setError(null)
     try {
-      await cancelPendingAgreementEnd(docId, organizationId)
-      await reload()
+      await runEnd(async () => {
+        await cancelPendingAgreementEnd(docId, organizationId)
+        await reload()
+      })
     } catch {
       setError('Zrušení naplánovaného ukončení se nezdařilo.')
-    } finally {
-      setEndSubmitting(false)
     }
   }
 
@@ -254,20 +253,21 @@ export default function AgreementDetailPage() {
                     </label>
                     <label className="flex flex-col gap-1.5">
                       <span className="text-sm font-medium leading-relaxed text-text-primary">Klíčová osoba</span>
-                      <Select value={assignedTo} onChange={(e) => handleAssignedToChange(e.target.value)}>
-                        <option value="">Nepřiřazeno</option>
-                        {koOptions.map((ko) => (
-                          <option key={ko.uid} value={ko.uid}>
-                            {ko.displayName}
-                          </option>
-                        ))}
-                      </Select>
+                      <Combobox
+                        value={assignedTo}
+                        onChange={handleAssignedToChange}
+                        placeholder="Nepřiřazeno"
+                        options={[
+                          { value: '', label: 'Nepřiřazeno' },
+                          ...koOptions.map((ko) => ({ value: ko.uid, label: ko.displayName })),
+                        ]}
+                      />
                     </label>
                   </div>
                   {capacityNote && <p className="text-sm text-warning">{capacityNote}</p>}
                   <div className="flex gap-2">
-                    <Button type="submit" disabled={submitting} className="w-fit">
-                      {submitting ? 'Zakládám…' : 'Založit Dohodu'}
+                    <Button type="submit" loading={submitting} success={success} className="w-fit">
+                      Založit Dohodu
                     </Button>
                     <Button
                       type="button"
@@ -314,9 +314,10 @@ export default function AgreementDetailPage() {
                 size="sm"
                 className="mt-3"
                 onClick={handleCancelPendingEnd}
-                disabled={endSubmitting}
+                loading={endSubmitting}
+                success={endSuccess}
               >
-                {endSubmitting ? 'Ruším…' : 'Zrušit ukončení'}
+                Zrušit ukončení
               </Button>
             </div>
           ) : (
@@ -328,20 +329,21 @@ export default function AgreementDetailPage() {
                   ukončení kdykoli zrušit.
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <Input
-                    type="date"
+                  <DatePicker
                     min={tomorrowIsoDate()}
                     value={endDateDraft}
-                    onChange={(e) => setEndDateDraft(e.target.value)}
+                    onChange={setEndDateDraft}
                     className="w-auto"
                   />
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={handleScheduleEnd}
-                    disabled={!endDateDraft || endSubmitting}
+                    disabled={!endDateDraft}
+                    loading={endSubmitting}
+                    success={endSuccess}
                   >
-                    {endSubmitting ? 'Ukládám…' : 'Naplánovat ukončení'}
+                    Naplánovat ukončení
                   </Button>
                 </div>
               </div>

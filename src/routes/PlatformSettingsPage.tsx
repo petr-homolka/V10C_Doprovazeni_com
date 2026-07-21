@@ -3,6 +3,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getPlatformDefaults, setPlatformKoCapacityThreshold } from '@/services/organizationService'
 import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
 
@@ -16,9 +17,8 @@ export default function PlatformSettingsPage() {
   const { userDoc } = useAuth()
   const [threshold, setThreshold] = useState('')
   const [loaded, setLoaded] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   const isSuperadmin = userDoc?.role === 'superadmin'
 
@@ -32,16 +32,13 @@ export default function PlatformSettingsPage() {
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
     setError(null)
-    setSaved(false)
     try {
-      await setPlatformKoCapacityThreshold(Math.max(1, Number(threshold) || DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD))
-      setSaved(true)
+      await run(async () => {
+        await setPlatformKoCapacityThreshold(Math.max(1, Number(threshold) || DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD))
+      })
     } catch {
       setError('Uložení se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -76,10 +73,10 @@ export default function PlatformSettingsPage() {
             <Input type="number" min={1} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
           </label>
           <div className="flex items-center gap-3">
-            <Button type="submit" variant="secondary" size="sm" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" variant="secondary" size="sm" loading={submitting} success={success}>
+              Uložit
             </Button>
-            {saved && <span className="text-sm text-success">Uloženo.</span>}
+            {success && <span className="text-sm text-success">Uloženo.</span>}
           </div>
         </form>
       )}

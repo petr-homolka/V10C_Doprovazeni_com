@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { VoiceRecorderPanel, type RecordablePerson } from '@/components/timeline/VoiceRecorderPanel'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getOrganization } from '@/services/organizationService'
 import {
   createFamily,
@@ -33,7 +34,7 @@ export default function FamilyListPage() {
   const [families, setFamilies] = useState<Array<{ docId: string; family: FamilyDoc }> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [address, setAddress] = useState('')
   const [recorderState, setRecorderState] = useState<{ docId: string; people: RecordablePerson[] } | null>(null)
   const [recorderLoadingDocId, setRecorderLoadingDocId] = useState<string | null>(null)
@@ -95,19 +96,18 @@ export default function FamilyListPage() {
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
     if (!organizationId) return
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await createFamily(organizationId, org.orgCode, address || undefined)
+      await run(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        await createFamily(organizationId, org.orgCode, address || undefined)
+        await reload()
+      })
       setAddress('')
       setShowForm(false)
-      await reload()
     } catch {
       setError('Založení rodiny se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -154,8 +154,8 @@ export default function FamilyListPage() {
             </span>
             <Input value={address} onChange={(e) => setAddress(e.target.value)} />
           </label>
-          <Button type="submit" disabled={submitting} className="w-fit">
-            {submitting ? 'Zakládám…' : 'Založit Spis'}
+          <Button type="submit" loading={submitting} success={success} className="w-fit">
+            Založit Spis
           </Button>
         </form>
       )}

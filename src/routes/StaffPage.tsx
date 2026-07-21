@@ -14,6 +14,7 @@ import { getOrganization, getPlatformDefaults } from '@/services/organizationSer
 import { computeEffectiveCapacityThreshold } from '@/lib/capacityThreshold'
 import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
 import { checkEmail } from '@/lib/contactValidation'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { Plus, UserCog } from 'lucide-react'
 
 // Org_admin nepřiděluje `superadmin` (platformní role) — viz firestore.rules.
@@ -35,7 +36,7 @@ export default function StaffPage() {
   const [platformThreshold, setPlatformThreshold] = useState(DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: creating, success: createSuccess, run: runCreate } = useAsyncSubmit()
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [emailError, setEmailError] = useState<string | null>(null)
@@ -45,6 +46,7 @@ export default function StaffPage() {
   const [editingMember, setEditingMember] = useState<UserDoc | null>(null)
   const [editFte, setEditFte] = useState('1')
   const [editOverride, setEditOverride] = useState('')
+  const { loading: savingCapacity, success: saveCapacitySuccess, run: runSaveCapacity } = useAsyncSubmit()
 
   const organizationId = userDoc?.organizationId
   const isOrgAdmin = userDoc?.role === 'org_admin'
@@ -77,18 +79,17 @@ export default function StaffPage() {
   async function handleSaveCapacity(e: FormEvent) {
     e.preventDefault()
     if (!editingMember) return
-    setSubmitting(true)
     setError(null)
     try {
-      const fte = Math.min(1, Math.max(0.1, Number(editFte) || 1))
-      const override = editOverride.trim() === '' ? null : Number(editOverride)
-      await updateStaffCapacitySettings(editingMember.uid, fte, override)
+      await runSaveCapacity(async () => {
+        const fte = Math.min(1, Math.max(0.1, Number(editFte) || 1))
+        const override = editOverride.trim() === '' ? null : Number(editOverride)
+        await updateStaffCapacitySettings(editingMember.uid, fte, override)
+        await reload()
+      })
       setEditingMember(null)
-      await reload()
     } catch {
       setError('Nastavení kapacity se nepodařilo uložit.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -104,20 +105,19 @@ export default function StaffPage() {
     setEmail(emailCheck.value)
     setEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
     if (!emailCheck.ok) return
-    setSubmitting(true)
     setError(null)
     try {
-      await createStaffMember({ email: emailCheck.value, password, displayName, role, organizationId })
+      await runCreate(async () => {
+        await createStaffMember({ email: emailCheck.value, password, displayName, role, organizationId })
+        await reload()
+      })
       setDisplayName('')
       setEmail('')
       setPassword('')
       setRole('zamestnanec')
       setShowForm(false)
-      await reload()
     } catch {
       setError('Založení zaměstnance se nezdařilo. Zkontrolujte údaje.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -207,8 +207,8 @@ export default function StaffPage() {
               />
             </label>
           </div>
-          <Button type="submit" disabled={submitting} className="w-fit">
-            {submitting ? 'Zakládám…' : 'Založit účet'}
+          <Button type="submit" loading={creating} success={createSuccess} className="w-fit">
+            Založit účet
           </Button>
         </form>
       )}
@@ -247,8 +247,8 @@ export default function StaffPage() {
             </label>
           </div>
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting} className="w-fit">
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" loading={savingCapacity} success={saveCapacitySuccess} className="w-fit">
+              Uložit
             </Button>
             <Button type="button" variant="secondary" onClick={() => setEditingMember(null)} className="w-fit">
               Zrušit
