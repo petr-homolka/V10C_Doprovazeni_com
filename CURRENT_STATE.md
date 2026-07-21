@@ -5,6 +5,23 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Drobná oprava (2026-07-21, přes noc): nested `<a>` na seznamu Rodin
+
+Úkol byl dohledat starou konzolovou hlášku "Encountered two children with
+the same key" (zmíněnou u M4) — živě přes Playwright/emulátor NEreprodukováno
+na žádné stránce (`/zamestnanci`, `/rodiny`, `/rodiny/:uid`, `/`) — nejspíš
+už tichem opravená některým z pozdějších refaktorů (M5–M9, Kalendář).
+
+Místo toho živě odhalena JINÁ, skutečná a reprodukovatelná chyba: řádek
+seznamu Rodin (`FamilyListPage.tsx`) byl `<Link className="contents">`
+(kliknutelný `<a>`), a uvnitř něj od UX dávky 2026-07-21 přibyl
+`AddressLink` (taky `<a>`) — `<a>` uvnitř `<a>` je neplatné HTML, React na
+to hlásí "cannot be a descendant of" (browser DOM tiše "opraví"
+nepředvídatelně). Opraveno: řádek teď `<div onClick={() => navigate(...)}>`
+místo `<Link>` (`useNavigate`), `AddressLink`ovo stávající
+`stopPropagation` funguje beze změny. Živě ověřeno — varování zmizelo, klik
+na řádek pořád naviguje na detail, klik na adresu pořád otevírá Mapy.
+
 ## Kalendář hotový (2026-07-21) — mimo dosud číslovanou M-řadu
 
 Přímý požadavek 2026-07-21 ("skvěle udělaný kalendář s mnoha pohledy včetně

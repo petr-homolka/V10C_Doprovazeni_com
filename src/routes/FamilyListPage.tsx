@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -67,6 +67,7 @@ interface FamilyRow {
  * "hoří?" štítek (`familyAlertStatus.ts`).
  */
 export default function FamilyListPage() {
+  const navigate = useNavigate()
   const { userDoc } = useAuth()
   const [families, setFamilies] = useState<Array<{ docId: string; family: FamilyDoc }> | null>(null)
   const [fosterNamesById, setFosterNamesById] = useState<Record<string, string>>({})
@@ -384,7 +385,16 @@ export default function FamilyListPage() {
               const { docId, family, displayName, assignedToDisplay, alert } = row
               const isCrisis = alert?.tier === 'crisis'
               return (
-                <Link key={family.uid} to={`/rodiny/${family.uid}`} className="contents">
+                // Ne `<Link>` — řádek teď obsahuje `AddressLink` (taky `<a>`),
+                // a `<a>` uvnitř `<a>` je neplatné HTML (React na to živě
+                // upozorňuje, prohlížeč DOM tiše "opraví" nepředvídatelně).
+                // Klik na řádek naviguje ručně, jednotlivé vnořené ovládací
+                // prvky (checkbox/hvězdička/mikrofon/adresa) mají vlastní
+                // `stopPropagation` už od dřívějška.
+                <div
+                  key={family.uid}
+                  onClick={() => navigate(`/rodiny/${family.uid}`)}
+                  className="contents cursor-pointer">
                   <TableRow
                     columns={TABLE_COLUMNS}
                     className={cn('group', isCrisis && 'bg-crisis-bg')}
@@ -451,7 +461,7 @@ export default function FamilyListPage() {
                     </span>
                     <div>{alert && <AlertTag tier={alert.tier} title={`${alert.reason} — ${alert.action}`} />}</div>
                   </TableRow>
-                </Link>
+                </div>
               )
             })}
           </Table>
