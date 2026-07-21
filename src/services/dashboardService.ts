@@ -7,6 +7,8 @@ import { listIppdsNeedingAttention } from '@/services/ippdService'
 import { listInspections, findOverdueCorrectiveActions } from '@/services/inspectionService'
 import { listFosterProspects, suggestDormantProspects } from '@/services/fosterProspectService'
 import { findForgottenOccurrencesForOrg } from '@/services/assistedContactService'
+import { WAITING_BUFFER_DAYS, computeVisitAlertTier, daysSince as sharedDaysSince } from '@/lib/familyAlertStatus'
+import type { AlertTier } from '@/lib/familyAlertStatus'
 
 /**
  * "Dnes" (§1/§4/§14) — M3.4 nahrazuje ukázková data v TodaySections
@@ -69,11 +71,7 @@ import { findForgottenOccurrencesForOrg } from '@/services/assistedContactServic
  * prázdný seznam — per-KO personalizace čeká na skutečné odlišení
  * pohledu dle role.
  */
-const WAITING_BUFFER_DAYS = 15
-const WARNING_THRESHOLD_DAYS = 45
-const DAY_MS = 24 * 60 * 60 * 1000
-
-export type VisitStatusTier = 'waiting' | 'warning' | 'crisis'
+export type VisitStatusTier = Exclude<AlertTier, 'ok'>
 
 export interface DivergentFosterPersonWarning {
   fosterPersonId: string
@@ -105,12 +103,13 @@ export async function listFamiliesAwaitingVisit(organizationId: string): Promise
 
   const now = Date.now()
   function daysSince(lastVisitAt: string | null | undefined): number {
-    return lastVisitAt ? (now - Date.parse(lastVisitAt)) / DAY_MS : Infinity
+    return sharedDaysSince(lastVisitAt, now)
   }
   function computeVisitStatus(daysSinceVisit: number, visitIntervalDays: number): VisitStatusTier {
-    if (daysSinceVisit > visitIntervalDays) return 'crisis'
-    if (daysSinceVisit >= WARNING_THRESHOLD_DAYS) return 'warning'
-    return 'waiting'
+    const tier = computeVisitAlertTier(daysSinceVisit, visitIntervalDays)
+    // Volající vždy filtruje na `daysSince > visitIntervalDays - WAITING_BUFFER_DAYS`
+    // dřív, takže `tier` sem nikdy nedorazí jako 'ok' — fallback je jen typová pojistka.
+    return tier === 'ok' ? 'waiting' : tier
   }
 
   const overdueAgreements = agreementsSnap.docs

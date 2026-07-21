@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, orderBy, query, setDoc, where, writeBatch } from 'firebase/firestore'
+import { collection, doc, getDocs, orderBy, query, where, writeBatch } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
 import type { SharingLevel } from '@/types/sharing'
@@ -47,16 +47,50 @@ export interface CreateVoiceEntryInput {
 
 export async function createVoiceTimelineEntry(input: CreateVoiceEntryInput): Promise<void> {
   const ref = doc(collection(db, 'families', input.familyDocId, 'timeline'))
+  const occurredAt = new Date().toISOString()
   const data: TimelineEntryDoc = {
     type: 'voice_entry' satisfies TimelineEntryKind,
     createdByOrgId: input.organizationId,
     createdByUid: input.createdByUid,
-    occurredAt: new Date().toISOString(),
+    occurredAt,
     subjectRefs: input.subjectRefs,
     sharingLevel: input.sharingLevel,
     body: input.body,
   }
-  await setDoc(ref, data)
+  const batch = writeBatch(db)
+  batch.set(ref, data)
+  batch.update(doc(db, 'families', input.familyDocId), { lastTouchAt: occurredAt })
+  await batch.commit()
+}
+
+export interface CreateNoteEntryInput {
+  familyDocId: string
+  organizationId: string
+  createdByUid: string
+  subjectRefs: SubjectRef[]
+  sharingLevel: SharingLevel
+  body: string
+}
+
+/** Ruční interní poznámka (např. hromadná akce "+ Poznámka" ze seznamu
+ * Rodin — UX zpětná vazba 2026-07-21) — stejný tvar jako `voice_entry`,
+ * jen jiný `type` (žádný přepis/AI krok se tu neváže). */
+export async function createNoteTimelineEntry(input: CreateNoteEntryInput): Promise<void> {
+  const ref = doc(collection(db, 'families', input.familyDocId, 'timeline'))
+  const occurredAt = new Date().toISOString()
+  const data: TimelineEntryDoc = {
+    type: 'note' satisfies TimelineEntryKind,
+    createdByOrgId: input.organizationId,
+    createdByUid: input.createdByUid,
+    occurredAt,
+    subjectRefs: input.subjectRefs,
+    sharingLevel: input.sharingLevel,
+    body: input.body,
+  }
+  const batch = writeBatch(db)
+  batch.set(ref, data)
+  batch.update(doc(db, 'families', input.familyDocId), { lastTouchAt: occurredAt })
+  await batch.commit()
 }
 
 export interface CreateVisitEntryInput {
@@ -136,6 +170,7 @@ export async function createVisitTimelineEntry(input: CreateVisitEntryInput): Pr
   batch.set(entryRef, entryData)
   batch.set(digestRef, digestData)
   batch.update(agreementRef, { lastVisitAt: input.endedAt })
+  batch.update(doc(db, 'families', input.familyDocId), { lastTouchAt: input.startedAt })
   for (const fosterPersonId of input.stampFosterPersonIds ?? []) {
     batch.update(doc(db, 'fosterPersons', fosterPersonId), { lastVisitAt: input.endedAt })
   }

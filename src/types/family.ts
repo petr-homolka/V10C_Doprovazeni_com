@@ -47,4 +47,12 @@ export interface FamilyDoc {
    * padá na jméno primárního pěstouna, pak adresu, pak UID (viz
    * FamilyDetailPage/FamilyListPage `resolveFamilyDisplayName` helper). */
   displayName?: string
+  /** UX zpětná vazba 2026-07-21 — "Poslední dotek": denormalizace času
+   * NEJNOVĚJŠÍHO timeline zápisu, co NENÍ `type: 'system'` (návštěva,
+   * poznámka, hlasový zápis, dokument — cokoli od člověka), stejný vzor
+   * jako `AgreementDoc.lastVisitAt`. Zapisuje `timelineService.ts` při
+   * každém vytvoření zápisu. Na rozdíl od `lastVisitAt` (per Dohoda,
+   * legislativní lhůta §3) je tohle jen provozní "kdy se s rodinou naposled
+   * něco dělo" pro seznam Rodin — proto žije rovnou na Spisu, ne na Dohodě. */
+  lastTouchAt?: string | null
 }

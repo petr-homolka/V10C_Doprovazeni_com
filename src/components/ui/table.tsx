@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 /**
  * Table — přeměřeno 2026-07-19 na živé referenční appce (People stránka,
@@ -34,10 +35,18 @@ export function TableHeaderRow({ columns, labels }: { columns: string; labels: s
   )
 }
 
-export function TableRow({ columns, children }: { columns: string; children: ReactNode }) {
+export function TableRow({
+  columns,
+  children,
+  className,
+}: {
+  columns: string
+  children: ReactNode
+  className?: string
+}) {
   return (
     <div
-      className="grid items-center gap-x-2 border-b border-border-strong px-4 py-3 last:border-b-0"
+      className={cn('grid items-center gap-x-2 border-b border-border-strong px-4 py-3 last:border-b-0', className)}
       style={gridStyle(columns)}
     >
       {children}

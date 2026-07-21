@@ -184,6 +184,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- users/{uid}/starredFamilies/{familyId} — hvězdička, UX 2026-07-21
+    //
+    // Ryze osobní záložka ("vidí ji jen ten, kdo si ji udělal") — proto
+    // JEN vlastník `uid`, žádný `sameOrg`/staff výjimka jako u ostatních
+    // `users/{uid}` podkolekcí (ty jsou organizační nastavení, tohle ne).
+    match /users/{uid}/starredFamilies/{familyId} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
     // ---- foster_invitations/{email} — §6 A6, M4 ------------------------
     //
     // Doc ID JE e-mail (viz FosterInvitationDoc komentář). Umožňuje jak
