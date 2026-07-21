@@ -28,9 +28,9 @@ const buttonVariants = cva(
         destructive: 'bg-danger-solid text-white hover:opacity-90',
       },
       size: {
-        default: 'h-10 px-4',
-        sm: 'h-9 px-3 text-[13px]',
-        icon: 'h-10 w-10',
+        default: 'h-11 px-5',
+        sm: 'h-9 px-3.5 text-[13px]',
+        icon: 'h-11 w-11',
       },
     },
     defaultVariants: {
