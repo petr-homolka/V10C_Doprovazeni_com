@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:rules": "firebase emulators:exec --project demo-doprovazeni \"vitest run tests/rules\"",
+    "test:rules": "firebase emulators:exec --project demo-doprovazeni \"vitest run --config vitest.rules.config.ts\"",
     "emulators": "firebase emulators:start --project demo-doprovazeni",
     "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes --project production",
     "deploy:hosting": "npm run build && firebase deploy --only hosting --project production",
