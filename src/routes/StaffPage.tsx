@@ -8,7 +8,9 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { CapacityRing } from '@/components/ui/capacity-ring'
 import { useAuth } from '@/hooks/useAuth'
 import { STAFF_ROLES, STAFF_ROLE_LABELS, type StaffRole, type UserDoc } from '@/types/user'
+import { COLLABORATOR_MODULE_KEYS, COLLABORATOR_MODULE_LABELS, type CollaboratorModuleKey } from '@/types/collaborator'
 import { createStaffMember, listStaff, setStaffMemberDisabled, updateStaffCapacitySettings } from '@/services/staffService'
+import { setCollaboratorModules } from '@/services/collaboratorService'
 import { listActiveCaseloadByKo } from '@/services/agreementService'
 import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
 import { computeEffectiveCapacityThreshold } from '@/lib/capacityThreshold'
@@ -47,6 +49,10 @@ export default function StaffPage() {
   const [editFte, setEditFte] = useState('1')
   const [editOverride, setEditOverride] = useState('')
   const { loading: savingCapacity, success: saveCapacitySuccess, run: runSaveCapacity } = useAsyncSubmit()
+
+  const [editingModulesFor, setEditingModulesFor] = useState<UserDoc | null>(null)
+  const [editModules, setEditModules] = useState<Partial<Record<CollaboratorModuleKey, boolean>>>({})
+  const { loading: savingModules, success: saveModulesSuccess, run: runSaveModules } = useAsyncSubmit()
 
   const organizationId = userDoc?.organizationId
   const isOrgAdmin = userDoc?.role === 'org_admin'
@@ -97,6 +103,26 @@ export default function StaffPage() {
     reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId])
+
+  function openModulesEdit(member: UserDoc) {
+    setEditingModulesFor(member)
+    setEditModules(member.collaboratorModules ?? {})
+  }
+
+  async function handleSaveModules(e: FormEvent) {
+    e.preventDefault()
+    if (!editingModulesFor) return
+    setError(null)
+    try {
+      await runSaveModules(async () => {
+        await setCollaboratorModules(editingModulesFor.uid, editModules)
+        await reload()
+      })
+      setEditingModulesFor(null)
+    } catch {
+      setError('Moduly se nepodařilo uložit.')
+    }
+  }
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
@@ -257,6 +283,41 @@ export default function StaffPage() {
         </form>
       )}
 
+      {editingModulesFor && (
+        <form
+          onSubmit={handleSaveModules}
+          className="mt-4 flex flex-col max-w-[560px] gap-4 rounded-lg border border-border bg-surface p-5"
+        >
+          <p className="text-sm font-medium text-text-primary">
+            Moduly — {editingModulesFor.displayName}
+          </p>
+          <p className="text-xs text-text-tertiary">
+            Co spolupracovník vidí/může u osob, co mu přiřadíte (Rodina → profil dítěte/pěstouna → "Přiřadit spolupracovníkovi").
+          </p>
+          <div className="flex flex-col gap-2">
+            {COLLABORATOR_MODULE_KEYS.map((key) => (
+              <label key={key} className="flex items-center gap-2 text-sm text-text-primary">
+                <input
+                  type="checkbox"
+                  checked={editModules[key] === true}
+                  onChange={(e) => setEditModules((m) => ({ ...m, [key]: e.target.checked }))}
+                  className="size-4 rounded-sm border-border-medium accent-primary"
+                />
+                {COLLABORATOR_MODULE_LABELS[key]}
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" loading={savingModules} success={saveModulesSuccess} className="w-fit">
+              Uložit
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setEditingModulesFor(null)} className="w-fit">
+              Zrušit
+            </Button>
+          </div>
+        </form>
+      )}
+
       <div className="mt-6 max-w-[928px]">
         {staff === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
@@ -284,7 +345,15 @@ export default function StaffPage() {
                   <span className={member.disabledAt ? 'text-sm text-danger' : 'text-sm text-success'}>
                     {member.disabledAt ? 'Zablokován' : 'Aktivní'}
                   </span>
-                  {isOrgAdmin ? (
+                  {member.role === 'spolupracovnik' ? (
+                    isOrgAdmin ? (
+                      <Button variant="ghost" size="sm" onClick={() => openModulesEdit(member)} className="w-fit">
+                        Moduly
+                      </Button>
+                    ) : (
+                      <span />
+                    )
+                  ) : isOrgAdmin ? (
                     <button
                       type="button"
                       onClick={() => openCapacityEdit(member)}

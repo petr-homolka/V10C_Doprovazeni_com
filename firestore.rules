@@ -19,7 +19,14 @@ service cloud.firestore {
     // §5: role se čte VÝHRADNĚ z Firestore users/{uid}, NIKDY z Custom Claims.
     // Pozn.: rules jazyk nepodporuje top-level const — seznamy rolí jsou
     // proto inline v každé funkci (drž obě definice synchronní se
-    // src/types/user.ts STAFF_ROLES / READ_ONLY_MANAGER_ROLES).
+    // src/types/user.ts STAFF_ROLES / READ_ONLY_MANAGER_ROLES) — S JEDNOU
+    // VĚDOMOU VÝJIMKOU: 'spolupracovnik' JE v STAFF_ROLES (M9, UX zpětná
+    // vazba 2026-07-21 — má normální staff login/účet), ale záměrně NENÍ
+    // tady v `isStaff()`. `isStaff()`/`sameOrg()` dávají ŠIROKÝ přístup
+    // (celá organizace) — spolupracovník má dostat jen to, co mu KO/vedení
+    // výslovně přiřadí (`collaboratorAssignments`), ne totéž, co
+    // `zamestnanec`. Viz `isCollaborator()`/`hasCollaboratorAssignment()`
+    // níž pro jeho VLASTNÍ, úzký gate.
     function isStaff() {
       return isSignedIn() && userDoc().role in [
         'superadmin', 'org_admin', 'vedouci_pobocky', 'teamleader',
@@ -43,6 +50,31 @@ service cloud.firestore {
 
     function isSuperadmin() {
       return isSignedIn() && userDoc().role == 'superadmin';
+    }
+
+    // M9 (UX zpětná vazba 2026-07-21) — Spolupracovník: STAFF_ROLES, ale
+    // NE `isStaff()` (viz komentář tam). Přístup jde VÝHRADNĚ přes
+    // konkrétní `collaboratorAssignments/{uid}_{entityType}_{entityId}`
+    // dokument (deterministické ID, stejný vzor jako Dohoda) — žádné
+    // `sameOrg()`, žádný obecný organizační přístup.
+    function isCollaborator() {
+      return isSignedIn() && userDoc().role == 'spolupracovnik';
+    }
+
+    function hasCollaboratorAssignment(entityType, entityId) {
+      let assignmentPath = /databases/$(database)/documents/collaboratorAssignments/$(request.auth.uid + '_' + entityType + '_' + entityId);
+      return isCollaborator() &&
+        exists(assignmentPath) &&
+        get(assignmentPath).data.organizationId == userDoc().organizationId;
+    }
+
+    // Bezpečné čtení mapy — `collaboratorModules` chybí, dokud ho org_admin
+    // poprvé nenastaví (i prázdné `{}` při založení role, viz StaffPage.tsx);
+    // `!= null` guard napřed zabraňuje "property na null" chybě.
+    function collaboratorModuleEnabled(key) {
+      return isCollaborator() &&
+        userDoc().collaboratorModules != null &&
+        userDoc().collaboratorModules[key] == true;
     }
 
     // §5 "Klíčová past": sameOrg() musí být VŽDY gated za isStaff() — pěstoun
@@ -155,7 +187,7 @@ service cloud.firestore {
          request.resource.data.organizationId == userDoc().organizationId &&
          request.resource.data.role in [
            'org_admin', 'vedouci_pobocky', 'teamleader',
-           'klicova_osoba', 'asistent_ko', 'zamestnanec'
+           'klicova_osoba', 'asistent_ko', 'zamestnanec', 'spolupracovnik'
          ]) ||
         (request.auth.uid == uid && request.resource.data.role == 'pestoun' &&
          request.auth.token.email == request.resource.data.email &&
@@ -171,13 +203,15 @@ service cloud.firestore {
       // nikdy nesahá na `superadmin` roli žádným směrem. DOPLNENI_ZADANI-
       // DO-M5 §1: `fte`/`capacityThresholdOverride` přidány do stejného
       // org_admin disjunktu (kapacita KO, žádný nový bezpečnostní vzor).
+      // M9: `collaboratorModules` stejně — jen org_admin smí spolupracovníkovi
+      // zapínat/vypínat moduly, NIKDY on sám sobě (nesměl by si sám rozšířit rozsah).
       allow update: if
         (request.auth.uid == uid &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])) ||
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(resource.data.organizationId) &&
          resource.data.role != 'superadmin' && request.resource.data.role != 'superadmin' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-           ['role', 'disabledAt', 'displayName', 'fte', 'capacityThresholdOverride']
+           ['role', 'disabledAt', 'displayName', 'fte', 'capacityThresholdOverride', 'collaboratorModules']
          ));
 
       // Žádný hard delete profilu — jen `disabledAt` (viz update výše).
@@ -408,7 +442,8 @@ service cloud.firestore {
       // (dítě může mít jinou aktuální `organizationId` než pěstounův
       // vlastní vztah, viz §4.2 bod 7 denormalizace, ale rodina zůstává).
       allow read: if isSuperadmin() || sameOrg(resource.data.organizationId) ||
-        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId);
+        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId) ||
+        hasCollaboratorAssignment('child', childId);
       allow create: if isStaff() &&
         request.resource.data.organizationId == userDoc().organizationId;
       allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
@@ -433,7 +468,8 @@ service cloud.firestore {
       // rodiny (stejné `familyId`) — ne cizí rodiny.
       allow read: if isSuperadmin() ||
         (isStaff() && userDoc().organizationId in resource.data.orgAccessList) ||
-        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId);
+        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId) ||
+        hasCollaboratorAssignment('fosterPerson', fosterId);
 
       allow create: if isStaff() &&
         request.resource.data.orgAccessList == [userDoc().organizationId];
@@ -950,6 +986,45 @@ service cloud.firestore {
     match /organizations/{orgId}/externalRoleTemplates/{id} {
       allow read: if isSuperadmin() || sameOrg(orgId);
       allow write: if isSuperadmin() || (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
+    }
+
+    // ---- collaboratorAssignments/{collaboratorUid}_{entityType}_{entityId} — M9, Spolupracovník
+    //
+    // Deterministické ID (stejný vzor jako Dohoda, viz AgreementDoc) —
+    // umožňuje `children`/`fosterPersons` pravidlům výš ověřit "má tenhle
+    // spolupracovník přiřazenou tuhle osobu" přímým `exists()`, bez dotazu.
+    // Zakládá/ruší KO/vedení (isStaff() téhle organizace) — NIKDY sám
+    // spolupracovník (nesměl by si sám rozšířit rozsah). Žádný update —
+    // přeřazení je smazat + založit nový záznam.
+    match /collaboratorAssignments/{assignmentId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId) ||
+        (isCollaborator() && request.auth.uid == resource.data.collaboratorUid);
+
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        assignmentId == request.resource.data.collaboratorUid + '_' + request.resource.data.entityType + '_' + request.resource.data.entityId;
+
+      allow update: if false;
+      allow delete: if isSuperadmin() || sameOrg(resource.data.organizationId);
+
+      // ---- .../entries/{entryId} — spolupracovníkův VLASTNÍ pracovní zápis
+      // (výkaz práce), ZÁMĚRNĚ oddělený od families/{id}/timeline — viz
+      // CollaboratorEntryDoc doc komentář (src/types/collaborator.ts) pro
+      // proč. Append-only, stejně jako zbytek historie v appce.
+      match /entries/{entryId} {
+        function parentAssignment() {
+          return get(/databases/$(database)/documents/collaboratorAssignments/$(assignmentId)).data;
+        }
+        allow read: if isSuperadmin() || sameOrg(parentAssignment().organizationId) ||
+          (isCollaborator() && request.auth.uid == parentAssignment().collaboratorUid);
+
+        allow create: if isCollaborator() &&
+          request.auth.uid == parentAssignment().collaboratorUid &&
+          request.resource.data.createdByUid == request.auth.uid &&
+          collaboratorModuleEnabled('writeTimeline');
+
+        allow update, delete: if false;
+      }
     }
 
     // ---- Vše ostatní: default deny, dokud modul nepřidá vlastní match ---

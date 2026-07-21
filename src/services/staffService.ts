@@ -45,6 +45,11 @@ export async function createStaffMember(input: CreateStaffMemberInput): Promise<
     organizationId: input.organizationId,
     fte: 1, // §6 A9 — výchozí plný úvazek, org_admin může upravit později
     createdAt: new Date().toISOString(),
+    // M9 — `spolupracovnik` MUSÍ mít `collaboratorModules` nastavené hned
+    // od začátku (i prázdné `{}`), jinak `firestore.rules`
+    // `collaboratorModuleEnabled()` sahá na `null` pole. Výchozí = vše
+    // vypnuté, org_admin zapíná moduly zvlášť (viz StaffPage.tsx).
+    ...(input.role === 'spolupracovnik' ? { collaboratorModules: {} } : {}),
   }
   await setDoc(doc(db, 'users', uid), userData)
   return userData

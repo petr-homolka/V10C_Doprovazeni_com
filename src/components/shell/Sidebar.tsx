@@ -40,10 +40,18 @@ const NAV_ITEMS = [
   { to: '/externiste', label: 'Externisté', icon: UserSquare2, end: false, staffOnly: true },
 ] as const
 
+// M9 (UX zpětná vazba 2026-07-21) — spolupracovník vidí VÝHRADNĚ tuhle
+// jednu položku, žádnou z NAV_ITEMS výš (viz RequireAuth.tsx pro shodné
+// omezení na úrovni routování).
+const COLLABORATOR_NAV_ITEM = { to: '/spolupracovnik', label: 'Spolupráce', icon: UserSquare2, end: false } as const
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { userDoc } = useAuth()
-  const items = NAV_ITEMS.filter((item) => !item.staffOnly || (userDoc && isStaffRole(userDoc.role)))
+  const items: readonly { to: string; label: string; icon: typeof Home; end: boolean }[] =
+    userDoc?.role === 'spolupracovnik'
+      ? [COLLABORATOR_NAV_ITEM]
+      : NAV_ITEMS.filter((item) => !item.staffOnly || (userDoc && isStaffRole(userDoc.role)))
 
   return (
     <aside

@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Switch } from '@/components/ui/switch'
+import { Combobox } from '@/components/ui/combobox'
+import { Modal } from '@/components/ui/modal'
 import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/components/timeline/VoiceRecorderPanel'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { OspodReportSection } from '@/components/family/OspodReportSection'
@@ -28,6 +30,7 @@ import {
   updateFamilyPartnerSharingDefault,
 } from '@/services/familyService'
 import { getActiveAgreement } from '@/services/agreementService'
+import { assignEntityToCollaborator } from '@/services/collaboratorService'
 import { createDocument, listFamilyDocuments } from '@/services/documentService'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
@@ -39,10 +42,10 @@ import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
-import { Baby, Clock, FileText, Handshake, Home, Mic, Pencil, Plus, StickyNote, UserRound } from 'lucide-react'
+import { Baby, Clock, FileText, Handshake, Home, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from 'lucide-react'
 
-const FOSTER_COLUMNS = '40px 1.4fr 1fr 24px'
-const CHILD_COLUMNS = '40px 1fr 24px'
+const FOSTER_COLUMNS = '40px 1.4fr 1fr 32px 24px'
+const CHILD_COLUMNS = '40px 1fr 32px 24px'
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
   note: 'Poznámka',
   visit: 'Návštěva',
@@ -130,6 +133,15 @@ export default function FamilyDetailPage() {
 
   const { loading: addingFoster, success: addingFosterSuccess, run: runAddFoster } = useAsyncSubmit()
   const { loading: addingChild, success: addingChildSuccess, run: runAddChild } = useAsyncSubmit()
+
+  const [assigningEntity, setAssigningEntity] = useState<{
+    entityType: 'child' | 'fosterPerson'
+    entityId: string
+    label: string
+  } | null>(null)
+  const [assignTarget, setAssignTarget] = useState('')
+  const { loading: assigningCollaborator, success: assignCollaboratorSuccess, run: runAssignCollaborator } =
+    useAsyncSubmit()
   const { loading: creatingDocument, success: creatingDocumentSuccess, run: runCreateDocument } = useAsyncSubmit()
   const [loaded, setLoaded] = useState(false)
 
@@ -143,6 +155,7 @@ export default function FamilyDetailPage() {
     ? `${fosterPersons[0].fosterPerson.firstName} ${fosterPersons[0].fosterPerson.lastName}`
     : null
   const displayName = family ? resolveFamilyDisplayName(family, primaryFosterName) : ''
+  const collaboratorOptions = staffList.filter((s) => s.role === 'spolupracovnik')
 
   async function reload() {
     if (!familyUid || !organizationId) return
@@ -349,6 +362,27 @@ export default function FamilyDetailPage() {
       setShowChildForm(false)
     } catch {
       setError('Přidání dítěte se nezdařilo.')
+    }
+  }
+
+  async function handleAssignCollaborator(e: FormEvent) {
+    e.preventDefault()
+    if (!assigningEntity || !organizationId || !userDoc || !assignTarget) return
+    setError(null)
+    try {
+      await runAssignCollaborator(async () => {
+        await assignEntityToCollaborator({
+          organizationId,
+          collaboratorUid: assignTarget,
+          entityType: assigningEntity.entityType,
+          entityId: assigningEntity.entityId,
+          createdBy: userDoc.uid,
+        })
+      })
+      setAssigningEntity(null)
+      setAssignTarget('')
+    } catch {
+      setError('Přiřazení spolupracovníkovi se nezdařilo.')
     }
   }
 
@@ -567,7 +601,7 @@ export default function FamilyDetailPage() {
                 <EmptyState icon={UserRound} text="Zatím žádní pěstouni." />
               ) : (
                 <Table>
-                  <TableHeaderRow columns={FOSTER_COLUMNS} labels={['', 'Jméno', 'Telefon', '']} />
+                  <TableHeaderRow columns={FOSTER_COLUMNS} labels={['', 'Jméno', 'Telefon', '', '']} />
                   {fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => (
                     <Link key={fpId} to={`/rodiny/${familyUid}/pestoun/${fpId}`} className="contents">
                       <TableRow columns={FOSTER_COLUMNS}>
@@ -583,6 +617,22 @@ export default function FamilyDetailPage() {
                           {fp.firstName} {fp.lastName}
                         </span>
                         <span className="text-sm text-text-secondary">{fp.phone || '—'}</span>
+                        <button
+                          type="button"
+                          title="Přiřadit spolupracovníkovi"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setAssigningEntity({
+                              entityType: 'fosterPerson',
+                              entityId: fpId,
+                              label: `${fp.firstName} ${fp.lastName}`,
+                            })
+                          }}
+                          className="flex size-6 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
+                        >
+                          <UserSquare2 size={14} strokeWidth={2} />
+                        </button>
                         <span className="text-text-tertiary">›</span>
                       </TableRow>
                     </Link>
@@ -636,7 +686,7 @@ export default function FamilyDetailPage() {
                 <EmptyState icon={Baby} text="Zatím žádné svěřené děti." />
               ) : (
                 <Table>
-                  <TableHeaderRow columns={CHILD_COLUMNS} labels={['', 'Jméno', '']} />
+                  <TableHeaderRow columns={CHILD_COLUMNS} labels={['', 'Jméno', '', '']} />
                   {children.map(({ docId: childId, child }) => (
                     <Link key={childId} to={`/rodiny/${familyUid}/dite/${childId}`} className="contents">
                       <TableRow columns={CHILD_COLUMNS}>
@@ -651,6 +701,22 @@ export default function FamilyDetailPage() {
                         <span className="text-sm text-text-primary">
                           {child.firstName} {child.lastName}
                         </span>
+                        <button
+                          type="button"
+                          title="Přiřadit spolupracovníkovi"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setAssigningEntity({
+                              entityType: 'child',
+                              entityId: childId,
+                              label: `${child.firstName} ${child.lastName}`,
+                            })
+                          }}
+                          className="flex size-6 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
+                        >
+                          <UserSquare2 size={14} strokeWidth={2} />
+                        </button>
                         <span className="text-text-tertiary">›</span>
                       </TableRow>
                     </Link>
@@ -858,6 +924,47 @@ export default function FamilyDetailPage() {
           subjectLabels={resolveSubjectLabels(selectedEntry.entry.subjectRefs)}
           onClose={() => setSelectedEntry(null)}
         />
+      )}
+
+      {assigningEntity && (
+        <Modal onClose={() => setAssigningEntity(null)}>
+          <form onSubmit={handleAssignCollaborator} className="flex flex-col gap-4">
+            <h2 className="text-base font-medium text-text-primary">
+              Přiřadit spolupracovníkovi — {assigningEntity.label}
+            </h2>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Spolupracovník</span>
+              <Combobox
+                options={collaboratorOptions.map((c) => ({ value: c.uid, label: c.displayName }))}
+                value={assignTarget}
+                onChange={setAssignTarget}
+                placeholder="Vybrat…"
+                emptyText="V organizaci zatím není žádný spolupracovník (založíte na stránce Zaměstnanci)."
+              />
+            </label>
+            <p className="text-xs text-text-tertiary">
+              Uvidí jen moduly, co mu KO/vedení povolí na stránce Zaměstnanci.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                loading={assigningCollaborator}
+                success={assignCollaboratorSuccess}
+                disabled={!assignTarget}
+              >
+                Přiřadit
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setAssigningEntity(null)}
+                disabled={assigningCollaborator}
+              >
+                Zrušit
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </AppShell>
   )
