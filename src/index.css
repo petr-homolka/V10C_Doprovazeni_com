@@ -3,24 +3,23 @@
 @tailwind utilities;
 
 /*
-  Design tokeny — v6 (2026-07-21). Přechod z monochromního industriálního
-  vzhledu (v5) na teplejší, vzdušnější, barevnější styl na výslovné přání
-  Petra ("lehkost, barvy, vzdušnost"). PŮVODNÍ paleta, vědomě NEkopíruje
-  přesné barvy/písmo žádné konkrétní cizí značky — jen podobný POCIT
-  (viz konverzace 2026-07-21). Změna je čistě na úrovni tokenů — Button/
-  Input/Select a všechny stránky je jen spotřebovávají (`tailwind.config.js`
-  mapuje `bg-app`/`text-primary`/`border-medium`/... přímo na tyhle
-  proměnné), takže se projeví všude bez zásahu do jednotlivých obrazovek.
+  Design tokeny — v5 (2026-07-19). Hodnoty vychází z přímo NAMĚŘENÝCH
+  computed styles živé referenční appky (lokální statická kopie, otevřená
+  přes `getComputedStyle`/`getBoundingClientRect` na skutečných
+  elementech) — v dark módu (void pozadí, sidebar panel, hlavní panel, nav
+  položky, header) i teď nově ve SVĚTLÉM módu (dřív jen odhad z CSS textu,
+  teď přepnuto přímo v živém DOMu a přeměřeno na reálně vykreslených
+  plochách). Klíčové zjištění: škála je mnohem JEMNĚJŠÍ v obou režimech
+  (void → app → surface-soft je jen ~5-11 bodů RGB rozdíl na krok, ne naše
+  dřívější velké skoky) a POŘADÍ jasu je STEJNÉ v obou režimech
+  (surface-soft je vždy nejsvětlejší plocha, pak app, pak void nejtmavší/
+  nejtemnější) — světlý blok předtím měl toto pořadí obráceně (app byl
+  nejsvětlejší), opraveno.
 
-  Hlavní páka "vzdušnosti": teplá "papírová" neutrální paleta místo
-  studené šedi + o něco větší radiusy níže + velkorysejší padding
-  primitiv (Button/Input/Select, viz ty soubory). Hlavní páka
-  "barevnosti": `--primary`/`--accent` už NEJSOU monochromní černá/bílá,
-  ale teplá terakota — jediné, co se mění napříč tématy, je konkrétní
-  odstín (tmavší v light kvůli čitelnosti bílého textu na tlačítku,
-  světlejší v dark, aby vynikla na tmavém pozadí). Sémantické/subjektové
-  tokeny (foster/ospod/court/bio, success/warning/danger) beze změny —
-  už byly barevné a fungují dobře, není důvod je měnit.
+  BAREVNÉ zůstávají výhradně subjektové/sémantické tokeny (badge, výstrahy)
+  PLUS jeden nový `--accent` (modrá) — vyhrazený pro interaktivní stavy
+  formulářových prvků (focus border, zapnutý switch, tučné inline odkazy),
+  konstantní přes obě témata, viz komentář u definice níže.
 
   Světlý režim = výchozí :root. Tmavý režim = @media (prefers-color-scheme:
   dark) NEBO explicitní [data-theme="dark"] (přepínač v TopBaru,
@@ -29,50 +28,63 @@
   i když OS preferuje tmavý.
 */
 :root {
-  /* Pozadí a plochy — teplý "papírový" neutrál místo studené šedi.
-     Pořadí jasu zachováno: void < app < surface < surface-soft. */
-  --bg-app: #FAF7F1;
-  --bg-surface: #FCFAF5;
+  /* Pozadí a plochy — přeměřeno přímo na živém DOMu (přepnutím tématu a
+     čtením computed background na skutečných panelech), ne odhadem z CSS
+     textu. Pořadí jasu: void < app < surface-soft (stejné v obou režimech). */
+  --bg-app: #FAFAFA;
+  --bg-surface: #F5F5F5;
   --bg-surface-soft: #FFFFFF;
   --bg-inset: #FFFFFF;
   /* "Void" za plovoucími panely (sidebar/hlavní obsah). */
-  --bg-void: #F3EEE3;
-  /* Aktivní položka navigace — jemný alpha overlay, NE plná barva. */
-  --overlay-active: rgba(80, 55, 30, .06);
-  /* Vypnutý stav přepínače (Switch) — nezávislé na --overlay-active. */
-  --toggle-off: rgba(120, 100, 80, .18);
+  --bg-void: #F5F5F5;
+  /* Aktivní položka navigace — jemný alpha overlay, NE plná barva
+     (dark: rgba(255,255,255,.15), tohle je symetrický odhad pro light —
+     nebyl přímo naměřen, na rozdíl od --toggle-off níž). */
+  --overlay-active: rgba(0, 0, 0, .06);
+  /* Vypnutý stav přepínače (Switch) — přeměřeno NEZÁVISLE na --overlay-active
+     (jiný podkladový odstín, ne černá) — dvě rozdílné role, co v dark módu
+     náhodou vycházejí na stejné číslo. */
+  --toggle-off: rgba(115, 115, 115, .15);
   /* Jediná barevná akcentní hodnota mimo subjektové tokeny — vyhrazená pro
      interaktivní stav formulářových prvků: focus border inputu, zapnutý
-     Switch, tučné inline odkazy. Teplá terakota místo dřívější modré. */
-  --accent: #C97A44;
-  /* Switch thumb — konstantní v obou režimech, drží se stínem (shadow-raised). */
-  --toggle-thumb: #FFFDF9;
+     Switch, tučné inline odkazy (viz §9 do budoucna: až M9.5 přinese per-
+     organizaci branding, tohle je kandidát na konfigurovatelnou barvu
+     místo pevné hodnoty). Konstantní přes obě témata. */
+  --accent: #4F69F2;
+  /* Switch thumb — přeměřeno jako KONSTANTNÍ #FAFAFA v obou režimech
+     (na rozdíl od --primary-foreground, který se mezi tématy obrací) —
+     drží se stínem (shadow-raised), ne kontrastem barvy vůči tracku. */
+  --toggle-thumb: #FAFAFA;
 
-  /* Text — teplá tmavě hnědá místo čisté šedi/černi, čitelnost stejná. */
-  --text-primary: #2B2117;
-  --text-secondary: #6B5D4E;
-  --text-tertiary: #8C8072;
+  /* Text — přeměřeno na živé referenční appce (light blok) */
+  --text-primary: #1A1A1A;
+  --text-secondary: #616161;
+  --text-tertiary: #737373;
   --text-inverse: #FFFFFF;
 
-  /* Čáry — jemně teplý alpha-hnědý tón místo alpha-černé. 4 úrovně beze
-     změny poměru, jen posunutý odstín. */
-  --border-subtle: rgba(90, 65, 40, .06);
-  --border-default: rgba(90, 65, 40, .11);
-  --border-medium: rgba(90, 65, 40, .16);
-  --border-strong: rgba(90, 65, 40, .22);
+  /* Čáry — alpha-black. 4 úrovně teď podložené opakovaným měřením napříč
+     komponentami (Dodatek 11): subtle (Plugins list border, surface-
+     border-alpha-0), default (beze změny), medium (Input/URL box border —
+     stejná hodnota naměřena na DVOU nezávislých komponentách), strong
+     (table/card divider, surface-border-alpha-2/surface-3). */
+  --border-subtle: rgba(16, 16, 16, .05);
+  --border-default: rgba(16, 16, 16, .10);
+  --border-medium: rgba(16, 16, 16, .15);
+  --border-strong: rgba(16, 16, 16, .20);
 
-  /* Primární akcent — teplá terakota (dřív monochromní černá). Tmavší
-     odstín než --accent kvůli kontrastu s bílým textem tlačítka. */
-  --primary: #A8602F;
-  --primary-hover: #8F4F26;
-  --primary-foreground: #FFFFFF;
-  --primary-soft: #F3E3D4;
-  --primary-soft-hover: #EAD3BC;
-  --ring: #A8602F;
+  /* Primární akcent — monochromní (skoro černá v light, skoro bílá v
+     dark), NE barevná. Barva je vyhrazená výhradně subjektovým/
+     sémantickým tokenům níže. */
+  --primary: #1A1A1A;
+  --primary-hover: #353535;
+  --primary-foreground: #FAFAFA;
+  --primary-soft: #E3E3E3;
+  --primary-soft-hover: #DBDBDB;
+  --ring: #1A1A1A;
 
-  /* Sémantika subjektů/stavů — beze změny, už byla barevná a funguje
-     dobře. Foreground konstantní přes obě témata, jen -bg se mění v dark
-     bloku níže. */
+  /* Sémantika subjektů/stavů — JEDINÉ místo s barvou v celé appce (badge/
+     tečka/proužek, nikdy plochy). Foreground konstantní přes obě témata,
+     jen -bg se mění v dark bloku níže. */
   --subject-foster: #14A372;
   --subject-foster-bg: #E7F5F0;
   --subject-ospod: #4F69F2;
@@ -94,58 +106,57 @@
      vždy dost sytou plochu pro bílý text. */
   --danger-solid: #DA2A0B;
 
-  /* Úrovňový/tier tag (§5.8 základní/prémiové) — konstantní přes obě
-     témata (alpha pozadí se přizpůsobí libovolné ploše samo). Zatím
-     nikde nepoužito ve funkčním kódu — token je připravený pro M9.5/
-     entitlementy. */
+  /* Úrovňový/tier tag (§5.8 základní/prémiové) — přeměřeno na živé
+     referenční appce ("Business"/"New" pilulky, Settings nav), konstantní přes obě témata
+     (alpha pozadí se přizpůsobí libovolné ploše samo). Zatím nikde
+     nepoužito ve funkčním kódu — token je připravený pro M9.5/entitlementy. */
   --tier-accent: #FF58AE;
   --tier-accent-bg: rgba(255, 88, 174, .15);
 
-  /* Radiusy — o něco větší než v5 (8/12/16 → 10/14/20), měkčí/vzdušnější
-     dojem. */
-  --radius-sm: 10px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  /* Radiusy */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   --radius-full: 9999px;
 
   /* Stíny — jen dvě úrovně, vždy měkké */
-  --shadow-raised: 0 1px 3px rgba(60, 40, 20, .06), 0 4px 14px rgba(60, 40, 20, .06);
-  --shadow-overlay: 0 8px 30px rgba(40, 25, 10, .16);
+  --shadow-raised: 0 1px 3px rgba(0, 0, 0, .06), 0 4px 12px rgba(0, 0, 0, .05);
+  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .14);
 
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    /* Teplá tmavě hnědá škála místo studené šedi/černi — stejné pořadí
-       jasu jako v light bloku (void < app < surface-soft < surface). */
-    --bg-void: #18130E;
-    --bg-app: #1E1811;
-    --bg-surface-soft: #241D15;
-    --bg-surface: #2B2318;
-    --bg-inset: rgba(255, 240, 220, .06);
-    --overlay-active: rgba(255, 235, 210, .12);
-    --toggle-off: rgba(255, 235, 210, .16);
+    /* Naměřeno přímo (getComputedStyle) na skutečných elementech:
+       void rgb(16,16,16), hlavní panel rgb(22,22,22), sidebar/nav panel
+       rgb(26,26,26) — velmi těsná škála. --bg-inset teď overlay (5% bílá
+       přes podklad), ne plochá barva — přesně jak se formulářové pole
+       reálně skládá (viz komentář u --accent v :root). */
+    --bg-void: #101010;
+    --bg-app: #161616;
+    --bg-surface-soft: #1A1A1A;
+    --bg-surface: #202020;
+    --bg-inset: rgba(255, 255, 255, .05);
+    --overlay-active: rgba(255, 255, 255, .15);
+    --toggle-off: rgba(255, 255, 255, .15);
 
-    --text-primary: #F5EFE6;
-    --text-secondary: #BDAD9A;
-    --text-tertiary: #8C8072;
-    --text-inverse: #18130E;
+    --text-primary: #F5F5F5;
+    --text-secondary: #AAAAAA;
+    --text-tertiary: #737373;
+    --text-inverse: #101010;
 
-    --border-subtle: rgba(255, 235, 210, .06);
-    --border-default: rgba(255, 235, 210, .11);
-    --border-medium: rgba(255, 235, 210, .16);
-    --border-strong: rgba(255, 235, 210, .22);
+    --border-subtle: rgba(255, 255, 255, .05);
+    --border-default: rgba(255, 255, 255, .10);
+    --border-medium: rgba(255, 255, 255, .15);
+    --border-strong: rgba(255, 255, 255, .20);
 
-    /* Primární akcent v dark — světlejší terakota, aby vynikla na tmavém
-       pozadí (tmavý text místo bílého, jinak by kontrast klesl). */
-    --primary: #D9975C;
-    --primary-hover: #E3AB78;
-    --primary-foreground: #18130E;
-    --primary-soft: rgba(217, 151, 92, .18);
-    --primary-soft-hover: rgba(217, 151, 92, .28);
-    --ring: #D9975C;
-    --accent: #D9975C;
+    --primary: #F5F5F5;
+    --primary-hover: #E3E3E3;
+    --primary-foreground: #101010;
+    --primary-soft: #353535;
+    --primary-soft-hover: #424242;
+    --ring: #F5F5F5;
 
     --subject-foster-bg: #112E24;
     --subject-ospod-bg: #1D223D;
@@ -165,31 +176,30 @@
 }
 
 :root[data-theme='dark'] {
-  --bg-void: #18130E;
-  --bg-app: #1E1811;
-  --bg-surface-soft: #241D15;
-  --bg-surface: #2B2318;
-  --bg-inset: rgba(255, 240, 220, .06);
-  --overlay-active: rgba(255, 235, 210, .12);
-  --toggle-off: rgba(255, 235, 210, .16);
+  --bg-void: #101010;
+  --bg-app: #161616;
+  --bg-surface-soft: #1A1A1A;
+  --bg-surface: #202020;
+  --bg-inset: rgba(255, 255, 255, .05);
+  --overlay-active: rgba(255, 255, 255, .15);
+  --toggle-off: rgba(255, 255, 255, .15);
 
-  --text-primary: #F5EFE6;
-  --text-secondary: #BDAD9A;
-  --text-tertiary: #8C8072;
-  --text-inverse: #18130E;
+  --text-primary: #F5F5F5;
+  --text-secondary: #AAAAAA;
+  --text-tertiary: #737373;
+  --text-inverse: #101010;
 
-  --border-subtle: rgba(255, 235, 210, .06);
-  --border-default: rgba(255, 235, 210, .11);
-  --border-medium: rgba(255, 235, 210, .16);
-  --border-strong: rgba(255, 235, 210, .22);
+  --border-subtle: rgba(255, 255, 255, .05);
+  --border-default: rgba(255, 255, 255, .10);
+  --border-medium: rgba(255, 255, 255, .15);
+  --border-strong: rgba(255, 255, 255, .20);
 
-  --primary: #D9975C;
-  --primary-hover: #E3AB78;
-  --primary-foreground: #18130E;
-  --primary-soft: rgba(217, 151, 92, .18);
-  --primary-soft-hover: rgba(217, 151, 92, .28);
-  --ring: #D9975C;
-  --accent: #D9975C;
+  --primary: #F5F5F5;
+  --primary-hover: #E3E3E3;
+  --primary-foreground: #101010;
+  --primary-soft: #353535;
+  --primary-soft-hover: #424242;
+  --ring: #F5F5F5;
 
   --subject-foster-bg: #112E24;
   --subject-ospod-bg: #1D223D;
