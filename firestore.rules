@@ -860,7 +860,16 @@ service cloud.firestore {
       allow create: if isStaff() &&
         request.resource.data.organizationId == userDoc().organizationId &&
         hasActiveAgreementFor(familyId);
-      allow update, delete: if false;
+      // UX zpětná vazba 2026-07-21 — editace povolena (dřív `if false`,
+      // takže nešel opravit ani překlep). Vlastní organizace smí měnit
+      // obsah, ale NE "přeadresovat" záznam jinam (organizationId/childRef
+      // musí zůstat). Delete pořád zakázaný — audit stopa.
+      allow update: if isSuperadmin() || (
+        sameOrg(resource.data.organizationId) &&
+        request.resource.data.organizationId == resource.data.organizationId &&
+        request.resource.data.childRef == resource.data.childRef
+      );
+      allow delete: if false;
     }
 
     // ---- families/{familyId}/agreements/{agreementId}/ippd — §B.4

@@ -6,6 +6,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -317,7 +318,7 @@ export default function DocumentDetailPage() {
         </div>
       )}
 
-      <section className="mt-6 max-w-[560px]">
+      <section className="mt-6 max-w-[720px]">
         {isEditable ? (
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
@@ -325,13 +326,8 @@ export default function DocumentDetailPage() {
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah (markdown)</span>
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={16}
-                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-4 py-3 text-[16px] leading-relaxed text-text-primary focus:border-2 focus:border-accent focus:outline-none"
-              />
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
+              <MarkdownEditor value={body} onChange={setBody} rows={18} placeholder="Začněte psát obsah dokumentu…" />
             </label>
             <div className="flex items-center gap-2">
               <Button

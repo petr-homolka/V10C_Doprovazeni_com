@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import typography from '@tailwindcss/typography'
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
@@ -107,7 +109,33 @@ export default {
         'mic-ring': 'mic-ring 1.4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite',
         'slide-in-right': 'slide-in-right 250ms cubic-bezier(0.16, 1, 0.3, 1)',
       },
+      // `prose` (dokumenty, náhled editoru, moje dashboard) navázané na naše
+      // tokeny, ne na natvrdo šedé odstíny Tailwind Typography — jinak by
+      // nadpisy/tučné byly v tmavém režimu neviditelné (tokeny se přepínají
+      // podle světla/tmy, viz index.css).
+      typography: {
+        DEFAULT: {
+          css: {
+            '--tw-prose-body': 'var(--text-primary)',
+            '--tw-prose-headings': 'var(--text-primary)',
+            '--tw-prose-lead': 'var(--text-secondary)',
+            '--tw-prose-links': 'var(--accent)',
+            '--tw-prose-bold': 'var(--text-primary)',
+            '--tw-prose-counters': 'var(--text-tertiary)',
+            '--tw-prose-bullets': 'var(--text-tertiary)',
+            '--tw-prose-hr': 'var(--border-default)',
+            '--tw-prose-quotes': 'var(--text-secondary)',
+            '--tw-prose-quote-borders': 'var(--border-default)',
+            '--tw-prose-captions': 'var(--text-tertiary)',
+            '--tw-prose-code': 'var(--text-primary)',
+            '--tw-prose-pre-code': 'var(--text-primary)',
+            '--tw-prose-pre-bg': 'var(--bg-inset)',
+            '--tw-prose-th-borders': 'var(--border-strong)',
+            '--tw-prose-td-borders': 'var(--border-subtle)',
+          },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [typography],
 }

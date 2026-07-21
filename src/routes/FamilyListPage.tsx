@@ -9,6 +9,7 @@ import { Combobox } from '@/components/ui/combobox'
 import { SegmentedTabs } from '@/components/ui/segmented-tabs'
 import { Modal } from '@/components/ui/modal'
 import { AlertTag } from '@/components/ui/alert-tag'
+import { AddressLink } from '@/components/ui/address-link'
 import { VoiceRecorderPanel, type RecordablePerson } from '@/components/timeline/VoiceRecorderPanel'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -431,9 +432,13 @@ export default function FamilyListPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm text-text-primary">{displayName}</p>
-                      <p className="truncate text-xs text-text-secondary">
-                        {family.address || 'Adresa neuvedena'}
-                      </p>
+                      {family.address ? (
+                        <span className="text-xs">
+                          <AddressLink address={family.address} className="text-xs" />
+                        </span>
+                      ) : (
+                        <p className="truncate text-xs text-text-tertiary">Adresa neuvedena</p>
+                      )}
                     </div>
                     <span className="truncate text-sm text-text-secondary">{assignedToDisplay ?? '—'}</span>
                     <span className="text-sm text-text-secondary">

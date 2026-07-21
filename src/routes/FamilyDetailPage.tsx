@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
@@ -10,6 +10,8 @@ import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Switch } from '@/components/ui/switch'
 import { Combobox } from '@/components/ui/combobox'
 import { Modal } from '@/components/ui/modal'
+import { AddressLink } from '@/components/ui/address-link'
+import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/components/timeline/VoiceRecorderPanel'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { OspodReportSection } from '@/components/family/OspodReportSection'
@@ -18,7 +20,6 @@ import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getOrganization } from '@/services/organizationService'
 import { listStaff } from '@/services/staffService'
-import { uploadEntityAvatar } from '@/services/avatarService'
 import { listTimelineEntries } from '@/services/timelineService'
 import {
   addChildToFamily,
@@ -42,7 +43,7 @@ import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
-import { Baby, Clock, FileText, Handshake, Home, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from 'lucide-react'
+import { Baby, Clock, FileText, Handshake, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from 'lucide-react'
 
 const FOSTER_COLUMNS = '40px 1.4fr 1fr 32px 24px'
 const CHILD_COLUMNS = '40px 1fr 32px 24px'
@@ -128,8 +129,6 @@ export default function FamilyDetailPage() {
     preselectedPeopleKeys: string[]
     visit?: VisitContext
   } | null>(null)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const familyAvatarInputRef = useRef<HTMLInputElement>(null)
 
   const { loading: addingFoster, success: addingFosterSuccess, run: runAddFoster } = useAsyncSubmit()
   const { loading: addingChild, success: addingChildSuccess, run: runAddChild } = useAsyncSubmit()
@@ -236,21 +235,6 @@ export default function FamilyDetailPage() {
     setRecorder({ implicitSubjects, preselectedPeopleKeys })
   }
 
-  async function handleFamilyAvatarChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file || !docId) return
-    setUploadingAvatar(true)
-    setError(null)
-    try {
-      await uploadEntityAvatar({ kind: 'family', id: docId, file })
-      await reload()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fotku se nepodařilo nahrát.')
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }
 
   function startEditName() {
     setNameDraft(family?.displayName ?? '')
@@ -441,73 +425,68 @@ export default function FamilyDetailPage() {
       breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: displayName }]}
       secondaryPanel={<ProfileSectionNav sections={SECTIONS} active={activeSection} onSelect={setActiveSection} />}
     >
-      <div className="flex items-center gap-4">
-        <EntityAvatar
-          photoURL={family?.avatarUrl}
-          label={displayName || 'Spis'}
-          fallbackIcon={Home}
-          size="lg"
-          onChangePhoto={uploadingAvatar ? undefined : () => familyAvatarInputRef.current?.click()}
-        />
-        <div>
-          {editingName ? (
-            <div className="flex items-center gap-2">
-              <Input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                className="h-9 w-64"
-                placeholder={primaryFosterName ?? family?.address ?? ''}
-              />
-              <Button size="sm" onClick={handleSaveName} loading={savingName} success={savingNameSuccess}>
-                Uložit
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
-                Zrušit
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-normal leading-normal text-text-primary">{displayName}</h1>
-              <button
-                type="button"
-                onClick={startEditName}
-                aria-label="Upravit název rodiny"
-                title="Upravit název rodiny"
-                className="text-text-tertiary transition-colors duration-150 hover:text-text-primary"
-              >
-                <Pencil size={14} />
-              </button>
-            </div>
-          )}
-          <p className="mt-1 font-mono text-xs text-text-tertiary">{familyUid}</p>
-          {family?.address && <p className="text-sm text-text-secondary">{family.address}</p>}
+      <div className="max-w-[928px]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  className="h-9 w-64"
+                  placeholder={primaryFosterName ?? family?.address ?? ''}
+                />
+                <Button size="sm" onClick={handleSaveName} loading={savingName} success={savingNameSuccess}>
+                  Uložit
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
+                  Zrušit
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-normal leading-tight text-text-primary">{displayName}</h1>
+                <button
+                  type="button"
+                  onClick={startEditName}
+                  aria-label="Upravit název rodiny"
+                  title="Upravit název rodiny"
+                  className="text-text-tertiary transition-colors duration-150 hover:text-text-primary"
+                >
+                  <Pencil size={14} />
+                </button>
+              </div>
+            )}
+            {family?.address && (
+              <p className="mt-1.5 text-sm">
+                <AddressLink address={family.address} />
+              </p>
+            )}
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">Spis</p>
+            <p className="font-mono text-sm text-text-secondary">{familyUid}</p>
+          </div>
         </div>
-      </div>
-      <input
-        ref={familyAvatarInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handleFamilyAvatarChange}
-      />
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+        {error && (
+          <p className="mt-3 text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
 
-      {activeSection === 'prehled' && (
-        <>
-          <section className="mt-8">
-            <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
-            <Link
-              to={`/rodiny/${familyUid}/dohoda`}
-              className="mt-3 flex items-center justify-between gap-3 max-w-[560px] rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-overlay-hover"
-            >
-              <div className="flex items-center gap-3">
-                <EntityAvatar label="Dohoda" fallbackIcon={Handshake} />
+        {activeSection === 'prehled' && (
+          <>
+            <section className="mt-8">
+              <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
+              <Link
+                to={`/rodiny/${familyUid}/dohoda`}
+                className="mt-3 flex items-center gap-3 max-w-[560px] rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-overlay-hover"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
+                  <Handshake size={18} strokeWidth={1.75} />
+                </span>
                 {agreement ? (
                   <div>
                     <p className="text-sm text-text-primary">{CARE_TYPE_LABELS[agreement.careType]}</p>
@@ -520,9 +499,8 @@ export default function FamilyDetailPage() {
                 ) : (
                   <p className="text-sm text-text-secondary">Zatím žádná Dohoda s vaší organizací — založit →</p>
                 )}
-              </div>
-            </Link>
-          </section>
+              </Link>
+            </section>
 
           <section className="mt-8">
             <div className="flex items-center justify-between gap-4">
@@ -835,13 +813,8 @@ export default function FamilyDetailPage() {
                   <Input required value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
                 </label>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah (markdown)</span>
-                  <textarea
-                    value={docBody}
-                    onChange={(e) => setDocBody(e.target.value)}
-                    rows={8}
-                    className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
-                  />
+                  <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
+                  <MarkdownEditor value={docBody} onChange={setDocBody} rows={10} placeholder="Začněte psát obsah dokumentu…" />
                 </label>
                 {recordablePeople.length > 0 && (
                   <div>
@@ -901,6 +874,7 @@ export default function FamilyDetailPage() {
           </section>
         </>
       )}
+      </div>
 
       {recorder && docId && organizationId && userDoc && (
         <VoiceRecorderPanel

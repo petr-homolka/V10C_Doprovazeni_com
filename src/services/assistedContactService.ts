@@ -148,6 +148,17 @@ export async function createChildHandover(familyId: string, data: Omit<ChildHand
   return ref.id
 }
 
+/** Editace předání (UX zpětná vazba 2026-07-21 — dřív šlo jen založit,
+ * `firestore.rules` mělo `update: if false`, oprava překlepu byla nemožná).
+ * Nikdy nemění `organizationId`/`childRef`/`createdBy` — jen obsah + `updatedAt`. */
+export async function updateChildHandover(
+  familyId: string,
+  handoverId: string,
+  patch: Partial<Omit<ChildHandoverDoc, 'organizationId' | 'childRef' | 'createdBy' | 'createdAt'>>,
+): Promise<void> {
+  await updateDoc(doc(handoversCollection(familyId), handoverId), { ...patch, updatedAt: new Date().toISOString() })
+}
+
 /**
  * §5 past — rules `childHandovers` read čte `resource.data.organizationId`
  * (`sameOrg`), LIST dotaz to musí zrcadlit. Kombinace `where(organizationId)`
@@ -163,6 +174,16 @@ export async function listChildHandovers(
   return snap.docs
     .map((d) => ({ docId: d.id, handover: d.data() as ChildHandoverDoc }))
     .sort((a, b) => b.handover.handoverDate.localeCompare(a.handover.handoverDate))
+}
+
+/** Předání jen pro JEDNO dítě (profil dítěte) — filtruje klientsky nad
+ * rodinným seznamem (pár záznamů, žádný nový index). */
+export async function listChildHandoversForChild(
+  familyId: string,
+  organizationId: string,
+  childRef: string,
+): Promise<Array<{ docId: string; handover: ChildHandoverDoc }>> {
+  return (await listChildHandovers(familyId, organizationId)).filter((h) => h.handover.childRef === childRef)
 }
 
 /** §B.8 dashboard — occurrence v minulosti, stav stále `planovano` → zapomenuté zaznamenání. */

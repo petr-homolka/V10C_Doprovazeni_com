@@ -5,6 +5,7 @@ import { ProfileSectionNav, type ProfileSection } from '@/components/profile/Pro
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Button } from '@/components/ui/button'
 import { ChildSupportSection } from '@/components/family/ChildSupportSection'
+import { ChildHandoversSection } from '@/components/family/ChildHandoversSection'
 import { useAuth } from '@/hooks/useAuth'
 import { getChild, getFamilyByUid, listFosterPersonsByRefs } from '@/services/familyService'
 import { getChildRespitDaysForYear } from '@/services/respitEventService'
@@ -16,6 +17,7 @@ import { Baby, UserSquare2 } from 'lucide-react'
 const SECTIONS: ProfileSection[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'podpora', label: 'Podpůrné aktivity a výdaje' },
+  { key: 'predani', label: 'Předání dítěte' },
 ]
 
 /**
@@ -31,6 +33,7 @@ export default function ChildDetailPage() {
   const organizationId = userDoc?.organizationId
 
   const [family, setFamily] = useState<FamilyDoc | null>(null)
+  const [familyDocId, setFamilyDocId] = useState<string | null>(null)
   const [child, setChild] = useState<ChildDoc | null>(null)
   const [respitDays, setRespitDays] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -51,6 +54,7 @@ export default function ChildDetailPage() {
           return
         }
         setFamily(found.family)
+        setFamilyDocId(found.docId)
         setChild(c)
         const [days, fosters] = await Promise.all([
           getChildRespitDaysForYear(childId, new Date().getFullYear()),
@@ -127,6 +131,16 @@ export default function ChildDetailPage() {
                 </Button>
               )}
             </div>
+          )}
+
+          {activeSection === 'predani' && childId && familyDocId && organizationId && userDoc && (
+            <ChildHandoversSection
+              familyDocId={familyDocId}
+              childId={childId}
+              childName={`${child.firstName} ${child.lastName}`}
+              organizationId={organizationId}
+              currentUid={userDoc.uid}
+            />
           )}
 
           {activeSection === 'podpora' && childId && organizationId && userDoc && (
