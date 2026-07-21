@@ -43,6 +43,9 @@ export interface CreateVoiceEntryInput {
   subjectRefs: SubjectRef[]
   sharingLevel: SharingLevel
   body: string
+  /** M10 — vyplněné, jen pokud zápis prošel AI úpravou (`lib/ai.ts`
+   * `summarizeVoiceEntry`), viz TimelineEntryDoc komentář. */
+  originalTranscript?: string | null
 }
 
 export async function createVoiceTimelineEntry(input: CreateVoiceEntryInput): Promise<void> {
@@ -56,6 +59,7 @@ export async function createVoiceTimelineEntry(input: CreateVoiceEntryInput): Pr
     subjectRefs: input.subjectRefs,
     sharingLevel: input.sharingLevel,
     body: input.body,
+    ...(input.originalTranscript ? { originalTranscript: input.originalTranscript } : {}),
   }
   const batch = writeBatch(db)
   batch.set(ref, data)
@@ -104,6 +108,9 @@ export interface CreateVisitEntryInput {
   endedAt: string
   durationSeconds: number
   location: { lat: number; lng: number } | null
+  /** M10 — vyplněné, jen pokud zápis prošel AI úpravou, viz
+   * `CreateVoiceEntryInput.originalTranscript`. */
+  originalTranscript?: string | null
   /** DOPLNENI_ZADANI-DO-M5 §2 — `fosterPersons/{id}.lastVisitAt` per OSOBU,
    * NEZÁVISLE na `sharingLevel` (jestli o návštěvě pěstoun uvidí zápis, je
    * jiná otázka než komu se návštěva reálně týkala). Volající
@@ -156,6 +163,7 @@ export async function createVisitTimelineEntry(input: CreateVisitEntryInput): Pr
     endedAt: input.endedAt,
     durationSeconds: input.durationSeconds,
     location: input.location,
+    ...(input.originalTranscript ? { originalTranscript: input.originalTranscript } : {}),
   }
   const digestData: HistoryDigestDoc = {
     kind: 'visit',

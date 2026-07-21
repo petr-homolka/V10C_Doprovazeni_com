@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import { createVisitTimelineEntry, createVoiceTimelineEntry } from '@/services/timelineService'
+import { summarizeVoiceEntry } from '@/lib/ai'
 import type { SharingLevel } from '@/types/sharing'
 import type { SubjectRef } from '@/types/timelineEntry'
 
@@ -47,8 +48,9 @@ function formatDuration(seconds: number): string {
  * nahrávání spustilo z jejího avataru) — beze změny zadání §7.3, jen jiné
  * zobrazení.
  *
- * "AI souhrn" je viditelné, ale VYPNUTÉ — žádný AI backend v tomhle
- * buildu (M10 SEAM). Jen "Uložit text" je skutečně funkční.
+ * "AI souhrn" (M10 SEAM uzavřený) — `lib/ai.ts` `summarizeVoiceEntry`,
+ * Firebase AI Logic/Gemini. Nahradí `body` učesanou verzí, surový přepis
+ * PŘED úpravou se uloží do `originalTranscript` (§7.5, nikdy nemazané).
  */
 export function VoiceRecorderPanel({
   familyDocId,
@@ -79,6 +81,8 @@ export function VoiceRecorderPanel({
   const fosterPeople = people.filter((p) => p.kind === 'fosterPerson')
   const [stopped, setStopped] = useState(false)
   const [body, setBody] = useState('')
+  const [originalTranscript, setOriginalTranscript] = useState<string | null>(null)
+  const [summarizing, setSummarizing] = useState(false)
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(() => new Set(preselectedPeopleKeys))
   const [isPrivate, setIsPrivate] = useState(false)
   /** DOPLNENI_ZADANI-DO-M5 §2 — SEAM uzavřený touhle dávkou: `sharingLevel:
@@ -118,6 +122,27 @@ export function VoiceRecorderPanel({
 
   const showPartnerToggle = fosterPeople.length >= 2
   const usePartnerScoped = showPartnerToggle && !shareBothPartners
+
+  /** M10 — nahradí `body` učesanou AI verzí, surový přepis se uchová v
+   * `originalTranscript` (§7.5, nikdy nemazané, i když se v hlavním
+   * zobrazení nepoužívá). Druhé kliknutí (po další ruční úpravě) znovu
+   * učeše AKTUÁLNÍ text, `originalTranscript` ale zůstává PRVNÍ surová
+   * verze, ne mezistav. */
+  async function handleAiSummary() {
+    if (!body.trim() || summarizing) return
+    setSummarizing(true)
+    setError(null)
+    try {
+      const rawBefore = body
+      const summary = await summarizeVoiceEntry(body)
+      setOriginalTranscript((prev) => prev ?? rawBefore)
+      setBody(summary)
+    } catch {
+      setError('AI souhrn se nepodařilo vytvořit — zkuste to znovu nebo pokračujte s textem ručně.')
+    } finally {
+      setSummarizing(false)
+    }
+  }
 
   async function handleSave() {
     if (!body.trim()) {
@@ -160,6 +185,7 @@ export function VoiceRecorderPanel({
           endedAt: visit.endedAt,
           durationSeconds: visit.durationSeconds,
           location: visit.location,
+          originalTranscript,
           stampFosterPersonIds,
         })
       } else {
@@ -170,6 +196,7 @@ export function VoiceRecorderPanel({
           subjectRefs,
           sharingLevel,
           body: body.trim(),
+          originalTranscript,
         })
       }
       onSaved?.()
@@ -314,8 +341,13 @@ export function VoiceRecorderPanel({
           <Button onClick={handleSave} disabled={saving}>
             {saving ? 'Ukládám…' : 'Uložit text'}
           </Button>
-          <Button variant="secondary" disabled title="AI souhrn zatím čeká na napojení (M10)">
-            AI souhrn
+          <Button
+            variant="secondary"
+            onClick={handleAiSummary}
+            disabled={saving || summarizing || !body.trim()}
+            title="Vyčistí mluvenou řeč do stručného profesionálního textu (Gemini) — surový přepis zůstává uložený, nic se neztrácí."
+          >
+            {summarizing ? 'Vytvářím souhrn…' : 'AI souhrn'}
           </Button>
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Zrušit
