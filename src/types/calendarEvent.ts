@@ -39,4 +39,15 @@ export interface CalendarEventDoc {
   notes?: string | null
   createdAt: string
   updatedAt: string
+  /**
+   * Google Kalendář sync (klientský OAuth tok, `lib/googleCalendar.ts`,
+   * §10 — žádná Cloud Function, žádný uložený refresh token, viz tam
+   * komentář proč). ID vráceného Google Calendar API `events.insert`
+   * volání — přítomnost znamená "už jednou synchronizováno", `PATCH`
+   * místo `POST` při dalším přesunu/úpravě, ať se nevytváří duplicitní
+   * událost v cizím kalendáři. Synchronizuje VÝHRADNĚ `assignedToUid`
+   * sám za sebe (do VLASTNÍHO Google Kalendáře), nikdy cizí událost —
+   * sdílený týmový kalendář appky ≠ osobní Google Kalendář zaměstnance.
+   */
+  googleEventId?: string | null
 }

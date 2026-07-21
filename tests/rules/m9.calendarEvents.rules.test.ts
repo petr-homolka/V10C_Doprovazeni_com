@@ -189,6 +189,26 @@ describe('organizations/{orgId}/calendarEvents/{id} — zápis', () => {
     )
   })
 
+  it('Google Kalendář sync MŮŽE zapsat googleEventId (žádné nové pravidlo, jen běžný update)', async () => {
+    const asKo = testEnv.authenticatedContext('ko1')
+    await assertSucceeds(
+      updateDoc(doc(asKo.firestore(), 'organizations', ORG, 'calendarEvents', 'event1'), {
+        googleEventId: 'google-event-abc123',
+        updatedAt: 'test',
+      }),
+    )
+  })
+
+  it('staff JINÉ organizace NEMŮŽE zapsat googleEventId cizí události', async () => {
+    const asOther = testEnv.authenticatedContext('ko-other-org')
+    await assertFails(
+      updateDoc(doc(asOther.firestore(), 'organizations', ORG, 'calendarEvents', 'event1'), {
+        googleEventId: 'sneaky',
+        updatedAt: 'test',
+      }),
+    )
+  })
+
   it('mazání je VŽDY zakázané, i pro autora (§5 audit stopa)', async () => {
     const { deleteDoc } = await import('firebase/firestore')
     const asKo = testEnv.authenticatedContext('ko1')

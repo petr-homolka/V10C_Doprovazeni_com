@@ -111,3 +111,18 @@ export async function cancelCalendarEvent(organizationId: string, docId: string)
     updatedAt: new Date().toISOString(),
   })
 }
+
+/** Google Kalendář sync (`lib/googleCalendar.ts`) volá tohle PO úspěšném
+ * `upsertGoogleCalendarEvent` — jen denormalizace ID, žádná vlastní
+ * validace (rules pravidlo pro `update` je stejné jako u ostatních polí,
+ * `googleEventId` v něm není zvlášť zmíněné, protože nepotřebuje být). */
+export async function markCalendarEventSynced(
+  organizationId: string,
+  docId: string,
+  googleEventId: string,
+): Promise<void> {
+  await updateDoc(doc(eventsCollection(organizationId), docId), {
+    googleEventId,
+    updatedAt: new Date().toISOString(),
+  })
+}

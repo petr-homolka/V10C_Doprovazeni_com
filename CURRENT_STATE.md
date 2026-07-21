@@ -60,13 +60,62 @@ správné a `.rbc-addons-dnd-resizable` wrapper se na události skutečně
 vykresluje (potvrzuje funkční `draggableAccessor`) — ale samotné tažení
 myší v reálném prohlížeči Petr sám ještě neověřil.
 
-**"Synchronizovat s Google Kalendářem"** — viditelné, ale VYPNUTÉ tlačítko
-(SEAM, stejný vzor jako "AI souhrn"), tooltip vysvětluje proč: vyžaduje
-OAuth souhlasovou obrazovku v Google Cloud Console, infrastrukturní krok
-mimo tuhle dávku.
+**"Synchronizovat s Google Kalendářem"** — dodatečně doplněno (viz níž,
+"M10 + Google Kalendář sync") — teď skutečně funkční, ne jen SEAM tlačítko.
 
 **Nedeployováno** (produkce zatím běží beze změny) — čeká na uživatelovo
 "deploy asi necháme až po M10 a nebo i dál".
+
+## M10 + Google Kalendář sync hotové (2026-07-21, přes noc)
+
+Petr povolil Gemini Developer API + App Check (reCAPTCHA v3) ve Firebase
+Console a dal Google OAuth Client ID — obojí umožnilo dokončit oba dřívější
+SEAMy beze změny architektury (§10 "žádný vlastní backend").
+
+**AI souhrn** (`lib/ai.ts`, `VoiceRecorderPanel.tsx`) — Firebase AI Logic,
+`GoogleAIBackend` (Gemini Developer API), model `gemini-2.5-flash`. Tlačítko
+vezme aktuální text zápisníku, pošle ho s českým promptem "učesat mluvenou
+řeč, nic nevymýšlet" a nahradí `body` výsledkem — surový text PŘED úpravou
+se uloží do `originalTranscript` (pole bylo v `TimelineEntryDoc` už
+připravené od M3, nikdy nepoužité). Druhé kliknutí učeše aktuální (i ručně
+doupravený) text znovu, ale `originalTranscript` zůstává PRVNÍ surová verze.
+
+**Živě odhalený a opravený bug (vážný — týkal se přihlášení, ne jen AI):**
+`initializeAppCheck` na SDÍLENÉ primární `FirebaseApp` instanci (`firebase.ts`)
+způsobil, že Auth SDK na téže instanci začal ke KAŽDÉMU požadavku (i
+přihlášení) čekat na App Check token — když reCAPTCHA skript nešel načíst
+(pomalá/blokovaná síť ke `google.com`), přihlášení VISELO/PADALO, ne jen AI
+tlačítko. Oprava: App Check teď běží na VLASTNÍ, druhé `FirebaseApp`
+instanci (`lib/ai.ts`, `initializeApp(firebaseConfig, 'ai-logic')`) — stejný
+izolační vzor jako `secondaryAuth.ts` (tam kvůli Auth session, tady kvůli
+App Checku). Primární app (Auth/Firestore/Storage) se App Checku vůbec
+nedotkne. Živě ověřeno v obou stavech (s bugem přihlášení viselo, po opravě
+funguje) přes emulátor.
+
+**Google Kalendář sync** (`lib/googleCalendar.ts`, `CalendarPage.tsx`
+`handleGoogleSync`) — VÝHRADNĚ klientský tok, Google Identity Services
+"token client" (`initTokenClient`/`requestAccessToken`), ŽÁDNÁ Cloud
+Function, ŽÁDNÝ uložený refresh token. Vědomé rozhodnutí: GIS token client
+dává jen krátkodobý (~1h) access token, ne refresh token (ten vyžaduje
+Authorization Code flow s client secretem = server na výměnu) — token proto
+žije JEN v paměti modulu, nikdy ve Firestore (nulová nová security
+expozice). Sync je push-only, VÝHRADNĚ vlastní naplánované události
+(`assignedToUid === userDoc.uid`) do VLASTNÍHO Google Kalendáře
+přihlášeného uživatele — appka nikdy nepíše do cizího kalendáře. Nové pole
+`CalendarEventDoc.googleEventId` (insert vs. update rozlišení, ať
+opakovaný sync nezaloží duplicitní událost) — ŽÁDNÉ nové `firestore.rules`
+nebylo potřeba (existující `update` pravidlo pole nijak neomezuje), ověřeno
+2 novými regresními testy v `m9.calendarEvents.rules.test.ts` (121/121
+celkem). Mazání/"zrušeno" se na Google stranu zatím nepropaguje (SEAM).
+
+**Živě ověřeno** (emulátor, Playwright, skripty smazány po testu):
+přihlášení funguje s App Checkem zapnutým i vypnutým (potvrzuje opravu),
+kalendář a tlačítko "Synchronizovat" reagují správně, chybová hláška při
+nedostupnosti Google skriptu se zobrazí čitelně a appka nespadne.
+**NEOVĚŘENO**: skutečný OAuth popup + zápis do reálného Google Kalendáře —
+tahle sandboxová session nemá výstup na `google.com`/`googleapis.com`
+(potvrzeno i obyčejným `curl`), takže první opravdový test bude muset
+udělat Petr live kliknutím na "Synchronizovat".
 
 ## M9 hotové — Chat (2026-07-21)
 

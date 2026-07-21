@@ -24,9 +24,11 @@ import {
   cancelCalendarEvent,
   createCalendarEvent,
   listCalendarEvents,
+  markCalendarEventSynced,
   rescheduleCalendarEvent,
   updateCalendarEvent,
 } from '@/services/calendarEventService'
+import { getGoogleCalendarAccessToken, upsertGoogleCalendarEvent } from '@/lib/googleCalendar'
 import { agreementToNextVisitItem, calendarEventToItem, type CalendarItem } from '@/lib/calendarAggregation'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import { CALENDAR_EVENT_KIND_LABELS, type CalendarEventKind } from '@/types/calendarEvent'
@@ -128,10 +130,11 @@ const EMPTY_FORM = {
  * vlastní `calendarEvents` (plně editovatelné/přetažitelné) a "další
  * návštěva splatná" připomínky z aktivních Dohod (jen READ-ONLY).
  *
- * "Synchronizace s Google Kalendářem" je viditelné, ale VYPNUTÉ tlačítko
- * (SEAM, stejný vzor jako "AI souhrn" v `VoiceRecorderPanel.tsx`) —
- * vyžaduje OAuth souhlasovou obrazovku v Google Cloud Console, což je
- * infrastrukturní krok mimo tuhle dávku, ne kód, co šlo prostě napsat.
+ * "Synchronizace s Google Kalendářem" (`handleGoogleSync`, viz
+ * `lib/googleCalendar.ts` pro plné zdůvodnění klientského OAuth toku bez
+ * backendu) — push VÝHRADNĚ vlastních naplánovaných událostí
+ * (`assignedToUid === userDoc.uid`) do vlastního Google Kalendáře
+ * přihlášeného uživatele.
  */
 export default function CalendarPage() {
   const navigate = useNavigate()
@@ -154,6 +157,7 @@ export default function CalendarPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const { loading: saving, run: runSave } = useAsyncSubmit()
   const { loading: cancelling, run: runCancel } = useAsyncSubmit()
+  const [syncingGoogle, setSyncingGoogle] = useState(false)
 
   async function reload() {
     if (!organizationId) return
@@ -330,6 +334,35 @@ export default function CalendarPage() {
     }
   }
 
+  /** Google Kalendář sync — VÝHRADNĚ vlastní (`assignedToUid === userDoc.uid`)
+   * naplánované události, push (insert/update), nikdy mazání ani cizí
+   * kalendář (viz `googleCalendar.ts` komentář pro plné zdůvodnění). */
+  async function handleGoogleSync() {
+    if (!organizationId || !userDoc) return
+    setSyncingGoogle(true)
+    setError(null)
+    try {
+      const accessToken = await getGoogleCalendarAccessToken()
+      const mine = events.filter(
+        ({ event }) => event.status === 'planovano' && event.assignedToUid === userDoc.uid,
+      )
+      for (const { docId, event } of mine) {
+        const googleEventId = await upsertGoogleCalendarEvent(accessToken, event.googleEventId, {
+          summary: event.title,
+          description: event.notes,
+          start: event.start,
+          end: event.end,
+        })
+        await markCalendarEventSynced(organizationId, docId, googleEventId)
+      }
+      await reload()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Synchronizace s Google Kalendářem se nezdařila.')
+    } finally {
+      setSyncingGoogle(false)
+    }
+  }
+
   return (
     <AppShell breadcrumb={[{ label: 'Kalendář' }]}>
       <div className="flex items-center justify-between gap-4">
@@ -356,8 +389,9 @@ export default function CalendarPage() {
           <Button
             variant="secondary"
             size="sm"
-            disabled
-            title="Napojení na Google Kalendář vyžaduje OAuth nastavení v Google Cloud Console — čeká na tenhle krok mimo appku."
+            onClick={handleGoogleSync}
+            loading={syncingGoogle}
+            title="Odešle vaše naplánované události (přiřazené vám) do vašeho Google Kalendáře — přihlásíte se poprvé Google účtem."
           >
             Synchronizovat s Google Kalendářem
           </Button>
