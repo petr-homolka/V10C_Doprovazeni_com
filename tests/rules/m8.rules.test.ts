@@ -11,12 +11,12 @@ import { collection, deleteDoc, doc, getDocs, setDoc, updateDoc } from 'firebase
 type TestFirestore = ReturnType<ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore']>
 
 /**
- * M8 rules — external_participants/{epId}/access/{childId}/grants/{grantId}
+ * M8 rules — external_participants/{epId}/access/{entityId}/grants/{grantId}
  * + organizations/{orgId}/externalRoleTemplates (§5.1 povinná sada, viz
  * CURRENT_STATE.md "Jak pokračovat"). Necitlivé oprávnění = grantDirect
  * (1 krok, rovnou 'active'), citlivé = requested→approved→active (3 role:
  * KO žádá, vedení schvaluje, jen org_admin aktivuje) — přesně to, co
- * firestore.rules `access/{childId}/grants/{grantId}` blok vynucuje.
+ * firestore.rules `access/{entityId}/grants/{grantId}` blok vynucuje.
  */
 
 let testEnv: RulesTestEnvironment
@@ -77,7 +77,7 @@ function templatesRef(db: TestFirestore, orgId: string) {
   return collection(db, 'organizations', orgId, 'externalRoleTemplates')
 }
 
-describe('external_participants/{epId}/access/{childId}/grants — §5.1 grant engine', () => {
+describe('external_participants/{epId}/access/{entityId}/grants — §5.1 grant engine', () => {
   it('KO can grantDirect a non-sensitive permission (1 krok, rovnou active)', async () => {
     const asKoA = testEnv.authenticatedContext('ko-a')
     await assertSucceeds(

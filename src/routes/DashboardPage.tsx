@@ -41,7 +41,7 @@ export default function DashboardPage() {
       </div>
 
       {canSeeCapacityBanner && overCapacity.length > 0 && (
-        <div className="mt-4 rounded-lg border border-warning bg-warning-bg p-4">
+        <div className="mt-4 max-w-[928px] rounded-lg border border-warning bg-warning-bg p-4">
           <p className="text-sm font-medium text-text-primary">
             {overCapacity.length === 1
               ? '1 klíčová osoba má překročenou kapacitu'

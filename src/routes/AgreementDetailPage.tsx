@@ -239,7 +239,7 @@ export default function AgreementDetailPage() {
       {activeSection === 'prehled' && (
         <div className="mt-6 flex flex-col gap-6">
           {agreement ? (
-            <div className="rounded-lg border border-border bg-surface p-5">
+            <div className="max-w-[560px] rounded-lg border border-border bg-surface p-5">
               <p className="text-sm text-text-primary">{CARE_TYPE_LABELS[agreement.careType]}</p>
               <p className="mt-1 text-sm text-text-secondary">
                 Platí od {new Date(agreement.validFrom).toLocaleDateString('cs-CZ')}
@@ -270,7 +270,7 @@ export default function AgreementDetailPage() {
               {showAgreementForm && (
                 <form
                   onSubmit={handleCreateAgreement}
-                  className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                  className="flex max-w-[560px] flex-col gap-4 rounded-lg border border-border bg-surface p-5"
                 >
                   <div className="grid grid-cols-2 gap-4">
                     <label className="flex flex-col gap-1.5">
@@ -349,7 +349,7 @@ export default function AgreementDetailPage() {
       )}
 
       {activeSection === 'ukonceni' && (
-        <div className="mt-6">
+        <div className="mt-6 max-w-[560px]">
           {!agreement ? (
             <p className="text-sm text-text-secondary">Nejdřív založte Dohodu na záložce Přehled.</p>
           ) : agreement.pendingEndDate ? (

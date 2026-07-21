@@ -210,7 +210,7 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Druh
             <Select value={kind} onChange={(e) => setKind(e.target.value as RespitEventKind)}>
@@ -476,7 +476,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreateSeries} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleCreateSeries} className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Dítě
             <Select value={childRef} onChange={(e) => setChildRef(e.target.value)}>
@@ -547,7 +547,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
         ) : rows.length === 0 ? (
           <EmptyState icon={HeartHandshake} text="Zatím žádná série asistovaného kontaktu." />
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex max-w-[928px] flex-col gap-3">
             {rows.map(({ docId: seriesId, series, occurrences }) => (
               <div key={seriesId} className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -772,7 +772,7 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Dítě
             <Select value={childRef} onChange={(e) => setChildRef(e.target.value)}>
@@ -831,7 +831,7 @@ function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, chi
         </form>
       )}
 
-      <div className="mt-3">
+      <div className="mt-3 max-w-[928px]">
         {error && !showForm ? (
           <p className="text-sm text-danger" role="alert">
             {error}

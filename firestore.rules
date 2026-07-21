@@ -873,19 +873,21 @@ service cloud.firestore {
       allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
       allow delete: if false;
 
-      // ---- external_participants/{epId}/access/{childId}/grants/{grantId} — M8, §5.1
+      // ---- external_participants/{epId}/access/{entityId}/grants/{grantId} — M8, §5.1
       //
-      // Plný grant/permission engine. `access/{childId}` je jen cesta, žádný
-      // vlastní dokument (grants scoping se čte z rodičovského externisty,
-      // stejná "žádné vlastní organizationId" past jako u M1.5 importJobs/
-      // stagingRecords). Citlivá oprávnění (viz PERMISSION_KEYS v
-      // src/types/externalParticipant.ts — drž seznam SYNCHRONNÍ)
-      // MUSÍ projít `requested→approved→active` (3 role, ne nutně 3 různí
-      // lidé — "3 aktéři" čteme jako 3 ROLE v řetězci, ne vynucení tří
-      // odlišných uid). Necitlivá = `grantDirect`, rovnou `active`, jeden krok.
-      // `revoke` = update na status 'revoked' (nastavuje `validTo` v service
-      // vrstvě), NIKDY delete — proto `allow delete: if false` napořád.
-      match /access/{childId}/grants/{grantId} {
+      // Plný grant/permission engine. `entityId` je docId DÍTĚTE NEBO
+      // PĚSTOUNA (viz `ExternalEntityType` v src/types/externalParticipant.ts)
+      // — `access/{entityId}` je jen cesta, žádný vlastní dokument (grants
+      // scoping se čte z rodičovského externisty, stejná "žádné vlastní
+      // organizationId" past jako u M1.5 importJobs/stagingRecords). Citlivá
+      // oprávnění (viz PERMISSION_KEYS v src/types/externalParticipant.ts —
+      // drž seznam SYNCHRONNÍ) MUSÍ projít `requested→approved→active` (3
+      // role, ne nutně 3 různí lidé — "3 aktéři" čteme jako 3 ROLE v
+      // řetězci, ne vynucení tří odlišných uid). Necitlivá = `grantDirect`,
+      // rovnou `active`, jeden krok. `revoke` = update na status 'revoked'
+      // (nastavuje `validTo` v service vrstvě), NIKDY delete — proto
+      // `allow delete: if false` napořád.
+      match /access/{entityId}/grants/{grantId} {
         function participantOrgId() {
           return get(/databases/$(database)/documents/external_participants/$(epId)).data.organizationId;
         }

@@ -181,7 +181,7 @@ export default function InspectionsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-4 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Období inspekce
             <DateRangePicker
@@ -268,7 +268,7 @@ export default function InspectionsPage() {
         </form>
       )}
 
-      <div className="mt-4">
+      <div className="mt-4 max-w-[928px]">
         {inspections === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : inspections.length === 0 ? (

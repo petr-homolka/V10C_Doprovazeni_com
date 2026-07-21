@@ -161,7 +161,7 @@ export default function StaffPage() {
       {showForm && isOrgAdmin && (
         <form
           onSubmit={handleCreate}
-          className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+          className="mt-4 flex flex-col max-w-[560px] gap-4 rounded-lg border border-border bg-surface p-5"
         >
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
@@ -216,7 +216,7 @@ export default function StaffPage() {
       {editingMember && (
         <form
           onSubmit={handleSaveCapacity}
-          className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+          className="mt-4 flex flex-col max-w-[560px] gap-4 rounded-lg border border-border bg-surface p-5"
         >
           <p className="text-sm font-medium text-text-primary">
             Kapacita — {editingMember.displayName}
@@ -257,7 +257,7 @@ export default function StaffPage() {
         </form>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 max-w-[928px]">
         {staff === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : staff.length === 0 ? (

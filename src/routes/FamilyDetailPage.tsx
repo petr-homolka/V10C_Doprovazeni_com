@@ -470,7 +470,7 @@ export default function FamilyDetailPage() {
             <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
             <Link
               to={`/rodiny/${familyUid}/dohoda`}
-              className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-overlay-hover"
+              className="mt-3 flex items-center justify-between gap-3 max-w-[560px] rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-overlay-hover"
             >
               <div className="flex items-center gap-3">
                 <EntityAvatar label="Dohoda" fallbackIcon={Handshake} />
@@ -504,7 +504,7 @@ export default function FamilyDetailPage() {
               </Button>
             </div>
             {family && family.fosterPersonRefs.length >= 2 && (
-              <div className="mt-3 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4">
+              <div className="mt-3 flex items-center justify-between gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-4">
                 <span className="text-sm text-text-primary">Nové zápisy výchozí sdílet s oběma pěstouny</span>
                 <Switch
                   checked={family.partnerSharingDefault ?? true}
@@ -517,7 +517,7 @@ export default function FamilyDetailPage() {
             {showFosterForm && (
               <form
                 onSubmit={handleAddFoster}
-                className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                className="mt-4 flex flex-col gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-5"
               >
                 <div className="grid grid-cols-2 gap-4">
                   <label className="flex flex-col gap-1.5">
@@ -562,7 +562,7 @@ export default function FamilyDetailPage() {
               </form>
             )}
 
-            <div className="mt-4">
+            <div className="mt-4 max-w-[928px]">
               {fosterPersons.length === 0 ? (
                 <EmptyState icon={UserRound} text="Zatím žádní pěstouni." />
               ) : (
@@ -609,7 +609,7 @@ export default function FamilyDetailPage() {
             {showChildForm && (
               <form
                 onSubmit={handleAddChild}
-                className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                className="mt-4 flex flex-col gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-5"
               >
                 <div className="grid grid-cols-3 gap-4">
                   <label className="flex flex-col gap-1.5">
@@ -631,7 +631,7 @@ export default function FamilyDetailPage() {
               </form>
             )}
 
-            <div className="mt-4">
+            <div className="mt-4 max-w-[928px]">
               {children.length === 0 ? (
                 <EmptyState icon={Baby} text="Zatím žádné svěřené děti." />
               ) : (
@@ -690,7 +690,7 @@ export default function FamilyDetailPage() {
             {timelineEntries.length === 0 ? (
               <EmptyState icon={Clock} text="Zatím žádné zápisy v časové ose." />
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 max-w-[928px]">
                 {timelineEntries.map(({ docId: entryId, entry }) => {
                   const Icon = TIMELINE_TYPE_ICONS[entry.type]
                   const subjectLabels = resolveSubjectLabels(entry.subjectRefs)
@@ -762,7 +762,7 @@ export default function FamilyDetailPage() {
             {showDocumentForm && (
               <form
                 onSubmit={handleCreateDocument}
-                className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                className="mt-4 flex flex-col gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-5"
               >
                 <label className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
@@ -812,7 +812,7 @@ export default function FamilyDetailPage() {
               {documents.length === 0 ? (
                 <EmptyState icon={FileText} text="Zatím žádné dokumenty." />
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 max-w-[928px]">
                   {documents.map(({ docId: fdId, document: fd }) => (
                     <button
                       key={fdId}

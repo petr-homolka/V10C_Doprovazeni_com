@@ -24,7 +24,7 @@ export default function NotificationsSettingsPage() {
     >
       <h1 className="text-lg font-normal leading-normal text-text-primary">Oznámení</h1>
 
-      <div className="mt-6 max-w-[480px]">
+      <div className="mt-6 max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">E-mailová upozornění</p>
         <div className="mb-4 mt-3 flex items-center justify-between gap-5">
           <span className="text-sm text-text-secondary">

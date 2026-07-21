@@ -78,7 +78,7 @@ export default function PlatformSettingsPage() {
       )}
 
       {loaded && (
-        <form onSubmit={handleSave} className="mt-6 max-w-[420px] space-y-5">
+        <form onSubmit={handleSave} className="mt-6 max-w-[560px] space-y-5">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">
               Výchozí práh kapacity klíčové osoby

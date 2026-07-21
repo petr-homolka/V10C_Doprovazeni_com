@@ -205,7 +205,7 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
       {showForm && (
         <form
           onSubmit={handleCreateSubmit}
-          className="mt-3 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
+          className="mt-3 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
         >
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Období
@@ -302,7 +302,7 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
         ) : ippds.length === 0 ? (
           <EmptyState icon={ClipboardList} text="Zatím žádný IPPD." />
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex max-w-[928px] flex-col gap-3">
             {ippds.map(({ docId, ippd }) => {
               const overdue = ippd.status === 'aktivni' && !!ippd.evaluation && new Date(ippd.evaluation.dueDate) < new Date()
               return (

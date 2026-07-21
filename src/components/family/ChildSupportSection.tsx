@@ -208,7 +208,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Typ aktivity
@@ -500,7 +500,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Kategorie
@@ -571,20 +571,22 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
         ) : expenses.length === 0 ? (
           <EmptyState icon={Receipt} text="Zatím žádný doklad." />
         ) : (
-          <Table>
-            <TableHeaderRow columns={EXPENSE_COLUMNS} labels={['Kategorie', 'Zdroj', 'Částka', 'Období', 'Poznámka']} />
-            {expenses.map((expense, i) => (
-              <TableRow key={i} columns={EXPENSE_COLUMNS}>
-                <span className="text-sm text-text-primary">{EXPENSE_CATEGORY_LABELS[expense.category]}</span>
-                <span className="text-sm text-text-secondary">{EXPENSE_SOURCE_LABELS[expense.source]}</span>
-                <span className="text-sm text-text-secondary">{expense.amount} Kč</span>
-                <span className="text-sm text-text-secondary">
-                  {new Date(expense.periodFrom).toLocaleDateString('cs-CZ')} – {new Date(expense.periodTo).toLocaleDateString('cs-CZ')}
-                </span>
-                <span className="text-sm text-text-secondary">{expense.note ?? ''}</span>
-              </TableRow>
-            ))}
-          </Table>
+          <div className="max-w-[928px]">
+            <Table>
+              <TableHeaderRow columns={EXPENSE_COLUMNS} labels={['Kategorie', 'Zdroj', 'Částka', 'Období', 'Poznámka']} />
+              {expenses.map((expense, i) => (
+                <TableRow key={i} columns={EXPENSE_COLUMNS}>
+                  <span className="text-sm text-text-primary">{EXPENSE_CATEGORY_LABELS[expense.category]}</span>
+                  <span className="text-sm text-text-secondary">{EXPENSE_SOURCE_LABELS[expense.source]}</span>
+                  <span className="text-sm text-text-secondary">{expense.amount} Kč</span>
+                  <span className="text-sm text-text-secondary">
+                    {new Date(expense.periodFrom).toLocaleDateString('cs-CZ')} – {new Date(expense.periodTo).toLocaleDateString('cs-CZ')}
+                  </span>
+                  <span className="text-sm text-text-secondary">{expense.note ?? ''}</span>
+                </TableRow>
+              ))}
+            </Table>
+          </div>
         )}
       </div>
     </div>

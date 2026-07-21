@@ -5,7 +5,7 @@ import { isSensitivePermission } from '@/types/externalParticipant'
 
 /**
  * Barrel service — §5.1. M8: plný grant/permission engine (viz
- * firestore.rules `access/{childId}/grants/{grantId}` pro vynucení stejných
+ * firestore.rules `access/{entityId}/grants/{grantId}` pro vynucení stejných
  * přechodů na serveru — tahle vrstva jen volá zápisy, autoritativní kontrola
  * je v rules).
  */
@@ -33,24 +33,25 @@ export async function getExternalParticipant(id: string): Promise<ExternalPartic
   return snap.exists() ? (snap.data() as ExternalParticipantDoc) : null
 }
 
-// ---- Granty — external_participants/{epId}/access/{childId}/grants/{grantId} ----
+// ---- Granty — external_participants/{epId}/access/{entityId}/grants/{grantId} ----
+// entityId = docId dítěte NEBO pěstouna, viz ExternalEntityType.
 
-function grantsCollection(epId: string, childId: string) {
-  return collection(db, 'external_participants', epId, 'access', childId, 'grants')
+function grantsCollection(epId: string, entityId: string) {
+  return collection(db, 'external_participants', epId, 'access', entityId, 'grants')
 }
 
-export async function listGrantsForChild(
+export async function listGrantsForEntity(
   epId: string,
-  childId: string,
+  entityId: string,
 ): Promise<Array<{ docId: string; grant: GrantDoc }>> {
-  const snap = await getDocs(grantsCollection(epId, childId))
+  const snap = await getDocs(grantsCollection(epId, entityId))
   return snap.docs.map((d) => ({ docId: d.id, grant: d.data() as GrantDoc }))
 }
 
 /** Necitlivé oprávnění — rovnou `active`, jeden krok/jeden aktér. */
 export async function grantDirect(
   epId: string,
-  childId: string,
+  entityId: string,
   permissionKey: PermissionKey,
   validFrom: string,
   grantedBy: string,
@@ -58,7 +59,7 @@ export async function grantDirect(
   if (isSensitivePermission(permissionKey)) {
     throw new Error(`${permissionKey} je citlivé oprávnění — použij requestGrant, ne grantDirect.`)
   }
-  const ref = doc(grantsCollection(epId, childId))
+  const ref = doc(grantsCollection(epId, entityId))
   await setDoc(ref, {
     permissionKey,
     status: 'active',
@@ -74,13 +75,13 @@ export async function grantDirect(
 /** Citlivé oprávnění — krok 1/3, čeká na `approveGrant`. */
 export async function requestGrant(
   epId: string,
-  childId: string,
+  entityId: string,
   permissionKey: PermissionKey,
   validFrom: string,
   requestedBy: string,
   note?: string,
 ): Promise<string> {
-  const ref = doc(grantsCollection(epId, childId))
+  const ref = doc(grantsCollection(epId, entityId))
   await setDoc(ref, {
     permissionKey,
     status: 'requested',
@@ -93,16 +94,16 @@ export async function requestGrant(
 }
 
 /** Krok 2/3 — vedení organizace. */
-export async function approveGrant(epId: string, childId: string, grantId: string, approvedBy: string): Promise<void> {
-  await updateDoc(doc(grantsCollection(epId, childId), grantId), {
+export async function approveGrant(epId: string, entityId: string, grantId: string, approvedBy: string): Promise<void> {
+  await updateDoc(doc(grantsCollection(epId, entityId), grantId), {
     status: 'approved',
     approvedBy,
     approvedAt: new Date().toISOString(),
   })
 }
 
-export async function rejectGrant(epId: string, childId: string, grantId: string, approvedBy: string, note?: string): Promise<void> {
-  await updateDoc(doc(grantsCollection(epId, childId), grantId), {
+export async function rejectGrant(epId: string, entityId: string, grantId: string, approvedBy: string, note?: string): Promise<void> {
+  await updateDoc(doc(grantsCollection(epId, entityId), grantId), {
     status: 'rejected',
     approvedBy,
     approvedAt: new Date().toISOString(),
@@ -111,8 +112,8 @@ export async function rejectGrant(epId: string, childId: string, grantId: string
 }
 
 /** Krok 3/3 — samostatný, užší gate (jen org_admin, viz firestore.rules). */
-export async function activateGrant(epId: string, childId: string, grantId: string, activatedBy: string): Promise<void> {
-  await updateDoc(doc(grantsCollection(epId, childId), grantId), {
+export async function activateGrant(epId: string, entityId: string, grantId: string, activatedBy: string): Promise<void> {
+  await updateDoc(doc(grantsCollection(epId, entityId), grantId), {
     status: 'active',
     activatedBy,
     activatedAt: new Date().toISOString(),
@@ -120,9 +121,9 @@ export async function activateGrant(epId: string, childId: string, grantId: stri
 }
 
 /** Odebrání přístupu — VŽDY `validTo`, nikdy delete (viz firestore.rules `allow delete: if false`). */
-export async function revokeGrant(epId: string, childId: string, grantId: string, revokedBy: string, note?: string): Promise<void> {
+export async function revokeGrant(epId: string, entityId: string, grantId: string, revokedBy: string, note?: string): Promise<void> {
   const now = new Date().toISOString()
-  await updateDoc(doc(grantsCollection(epId, childId), grantId), {
+  await updateDoc(doc(grantsCollection(epId, entityId), grantId), {
     status: 'revoked',
     validTo: now,
     revokedBy,

@@ -136,6 +136,26 @@ export async function getFosterPerson(fosterPersonId: string): Promise<FosterPer
   return snap.exists() ? (snap.data() as FosterPersonDoc) : null
 }
 
+/** Všechny děti organizace napříč rodinami — pro vyhledávací výběr (např.
+ * "Přidat externistu"), kde se vybírá jedna konkrétní osoba, ne rodina. */
+export async function listChildrenForOrg(
+  organizationId: string,
+): Promise<Array<{ docId: string; child: ChildDoc }>> {
+  const snap = await getDocs(query(collection(db, 'children'), where('organizationId', '==', organizationId)))
+  return snap.docs.map((d) => ({ docId: d.id, child: d.data() as ChildDoc }))
+}
+
+/** Stejné jako `listChildrenForOrg`, ale pro pěstouny — `orgAccessList` už
+ * dotaz vyžaduje (viz `listFamiliesWithDocIds`), ne přímou rovnost. */
+export async function listFosterPersonsForOrg(
+  organizationId: string,
+): Promise<Array<{ docId: string; fosterPerson: FosterPersonDoc }>> {
+  const snap = await getDocs(
+    query(collection(db, 'fosterPersons'), where('orgAccessList', 'array-contains', organizationId)),
+  )
+  return snap.docs.map((d) => ({ docId: d.id, fosterPerson: d.data() as FosterPersonDoc }))
+}
+
 export interface AddFosterPersonInput {
   firstName: string
   lastName: string

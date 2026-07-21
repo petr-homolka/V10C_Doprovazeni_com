@@ -304,20 +304,20 @@ export default function DocumentDetailPage() {
       )}
 
       {document.rejectionReason && status === 'draft' && (
-        <div className="mt-4 rounded-lg border border-warning bg-warning-bg p-4">
+        <div className="mt-4 max-w-[560px] rounded-lg border border-warning bg-warning-bg p-4">
           <p className="text-sm font-medium text-text-primary">Vedení dokument zamítlo</p>
           <p className="mt-1 text-sm text-text-secondary">{document.rejectionReason}</p>
         </div>
       )}
 
       {document.fosterComments && (status === 'commented' || status === 'draft') && (
-        <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+        <div className="mt-4 max-w-[560px] rounded-lg border border-border bg-surface p-4">
           <p className="text-sm font-medium text-text-primary">Komentář pěstouna</p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-text-secondary">{document.fosterComments}</p>
         </div>
       )}
 
-      <section className="mt-6">
+      <section className="mt-6 max-w-[560px]">
         {isEditable ? (
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
@@ -370,7 +370,7 @@ export default function DocumentDetailPage() {
       )}
 
       {status === 'final' && (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="mt-4 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border bg-surface p-5">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Schvalovatel (volitelné)</span>
             <Select
@@ -405,7 +405,7 @@ export default function DocumentDetailPage() {
                 </Button>
               </div>
               {showRejectForm && (
-                <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+                <div className="flex max-w-[560px] flex-col gap-2 rounded-lg border border-border bg-surface p-4">
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-relaxed text-text-primary">Důvod zamítnutí</span>
                     <textarea
@@ -435,7 +435,7 @@ export default function DocumentDetailPage() {
         status === 'closed_foster_unapproved' ||
         status === 'closed_ko_unapproved' ||
         status === 'closed_both_unapproved') && (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="mt-4 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border bg-surface p-5">
           <p className="text-sm text-text-primary">{DOCUMENT_STATUS_LABELS[status]}</p>
           <div className="flex items-center gap-2">
             <Select
@@ -474,7 +474,7 @@ export default function DocumentDetailPage() {
 
       <section className="mt-8">
         <h2 className="text-lg font-normal leading-tight text-text-primary">Historie verzí</h2>
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="mt-3 flex max-w-[928px] flex-col gap-2">
           {versions.map(({ docId: vId, version }) => (
             <div key={vId} className="rounded-lg border border-border bg-surface p-3 text-sm">
               <p className="text-text-primary">

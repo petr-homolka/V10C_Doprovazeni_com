@@ -408,7 +408,7 @@ export function FosterPersonCourseEnrollmentsSection({
       )}
 
       {showNewForm && (
-        <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleCreate} className="mt-4 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Podnět</span>
             <Select

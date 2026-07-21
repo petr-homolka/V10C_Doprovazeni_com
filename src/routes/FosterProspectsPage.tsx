@@ -202,7 +202,7 @@ export default function FosterProspectsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-4 flex flex-col max-w-[560px] gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Jméno
             <Input required value={name} onChange={(e) => setName(e.target.value)} />
@@ -288,7 +288,7 @@ export default function FosterProspectsPage() {
               return (
                 <div key={status}>
                   <h2 className="text-sm font-medium text-text-primary">{STATUS_LABELS[status]}</h2>
-                  <div className="mt-2 flex flex-col gap-2">
+                  <div className="mt-2 flex flex-col max-w-[560px] gap-2">
                     {inStatus.map(({ docId, prospect }) => (
                       <div key={docId} className="rounded-lg border border-border-subtle bg-surface p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -322,7 +322,7 @@ export default function FosterProspectsPage() {
                         </Button>
 
                         {expandedId === docId && (
-                          <div className="mt-2 flex flex-col gap-2 border-t border-border-subtle pt-2">
+                          <div className="mt-2 flex flex-col max-w-[560px] gap-2 border-t border-border-subtle pt-2">
                             {notes === null ? (
                               <p className="text-sm text-text-secondary">Načítám…</p>
                             ) : notes.length === 0 ? (

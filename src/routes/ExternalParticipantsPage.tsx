@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -12,12 +14,20 @@ import {
   createExternalParticipant,
   grantDirect,
   listExternalParticipants,
-  listGrantsForChild,
+  listGrantsForEntity,
   rejectGrant,
   requestGrant,
   revokeGrant,
 } from '@/services/externalParticipantService'
-import { PERMISSION_KEYS, isSensitivePermission, type ExternalParticipantDoc, type GrantDoc, type PermissionKey } from '@/types/externalParticipant'
+import { listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
+import {
+  PERMISSION_KEYS,
+  isSensitivePermission,
+  type ExternalEntityType,
+  type ExternalParticipantDoc,
+  type GrantDoc,
+  type PermissionKey,
+} from '@/types/externalParticipant'
 import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { Plus, UserSquare2 } from 'lucide-react'
@@ -47,18 +57,33 @@ const STATUS_LABELS: Record<GrantDoc['status'], string> = {
   rejected: 'Zamítnuto',
 }
 
+function encodeEntity(type: ExternalEntityType, id: string): string {
+  return `${type}:${id}`
+}
+
+function decodeEntity(value: string): { type: ExternalEntityType; id: string } | null {
+  const sep = value.indexOf(':')
+  if (sep < 0) return null
+  const type = value.slice(0, sep)
+  const id = value.slice(sep + 1)
+  if (!id || (type !== 'child' && type !== 'fosterPerson')) return null
+  return { type, id }
+}
+
 /**
- * /externiste — M8, §5.1. Plný grant/permission engine (viz firestore.rules
- * + externalParticipantService.ts). SEAM: dítě se tu vybírá ručně podle ID
- * (zkopírované z URL detailu dítěte, `/rodiny/:uid/dite/:childId`) — pořádný
- * rodina→dítě picker je mimo rozsah týhle dávky, appka jinak dítě podle ID
- * už umí zobrazit, tak stojí za to to nekomplikovat dřív, než bude jasné,
- * odkud se sem bude nejčastěji chodit (M9+, možná rovnou z ChildDetailPage).
+ * /externiste — M8, §5.1. Grant/permission engine (viz firestore.rules +
+ * externalParticipantService.ts). Dítě/pěstoun se vybírá vyhledávacím
+ * comboboxem přes `entityOptions` (obě entity dohromady, viz UX zpětná
+ * vazba 2026-07-21 — externista "patří" k jedné konkrétní osobě od
+ * registrace, ne až po ručním vložení ID). Lze sem přijít i rovnou
+ * z profilu dítěte/pěstouna přes `?entityType=&entityId=` (viz
+ * ChildDetailPage/FosterPersonDetailPage "Přidat externistu").
  */
 export default function ExternalParticipantsPage() {
   const { userDoc } = useAuth()
   const organizationId = userDoc?.organizationId
   const role = userDoc?.role
+  const [searchParams] = useSearchParams()
 
   const canRequest = role !== undefined && (['klicova_osoba', 'asistent_ko', 'org_admin'] as const).includes(role as never)
   const canApprove = role !== undefined && (['org_admin', 'vedouci_pobocky', 'teamleader'] as const).includes(role as never)
@@ -66,6 +91,7 @@ export default function ExternalParticipantsPage() {
 
   const [participants, setParticipants] = useState<Array<{ docId: string; participant: ExternalParticipantDoc }> | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [entityOptions, setEntityOptions] = useState<ComboboxOption[]>([])
 
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
@@ -74,11 +100,12 @@ export default function ExternalParticipantsPage() {
   const [phone, setPhone] = useState('')
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [relationLabel, setRelationLabel] = useState('')
+  const [formEntityValue, setFormEntityValue] = useState('')
   const { loading: submitting, success, run } = useAsyncSubmit()
 
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [childId, setChildId] = useState('')
-  const [loadedChildId, setLoadedChildId] = useState<string | null>(null)
+  const [entityValue, setEntityValue] = useState('')
+  const [loadedEntityId, setLoadedEntityId] = useState<string | null>(null)
   const [grants, setGrants] = useState<Array<{ docId: string; grant: GrantDoc }> | null>(null)
   const [newPermission, setNewPermission] = useState<PermissionKey>('viewDocuments')
   const [newValidFrom, setNewValidFrom] = useState(() => new Date().toISOString().slice(0, 10))
@@ -109,9 +136,48 @@ export default function ExternalParticipantsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId])
 
+  useEffect(() => {
+    if (!organizationId) return
+    Promise.all([listChildrenForOrg(organizationId), listFosterPersonsForOrg(organizationId)]).then(
+      ([children, fosterPersons]) => {
+        setEntityOptions([
+          ...children.map(({ docId, child }) => ({
+            value: encodeEntity('child', docId),
+            label: `${child.firstName} ${child.lastName} (dítě)`,
+          })),
+          ...fosterPersons.map(({ docId, fosterPerson }) => ({
+            value: encodeEntity('fosterPerson', docId),
+            label: `${fosterPerson.firstName} ${fosterPerson.lastName} (pěstoun)`,
+          })),
+        ])
+      },
+    )
+  }, [organizationId])
+
+  // Deep-link z profilu dítěte/pěstouna — předvyplní a rovnou otevře formulář.
+  useEffect(() => {
+    const entityType = searchParams.get('entityType')
+    const entityId = searchParams.get('entityId')
+    if ((entityType === 'child' || entityType === 'fosterPerson') && entityId) {
+      setShowForm(true)
+      setFormEntityValue(encodeEntity(entityType, entityId))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const formEntityLabel = useMemo(
+    () => entityOptions.find((o) => o.value === formEntityValue)?.label ?? '',
+    [entityOptions, formEntityValue],
+  )
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim() || !organizationId) return
+    const decoded = decodeEntity(formEntityValue)
+    if (!decoded) {
+      setError('Vyberte dítě nebo pěstouna, ke kterému externista patří.')
+      return
+    }
     const emailCheck = checkEmail(email)
     const phoneCheck = checkPhone(phone)
     setEmail(emailCheck.value)
@@ -119,6 +185,7 @@ export default function ExternalParticipantsPage() {
     setEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
     setPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
     if (!emailCheck.ok || !phoneCheck.ok) return
+    setError(null)
     try {
       await run(async () => {
         await createExternalParticipant({
@@ -126,6 +193,9 @@ export default function ExternalParticipantsPage() {
           name,
           email: emailCheck.value,
           relationLabel,
+          primaryEntityType: decoded.type,
+          primaryEntityId: decoded.id,
+          primaryEntityLabel: formEntityLabel,
           ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
         })
         await reload()
@@ -135,43 +205,54 @@ export default function ExternalParticipantsPage() {
       setEmail('')
       setPhone('')
       setRelationLabel('')
+      setFormEntityValue('')
     } catch {
       setError('Přidání externisty se nezdařilo.')
     }
   }
 
-  function toggleExpand(id: string) {
-    setExpandedId(expandedId === id ? null : id)
-    setChildId('')
-    setLoadedChildId(null)
-    setGrants(null)
-    setActionError(null)
-  }
-
-  async function loadGrants(epId: string) {
-    if (!childId.trim()) return
+  async function loadGrants(epId: string, idOverride?: string) {
+    const id = idOverride ?? decodeEntity(entityValue)?.id
+    if (!id) return
     setActionError(null)
     try {
-      setGrants(await listGrantsForChild(epId, childId.trim()))
-      setLoadedChildId(childId.trim())
+      setGrants(await listGrantsForEntity(epId, id))
+      setLoadedEntityId(id)
     } catch {
       setActionError('Přístupy se nepodařilo načíst.')
     }
   }
 
+  async function toggleExpand(id: string, participant: ExternalParticipantDoc) {
+    if (expandedId === id) {
+      setExpandedId(null)
+      return
+    }
+    setExpandedId(id)
+    setGrants(null)
+    setLoadedEntityId(null)
+    setActionError(null)
+    if (participant.primaryEntityType && participant.primaryEntityId) {
+      setEntityValue(encodeEntity(participant.primaryEntityType, participant.primaryEntityId))
+      await loadGrants(id, participant.primaryEntityId)
+    } else {
+      setEntityValue('')
+    }
+  }
+
   async function handleAddGrant(epId: string) {
-    const childId = loadedChildId
+    const entityId = loadedEntityId
     const uid = userDoc?.uid
-    if (!childId || !uid) return
+    if (!entityId || !uid) return
     setActionError(null)
     try {
       await runAddGrant(async () => {
         if (isSensitivePermission(newPermission)) {
-          await requestGrant(epId, childId, newPermission, newValidFrom, uid)
+          await requestGrant(epId, entityId, newPermission, newValidFrom, uid)
         } else {
-          await grantDirect(epId, childId, newPermission, newValidFrom, uid)
+          await grantDirect(epId, entityId, newPermission, newValidFrom, uid)
         }
-        setGrants(await listGrantsForChild(epId, childId))
+        setGrants(await listGrantsForEntity(epId, entityId))
       })
     } catch {
       setActionError('Přidání přístupu se nezdařilo.')
@@ -179,18 +260,18 @@ export default function ExternalParticipantsPage() {
   }
 
   async function handleAction(epId: string, action: 'approve' | 'reject' | 'activate' | 'revoke', grantId: string) {
-    const childId = loadedChildId
+    const entityId = loadedEntityId
     const uid = userDoc?.uid
-    if (!childId || !uid) return
+    if (!entityId || !uid) return
     setActionError(null)
     setPendingGrantId(grantId)
     try {
       await runAction(async () => {
-        if (action === 'approve') await approveGrant(epId, childId, grantId, uid)
-        if (action === 'reject') await rejectGrant(epId, childId, grantId, uid)
-        if (action === 'activate') await activateGrant(epId, childId, grantId, uid)
-        if (action === 'revoke') await revokeGrant(epId, childId, grantId, uid)
-        setGrants(await listGrantsForChild(epId, childId))
+        if (action === 'approve') await approveGrant(epId, entityId, grantId, uid)
+        if (action === 'reject') await rejectGrant(epId, entityId, grantId, uid)
+        if (action === 'activate') await activateGrant(epId, entityId, grantId, uid)
+        if (action === 'revoke') await revokeGrant(epId, entityId, grantId, uid)
+        setGrants(await listGrantsForEntity(epId, entityId))
       })
     } catch {
       setActionError('Akce se nezdařila.')
@@ -208,7 +289,7 @@ export default function ExternalParticipantsPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Externisté' }]}>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex max-w-[560px] items-center justify-between gap-4">
         <h1 className="text-lg font-normal leading-normal text-text-primary">Externí spolupracovníci</h1>
         {canRequest && (
           <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
@@ -218,48 +299,56 @@ export default function ExternalParticipantsPage() {
       </div>
 
       {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
+        <p className="mt-3 max-w-[560px] text-sm text-danger" role="alert">
           {error}
         </p>
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
-          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+        <form onSubmit={handleSubmit} className="mt-4 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border bg-surface p-5">
+          <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
+            Dítě nebo pěstoun, ke kterému externista patří
+            <Combobox
+              options={entityOptions}
+              value={formEntityValue}
+              onChange={setFormEntityValue}
+              placeholder="Vyhledat jméno…"
+              emptyText="V organizaci zatím nejsou žádné děti ani pěstouni."
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
             Jméno
             <Input required value={name} onChange={(e) => setName(e.target.value)} />
           </label>
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              E-mail
-              <Input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setEmailError(null) }}
-                onBlur={() => {
-                  const result = checkEmail(email)
-                  setEmail(result.value)
-                  setEmailError(result.ok ? null : (result.message ?? null))
-                }}
-              />
-              {emailError && <span className="text-xs text-danger">{emailError}</span>}
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Telefon (volitelné)
-              <Input
-                value={phone}
-                onChange={(e) => { setPhone(e.target.value); setPhoneError(null) }}
-                onBlur={() => {
-                  const result = checkPhone(phone)
-                  setPhone(result.value)
-                  setPhoneError(result.ok ? null : (result.message ?? null))
-                }}
-              />
-              {phoneError && <span className="text-xs text-danger">{phoneError}</span>}
-            </label>
-          </div>
-          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+          <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
+            E-mail
+            <Input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(null) }}
+              onBlur={() => {
+                const result = checkEmail(email)
+                setEmail(result.value)
+                setEmailError(result.ok ? null : (result.message ?? null))
+              }}
+            />
+            {emailError && <span className="text-xs text-danger">{emailError}</span>}
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
+            Telefon (volitelné)
+            <Input
+              value={phone}
+              onChange={(e) => { setPhone(e.target.value); setPhoneError(null) }}
+              onBlur={() => {
+                const result = checkPhone(phone)
+                setPhone(result.value)
+                setPhoneError(result.ok ? null : (result.message ?? null))
+              }}
+            />
+            {phoneError && <span className="text-xs text-danger">{phoneError}</span>}
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
             Vztah k rodině (např. prarodič, psycholog, škola)
             <Input required value={relationLabel} onChange={(e) => setRelationLabel(e.target.value)} />
           </label>
@@ -274,7 +363,7 @@ export default function ExternalParticipantsPage() {
         </form>
       )}
 
-      <div className="mt-4">
+      <div className="mt-4 max-w-[560px]">
         {participants === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : participants.length === 0 ? (
@@ -289,20 +378,23 @@ export default function ExternalParticipantsPage() {
                     <p className="text-xs text-text-secondary">
                       {participant.relationLabel} · {[participant.email, participant.phone].filter(Boolean).join(' · ')}
                     </p>
+                    {participant.primaryEntityLabel && (
+                      <p className="mt-0.5 text-xs text-text-tertiary">{participant.primaryEntityLabel}</p>
+                    )}
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => toggleExpand(docId)}>
+                  <Button variant="ghost" size="sm" onClick={() => toggleExpand(docId, participant)}>
                     {expandedId === docId ? 'Skrýt přístupy' : 'Spravovat přístupy'}
                   </Button>
                 </div>
 
                 {expandedId === docId && (
                   <div className="mt-3 flex flex-col gap-3 border-t border-border-subtle pt-3">
-                    <div className="flex items-end gap-2">
-                      <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-                        ID dítěte (zkopírujte z detailu dítěte)
-                        <Input value={childId} onChange={(e) => setChildId(e.target.value)} />
+                    <div className="flex flex-col gap-2">
+                      <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
+                        Dítě nebo pěstoun
+                        <Combobox options={entityOptions} value={entityValue} onChange={setEntityValue} placeholder="Vyhledat jméno…" />
                       </label>
-                      <Button size="sm" variant="secondary" onClick={() => loadGrants(docId)}>
+                      <Button size="sm" variant="secondary" className="self-start" onClick={() => loadGrants(docId)}>
                         Načíst přístupy
                       </Button>
                     </div>
@@ -313,11 +405,11 @@ export default function ExternalParticipantsPage() {
                       </p>
                     )}
 
-                    {loadedChildId && (
+                    {loadedEntityId && (
                       <>
                         {canRequest && (
-                          <div className="flex items-end gap-2">
-                            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
+                          <div className="flex flex-col gap-2">
+                            <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
                               Oprávnění
                               <Select value={newPermission} onChange={(e) => setNewPermission(e.target.value as PermissionKey)}>
                                 {PERMISSION_KEYS.map((key) => (
@@ -328,12 +420,13 @@ export default function ExternalParticipantsPage() {
                                 ))}
                               </Select>
                             </label>
-                            <label className="flex flex-col gap-1 text-sm text-text-secondary">
+                            <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
                               Platí od
                               <DatePicker value={newValidFrom} onChange={setNewValidFrom} />
                             </label>
                             <Button
                               size="sm"
+                              className="self-start"
                               loading={addingGrant}
                               success={addGrantSuccess}
                               onClick={() => handleAddGrant(docId)}
@@ -347,7 +440,7 @@ export default function ExternalParticipantsPage() {
                           {grants === null ? (
                             <p className="text-sm text-text-secondary">Načítám…</p>
                           ) : grants.length === 0 ? (
-                            <p className="text-sm text-text-secondary">Zatím žádný přístup pro tohle dítě.</p>
+                            <p className="text-sm text-text-secondary">Zatím žádný přístup pro tuhle osobu.</p>
                           ) : (
                             grants.map(({ docId: grantId, grant }) => (
                               <div key={grantId} className="flex items-center justify-between gap-3 rounded-md bg-surface-soft px-3 py-2">

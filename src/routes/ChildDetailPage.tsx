@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { Button } from '@/components/ui/button'
 import { ChildSupportSection } from '@/components/family/ChildSupportSection'
 import { useAuth } from '@/hooks/useAuth'
 import { getChild, getFamilyByUid, listFosterPersonsByRefs } from '@/services/familyService'
@@ -10,7 +11,7 @@ import { getChildRespitDaysForYear } from '@/services/respitEventService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
-import { Baby } from 'lucide-react'
+import { Baby, UserSquare2 } from 'lucide-react'
 
 const SECTIONS: ProfileSection[] = [
   { key: 'prehled', label: 'Přehled' },
@@ -25,6 +26,7 @@ const SECTIONS: ProfileSection[] = [
  */
 export default function ChildDetailPage() {
   const { familyUid, childId } = useParams<{ familyUid: string; childId: string }>()
+  const navigate = useNavigate()
   const { userDoc } = useAuth()
   const organizationId = userDoc?.organizationId
 
@@ -89,25 +91,41 @@ export default function ChildDetailPage() {
       {child && (
         <>
           {activeSection === 'prehled' && (
-            <div className="mt-2 flex items-start gap-4">
-              <EntityAvatar
-                photoURL={child.avatarUrl}
-                label={`${child.firstName} ${child.lastName}`}
-                fallbackIcon={Baby}
-                size="lg"
-              />
-              <div>
-                <h1 className="text-lg font-normal leading-normal text-text-primary">
-                  {child.firstName} {child.lastName}
-                </h1>
-                <p className="mt-1 font-mono text-sm text-text-secondary">{child.birthNumber}</p>
-                <p className="mt-3 text-sm text-text-secondary">
-                  Respit v {new Date().getFullYear()}: {respitDays ?? 0} dní čerpáno
-                  <span className="ml-1 text-text-tertiary">
-                    (zaznamenává se na profilu rodiny)
-                  </span>
-                </p>
+            <div className="mt-2 flex max-w-[928px] items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <EntityAvatar
+                  photoURL={child.avatarUrl}
+                  label={`${child.firstName} ${child.lastName}`}
+                  fallbackIcon={Baby}
+                  size="lg"
+                />
+                <div>
+                  <h1 className="text-lg font-normal leading-normal text-text-primary">
+                    {child.firstName} {child.lastName}
+                  </h1>
+                  <p className="mt-1 font-mono text-sm text-text-secondary">{child.birthNumber}</p>
+                  <p className="mt-3 text-sm text-text-secondary">
+                    Respit v {new Date().getFullYear()}: {respitDays ?? 0} dní čerpáno
+                    <span className="ml-1 text-text-tertiary">
+                      (zaznamenává se na profilu rodiny)
+                    </span>
+                  </p>
+                </div>
               </div>
+              {childId && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() =>
+                    navigate(
+                      `/externiste?entityType=child&entityId=${encodeURIComponent(childId)}`,
+                    )
+                  }
+                >
+                  <UserSquare2 size={16} /> Přidat externistu
+                </Button>
+              )}
             </div>
           )}
 

@@ -146,9 +146,9 @@ export default function FamilyListPage() {
       {showForm && (
         <form
           onSubmit={handleCreate}
-          className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+          className="mt-4 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border bg-surface p-5"
         >
-          <label className="flex max-w-[420px] flex-col gap-1.5">
+          <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">
               Adresa (volitelné)
             </span>
@@ -160,7 +160,7 @@ export default function FamilyListPage() {
         </form>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 max-w-[928px]">
         {families === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : families.length === 0 ? (

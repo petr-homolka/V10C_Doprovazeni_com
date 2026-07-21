@@ -220,7 +220,7 @@ export function FosterPersonEducationSection({
       {showCourseForm && (
         <form
           onSubmit={handleAddCourse}
-          className="mt-3 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
+          className="mt-3 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
         >
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
@@ -278,7 +278,7 @@ export function FosterPersonEducationSection({
         </form>
       )}
 
-      <div className="mt-4">
+      <div className="mt-4 max-w-[928px]">
         {coursesError ? (
           <p className="text-sm text-danger" role="alert">
             {coursesError}
@@ -313,7 +313,7 @@ export function FosterPersonEducationSection({
 
       <div className="mt-6">
         <h3 className="text-sm font-medium text-text-primary">Stav dávek</h3>
-        <div className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           {BENEFIT_KEYS.map((key) => (
             <div key={key} className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm text-text-primary">{BENEFIT_LABELS[key]}</span>

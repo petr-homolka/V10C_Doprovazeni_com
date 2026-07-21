@@ -84,7 +84,7 @@ export function OspodReportSection({
         )}
       </div>
       {open && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Název dokumentu
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
