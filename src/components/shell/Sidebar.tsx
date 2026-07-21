@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Calendar, CheckSquare, ClipboardCheck, FileText, Home, UserCog, UserPlus, Users } from 'lucide-react'
+import { Calendar, CheckSquare, ClipboardCheck, FileText, Home, UserCog, UserPlus, UserSquare2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { isStaffRole } from '@/types/user'
@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { to: '/dokumenty', label: 'Dokumenty', icon: FileText, end: false, staffOnly: false },
   { to: '/zajemci', label: 'Zájemci', icon: UserPlus, end: false, staffOnly: true },
   { to: '/kvalita', label: 'Kvalita', icon: ClipboardCheck, end: false, staffOnly: true },
+  { to: '/externiste', label: 'Externisté', icon: UserSquare2, end: false, staffOnly: true },
 ] as const
 
 export function Sidebar() {

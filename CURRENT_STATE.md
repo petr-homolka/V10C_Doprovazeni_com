@@ -5,6 +5,56 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## M8 hotové — plný grant/permission engine (2026-07-21)
+
+Navazuje na M6+M7 seam ("`externalParticipantService.ts` má jen minimální
+CRUD, plný engine je M8"). Datový model (`GrantDoc`, `PERMISSION_KEYS`,
+`SENSITIVE_PERMISSIONS`, `ExternalRoleTemplateDoc`) byl už navržený v
+`types/externalParticipant.ts` z dřívějška, jen nepoužitý — M8 ho
+doimplementoval, nemusel se vymýšlet od nuly.
+
+**Grant lifecycle** (`externalParticipantService.ts`): necitlivé oprávnění
+= `grantDirect` (1 krok, rovnou `active`). Citlivé (`viewMedical`,
+`signDocuments`, `chatWith`, `videoCalls`) = `requestGrant→approveGrant→
+activateGrant`, 3 KROKY/3 ROLE (ne nutně 3 různí lidé — čteme "3 aktéři"
+jako 3 role v řetězci): KO/asistent/org_admin žádá → org_admin/vedoucí
+pobočky/teamleader schvaluje → **jen org_admin** aktivuje (samostatný, užší
+gate). `revokeGrant` vždy nastavuje `validTo`, nikdy delete — grant dokument
+nejde smazat vůbec (`allow delete: if false` na serveru, viz níž).
+
+**firestore.rules** — nový blok `external_participants/{epId}/access/
+{childId}/grants/{grantId}` (žádný vlastní `organizationId`, scoping se
+čte z rodičovského externisty přes `get()`, stejná "list/rules musí
+zrcadlit scoping" past jako u M1.5 importJobs). Rules vynucují přesně tytéž
+přechody jako service vrstva — klient nemůže sensitivní grant zapsat rovnou
+jako `active`, ani přeskočit roli u schválení/aktivace/revoke. Nový blok
+`organizations/{orgId}/externalRoleTemplates/{id}` — jen zkratka pro
+vyplnění formuláře, NE pro obejití schvalování.
+
+**§5.1 povinná rules test sada** (`tests/rules/m8.rules.test.ts`, 13
+testů) — na rozdíl od M6+M7 (kde emulátor na tehdejším stroji nešel
+spustit) tentokrát **skutečně spuštěno a zeleně prošlo** (77/77 včetně
+m0-m2/m1.5), protože emulátor v aktuálním prostředí běží bez potíží. Zároveň
+opraven skrytý config bug: `vitest.config.ts`'s `include: ['src/**/*.test.ts']`
+dělal `npm run test:rules` mrtvý ("No test files found") bez ohledu na
+emulátor — vyčleněna `vitest.rules.config.ts` (`fileParallelism: false`,
+protože všechny rules test soubory sdílí jeden Firestore emulátor a
+souběžné `clearFirestore()` volání si navzájem mazaly rozdělaná data).
+
+**UI** (`/externiste`, `ExternalParticipantsPage.tsx`) — seznam
+externistů + přidání + správa přístupů. **SEAM, vědomě zjednodušeno**:
+dítě se vybírá zadáním ID ručně (zkopírovaného z URL `/rodiny/:uid/
+dite/:childId`), ne přes rodina→dítě picker — pořádný picker je mimo
+rozsah týhle dávky, appka jinak dítě podle ID už umí zobrazit. Šablony
+rolí (`externalRoleTemplates`) mají hotový backend+rules, ale ŽÁDNÉ UI
+zatím (čistě zkratka pro vyplnění formuláře, není blokující pro funkční
+grant engine — případně M9+).
+
+**Nasazeno:** `deploy:rules` (nový rules blok) + `deploy:hosting`
+(nová stránka/routa) na `production` (`v10c-doprovazeni-com`) přes
+dedikovaný `claude-deploy` service account (role Firebase Admin, jen
+tenhle projekt).
+
 ## UX přestavba profilových stránek (2026-07-20): rodina/Dohoda/pěstoun/dítě
 
 Po ověření M6+M7 dávky poslal Petr ostrou zpětnou vazbu se 4 body a dvěma

@@ -27,6 +27,7 @@ const MojeDashboardPage = lazy(() => import('@/routes/moje/MojeDashboardPage'))
 const PlatformSettingsPage = lazy(() => import('@/routes/PlatformSettingsPage'))
 const InspectionsPage = lazy(() => import('@/routes/InspectionsPage'))
 const FosterProspectsPage = lazy(() => import('@/routes/FosterProspectsPage'))
+const ExternalParticipantsPage = lazy(() => import('@/routes/ExternalParticipantsPage'))
 const AgreementDetailPage = lazy(() => import('@/routes/AgreementDetailPage'))
 const FosterPersonDetailPage = lazy(() => import('@/routes/FosterPersonDetailPage'))
 const ChildDetailPage = lazy(() => import('@/routes/ChildDetailPage'))
@@ -71,6 +72,7 @@ export default function App() {
               <Route path="/platforma" element={<PlatformSettingsPage />} />
               <Route path="/kvalita" element={<InspectionsPage />} />
               <Route path="/zajemci" element={<FosterProspectsPage />} />
+              <Route path="/externiste" element={<ExternalParticipantsPage />} />
             </Route>
           </Routes>
         </Suspense>

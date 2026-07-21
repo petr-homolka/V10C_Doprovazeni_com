@@ -867,11 +867,78 @@ service cloud.firestore {
     // ---- external_participants/{id} — TOP-LEVEL, §5.1 základ (jen CRUD;
     // plný 3-krokový grant engine je M8, samostatný modul)
 
-    match /external_participants/{id} {
+    match /external_participants/{epId} {
       allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
       allow create: if isStaff() && request.resource.data.organizationId == userDoc().organizationId;
       allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
       allow delete: if false;
+
+      // ---- external_participants/{epId}/access/{childId}/grants/{grantId} — M8, §5.1
+      //
+      // Plný grant/permission engine. `access/{childId}` je jen cesta, žádný
+      // vlastní dokument (grants scoping se čte z rodičovského externisty,
+      // stejná "žádné vlastní organizationId" past jako u M1.5 importJobs/
+      // stagingRecords). Citlivá oprávnění (viz PERMISSION_KEYS v
+      // src/types/externalParticipant.ts — drž seznam SYNCHRONNÍ)
+      // MUSÍ projít `requested→approved→active` (3 role, ne nutně 3 různí
+      // lidé — "3 aktéři" čteme jako 3 ROLE v řetězci, ne vynucení tří
+      // odlišných uid). Necitlivá = `grantDirect`, rovnou `active`, jeden krok.
+      // `revoke` = update na status 'revoked' (nastavuje `validTo` v service
+      // vrstvě), NIKDY delete — proto `allow delete: if false` napořád.
+      match /access/{childId}/grants/{grantId} {
+        function participantOrgId() {
+          return get(/databases/$(database)/documents/external_participants/$(epId)).data.organizationId;
+        }
+        function isSensitive(key) {
+          return key in ['viewMedical', 'signDocuments', 'chatWith', 'videoCalls'];
+        }
+        // request (citlivé) i grantDirect (necitlivé): KO/asistent/org_admin.
+        function canRequest() {
+          return isStaff() && userDoc().role in ['klicova_osoba', 'asistent_ko', 'org_admin'] && sameOrg(participantOrgId());
+        }
+        // schválení a zamítnutí: vedení organizace.
+        function canApprove() {
+          return isStaff() && userDoc().role in ['org_admin', 'vedouci_pobocky', 'teamleader'] && sameOrg(participantOrgId());
+        }
+        // aktivace: samostatný, užší krok — jen org_admin.
+        function canActivate() {
+          return isStaff() && userDoc().role == 'org_admin' && sameOrg(participantOrgId());
+        }
+        function canRevoke() {
+          return isStaff() && userDoc().role in ['org_admin', 'vedouci_pobocky', 'teamleader'] && sameOrg(participantOrgId());
+        }
+        // update nesmí "cestou" změnit, KOMU/ČEMU grant patří — jen status/audit pole.
+        function sameGrantIdentity() {
+          return request.resource.data.permissionKey == resource.data.permissionKey;
+        }
+
+        allow read: if isSuperadmin() || sameOrg(participantOrgId());
+
+        allow create: if isSuperadmin() ||
+          (canRequest() && !isSensitive(request.resource.data.permissionKey) && request.resource.data.status == 'active') ||
+          (canRequest() && isSensitive(request.resource.data.permissionKey) && request.resource.data.status == 'requested');
+
+        allow update: if isSuperadmin() || (sameGrantIdentity() && (
+          (canApprove() && resource.data.status == 'requested' && request.resource.data.status == 'approved') ||
+          (canApprove() && resource.data.status == 'requested' && request.resource.data.status == 'rejected') ||
+          (canActivate() && resource.data.status == 'approved' && request.resource.data.status == 'active') ||
+          (canRevoke() && resource.data.status in ['requested', 'approved', 'active'] && request.resource.data.status == 'revoked')
+        ));
+
+        allow delete: if false;
+      }
+    }
+
+    // ---- organizations/{orgId}/externalRoleTemplates/{id} — M8, §5.1 -----
+    //
+    // Jen zkratka pro VYPLNĚNÍ formuláře (předvyplní defaultPermissions),
+    // NE pro obejití schvalování — citlivá oprávnění pořád projdou celým
+    // `requestGrant→approveGrant→activateGrant` řetězcem výš, ať pochází
+    // odkudkoli. Nízká citlivost dat → čtení všem ve staffu, zápis jen org_admin.
+
+    match /organizations/{orgId}/externalRoleTemplates/{id} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow write: if isSuperadmin() || (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
     }
 
     // ---- Vše ostatní: default deny, dokud modul nepřidá vlastní match ---
