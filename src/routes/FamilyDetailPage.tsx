@@ -16,6 +16,7 @@ import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { OspodReportSection } from '@/components/family/OspodReportSection'
 import { FamilyCareEventsSection } from '@/components/family/FamilyCareEventsSection'
+import { FamilyChatSection } from '@/components/family/FamilyChatSection'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getOrganization } from '@/services/organizationService'
@@ -72,6 +73,7 @@ const SECTIONS: ProfileSection[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'casova-osa', label: 'Časová osa' },
   { key: 'dokumenty', label: 'Dokumenty' },
+  { key: 'chat', label: 'Chat' },
 ]
 
 /**
@@ -873,6 +875,17 @@ export default function FamilyDetailPage() {
             </div>
           </section>
         </>
+      )}
+
+      {activeSection === 'chat' && docId && organizationId && userDoc && (
+        <div className="mt-8">
+          <FamilyChatSection
+            familyDocId={docId}
+            organizationId={organizationId}
+            currentUid={userDoc.uid}
+            staffList={staffList}
+          />
+        </div>
       )}
       </div>
 

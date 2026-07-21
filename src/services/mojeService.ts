@@ -4,6 +4,7 @@ import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
 import type { TimelineEntryDoc } from '@/types/timelineEntry'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
+import type { MessageDoc } from '@/types/message'
 
 /**
  * Barrel service (ZADANI §11 bod 3) pro pěstounovu appku `/moje` — M4.
@@ -95,4 +96,24 @@ export async function listFosterVisibleDocuments(
   return snap.docs
     .map((d) => ({ docId: d.id, document: d.data() as FamilyDocumentDoc }))
     .sort((a, b) => b.document.updatedAt.localeCompare(a.document.updatedAt))
+}
+
+/**
+ * Chat, M9 — stejná past jako `listFosterVisibleTimelineEntries`: rules
+ * `messages` read pro pěstouna testuje PŘESNĚ `audience == 'foster'`,
+ * dotaz proto musí mít tenhle `where()` filtr, jinak Firestore zamítne
+ * celý list dotaz. Zápis (odeslání zprávy) žije v `messageService.ts`
+ * (`sendFosterMessage`) — stejná dělicí čára jako `documents`/
+ * `fosterApproveDocument`.
+ */
+export async function listFosterVisibleMessages(
+  familyDocId: string,
+): Promise<Array<{ docId: string; message: MessageDoc }>> {
+  const q = query(
+    collection(db, 'families', familyDocId, 'messages'),
+    where('audience', '==', 'foster'),
+    orderBy('createdAt', 'asc'),
+  )
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ docId: d.id, message: d.data() as MessageDoc }))
 }

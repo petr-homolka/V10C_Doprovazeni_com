@@ -5,6 +5,51 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## M9 hotové — Chat (2026-07-21)
+
+Navazuje přímo na `sharing.ts` §7.4 doc komentář ("budoucím chatem
+(`messages.audience`, M9)") a `/moje` placeholder ("Chat zatím
+připravujeme"). Nová podkolekce `families/{familyId}/messages/{id}`
+(`types/message.ts`) — na rozdíl od `timeline` (VÝHRADNĚ staff zakládá) je
+tohle OBOUSMĚRNÉ vlákno, jedno na rodinu (ne per dítě/pěstoun).
+
+**`audience` pole** (`SharingLevel`, jiné jméno než `timeline.sharingLevel`,
+stejný typ — "jeden mentální model sdílení" per §7.4): staff smí zapsat
+`'foster'` (skutečná zpráva) i `'internal'` (poznámka k vláknu, kterou
+pěstoun nikdy neuvidí — HelpScout/Intercom "note vs. reply" vzor, přepínač
+"Jen interní poznámka" v composeru). Pěstoun smí VÝHRADNĚ `'foster'`.
+`'private'`/`'ospod'` v chatu nedávají smysl (dvoustranná konverzace, OSPOD
+nemá portál) a nikde se nepoužívají, i když typ je sdílený.
+
+**`firestore.rules`** — nový blok `{path=**}/messages/{messageId}`, DVA
+disjunkty na `create` (staff/`sameOrg`+aktivní Dohoda, pěstoun/vlastní
+rodina), staff čte celé vlákno, pěstoun jen `audience=='foster'` (musí
+zrcadlit `mojeService.listFosterVisibleMessages` dotaz, §5 "List dotaz vs.
+pole v pravidle"). `update`/`delete` `if false` (append-only). Spolupracovník
+(M9 Spolupracovník, `isStaff()` vyloučen) NEMÁ k chatu přístup vůbec — není
+v seznamu jeho modulů, žádný carve-out. Nová sada
+`tests/rules/m9.messages.rules.test.ts` (15 testů, 107/107 celkem zeleně).
+
+**Žádný `onSnapshot`** (§10 "jediný listener v appce = vlastní profil") —
+manuální reload-po-akci stejně jako zbytek appky, doplněné tlačítkem
+"Obnovit" na staffové straně pro ruční kontrolu nových zpráv.
+
+**UI** — nová záložka "Chat" na `FamilyDetailPage`
+(`FamilyChatSection.tsx`), a plně funkční "Chat s klíčovou osobou" karta na
+`/moje` (`MojeDashboardPage.tsx`, dřív jen "připravujeme" placeholder).
+Bubliny rozlišené zarovnáním (pěstoun vlevo, staff vpravo) a stylem
+(interní poznámka = přerušovaný okraj + žlutý štítek "Jen tým"). Pěstoun
+vidí autora staff zpráv jako generickou "Klíčová osoba" (M4 vzor — nemá
+čtecí právo na `users/{staffUid}`).
+
+**Živě ověřeno end-to-end** proti lokálnímu emulátoru (Playwright, dočasný
+skript smazán po testu) — staff odeslal zprávu pěstounovi + internal
+poznámku, pěstoun (přes SKUTEČNÝ magic-link tok, `sendSignInLinkToEmail` +
+emulátorový `oobCodes` endpoint, ne obchvat) viděl foster zprávu a NEviděl
+internal poznámku, odeslal odpověď, staff ji po "Obnovit" uviděl. Mimochodem
+tím poprvé živě ověřen i samotný M4 magic-link klik, dřív vedený jako
+neověřený SEAM.
+
 ## M8 hotové — plný grant/permission engine (2026-07-21)
 
 Navazuje na M6+M7 seam ("`externalParticipantService.ts` má jen minimální

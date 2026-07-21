@@ -586,6 +586,51 @@ service cloud.firestore {
       allow update, delete: if false; // append-only, §5
     }
 
+    // ---- families/{familyId}/messages/{id} — Chat, M9 --------------------
+    //
+    // Na rozdíl od `timeline` výš (jen staff zakládá) je tohle OBOUSMĚRNÉ
+    // vlákno — pěstoun i staff zakládají zápisy do STEJNÉ podkolekce.
+    // `audience` (sharing.ts §7.4 "messages.audience") — staff smí zapsat
+    // 'foster' (skutečná zpráva) i 'internal' (interní poznámka k vláknu,
+    // pěstoun ji nikdy neuvidí); pěstoun VÝHRADNĚ 'foster' (jediná úroveň,
+    // kterou sám vidí — nemá smysl mu dovolit zapsat cokoli jiného).
+    // `private`/`ospod` nemají v chatu smysl (dvoustranná konverzace, OSPOD
+    // nemá portál), proto je ani jeden disjunkt níž nepovoluje, i když typ
+    // (`SharingLevel`) je sdílený se `sharing.ts`.
+    //
+    // Čtení: staff vidí CELÉ vlákno (`sameOrg`, stejně jako timeline),
+    // pěstoun jen `audience == 'foster'` zápisy vlastní rodiny — musí
+    // přesně zrcadlit `mojeService.listFosterVisibleMessages` dotaz (§5
+    // "List dotaz vs. pole v pravidle", stejná past jako u timeline výš).
+    //
+    // Spolupracovník (M9) NEMÁ přístup — chat je KO↔pěstoun věc, není v
+    // seznamu jeho modulů (`collaborator.ts`), a `isCollaborator()` tu
+    // záměrně není použité, stejně jako `isStaff()` ho jinde vylučuje.
+    match /{path=**}/messages/{messageId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId) ||
+        (
+          isFoster() && path[1] == userDoc().fosterFamilyId &&
+          resource.data.audience == 'foster'
+        );
+      allow create: if isSuperadmin() ||
+        (
+          isStaff() &&
+          request.resource.data.createdByOrgId == userDoc().organizationId &&
+          request.resource.data.authorRole == 'staff' &&
+          request.resource.data.createdByUid == request.auth.uid &&
+          request.resource.data.audience in ['foster', 'internal'] &&
+          hasActiveAgreementFor(path[1])
+        ) ||
+        (
+          isFoster() && path[1] == userDoc().fosterFamilyId &&
+          request.resource.data.createdByOrgId == userDoc().organizationId &&
+          request.resource.data.authorRole == 'foster' &&
+          request.resource.data.createdByUid == request.auth.uid &&
+          request.resource.data.audience == 'foster'
+        );
+      allow update, delete: if false; // append-only, stejně jako timeline
+    }
+
     // ---- families/{familyId}/documents/{docId} — ZADANI §6 A1, M5 --------
     //
     // Plný automat (M2 měla jen pravidla + zjednodušený český placeholder
