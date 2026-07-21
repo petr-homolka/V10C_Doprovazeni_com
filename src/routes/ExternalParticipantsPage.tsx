@@ -17,6 +17,7 @@ import {
   revokeGrant,
 } from '@/services/externalParticipantService'
 import { PERMISSION_KEYS, isSensitivePermission, type ExternalParticipantDoc, type GrantDoc, type PermissionKey } from '@/types/externalParticipant'
+import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import { Plus, UserSquare2 } from 'lucide-react'
 
 const PERMISSION_LABELS: Record<PermissionKey, string> = {
@@ -67,7 +68,9 @@ export default function ExternalParticipantsPage() {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [phone, setPhone] = useState('')
+  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [relationLabel, setRelationLabel] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -97,9 +100,22 @@ export default function ExternalParticipantsPage() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!name.trim() || !organizationId) return
+    const emailCheck = checkEmail(email)
+    const phoneCheck = checkPhone(phone)
+    setEmail(emailCheck.value)
+    setPhone(phoneCheck.value)
+    setEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
+    setPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
+    if (!emailCheck.ok || !phoneCheck.ok) return
     setSubmitting(true)
     try {
-      await createExternalParticipant({ organizationId, name, email, relationLabel, ...(phone ? { phone } : {}) })
+      await createExternalParticipant({
+        organizationId,
+        name,
+        email: emailCheck.value,
+        relationLabel,
+        ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
+      })
       setShowForm(false)
       setName('')
       setEmail('')
@@ -196,11 +212,31 @@ export default function ExternalParticipantsPage() {
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               E-mail
-              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setEmailError(null) }}
+                onBlur={() => {
+                  const result = checkEmail(email)
+                  setEmail(result.value)
+                  setEmailError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {emailError && <span className="text-xs text-danger">{emailError}</span>}
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Telefon (volitelné)
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+              <Input
+                value={phone}
+                onChange={(e) => { setPhone(e.target.value); setPhoneError(null) }}
+                onBlur={() => {
+                  const result = checkPhone(phone)
+                  setPhone(result.value)
+                  setPhoneError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {phoneError && <span className="text-xs text-danger">{phoneError}</span>}
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">

@@ -14,6 +14,7 @@ import {
   updateFosterProspectStatus,
 } from '@/services/fosterProspectService'
 import type { FosterProspectDoc, FosterProspectExistingStatus, FosterProspectNoteDoc, FosterProspectStatus } from '@/types/fosterProspect'
+import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import { Plus, UserPlus } from 'lucide-react'
 
 const STATUS_LABELS: Record<FosterProspectStatus, string> = {
@@ -52,7 +53,9 @@ export default function FosterProspectsPage() {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [contactPhone, setContactPhone] = useState('')
+  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [source, setSource] = useState('')
   const [existingFosterStatus, setExistingFosterStatus] = useState<FosterProspectExistingStatus>('neznamo')
   const [submitting, setSubmitting] = useState(false)
@@ -77,14 +80,21 @@ export default function FosterProspectsPage() {
     e.preventDefault()
     setFormError(null)
     if (!name.trim() || !organizationId || !userDoc) return
+    const emailCheck = checkEmail(contactEmail)
+    const phoneCheck = checkPhone(contactPhone)
+    setContactEmail(emailCheck.value)
+    setContactPhone(phoneCheck.value)
+    setEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
+    setPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
+    if (!emailCheck.ok || !phoneCheck.ok) return
     setSubmitting(true)
     try {
       await createFosterProspect({
         organizationId,
         name,
-        contactEmail: contactEmail || undefined,
-        contactPhone: contactPhone || undefined,
-        source: source || undefined,
+        ...(emailCheck.value ? { contactEmail: emailCheck.value } : {}),
+        ...(phoneCheck.value ? { contactPhone: phoneCheck.value } : {}),
+        ...(source ? { source } : {}),
         existingFosterStatus,
         assignedTo: userDoc.uid,
       })
@@ -185,11 +195,30 @@ export default function FosterProspectsPage() {
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               E-mail (volitelné)
-              <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+              <Input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => { setContactEmail(e.target.value); setEmailError(null) }}
+                onBlur={() => {
+                  const result = checkEmail(contactEmail)
+                  setContactEmail(result.value)
+                  setEmailError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {emailError && <span className="text-xs text-danger">{emailError}</span>}
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Telefon (volitelné)
-              <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+              <Input
+                value={contactPhone}
+                onChange={(e) => { setContactPhone(e.target.value); setPhoneError(null) }}
+                onBlur={() => {
+                  const result = checkPhone(contactPhone)
+                  setContactPhone(result.value)
+                  setPhoneError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {phoneError && <span className="text-xs text-danger">{phoneError}</span>}
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">

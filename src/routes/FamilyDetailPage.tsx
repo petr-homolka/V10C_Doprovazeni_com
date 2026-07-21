@@ -30,6 +30,7 @@ import { getActiveAgreement } from '@/services/agreementService'
 import { createDocument, listFamilyDocuments } from '@/services/documentService'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
+import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -109,7 +110,9 @@ export default function FamilyDetailPage() {
   const [fosterFirstName, setFosterFirstName] = useState('')
   const [fosterLastName, setFosterLastName] = useState('')
   const [fosterPhone, setFosterPhone] = useState('')
+  const [fosterPhoneError, setFosterPhoneError] = useState<string | null>(null)
   const [fosterEmail, setFosterEmail] = useState('')
+  const [fosterEmailError, setFosterEmailError] = useState<string | null>(null)
 
   const [showChildForm, setShowChildForm] = useState(false)
   const [childFirstName, setChildFirstName] = useState('')
@@ -275,6 +278,13 @@ export default function FamilyDetailPage() {
   async function handleAddFoster(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId) return
+    const phoneCheck = checkPhone(fosterPhone)
+    const emailCheck = checkEmail(fosterEmail)
+    setFosterPhone(phoneCheck.value)
+    setFosterEmail(emailCheck.value)
+    setFosterPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
+    setFosterEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
+    if (!phoneCheck.ok || !emailCheck.ok) return
     setSubmitting(true)
     setError(null)
     try {
@@ -283,8 +293,8 @@ export default function FamilyDetailPage() {
       await addFosterPersonToFamily(docId, organizationId, org.orgCode, {
         firstName: fosterFirstName,
         lastName: fosterLastName,
-        phone: fosterPhone || undefined,
-        email: fosterEmail || undefined,
+        ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
+        ...(emailCheck.value ? { email: emailCheck.value } : {}),
       })
       setFosterFirstName('')
       setFosterLastName('')
@@ -519,11 +529,30 @@ export default function FamilyDetailPage() {
                   </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-relaxed text-text-primary">Telefon</span>
-                    <Input value={fosterPhone} onChange={(e) => setFosterPhone(e.target.value)} />
+                    <Input
+                      value={fosterPhone}
+                      onChange={(e) => { setFosterPhone(e.target.value); setFosterPhoneError(null) }}
+                      onBlur={() => {
+                        const result = checkPhone(fosterPhone)
+                        setFosterPhone(result.value)
+                        setFosterPhoneError(result.ok ? null : (result.message ?? null))
+                      }}
+                    />
+                    {fosterPhoneError && <span className="text-xs text-danger">{fosterPhoneError}</span>}
                   </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
-                    <Input type="email" value={fosterEmail} onChange={(e) => setFosterEmail(e.target.value)} />
+                    <Input
+                      type="email"
+                      value={fosterEmail}
+                      onChange={(e) => { setFosterEmail(e.target.value); setFosterEmailError(null) }}
+                      onBlur={() => {
+                        const result = checkEmail(fosterEmail)
+                        setFosterEmail(result.value)
+                        setFosterEmailError(result.ok ? null : (result.message ?? null))
+                      }}
+                    />
+                    {fosterEmailError && <span className="text-xs text-danger">{fosterEmailError}</span>}
                   </label>
                 </div>
                 <Button type="submit" disabled={submitting} className="w-fit">

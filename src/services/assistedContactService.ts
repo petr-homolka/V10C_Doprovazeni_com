@@ -64,7 +64,7 @@ export async function markPreparationDone(
 ): Promise<void> {
   await updateDoc(doc(occurrencesCollection(familyId, seriesId), occurrenceId), {
     status: 'priprava_hotova',
-    preparation: { staffUid, completedAt: new Date().toISOString(), note },
+    preparation: { staffUid, completedAt: new Date().toISOString(), ...(note ? { note } : {}) },
   })
 }
 
@@ -78,7 +78,7 @@ export async function markAssistanceDone(
 ): Promise<void> {
   await updateDoc(doc(occurrencesCollection(familyId, seriesId), occurrenceId), {
     status: 'probehlo',
-    assistance: { staffUid, actualDate: new Date().toISOString(), location, note },
+    assistance: { staffUid, actualDate: new Date().toISOString(), location, ...(note ? { note } : {}) },
   })
 }
 
@@ -92,7 +92,7 @@ export async function evaluateOccurrence(
   doporuceniProPristi?: string,
 ): Promise<void> {
   await updateDoc(doc(occurrencesCollection(familyId, seriesId), occurrenceId), {
-    evaluation: { evaluatedBy, evaluatedAt: new Date().toISOString(), summary, doporuceniProPristi },
+    evaluation: { evaluatedBy, evaluatedAt: new Date().toISOString(), summary, ...(doporuceniProPristi ? { doporuceniProPristi } : {}) },
   })
 }
 

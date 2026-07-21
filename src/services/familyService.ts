@@ -87,7 +87,7 @@ export async function createFamily(
     uid,
     orgAccessList: [organizationId],
     fosterPersonRefs: [],
-    address,
+    ...(address ? { address } : {}),
     createdAt: new Date().toISOString(),
     ...(createdByImportJobRef ? { createdByImportJobRef } : {}),
   }

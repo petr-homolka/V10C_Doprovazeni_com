@@ -13,6 +13,7 @@ import { listActiveCaseloadByKo } from '@/services/agreementService'
 import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
 import { computeEffectiveCapacityThreshold } from '@/lib/capacityThreshold'
 import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
+import { checkEmail } from '@/lib/contactValidation'
 import { Plus, UserCog } from 'lucide-react'
 
 // Org_admin nepřiděluje `superadmin` (platformní role) — viz firestore.rules.
@@ -37,6 +38,7 @@ export default function StaffPage() {
   const [submitting, setSubmitting] = useState(false)
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<StaffRole>('zamestnanec')
 
@@ -98,10 +100,14 @@ export default function StaffPage() {
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
     if (!organizationId) return
+    const emailCheck = checkEmail(email)
+    setEmail(emailCheck.value)
+    setEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
+    if (!emailCheck.ok) return
     setSubmitting(true)
     setError(null)
     try {
-      await createStaffMember({ email, password, displayName, role, organizationId })
+      await createStaffMember({ email: emailCheck.value, password, displayName, role, organizationId })
       setDisplayName('')
       setEmail('')
       setPassword('')
@@ -177,7 +183,18 @@ export default function StaffPage() {
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
-              <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setEmailError(null) }}
+                onBlur={() => {
+                  const result = checkEmail(email)
+                  setEmail(result.value)
+                  setEmailError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {emailError && <span className="text-xs text-danger">{emailError}</span>}
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Dočasné heslo</span>

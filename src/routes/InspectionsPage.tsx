@@ -85,8 +85,8 @@ export default function InspectionsPage() {
       .map((f) => ({
         criterionCode: f.criterionCode.trim(),
         score: f.score,
-        deficiencyNote: f.deficiencyNote || undefined,
-        correctiveAction: f.correctiveAction || undefined,
+        ...(f.deficiencyNote ? { deficiencyNote: f.deficiencyNote } : {}),
+        ...(f.correctiveAction ? { correctiveAction: f.correctiveAction } : {}),
         correctiveDeadline: f.correctiveDeadline ? new Date(f.correctiveDeadline).toISOString() : null,
       }))
     if (findings.length === 0) {

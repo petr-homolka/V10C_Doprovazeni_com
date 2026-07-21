@@ -17,7 +17,7 @@ export default function LoginPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
       navigate('/', { replace: true })
     } catch {
       setError('Přihlášení se nezdařilo. Zkontrolujte e-mail a heslo.')

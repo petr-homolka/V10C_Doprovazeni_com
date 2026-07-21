@@ -380,7 +380,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
           startDate: new Date(startDate).toISOString(),
           recurrence: { frequency, interval: Number(interval) },
         },
-        defaultLocation: defaultLocation || undefined,
+        ...(defaultLocation ? { defaultLocation } : {}),
         createdBy: currentUid,
       })
       setShowForm(false)

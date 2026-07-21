@@ -454,7 +454,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
         periodTo: new Date(periodTo).toISOString(),
         documentRef: source === 'rucni' ? documentRef : null,
         createdBy: currentUid,
-        note: note || undefined,
+        ...(note ? { note } : {}),
       })
       setShowForm(false)
       setCategory('doucovani')
