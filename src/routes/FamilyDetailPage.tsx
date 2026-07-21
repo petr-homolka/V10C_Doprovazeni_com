@@ -806,9 +806,9 @@ export default function FamilyDetailPage() {
             {showDocumentForm && (
               <form
                 onSubmit={handleCreateDocument}
-                className="mt-4 flex flex-col gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-5"
+                className="mt-4 flex flex-col gap-4 max-w-[928px] rounded-lg border border-border bg-surface p-5"
               >
-                <label className="flex flex-col gap-1.5">
+                <label className="flex flex-col gap-1.5 max-w-[560px]">
                   <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
                   <Input required value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
                 </label>

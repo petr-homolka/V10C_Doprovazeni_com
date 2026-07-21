@@ -318,7 +318,7 @@ export default function DocumentDetailPage() {
         </div>
       )}
 
-      <section className="mt-6 max-w-[720px]">
+      <section className="mt-6 max-w-[928px]">
         {isEditable ? (
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
