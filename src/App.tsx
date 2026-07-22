@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import RequireAuth from '@/routes/RequireAuth'
 import RequireFosterAuth from '@/routes/moje/RequireFosterAuth'
+import { useIsMobile } from '@/hooks/useIsMobile'
 
 // Code-split lazy routes — §10 provozní úspornost (statická SPA, code-split
 // lazy routes). Přidávej sem novou stránku pro každý modul (M1+), ne do
@@ -34,6 +35,8 @@ const FosterPersonDetailPage = lazy(() => import('@/routes/FosterPersonDetailPag
 const ChildDetailPage = lazy(() => import('@/routes/ChildDetailPage'))
 const SpolupracovnikDashboardPage = lazy(() => import('@/routes/SpolupracovnikDashboardPage'))
 const CalendarPage = lazy(() => import('@/routes/CalendarPage'))
+const MobileHomePage = lazy(() => import('@/routes/mobile/MobileHomePage'))
+const MobileAccountPage = lazy(() => import('@/routes/mobile/MobileAccountPage'))
 
 function RouteFallback() {
   return (
@@ -41,6 +44,18 @@ function RouteFallback() {
       Načítání…
     </div>
   )
+}
+
+/**
+ * M11 mobil/PWA odlišení — na `/` rozhoduje ŠÍŘKA okna (`useIsMobile`),
+ * ne responzivní CSS: mobilní `MobileHomePage` je JINÁ stránka, ne
+ * zmenšenina `DashboardPage`u (viz `useIsMobile.ts`/`MobileShell.tsx`).
+ * Zbytek appky (Rodiny/Kalendář/…) zůstává vědomě desktopový i na
+ * mobilu — SEAM, přestavěno je jen to, co KO v terénu skutečně potřebuje.
+ */
+function HomeRoute() {
+  const isMobile = useIsMobile()
+  return isMobile ? <MobileHomePage /> : <DashboardPage />
 }
 
 export default function App() {
@@ -56,7 +71,8 @@ export default function App() {
               <Route path="/moje" element={<MojeDashboardPage />} />
             </Route>
             <Route element={<RequireAuth />}>
-              <Route path="/" element={<DashboardPage />} />
+              <Route path="/" element={<HomeRoute />} />
+              <Route path="/mobil/ucet" element={<MobileAccountPage />} />
               <Route path="/zamestnanci" element={<StaffPage />} />
               <Route path="/rodiny" element={<FamilyListPage />} />
               <Route path="/dokumenty" element={<DocumentListPage />} />

@@ -7,8 +7,10 @@ import { format, getDay, parse, startOfWeek } from 'date-fns'
 import { cs } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
+import '@/styles/calendar-overrides.css'
 import { CalendarPlus, Ban } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
+import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
@@ -88,6 +90,19 @@ function staffColor(uid: string): string {
   let hash = 0
   for (let i = 0; i < uid.length; i++) hash = (hash * 31 + uid.charCodeAt(i)) | 0
   return STAFF_PALETTE[Math.abs(hash) % STAFF_PALETTE.length]
+}
+
+/** Routine.co inspirace (2026-07-22, "vypadá to jako z roku 1999") — místo
+ * plné saturované barvy s bílým textem: PASTELOVÉ pozadí (stejný odstín,
+ * jen zesvětlený) + tmavý text appky + silnější barevný levý okraj coby
+ * jediný sytý akcent. Čitelnější, klidnější, sedí do zbytku appky (žádný
+ * blok čisté saturované barvy nikde jinde v UI). */
+function lightenHex(hex: string, amount: number): string {
+  const n = parseInt(hex.slice(1), 16)
+  const r = Math.round(((n >> 16) & 255) + (255 - ((n >> 16) & 255)) * amount)
+  const g = Math.round(((n >> 8) & 255) + (255 - ((n >> 8) & 255)) * amount)
+  const b = Math.round((n & 255) + (255 - (n & 255)) * amount)
+  return `rgb(${r}, ${g}, ${b})`
 }
 
 const TIER_COLORS: Record<string, string> = {
@@ -407,7 +422,7 @@ export default function CalendarPage() {
         </p>
       )}
 
-      <div className="mt-4 rounded-lg border border-border bg-surface p-3">
+      <div className="mt-4 rounded-lg border border-border bg-surface-soft p-4 shadow-raised">
         {loaded && (
           <DnDCalendar
             localizer={localizer}
@@ -421,20 +436,27 @@ export default function CalendarPage() {
             onNavigate={setDate}
             style={{ height: 720 }}
             selectable
+            components={{ toolbar: CalendarToolbar }}
             draggableAccessor={(item) => item.draggable}
             resizableAccessor={(item) => item.draggable}
             onSelectSlot={({ start, end }) => openNew(start as Date, end as Date)}
             onSelectEvent={openEdit}
             onEventDrop={handleEventDrop}
             onEventResize={handleEventDrop}
-            eventPropGetter={(item) => ({
-              style: {
-                backgroundColor:
-                  item.source === 'agreementVisit' ? TIER_COLORS[item.tier ?? 'ok'] : staffColor(item.staffUid ?? ''),
-                opacity: item.source === 'agreementVisit' ? 0.85 : 1,
-                border: 'none',
-              },
-            })}
+            eventPropGetter={(item) => {
+              const color =
+                item.source === 'agreementVisit' ? TIER_COLORS[item.tier ?? 'ok'] : staffColor(item.staffUid ?? '')
+              return {
+                style: {
+                  backgroundColor: lightenHex(color, item.source === 'agreementVisit' ? 0.82 : 0.78),
+                  color: 'var(--text-primary)',
+                  borderLeft: `3px solid ${color}`,
+                  borderTop: 'none',
+                  borderRight: 'none',
+                  borderBottom: 'none',
+                },
+              }
+            }}
           />
         )}
       </div>

@@ -5,6 +5,72 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## M11 hotové — mobil/PWA odlišení + layout oprava + Kalendář vizuál (2026-07-22, přes noc)
+
+Petrovo přímé zadání s referenčními screenshoty (Routine.co kalendář,
+Things 3 mobil): oprava globálního layout bugu, vizuální přestavba
+Kalendáře, a hlavně skutečné postavení M11 (dřív jen SEAM "mobil/PWA
+odlišení, patří do M11" — teď konkrétně zadané a postavené).
+
+**Layout bug (`AppShell.tsx`)** — hlavní scrollovatelná oblast (varianta
+BEZ `secondaryPanel`, používá ji většina appky) měla `px-8 pb-8`, ale
+ŽÁDNÉ `pt-*` — obsah stránky proto začínal přesně pod 6px fade
+gradientem, cítil se "nalepený" hned pod TopBarem. Přidáno `pt-6`.
+
+**Kalendář — vizuální přestavba** (`calendar-overrides.css`,
+`CalendarToolbar.tsx`) — `react-big-calendar` je záměrně nenastylovaná
+knihovna ("bring your own CSS"), dřívější default vzhled byl PŘESNĚ tenhle
+neupravený stav ("vypadá to jako z roku 1999"). Vlastní `Toolbar`
+(znovupoužívá `Button`/`SegmentedTabs`, appka má tenhle pattern
+konzistentně jinde), pastelové pozadí událostí + barevný levý okraj
+(`lightenHex` helper) místo plné saturované barvy s bílým textem, tenčí
+gridlines, měkčí "Dnes" zvýraznění, červená "teď" linka
+(`.rbc-current-time-indicator`), zaoblené rohy + jemný stín na událostech.
+Inspirace Routine.co (routine.co/solutions/individuals/calendaring),
+neokopírováno 1:1 — react-big-calendar má jiné technické možnosti než
+custom-built kalendář, tohle je nejlepší přiblížení v rámci knihovny.
+
+**M11 — mobil/PWA odlišení, KONEČNĚ konkrétně zadané a postavené.**
+Petrovo zadání: KO v terénu "nezajímá seznam klientů", hlavní potřeba je
+nadiktovat zápis → AI souhrn → poslat do osy, inspirace Things 3 (velká
+tlačítka, vyjížděcí panely odspoda, NENÍ to responzivní zmenšenina
+desktopu).
+
+- `useIsMobile.ts` — `matchMedia(max-width:768px)`, ne User-Agent sniffing
+  (appka musí fungovat i v mobilním prohlížeči bez instalace PWA).
+- `HomeRoute` (`App.tsx`) — na `/` rozhoduje šířka okna mezi `DashboardPage`
+  (desktop) a novou `MobileHomePage` — VĚDOMĚ zúžený rozsah: JEN domovská
+  obrazovka je mobil-first přestavěná, `/rodiny`/`/kalendar`/atd. zůstávají
+  desktopové i na mobilu (SEAM pro budoucí rozšíření, ne zapomenuté —
+  kompletní mobilní redesign celé appky je mnohem větší, samostatná dávka).
+- `BottomSheet.tsx` — NOVÝ primitiv (odspoda, mobil) vedle `Drawer`u
+  (zprava, desktop) a `Modal`u (centrovaný, desktop) — tři různé vzory pro
+  tři různé kontexty, ne jeden univerzální komponent.
+- `MobileShell.tsx` — dolní tab bar (Domů/Rodiny/Kalendář/Účet),
+  `env(safe-area-inset-bottom)`, ŽÁDNÝ sidebar/TopBar.
+- `MobileHomePage.tsx` — velké červené kolo s mikrofonem je VIZUÁLNĚ
+  DOMINANTNÍ prvek obrazovky (ne malé tlačítko v rohu), dnešní vlastní
+  naplánované události pod tím jako kontext, ne hlavní obsah.
+- `VoiceCaptureSheet.tsx` — jádro celé mobilní appky: otevře se VŽDY už
+  nahrávající (stejná konvence jako `VoiceRecorderPanel.tsx` §7.1),
+  "Zastavit" → editovatelný přepis + "AI souhrn" (ZNOVUPOUŽÍVÁ
+  `lib/ai.ts`, žádná duplicitní logika) + výběr rodiny (`Combobox`) →
+  "Odeslat do osy" (`createNoteTimelineEntry`, `sharingLevel:'internal'`
+  napevno — sdílení s pěstounem je rozhodnutí pro desktop s rozvahou, ne
+  za jízdy mezi návštěvami). ZJEDNODUŠENO oproti desktopové verzi (žádné
+  partner-sharing přepínače, žádné "Zařadit k" osobám zvlášť) — pole pro
+  terén potřebuje rychlost, ne kompletní formulář.
+
+**Živě ověřeno** (Playwright, mobilní viewport 390×844, emulátor, skripty
+smazány po testu): mobilní tab bar + velké mikrofonní tlačítko se
+vykreslí, ťuknutí otevře nahrávací sheet (grafické animace/chybové
+hlášky fungují — "not-allowed" chyba je EN očekávaná, headless prohlížeč
+nemá mikrofon), "Zastavit" přejde na review krok, textarea/Combobox
+fungují, "Odeslat do osy" SKUTEČNĚ zapsal `timeline` dokument do Firestore
+(ověřeno přímým čtením emulátoru po odeslání — `type:'note'`,
+`sharingLevel:'internal'`, správný `subjectRefs`/`body`). Layout oprava a
+Kalendář vizuál ověřeny screenshoty na desktop viewportu.
+
 ## Drobná oprava (2026-07-21, přes noc): nested `<a>` na seznamu Rodin
 
 Úkol byl dohledat starou konzolovou hlášku "Encountered two children with
