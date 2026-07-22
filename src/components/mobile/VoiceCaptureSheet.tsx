@@ -115,42 +115,53 @@ export function VoiceCaptureSheet({
     <BottomSheet onClose={onClose} className="min-h-[70vh]">
       <div className="flex min-h-0 flex-1 flex-col px-5 pb-6 pt-4">
         {step === 'recording' ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-8 py-6">
-            <div className="relative flex size-28 items-center justify-center">
+          <div className="flex min-h-0 flex-1 flex-col items-center gap-6 py-6">
+            <div className="relative flex size-28 shrink-0 items-center justify-center">
               <span className="absolute inset-0 rounded-full bg-danger-solid animate-mic-ring" />
               <span className="absolute inset-0 rounded-full bg-danger-solid/40 animate-mic-ring [animation-delay:0.7s]" />
               <span className="relative flex size-28 items-center justify-center rounded-full bg-danger-solid text-white shadow-overlay animate-mic-breathe">
                 <Mic size={44} strokeWidth={2} />
               </span>
             </div>
-            <p className="max-w-[280px] text-center text-base leading-relaxed text-text-primary">
-              {recognizer.transcript || 'Nahrávám… mluvte.'}
-            </p>
+            {/* Dlouhý přepis roste za běhu nahrávání — vlastní scrollovatelná
+             * oblast (ne celá obrazovka), ať "Zastavit" zůstane VŽDY na
+             * dohled/klikatelné (živě nahlášeno Petrem 2026-07-22). Bublina
+             * zarovnaná doprava + text do bloku, na Petrovo přání. */}
+            <div className="w-full min-h-0 flex-1 overflow-y-auto">
+              <p className="ml-auto max-w-[85%] text-justify text-base leading-relaxed text-text-primary">
+                {recognizer.transcript || 'Nahrávám… mluvte.'}
+              </p>
+            </div>
             {!recognizer.isSupported && (
-              <p className="max-w-[280px] text-center text-sm text-text-tertiary">
+              <p className="max-w-[280px] shrink-0 text-center text-sm text-text-tertiary">
                 Rozpoznávání řeči tenhle prohlížeč nepodporuje — text napíšete ručně na další obrazovce.
               </p>
             )}
-            {recognizer.error && <p className="text-sm text-danger">{recognizer.error}</p>}
+            {recognizer.error && <p className="shrink-0 text-sm text-danger">{recognizer.error}</p>}
             <Button
               variant="destructive"
               size="default"
               onClick={handleStop}
-              className="h-14 w-full max-w-[280px] gap-2 text-base"
+              className="h-14 w-full max-w-[280px] shrink-0 gap-2 text-base"
             >
               <Square size={18} strokeWidth={2} />
               Zastavit
             </Button>
           </div>
         ) : (
-          <div className="flex flex-1 flex-col gap-4">
-            <h2 className="text-lg font-normal text-text-primary">Zkontrolovat a odeslat</h2>
+          <div className="flex min-h-0 flex-1 flex-col gap-4">
+            <h2 className="shrink-0 text-lg font-normal text-text-primary">Zkontrolovat a odeslat</h2>
+            {/* min-h-* místo jen `flex-1` — bez spodní meze by textarea u
+             * dlouhého textu roztáhla celý sheet a tlačítko "Odeslat do osy"
+             * bylo pod hranicí viditelné oblasti (stejná chyba jako u živého
+             * přepisu výš, živě nahlášeno Petrem 2026-07-22). Uvnitř
+             * textarea funguje nativní scroll prohlížeče. */}
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={7}
               placeholder="Text zápisu…"
-              className="w-full flex-1 resize-none rounded-lg border border-border-medium bg-inset px-4 py-3 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
+              className="min-h-[120px] w-full flex-1 resize-none rounded-lg border border-border-medium bg-inset px-4 py-3 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
             />
             <Button
               variant="secondary"
@@ -158,13 +169,13 @@ export function VoiceCaptureSheet({
               onClick={handleAiSummary}
               loading={summarizing}
               disabled={!body.trim()}
-              className="h-12 gap-2"
+              className="h-12 shrink-0 gap-2"
             >
               <Sparkles size={18} strokeWidth={1.75} />
               {summarizing ? 'Vytvářím souhrn…' : 'AI souhrn'}
             </Button>
 
-            <label className="flex flex-col gap-1.5">
+            <label className="flex shrink-0 flex-col gap-1.5">
               <span className="text-sm font-medium text-text-primary">Zařadit k rodině</span>
               <Combobox
                 options={familyOptions}
@@ -175,7 +186,7 @@ export function VoiceCaptureSheet({
             </label>
 
             {error && (
-              <p className="text-sm text-danger" role="alert">
+              <p className="shrink-0 text-sm text-danger" role="alert">
                 {error}
               </p>
             )}
@@ -185,7 +196,7 @@ export function VoiceCaptureSheet({
               loading={saving}
               success={saved}
               disabled={!body.trim() || !familyDocId}
-              className="h-14 gap-2 text-base"
+              className="h-14 shrink-0 gap-2 text-base"
             >
               {saved ? <Check size={20} /> : <Send size={18} strokeWidth={2} />}
               Odeslat do osy

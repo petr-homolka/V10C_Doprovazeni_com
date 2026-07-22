@@ -5,6 +5,32 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Hlasový záznam v terénu: oprava scrollu + zarovnání textu (2026-07-22)
+
+Petrovo nahlášení: dlouhý živý přepis během nahrávání nešel scrollovat,
+a "Zastavit"/"Odeslat do osy" se dostaly mimo viditelnou oblast a nešlo
+na ně kliknout — `BottomSheet.tsx` měl `max-h-[88vh]` bez `overflow-y-auto`,
+takže obsah delší než 88vh jen "protekl" mimo box místo aby scrolloval
+(`overflow: visible` default). Opraveno na dvou úrovních:
+
+- `BottomSheet.tsx` — přidán `overflow-y-auto`+`min-h-0` na kontejner
+  jako obecná pojistka pro JAKÝKOLI dlouhý obsah v libovolném sheetu
+  (i budoucím, ne jen `VoiceCaptureSheet`).
+- `VoiceCaptureSheet.tsx` — živý přepis (krok "recording") má VLASTNÍ
+  ohraničenou scrollovatelnou oblast (`min-h-0 flex-1 overflow-y-auto`),
+  zatímco mikrofon + "Zastavit" zůstávají `shrink-0` (vždy na dohled, bez
+  nutnosti scrollovat celý sheet). Stejně ošetřen textarea v review kroku
+  (`min-h-[120px]` misto neomezeného `flex-1`).
+- Na Petrovo přání živý přepis teď vypadá jako bublina zarovnaná
+  DOPRAVA (`ml-auto max-w-[85%]`) s textem zarovnaným DO BLOKU
+  (`text-justify`) — místo prostého centrovaného odstavce.
+
+Živě ověřeno (Playwright, mokovaný `window.SpeechRecognition` s ~40 vět
+dlouhým textem): `Zastavit`/`Odeslat do osy` zůstávají uvnitř viewportu
+(`boundingBox().y + height <= 844`) i s velmi dlouhým přepisem, přepis
+scrolluje uvnitř svého boxu, `ml-auto`/`text-justify` potvrzeno přes
+computed styly (`marginLeft: 52.5px`, `textAlign: justify`).
+
 ## Pěstouni/Děti — mobilní varianta doplněna (2026-07-22, stejný den)
 
 Petrovo zadání ("vždy mysli i na to, že to musí fungovat i na PWA") —

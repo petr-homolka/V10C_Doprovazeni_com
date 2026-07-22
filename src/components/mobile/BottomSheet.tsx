@@ -11,6 +11,11 @@ import { cn } from '@/lib/utils'
  * Táhne se přes `env(safe-area-inset-bottom)` (iPhone home indicator),
  * zavírá se klikem na tlumené pozadí i Escape (krátké interakce, ne
  * víceminutový diktát jako `Drawer` — ztráta rozdělané práce je tu levná).
+ *
+ * `overflow-y-auto`+`min-h-0` — bez toho dlouhý obsah (dlouhý přepis v
+ * `VoiceCaptureSheet`) jen přetekl přes `max-h-[88vh]` beze scrollu, takže
+ * tlačítko na konci (Zastavit/Odeslat) bylo neviditelné a nedosažitelné
+ * (živě nahlášeno Petrem 2026-07-22).
  */
 export function BottomSheet({
   onClose,
@@ -47,7 +52,7 @@ export function BottomSheet({
         role="dialog"
         aria-modal="true"
         className={cn(
-          'flex max-h-[88vh] w-full flex-col rounded-t-2xl bg-surface shadow-overlay transition-transform duration-300 ease-out',
+          'flex max-h-[88vh] w-full min-h-0 flex-col overflow-y-auto rounded-t-2xl bg-surface shadow-overlay transition-transform duration-300 ease-out',
           entered ? 'translate-y-0' : 'translate-y-full',
           className,
         )}
