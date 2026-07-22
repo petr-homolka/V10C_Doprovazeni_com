@@ -5,6 +5,27 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Pěstouni/Děti — mobilní varianta doplněna (2026-07-22, stejný den)
+
+Petrovo zadání ("vždy mysli i na to, že to musí fungovat i na PWA") —
+živě ověřeno na 390px viewportu: `FosterPersonListPage`/`ChildListPage`
+(`AppShell` + `Sidebar`) byly na mobilu STEJNĚ nepoužitelné, jako
+`FamilyListPage`/`CalendarPage` byly před M11 (sidebar zabíral polovinu
+displeje, tabulka byla oříznutá) — desktopová stránka se prostě
+nezmenšuje sama, musí se vyměnit celá (stejný princip jako zbytek M11).
+
+- `MobileFosterPersonListPage.tsx`/`MobileChildListPage.tsx` — karty
+  místo tabulky (stejný vzor jako `MobileFamiliesPage`), ťuknutí na
+  telefon u pěstouna rovnou VOLÁ. Ťuknutí na kartu naviguje na mobilní
+  profil RODINY (`/mobil/rodiny/:uid`) — VĚDOMĚ žádný samostatný mobilní
+  profil pěstouna/dítěte: v terénu je cíl dohledat kontakt/rodinu, ne
+  procházet vzdělávací sekce pěstouna nebo rodné číslo dítěte samotné.
+- `FosterPersonsRoute`/`ChildrenRoute` (`App.tsx`) — stejný `useIsMobile`
+  přepínací vzor jako `HomeRoute`/`FamiliesRoute`/`CalendarRoute`.
+- Živě ověřeno (Playwright, 390×844): obě stránky se vykreslí jako karty
+  (ne tabulka), ťuknutí správně naviguje na `/mobil/rodiny/:uid`, žádné
+  JS chyby.
+
 ## Nové položky menu: Pěstouni, Děti (2026-07-22)
 
 Petrovo zadání: hlavní menu má i plochý seznam pěstounů a dětí napříč

@@ -43,6 +43,8 @@ const MobileAccountPage = lazy(() => import('@/routes/mobile/MobileAccountPage')
 const MobileCalendarPage = lazy(() => import('@/routes/mobile/MobileCalendarPage'))
 const MobileFamiliesPage = lazy(() => import('@/routes/mobile/MobileFamiliesPage'))
 const MobileFamilyDetailPage = lazy(() => import('@/routes/mobile/MobileFamilyDetailPage'))
+const MobileFosterPersonListPage = lazy(() => import('@/routes/mobile/MobileFosterPersonListPage'))
+const MobileChildListPage = lazy(() => import('@/routes/mobile/MobileChildListPage'))
 
 function RouteFallback() {
   return (
@@ -53,16 +55,20 @@ function RouteFallback() {
 }
 
 /**
- * M11 mobil/PWA odlišení — na `/`, `/rodiny` a `/kalendar` rozhoduje ŠÍŘKA
- * okna (`useIsMobile`), ne responzivní CSS: mobilní stránky jsou JINÉ
- * stránky, ne zmenšeniny desktopu (viz `useIsMobile.ts`/`MobileShell.tsx`
- * — živě odhaleno 2026-07-22, deska `react-big-calendar`/tabulka Rodin na
- * 390px šířky displeje byla prakticky nepoužitelná/"prázdná"). Detail
+ * M11 mobil/PWA odlišení — na `/`, `/rodiny`, `/kalendar`, `/pestouni` a
+ * `/deti` rozhoduje ŠÍŘKA okna (`useIsMobile`), ne responzivní CSS:
+ * mobilní stránky jsou JINÉ stránky, ne zmenšeniny desktopu (viz
+ * `useIsMobile.ts`/`MobileShell.tsx` — živě odhaleno 2026-07-22, tabulky
+ * (`Table`/`react-big-calendar`) na 390px šířky displeje byly prakticky
+ * nepoužitelné — `AppShell` sidebar zabíral polovinu obrazovky). Detail
  * rodiny (`/rodiny/:uid`) zůstává vědomě desktopový i na mobilu (mobilní
  * varianta, `MobileFamilyDetailPage`, žije na VLASTNÍ cestě
  * `/mobil/rodiny/:uid`, ne na téže — profil rodiny má příliš mnoho
  * desktopových sekcí, aby dávalo smysl je na jedné routě přepínat) — SEAM,
- * dostupné z `MobileFamiliesPage` seznamu.
+ * dostupné z `MobileFamiliesPage` seznamu. Pěstouni/Děti na mobilu ŽÁDNÝ
+ * vlastní profil nemají (`MobileFosterPersonListPage`/`MobileChildListPage`
+ * naviguje rovnou na `/mobil/rodiny/:uid` — v terénu je cílem dohledat
+ * rodinu/zavolat, ne procházet vzdělávací sekce pěstouna).
  */
 function HomeRoute() {
   const isMobile = useIsMobile()
@@ -77,6 +83,16 @@ function FamiliesRoute() {
 function CalendarRoute() {
   const isMobile = useIsMobile()
   return isMobile ? <MobileCalendarPage /> : <CalendarPage />
+}
+
+function FosterPersonsRoute() {
+  const isMobile = useIsMobile()
+  return isMobile ? <MobileFosterPersonListPage /> : <FosterPersonListPage />
+}
+
+function ChildrenRoute() {
+  const isMobile = useIsMobile()
+  return isMobile ? <MobileChildListPage /> : <ChildListPage />
 }
 
 export default function App() {
@@ -98,8 +114,8 @@ export default function App() {
                 <Route path="/mobil/rodiny/:familyUid" element={<MobileFamilyDetailPage />} />
                 <Route path="/zamestnanci" element={<StaffPage />} />
                 <Route path="/rodiny" element={<FamiliesRoute />} />
-                <Route path="/pestouni" element={<FosterPersonListPage />} />
-                <Route path="/deti" element={<ChildListPage />} />
+                <Route path="/pestouni" element={<FosterPersonsRoute />} />
+                <Route path="/deti" element={<ChildrenRoute />} />
                 <Route path="/dokumenty" element={<DocumentListPage />} />
                 <Route path="/rodiny/:familyUid" element={<FamilyDetailPage />} />
                 <Route path="/rodiny/:familyUid/dohoda" element={<AgreementDetailPage />} />
