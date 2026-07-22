@@ -15,6 +15,8 @@ const DashboardPage = lazy(() => import('@/routes/DashboardPage'))
 const StaffPage = lazy(() => import('@/routes/StaffPage'))
 const FamilyListPage = lazy(() => import('@/routes/FamilyListPage'))
 const FamilyDetailPage = lazy(() => import('@/routes/FamilyDetailPage'))
+const FosterPersonListPage = lazy(() => import('@/routes/FosterPersonListPage'))
+const ChildListPage = lazy(() => import('@/routes/ChildListPage'))
 const DocumentListPage = lazy(() => import('@/routes/DocumentListPage'))
 const DocumentDetailPage = lazy(() => import('@/routes/DocumentDetailPage'))
 const DocumentVerifyPage = lazy(() => import('@/routes/DocumentVerifyPage'))
@@ -96,6 +98,8 @@ export default function App() {
                 <Route path="/mobil/rodiny/:familyUid" element={<MobileFamilyDetailPage />} />
                 <Route path="/zamestnanci" element={<StaffPage />} />
                 <Route path="/rodiny" element={<FamiliesRoute />} />
+                <Route path="/pestouni" element={<FosterPersonListPage />} />
+                <Route path="/deti" element={<ChildListPage />} />
                 <Route path="/dokumenty" element={<DocumentListPage />} />
                 <Route path="/rodiny/:familyUid" element={<FamilyDetailPage />} />
                 <Route path="/rodiny/:familyUid/dohoda" element={<AgreementDetailPage />} />

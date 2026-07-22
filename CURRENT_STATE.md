@@ -5,6 +5,33 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Nové položky menu: Pěstouni, Děti (2026-07-22)
+
+Petrovo zadání: hlavní menu má i plochý seznam pěstounů a dětí napříč
+rodinami (dřív dostupní jen přes profil konkrétní rodiny, viz
+`AppShell.tsx` komentář, co tohle už dopředu předpokládal).
+
+- `FosterPersonListPage.tsx` (`/pestouni`), `ChildListPage.tsx` (`/deti`)
+  — read-only tabulka (`Table`/`TableRow`, stejný vzor jako `StaffPage.tsx`),
+  vyhledávání podle jména, klik na řádek naviguje na existující detail
+  (`/rodiny/:uid/pestoun/:id` resp. `/rodiny/:uid/dite/:id`) — žádná nová
+  detailní stránka, jen nový vstupní bod k té stávající.
+- Data: `listFosterPersonsForOrg`/`listChildrenForOrg` (`familyService.ts`)
+  — obě funkce UŽ existovaly (použité v `ExternalParticipantsPage`), žádná
+  změna služby/rules nebyla potřeba. `familyId` (Firestore doc ID) → rodina
+  (`uid`+popisek) mapováno přes `listFamiliesWithDocIds`, stejně jako
+  `MobileFamiliesPage`.
+- `Sidebar.tsx` (`NAV_ITEMS`) — dvě nové položky mezi "Rodiny" a
+  "Zaměstnanci", `staffOnly: false` (viditelné pro všechny role stejně
+  jako Rodiny/Kalendář).
+- Živě ověřeno (Playwright, emulátor): obě stránky načtou seznam, klik na
+  řádek naviguje na existující profil pěstouna/dítěte. Cestou odhalen a
+  opravený jen testovací artefakt (ne appka) — seed skript používal jiné
+  `projectId` než klientská `.env.local` konfigurace, takže `userDoc`
+  appky neviděl `organizationId` (Firestore emulator `singleProjectMode`
+  requestům nevadí, ale je nutné použít STEJNÝ projectId ve všech
+  testovacích skriptech kvůli konzistenci).
+
 ## M11 rozšířeno na CELOU PWA appku (2026-07-22): Rodiny + Kalendář mobil, ErrorBoundary
 
 Petrovo zadání po prvním kole M11 (viz sekce níže): "asi udělej celou pwa
