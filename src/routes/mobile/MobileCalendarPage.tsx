@@ -47,7 +47,15 @@ const DAY_STRIP_RADIUS = 10 // ±10 dní kolem "dnes"
 const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 
-const EMPTY_FORM = { title: '', kind: 'schuzka' as CalendarEventKind, time: '09:00', familyDocId: '' }
+const EMPTY_FORM = {
+  title: '',
+  kind: 'schuzka' as CalendarEventKind,
+  time: '09:00',
+  endTime: '10:00',
+  assignedToUid: '',
+  familyDocId: '',
+  notes: '',
+}
 
 /**
  * Mobilní Kalendář (M11, 2026-07-22) — Things/Routine-inspirovaná AGENDA,
@@ -182,7 +190,7 @@ export default function MobileCalendarPage() {
   }
 
   function openNew() {
-    setForm({ ...EMPTY_FORM })
+    setForm({ ...EMPTY_FORM, assignedToUid: userDoc?.uid ?? '' })
     setSheet({ mode: 'new' })
   }
 
@@ -192,12 +200,16 @@ export default function MobileCalendarPage() {
       return
     }
     const d = new Date(item.event.start)
+    const dEnd = new Date(item.event.end)
     const pad = (n: number) => String(n).padStart(2, '0')
     setForm({
       title: item.event.title,
       kind: item.event.kind,
       time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      endTime: `${pad(dEnd.getHours())}:${pad(dEnd.getMinutes())}`,
+      assignedToUid: item.event.assignedToUid,
       familyDocId: item.event.familyDocId ?? '',
+      notes: item.event.notes ?? '',
     })
     setSheet({ mode: 'edit', docId: item.docId })
   }
@@ -209,21 +221,26 @@ export default function MobileCalendarPage() {
     const start = new Date(selectedDate)
     const [h, m] = form.time.split(':').map(Number)
     start.setHours(h, m, 0, 0)
-    const end = new Date(start.getTime() + 60 * 60 * 1000)
+    const end = new Date(selectedDate)
+    const [eh, em] = form.endTime.split(':').map(Number)
+    end.setHours(eh, em, 0, 0)
     const fam = form.familyDocId ? familyLabel.get(form.familyDocId) : undefined
+    const assignedToUid = form.assignedToUid || userDoc.uid
+    const notes = form.notes.trim() || null
     try {
       await runSave(async () => {
         if (sheet.mode === 'new') {
           await createCalendarEvent({
             organizationId,
             createdByUid: userDoc.uid,
-            assignedToUid: userDoc.uid,
+            assignedToUid,
             title: form.title.trim(),
             kind: form.kind,
             start: start.toISOString(),
             end: end.toISOString(),
             familyDocId: form.familyDocId || null,
             familyUid: fam?.uid ?? null,
+            notes,
           })
         } else if (sheet.docId) {
           await updateCalendarEvent({
@@ -231,11 +248,12 @@ export default function MobileCalendarPage() {
             docId: sheet.docId,
             title: form.title.trim(),
             kind: form.kind,
-            assignedToUid: userDoc.uid,
+            assignedToUid,
             start: start.toISOString(),
             end: end.toISOString(),
             familyDocId: form.familyDocId || null,
             familyUid: fam?.uid ?? null,
+            notes,
           })
         }
         await reload()
@@ -405,36 +423,84 @@ export default function MobileCalendarPage() {
                 ))}
               </Select>
             </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium text-text-primary">Čas</span>
-              <div className="flex items-center gap-2">
+            <div className="flex gap-3">
+              <label className="flex flex-1 flex-col gap-1.5">
+                <span className="text-sm font-medium text-text-primary">Začátek</span>
+                <div className="flex items-center gap-1.5">
+                  <Select
+                    value={form.time.split(':')[0]}
+                    onChange={(e) => setForm((f) => ({ ...f, time: `${e.target.value}:${f.time.split(':')[1]}` }))}
+                    className="h-12 text-base"
+                    aria-label="Hodina začátku"
+                  >
+                    {HOURS.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </Select>
+                  <span className="text-lg font-medium text-text-tertiary">:</span>
+                  <Select
+                    value={form.time.split(':')[1]}
+                    onChange={(e) => setForm((f) => ({ ...f, time: `${f.time.split(':')[0]}:${e.target.value}` }))}
+                    className="h-12 text-base"
+                    aria-label="Minuta začátku"
+                  >
+                    {MINUTES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </label>
+              <label className="flex flex-1 flex-col gap-1.5">
+                <span className="text-sm font-medium text-text-primary">Konec</span>
+                <div className="flex items-center gap-1.5">
+                  <Select
+                    value={form.endTime.split(':')[0]}
+                    onChange={(e) => setForm((f) => ({ ...f, endTime: `${e.target.value}:${f.endTime.split(':')[1]}` }))}
+                    className="h-12 text-base"
+                    aria-label="Hodina konce"
+                  >
+                    {HOURS.map((h) => (
+                      <option key={h} value={h}>
+                        {h}
+                      </option>
+                    ))}
+                  </Select>
+                  <span className="text-lg font-medium text-text-tertiary">:</span>
+                  <Select
+                    value={form.endTime.split(':')[1]}
+                    onChange={(e) => setForm((f) => ({ ...f, endTime: `${f.endTime.split(':')[0]}:${e.target.value}` }))}
+                    className="h-12 text-base"
+                    aria-label="Minuta konce"
+                  >
+                    {MINUTES.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </label>
+            </div>
+            {staffList.length > 1 && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium text-text-primary">Přiřazeno</span>
                 <Select
-                  value={form.time.split(':')[0]}
-                  onChange={(e) => setForm((f) => ({ ...f, time: `${e.target.value}:${f.time.split(':')[1]}` }))}
+                  value={form.assignedToUid}
+                  onChange={(e) => setForm((f) => ({ ...f, assignedToUid: e.target.value }))}
                   className="h-12 text-base"
-                  aria-label="Hodina"
                 >
-                  {HOURS.map((h) => (
-                    <option key={h} value={h}>
-                      {h}
+                  {staffList.map((s) => (
+                    <option key={s.uid} value={s.uid}>
+                      {s.displayName}
                     </option>
                   ))}
                 </Select>
-                <span className="text-lg font-medium text-text-tertiary">:</span>
-                <Select
-                  value={form.time.split(':')[1]}
-                  onChange={(e) => setForm((f) => ({ ...f, time: `${f.time.split(':')[0]}:${e.target.value}` }))}
-                  className="h-12 text-base"
-                  aria-label="Minuta"
-                >
-                  {MINUTES.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </label>
+              </label>
+            )}
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-text-primary">Rodina (volitelné)</span>
               <Select
@@ -449,6 +515,16 @@ export default function MobileCalendarPage() {
                   </option>
                 ))}
               </Select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-text-primary">Poznámky (volitelné)</span>
+              <textarea
+                value={form.notes}
+                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                rows={3}
+                placeholder="Doplňující poznámka…"
+                className="w-full resize-none rounded-sm border border-border-medium bg-inset px-3 py-2.5 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
+              />
             </label>
             <Button type="submit" loading={saving} className="h-14 text-base">
               {sheet.mode === 'new' ? 'Založit' : 'Uložit změny'}

@@ -5,6 +5,34 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Mobilní formulář události: doplněna pole (2026-07-23)
+
+Petr poslal screenshot Google Kalendáře jako inspiraci s poznámkou "málo
+kolonek/informací se mi tam vejde" — mobilní formulář měl jen Název/Typ/
+Začátek/Rodinu, zatímco desktopová `CalendarPage.tsx` (a datový model
+`CalendarEventDoc`) měly navíc KONEC (samostatný, ne napevno start+1h),
+PŘIŘAZENO (`assignedToUid` — kdo v týmu je za událost odpovědný) a
+POZNÁMKY (`notes`) — tahle pole na mobilu prostě chyběla, i když appka je
+uměla ukládat/číst už dřív. Google-specifické koncepty bez opory v našem
+datovém modelu (hosté, videokonference, místo, barva, celodenní) záměrně
+NEpřidány — appka je interní nástroj pro klíčové pracovníky, ne obecný
+kalendář, a přidávat pole bez datové opory by bylo jen kosmetické.
+
+- `EMPTY_FORM` rozšířen o `endTime`/`assignedToUid`/`notes`.
+- Konec — stejný pár `<Select>` (hodina/minuta) jako Začátek, vedle sebe
+  (`flex gap-3`) — živě ověřeno, že se i tak vejdou do 390px (Select je
+  bezpečně zmenšitelný, na rozdíl od nativního `<input type="time">`
+  z minulé opravy).
+- Přiřazeno — `<Select>` ze STEJNÉHO `staffList`, co už stránka načítala
+  pro filtr nahoře (žádné nové volání služby), zobrazeno jen když je
+  víc než 1 zaměstnanec (stejná podmínka jako u filtr-čipů).
+- Poznámky — `<textarea>`, volitelné, stejný styl jako `Input`.
+
+Živě ověřeno (Playwright, emulátor): nová i editovaná událost obě pole
+zobrazí/uloží správně (event s koncem 10:30 a poznámkou "Poznámka k
+události" se po otevření k editaci zobrazí přesně tak), založení nové
+události se všemi poli projde bez chyby a objeví se v seznamu dne.
+
 ## Druhé kolo oprav z reálného iPhone testu (2026-07-23)
 
 Předchozí oprava pole Čas (Typ/Čas na vlastním řádku) fungovala jen v
