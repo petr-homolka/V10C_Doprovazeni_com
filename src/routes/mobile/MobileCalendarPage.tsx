@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type TouchEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Ban, CalendarClock, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { CalendarClock, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { BottomSheet } from '@/components/mobile/BottomSheet'
 import { IosList, IosListRow } from '@/components/mobile/IosList'
@@ -44,6 +44,8 @@ function startOfDay(d: Date): Date {
 }
 
 const DAY_STRIP_RADIUS = 10 // ±10 dní kolem "dnes"
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 
 const EMPTY_FORM = { title: '', kind: 'schuzka' as CalendarEventKind, time: '09:00', familyDocId: '' }
 
@@ -367,7 +369,7 @@ export default function MobileCalendarPage() {
               </h2>
               {sheet.mode === 'edit' && (
                 <Button type="button" variant="ghost" size="sm" loading={cancelling} onClick={handleCancel} className="text-danger">
-                  <Ban size={14} /> Zrušit
+                  <Trash2 size={16} /> Smazat
                 </Button>
               )}
             </div>
@@ -380,11 +382,15 @@ export default function MobileCalendarPage() {
                 className="h-12 text-base"
               />
             </label>
-            {/* Typ + Čas každý na VLASTNÍM řádku, ne vedle sebe — nativní
-             * `<input type="time">` má na iOS Safari vlastní minimální
-             * šířku ovládacího prvku, která ve dvousloupcovém řádku na
-             * 390px displeji přetekla mimo viewport (živě nahlášeno
-             * Petrem 2026-07-22, screenshot ukázal uříznuté pole Čas). */}
+            {/* Typ + Čas každý na VLASTNÍM řádku, ne vedle sebe (živě
+             * nahlášeno Petrem 2026-07-22). Čas navíc NENÍ nativní
+             * `<input type="time">` — na skutečném iOS Safari (ne jen
+             * Chromium, kde to v testu vypadalo v pořádku) má vlastní
+             * ovládací prvek minimální šířku větší než celý viewport na
+             * 390px displeji a přetekl i na vlastním řádku (druhé
+             * nahlášení stejného problému). Dva `<Select>` (hodina/minuta)
+             * používají STEJNOU komponentu jako Typ/Rodina — garantovaně
+             * stejné, bezpečné chování napříč prohlížeči. */}
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-text-primary">Typ</span>
               <Select
@@ -401,12 +407,33 @@ export default function MobileCalendarPage() {
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-text-primary">Čas</span>
-              <Input
-                type="time"
-                value={form.time}
-                onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-                className="h-12 w-full text-base"
-              />
+              <div className="flex items-center gap-2">
+                <Select
+                  value={form.time.split(':')[0]}
+                  onChange={(e) => setForm((f) => ({ ...f, time: `${e.target.value}:${f.time.split(':')[1]}` }))}
+                  className="h-12 text-base"
+                  aria-label="Hodina"
+                >
+                  {HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {h}
+                    </option>
+                  ))}
+                </Select>
+                <span className="text-lg font-medium text-text-tertiary">:</span>
+                <Select
+                  value={form.time.split(':')[1]}
+                  onChange={(e) => setForm((f) => ({ ...f, time: `${f.time.split(':')[0]}:${e.target.value}` }))}
+                  className="h-12 text-base"
+                  aria-label="Minuta"
+                >
+                  {MINUTES.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </Select>
+              </div>
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-text-primary">Rodina (volitelné)</span>

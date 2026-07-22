@@ -5,6 +5,34 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Druhé kolo oprav z reálného iPhone testu (2026-07-23)
+
+Předchozí oprava pole Čas (Typ/Čas na vlastním řádku) fungovala jen v
+Chromium testu, ne na SKUTEČNÉM iOS Safari — Petr poslal screenshot z
+telefonu, pole Čas bylo poořád useknuté i na vlastním řádku. Skutečná
+příčina: WebKitův `<input type="time">` má vlastní ovládací prvek s
+minimální šířkou, kterou CSS `width` nedokáže zmenšit pod jeho
+"přirozený" obsah — žádné množství přeskupení řádků to nevyřeší, dokud je
+to pořád nativní time input. **Řešení: nahrazeno dvěma `<Select>`
+(hodina/minuta)** — stejná komponenta jako Typ/Rodina, garantovaně stejné
+bezpečné chování ve všech prohlížečích, žádné hádání s nativním
+ovládacím prvkem. Minuty v PLNÉM rozsahu 00–59 (ne po 5), aby needitovaly
+nepřesně existující události s "lichým" časem (živě ověřeno úpravou
+události s časem 09:07 — zůstalo přesně 09:07, ne zaokrouhleno).
+
+**"Zrušit" → "Smazat"** — Petrova zpětná vazba: ikona `Ban` (kruh se
+škrtem, "zakázáno") vedle textu "Zrušit" nekomunikovala jasně, že tlačítko
+maže/ruší událost. Nahrazeno `Trash2` ikonou + textem "Smazat" (mobilní
+verze — desktopová `CalendarPage.tsx` zůstává "Zrušit událost", protože
+podkladová akce je technicky jen změna stavu na `zruseno`, ne fyzický
+delete, a mobilní/desktopová terminologie se už jinde v appce vědomě
+liší dle kontextu použití).
+
+Živě ověřeno (Playwright, mobilní viewport 390×844): oba `<Select>`
+(hodina/minuta) měří jen ~72px, daleko od přetečení; "Smazat" tlačítko
+přítomné, "Zrušit" beze stopy; úprava existující události s časem 09:07
+zobrazí přesně 09/07 v selectech.
+
 ## PWA vizuál: styl aktuálního iOS + oprava formuláře + swipe (2026-07-22)
 
 Petrovo zadání se 3 body: (1) "Nová událost" má pole mimo formát
