@@ -5,6 +5,59 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## M11 rozšířeno na CELOU PWA appku (2026-07-22): Rodiny + Kalendář mobil, ErrorBoundary
+
+Petrovo zadání po prvním kole M11 (viz sekce níže): "asi udělej celou pwa
+app... raději vymazlená pwa aplikace než rychlý hnus" — mobilní verze měla
+zatím jen `/` (domů), ale `/rodiny` a `/kalendar` zůstávaly desktopové
+tabulky/mřížka, na 390px šířky prakticky nepoužitelné (`react-big-calendar`
+tam byl "prázdný"/nefunkční). Doplněno tak, aby ŽÁDNÁ z hlavních čtyř
+záložek (Domů/Rodiny/Kalendář/Účet) nekončila na desktopové stránce.
+
+- `FamiliesRoute`/`CalendarRoute` (`App.tsx`) — stejný `useIsMobile`
+  přepínací vzor jako `HomeRoute`, teď i pro `/rodiny` a `/kalendar`.
+- `MobileFamiliesPage.tsx` — vyhledatelný seznam s velkými dotykovými cíli
+  (ne zmenšenina `FamilyListPage` s checkboxy/hvězdičkami/segmentací).
+  Živě nalezená chyba: bez per-rodinu lookupu primárního pěstouna
+  (`resolveFamilyDisplayName(family, null)`) se u rodin bez ručně
+  nastaveného `displayName` zobrazovala adresa DVAKRÁT (jednou jako
+  "název" karty, jednou jako podtitulek) — opraveno doplněním
+  `listFosterPersonsByRefs` (stejný vzor jako desktop `FamilyListPage`) +
+  obrannou podmínkou `family.address !== label` v renderu.
+- `MobileFamilyDetailPage.tsx` — zjednodušený profil na VLASTNÍ cestě
+  `/mobil/rodiny/:uid` (ne stejná cesta jako desktop — profil rodiny má
+  příliš mnoho desktopových sekcí, aby dávalo smysl je přepínat na jedné
+  routě): jméno, adresa, pěstouni s `tel:` odkazy, děti, a FAB "Nadiktovat
+  zápis" rovnou s předvyplněnou rodinou (`VoiceCaptureSheet`
+  `initialFamilyDocId` prop).
+- `MobileCalendarPage.tsx` — agenda styl (Things/Routine inspirace), NE
+  zmenšenina mřížky: vodorovný pás dnů (±10 kolem "dnes") + svislý seznam
+  událostí vybraného dne, filtr zaměstnanců jako chipy (jen když
+  `staffList.length > 1`), plovoucí "+" FAB, ťuknutí na událost otevře
+  `BottomSheet` formulář (znovupoužívá `createCalendarEvent`/
+  `updateCalendarEvent`/`cancelCalendarEvent` — stejná služba jako
+  desktop). Živě nalezená chyba: pás dnů se neposouval na vybraný den při
+  prvním vykreslení (vybraný den byl mimo viditelnou oblast, žádný chip
+  nesvítil) — opraveno `ref`+`useEffect(() => scrollIntoView(...), [selectedDate])`
+  na vybraném dni.
+- `calendarAggregation.ts` (`calendarEventToItem`/`agreementToNextVisitItem`)
+  zpřísněno — vrací `null` místo `Invalid Date` objektu, když chybí/je
+  neparsovatelné `start`/`end`/`validFrom`/`lastVisitAt`. Živé produkční
+  data mohou mít historické nekonzistence, které čisté testovací fixtures
+  nereprodukují, a `react-big-calendar` na `Invalid Date` uvnitř může
+  spadnout layout engine. Volající (`CalendarPage.tsx`,
+  `MobileCalendarPage.tsx`) filtrují `null` před dalším zpracováním.
+- `ErrorBoundary.tsx` — JEDNA hranice nahoře kolem celého `<App>` stromu
+  (appka je malá, není potřeba izolace po widgetech), zobrazuje přímo
+  `error.message` (ne obecnou hlášku) — aktivně vyvíjená interní appka, kde
+  konkrétní chyba pomůže rychleji diagnostikovat.
+
+**Živě ověřeno** (Playwright, mobilní viewport 390×844, emulátor, skripty
+smazány po testu): 6 kroků přes všechny 4 záložky (Domů → mikrofon,
+Rodiny → detail s `tel:` odkazem, Kalendář → agenda → úprava události
+sheetem, Účet) — bez JS chyb, den ve vybraném datu teď správně svítí v
+pásu dnů.
+
 ## M11 hotové — mobil/PWA odlišení + layout oprava + Kalendář vizuál (2026-07-22, přes noc)
 
 Petrovo přímé zadání s referenčními screenshoty (Routine.co kalendář,

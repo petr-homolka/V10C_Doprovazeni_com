@@ -227,9 +227,9 @@ export default function CalendarPage() {
       const fam = familyLabel.get(familyId)
       return agreementToNextVisitItem(familyId, fam?.uid ?? familyId, fam?.label ?? 'Rodina', agreement, now)
     })
-    return [...fromEvents, ...fromAgreements].filter(
-      (item) => !item.staffUid || !hiddenStaffUids.has(item.staffUid),
-    )
+    return [...fromEvents, ...fromAgreements]
+      .filter((item): item is CalendarItem => item !== null)
+      .filter((item) => !item.staffUid || !hiddenStaffUids.has(item.staffUid))
   }, [events, agreementsByFamilyId, familyLabel, hiddenStaffUids])
 
   function toggleStaff(uid: string) {

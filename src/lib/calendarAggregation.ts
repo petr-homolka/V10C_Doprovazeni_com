@@ -43,12 +43,18 @@ export interface CalendarItem {
   event?: CalendarEventDoc
 }
 
-export function calendarEventToItem(docId: string, event: CalendarEventDoc): CalendarItem {
+/** Vrací `null` u neplatného `start`/`end` — stejný důvod jako
+ * `agreementToNextVisitItem` níž (jeden špatný záznam nesmí shodit celý
+ * kalendář). */
+export function calendarEventToItem(docId: string, event: CalendarEventDoc): CalendarItem | null {
+  const start = new Date(event.start)
+  const end = new Date(event.end)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null
   return {
     id: `ce-${docId}`,
     title: event.title,
-    start: new Date(event.start),
-    end: new Date(event.end),
+    start,
+    end,
     allDay: false,
     source: 'calendarEvent',
     staffUid: event.assignedToUid,
@@ -61,16 +67,25 @@ export function calendarEventToItem(docId: string, event: CalendarEventDoc): Cal
 
 /** `lastVisitAt` chybí u nové Dohody → počítá se od `validFrom` (Dohoda
  * samotná je "start hodin"), přesně stejný předpoklad jako
- * `dashboardService.ts`/seznam Rodin. */
+ * `dashboardService.ts`/seznam Rodin.
+ *
+ * Vrací `null`, pokud je `anchor`/`visitIntervalDays` neplatné/chybí —
+ * `react-big-calendar` s `Invalid Date` v `start`/`end` uvnitř layoutu
+ * SPADNE (živě odhaleno 2026-07-22 po nasazení: reálná produkční data
+ * mají historicky vzniklé nekonzistence, které čisté testovací fixtury
+ * nikdy nenapodobily) — jeden špatný záznam nesmí shodit CELÝ kalendář,
+ * `CalendarPage.tsx` tenhle výsledek filtruje pryč (`.filter(Boolean)`). */
 export function agreementToNextVisitItem(
   familyId: string,
   familyUid: string,
   familyLabel: string,
   agreement: AgreementDoc,
   now: number,
-): CalendarItem {
+): CalendarItem | null {
   const anchor = agreement.lastVisitAt ?? agreement.validFrom
-  const dueAt = new Date(Date.parse(anchor) + agreement.visitIntervalDays * 24 * 60 * 60 * 1000)
+  const anchorMs = anchor ? Date.parse(anchor) : NaN
+  if (Number.isNaN(anchorMs) || !Number.isFinite(agreement.visitIntervalDays)) return null
+  const dueAt = new Date(anchorMs + agreement.visitIntervalDays * 24 * 60 * 60 * 1000)
   const tier = computeVisitAlertTier(daysSince(anchor, now), agreement.visitIntervalDays)
   return {
     id: `av-${familyId}`,

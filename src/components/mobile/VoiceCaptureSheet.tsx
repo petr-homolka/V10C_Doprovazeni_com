@@ -29,11 +29,15 @@ type CaptureStep = 'recording' | 'review'
 export function VoiceCaptureSheet({
   organizationId,
   createdByUid,
+  initialFamilyDocId,
   onClose,
   onSaved,
 }: {
   organizationId: string
   createdByUid: string
+  /** Otevřeno ze zkratky na profilu rodiny (`MobileFamilyDetailPage`) —
+   * rodina je předem daná, krok výběru se přeskočí. */
+  initialFamilyDocId?: string
   onClose: () => void
   onSaved: () => void
 }) {
@@ -41,7 +45,7 @@ export function VoiceCaptureSheet({
   const [step, setStep] = useState<CaptureStep>('recording')
   const [body, setBody] = useState('')
   const [families, setFamilies] = useState<Array<{ docId: string; family: FamilyDoc }>>([])
-  const [familyDocId, setFamilyDocId] = useState('')
+  const [familyDocId, setFamilyDocId] = useState(initialFamilyDocId ?? '')
   const [error, setError] = useState<string | null>(null)
   const { loading: summarizing, run: runSummary } = useAsyncSubmit()
   const { loading: saving, success: saved, run: runSave } = useAsyncSubmit()
