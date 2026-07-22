@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Mic, Phone } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { VoiceCaptureSheet } from '@/components/mobile/VoiceCaptureSheet'
+import { IosList, IosListRow } from '@/components/mobile/IosList'
 import { AddressLink } from '@/components/ui/address-link'
 import { useAuth } from '@/hooks/useAuth'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
@@ -53,12 +54,12 @@ export default function MobileFamilyDetailPage() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-5 px-5 pb-24 pt-6">
-        <button type="button" onClick={() => navigate('/rodiny')} className="flex items-center gap-1.5 text-sm text-text-secondary">
+        <button type="button" onClick={() => navigate('/rodiny')} className="flex items-center gap-1.5 text-[15px] text-text-secondary active:opacity-60">
           <ArrowLeft size={16} /> Zpět na Rodiny
         </button>
 
         <div>
-          <h1 className="text-2xl font-normal text-text-primary">{displayName}</h1>
+          <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">{displayName}</h1>
           {family?.address && (
             <p className="mt-1 text-base">
               <AddressLink address={family.address} />
@@ -68,36 +69,40 @@ export default function MobileFamilyDetailPage() {
 
         {fosterPersons.length > 0 && (
           <div className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium uppercase tracking-wide text-text-tertiary">Pěstouni</h2>
-            {fosterPersons.map(({ docId, fosterPerson }) => (
-              <div key={docId} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-soft p-4">
-                <span className="text-base text-text-primary">
-                  {fosterPerson.firstName} {fosterPerson.lastName}
-                </span>
-                {fosterPerson.phone && (
-                  <a
-                    href={`tel:${fosterPerson.phone}`}
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
-                    aria-label={`Zavolat ${fosterPerson.firstName} ${fosterPerson.lastName}`}
-                  >
-                    <Phone size={18} />
-                  </a>
-                )}
-              </div>
-            ))}
+            <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Pěstouni</h2>
+            <IosList>
+              {fosterPersons.map(({ docId, fosterPerson }) => (
+                <IosListRow key={docId} as="div">
+                  <span className="min-w-0 flex-1 truncate text-[16px] text-text-primary">
+                    {fosterPerson.firstName} {fosterPerson.lastName}
+                  </span>
+                  {fosterPerson.phone && (
+                    <a
+                      href={`tel:${fosterPerson.phone}`}
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary transition-transform active:scale-90"
+                      aria-label={`Zavolat ${fosterPerson.firstName} ${fosterPerson.lastName}`}
+                    >
+                      <Phone size={18} />
+                    </a>
+                  )}
+                </IosListRow>
+              ))}
+            </IosList>
           </div>
         )}
 
         {children.length > 0 && (
           <div className="flex flex-col gap-2">
-            <h2 className="text-sm font-medium uppercase tracking-wide text-text-tertiary">Děti</h2>
-            {children.map(({ docId, child }) => (
-              <div key={docId} className="rounded-lg border border-border bg-surface-soft p-4">
-                <span className="text-base text-text-primary">
-                  {child.firstName} {child.lastName}
-                </span>
-              </div>
-            ))}
+            <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Děti</h2>
+            <IosList>
+              {children.map(({ docId, child }) => (
+                <IosListRow key={docId} as="div">
+                  <span className="text-[16px] text-text-primary">
+                    {child.firstName} {child.lastName}
+                  </span>
+                </IosListRow>
+              ))}
+            </IosList>
           </div>
         )}
       </div>
@@ -106,7 +111,7 @@ export default function MobileFamilyDetailPage() {
         <button
           type="button"
           onClick={() => setCapturing(true)}
-          className="fixed bottom-24 right-5 flex h-14 items-center gap-2 rounded-full bg-danger-solid px-5 text-white shadow-overlay"
+          className="fixed bottom-24 right-5 flex h-14 items-center gap-2 rounded-full bg-danger-solid px-5 text-white shadow-overlay transition-transform duration-150 active:scale-95"
         >
           <Mic size={20} strokeWidth={2} />
           <span className="text-sm font-medium">Nadiktovat zápis</span>

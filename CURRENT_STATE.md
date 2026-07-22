@@ -5,6 +5,66 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## PWA vizuál: styl aktuálního iOS + oprava formuláře + swipe (2026-07-22)
+
+Petrovo zadání se 3 body: (1) "Nová událost" má pole mimo formát
+(screenshot: pole Čas useknuté mimo viewport), (2) mezi dny Kalendáře by
+mělo jít swipovat, (3) obecně appka "se trhá", chybí "mobile app feeling",
+"nastuduj iOS a udělej appku do jeho stylu".
+
+**Oprava formuláře** (`MobileCalendarPage.tsx`) — Typ+Čas byly vedle sebe
+(`flex gap-3`, Čas `w-28`=112px); nativní `<input type="time">` má na iOS
+Safari vlastní minimální šířku ovládacího prvku větší než 112px, takže
+pole přeteklo mimo viewport. Opraveno tak, že Typ a Čas mají teď KAŽDÝ
+vlastní řádek (žádné dvousloupcové vměstnávání) — živě ověřeno
+(`boundingBox` pole Čas teď celé uvnitř 390px šířky).
+
+**Swipe mezi dny** (`MobileCalendarPage.tsx`) — `onTouchStart`/`onTouchEnd`
+na oblasti seznamu událostí (NE na pásu dnů výš, ten už scrolluje sám
+vodorovně), práh 40px + poměr vodorovný/svislý pohyb 1.5:1 (ať nekoliduje
+se svislým scrollem seznamu). Živě ověřeno syntetickými `TouchEvent`
+(swipe vlevo/vpravo mění vybraný den správným směrem).
+
+**Styl aktuálního iOS** — napříč VŠEMI mobilními stránkami:
+- `IosList`/`IosListRow` (NOVÝ, `components/mobile/IosList.tsx`) —
+  "seskupený seznam" (iOS Nastavení/Kontakty vzor): JEDEN zaoblený
+  kontejner s tenkými dělítky mezi řádky a okamžitou dotykovou odezvou
+  (`active:bg-overlay-active`), NAHRAZUJE dřívější samostatné orámované
+  karty pro každou položku (to působilo víc Android/Material). Nasazeno
+  v `MobileHomePage`, `MobileFamiliesPage`, `MobileFosterPersonListPage`,
+  `MobileChildListPage`, `MobileFamilyDetailPage`, `MobileCalendarPage`,
+  `MobileAccountPage`.
+- Velké tučné nadpisy stránek (`text-[32px] font-bold tracking-tight`,
+  iOS "Large Title" princip) místo `text-2xl font-normal` — konzistentní
+  napříč všemi mobilními stránkami, nahrazuje dřívější nesourodou směsici
+  velikostí písma (Petrovo "některá písma jsou malá a některá velká").
+  Sekční nadpisy ("Dnes máte", "Pěstouni", "Děti" v profilu rodiny)
+  sjednoceny na `text-[13px] font-semibold uppercase` (iOS "Section
+  Header"), nadpisy vyjížděcích panelů na `text-[17px] font-semibold`
+  (iOS "Headline").
+- `BottomSheet.tsx` — vyjíždění/zavírání teď používá `cubic-bezier(0.32,
+  0.72,0,1)` (stejná "spring" křivka jako iOS modální panely) místo
+  mechaničtějšího `ease-out`, POZADÍ se prolíná (fade in/out) souběžně se
+  slide animací, a zavření přes klik na pozadí/Escape si přehraje
+  ZPĚTNOU animaci (`requestClose` → 320ms → teprve pak skutečné
+  `onClose`), ne okamžité zmizení — živě ověřeno screenshotem uprostřed
+  zavírací animace.
+- Dotyková odezva (`active:scale-*`/`active:opacity-*`) přidána na
+  tab bar položky, den-pásu čipy, zaměstnanecké filtr-čipy, šipky
+  prev/next den, FAB tlačítka, telefonní odznaky — dřív jen barevný
+  přechod bez okamžité vizuální odezvy na dotyk, což přispívalo k pocitu
+  "trhavosti".
+- `MobileShell.tsx` — dolní tab bar má teď `backdrop-blur-lg` +
+  poloprůhledné pozadí (iOS "frosted glass" tab bar) místo plné barvy.
+- `MobileAccountPage.tsx` — "Odhlásit se" přestavěno na VLASTNÍ červenou
+  sekci seznamu (iOS Nastavení konvence — Sign Out je vždy samostatná
+  skupina dole), ne sekundární tlačítko vedle textu.
+
+Živě ověřeno (Playwright, mobilní viewport 390×844, emulátor): všech 7
+mobilních stránek screenshotováno a vizuálně zkontrolováno, swipe funguje
+oběma směry, pole Čas se vejde do viewportu, otevírací/zavírací animace
+sheetu běží plynule (zachyceno uprostřed animace), žádné JS chyby.
+
 ## Hlasový záznam v terénu: oprava scrollu + zarovnání textu (2026-07-22)
 
 Petrovo nahlášení: dlouhý živý přepis během nahrávání nešel scrollovat,

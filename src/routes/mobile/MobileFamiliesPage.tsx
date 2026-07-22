@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Users } from 'lucide-react'
+import { ChevronRight, Search, Users } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
+import { IosList, IosListRow } from '@/components/mobile/IosList'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -54,7 +55,7 @@ export default function MobileFamiliesPage() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-4 px-5 pb-6 pt-6">
-        <h1 className="text-2xl font-normal text-text-primary">Rodiny</h1>
+        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Rodiny</h1>
         <div className="relative">
           <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
           <Input
@@ -65,27 +66,25 @@ export default function MobileFamiliesPage() {
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          {filtered === null ? (
-            <p className="text-sm text-text-secondary">Načítám…</p>
-          ) : filtered.length === 0 ? (
-            <EmptyState icon={Users} text="Žádná rodina neodpovídá hledání." />
-          ) : (
-            filtered.map(({ docId, family, label }) => (
-              <button
-                key={docId}
-                type="button"
-                onClick={() => navigate(`/mobil/rodiny/${family.uid}`)}
-                className="flex flex-col items-start gap-0.5 rounded-lg border border-border bg-surface-soft p-4 text-left"
-              >
-                <span className="text-base font-medium text-text-primary">{label}</span>
-                {family.address && family.address !== label && (
-                  <span className="text-sm text-text-secondary">{family.address}</span>
-                )}
-              </button>
-            ))
-          )}
-        </div>
+        {filtered === null ? (
+          <p className="text-[15px] text-text-secondary">Načítám…</p>
+        ) : filtered.length === 0 ? (
+          <EmptyState icon={Users} text="Žádná rodina neodpovídá hledání." />
+        ) : (
+          <IosList>
+            {filtered.map(({ docId, family, label }) => (
+              <IosListRow key={docId} onClick={() => navigate(`/mobil/rodiny/${family.uid}`)}>
+                <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+                  <span className="text-[16px] font-medium text-text-primary">{label}</span>
+                  {family.address && family.address !== label && (
+                    <span className="text-[14px] text-text-secondary">{family.address}</span>
+                  )}
+                </span>
+                <ChevronRight size={18} className="shrink-0 text-text-tertiary" />
+              </IosListRow>
+            ))}
+          </IosList>
+        )}
       </div>
     </MobileShell>
   )

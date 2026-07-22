@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type TouchEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Ban, CalendarClock, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { BottomSheet } from '@/components/mobile/BottomSheet'
+import { IosList, IosListRow } from '@/components/mobile/IosList'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -72,6 +73,34 @@ export default function MobileCalendarPage() {
   const { loading: saving, run: runSave } = useAsyncSubmit()
   const { loading: cancelling, run: runCancel } = useAsyncSubmit()
   const selectedDayRef = useRef<HTMLButtonElement | null>(null)
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  function goToDay(delta: number) {
+    setSelectedDate((d) => {
+      const n = new Date(d)
+      n.setDate(n.getDate() + delta)
+      return n
+    })
+  }
+
+  // Swipe mezi dny (Petrovo zadání 2026-07-22, "jako v nativním kalendáři")
+  // — jen na svislý pohyb menší než vodorovný, ať to nekoliduje se
+  // svislým scrollem seznamu událostí; práh 40px odfiltruje náhodné ťuky.
+  function handleTouchStart(e: TouchEvent) {
+    const t = e.touches[0]
+    touchStartRef.current = { x: t.clientX, y: t.clientY }
+  }
+  function handleTouchEnd(e: TouchEvent) {
+    const start = touchStartRef.current
+    touchStartRef.current = null
+    if (!start) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - start.x
+    const dy = t.clientY - start.y
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      goToDay(dx < 0 ? 1 : -1)
+    }
+  }
 
   // Pás dnů je ±10 dní kolem "dnes", ale vybraný den nemusí ležet ve viditelné
   // části scrollu (živě odhaleno 2026-07-22 — vybraný den byl mimo záběr a
@@ -231,7 +260,7 @@ export default function MobileCalendarPage() {
   return (
     <MobileShell>
       <div className="flex flex-col pb-24 pt-6">
-        <h1 className="px-5 text-2xl font-normal text-text-primary">Kalendář</h1>
+        <h1 className="px-5 text-[32px] font-bold leading-tight tracking-tight text-text-primary">Kalendář</h1>
 
         {staffList.length > 1 && (
           <div className="mt-3 flex gap-1.5 overflow-x-auto px-5 pb-1">
@@ -242,7 +271,7 @@ export default function MobileCalendarPage() {
                   key={s.uid}
                   type="button"
                   onClick={() => toggleStaff(s.uid)}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-transform active:scale-95 ${
                     hidden ? 'border-border-subtle text-text-tertiary opacity-50' : 'border-border-strong text-text-primary'
                   }`}
                 >
@@ -264,7 +293,7 @@ export default function MobileCalendarPage() {
                 ref={selected ? selectedDayRef : undefined}
                 type="button"
                 onClick={() => setSelectedDate(d)}
-                className={`flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-3 py-2 ${
+                className={`flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-3 py-2 transition-all duration-150 active:scale-90 ${
                   selected ? 'bg-primary text-primary-foreground' : 'text-text-primary'
                 }`}
               >
@@ -278,13 +307,13 @@ export default function MobileCalendarPage() {
         </div>
 
         <div className="mt-2 flex items-center justify-between px-5">
-          <button type="button" onClick={() => setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() - 1); return n })}>
+          <button type="button" onClick={() => goToDay(-1)} className="p-1 transition-transform active:scale-90">
             <ChevronLeft size={20} className="text-text-secondary" />
           </button>
-          <p className="text-sm font-medium text-text-primary">
+          <p className="text-[15px] font-semibold text-text-primary">
             {selectedDate.toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
-          <button type="button" onClick={() => setSelectedDate((d) => { const n = new Date(d); n.setDate(n.getDate() + 1); return n })}>
+          <button type="button" onClick={() => goToDay(1)} className="p-1 transition-transform active:scale-90">
             <ChevronRight size={20} className="text-text-secondary" />
           </button>
         </div>
@@ -295,27 +324,27 @@ export default function MobileCalendarPage() {
           </p>
         )}
 
-        <div className="mt-4 flex flex-col gap-2 px-5">
+        {/* Swipe vlevo/vpravo kdekoli v seznamu událostí přepíná den (Petrovo
+         * zadání 2026-07-22, "jako v nativním kalendáři") — na TÉTHLE
+         * oblasti, ne na pásu dnů výš (ten už má svůj vlastní vodorovný
+         * scroll, swipe by se s ním rval). */}
+        <div className="mt-4 min-h-[40vh] px-5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           {dayItems.length === 0 ? (
             <EmptyState icon={CalendarClock} text="Pro tenhle den nemáte žádné události." />
           ) : (
-            dayItems.map((item) => {
-              const color = item.source === 'agreementVisit' ? '#9CA3AF' : staffColor(item.staffUid ?? '')
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => openEdit(item)}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-surface-soft p-4 text-left"
-                  style={{ borderLeft: `4px solid ${color}` }}
-                >
-                  <span className="w-14 shrink-0 text-sm font-medium text-text-primary">
-                    {item.allDay ? 'Celý den' : item.start.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{item.title}</span>
-                </button>
-              )
-            })
+            <IosList>
+              {dayItems.map((item) => {
+                const color = item.source === 'agreementVisit' ? '#9CA3AF' : staffColor(item.staffUid ?? '')
+                return (
+                  <IosListRow key={item.id} onClick={() => openEdit(item)} className="border-l-4" style={{ borderLeftColor: color }}>
+                    <span className="w-14 shrink-0 text-[14px] font-medium text-text-primary">
+                      {item.allDay ? 'Celý den' : item.start.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[15px] text-text-secondary">{item.title}</span>
+                  </IosListRow>
+                )
+              })}
+            </IosList>
           )}
         </div>
       </div>
@@ -324,7 +353,7 @@ export default function MobileCalendarPage() {
         type="button"
         onClick={openNew}
         aria-label="Nová událost"
-        className="fixed bottom-24 right-5 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-overlay"
+        className="fixed bottom-24 right-5 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-overlay transition-transform duration-150 active:scale-90"
       >
         <Plus size={26} strokeWidth={2} />
       </button>
@@ -333,7 +362,7 @@ export default function MobileCalendarPage() {
         <BottomSheet onClose={() => setSheet(null)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 pb-6 pt-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-normal text-text-primary">
+              <h2 className="text-[17px] font-semibold text-text-primary">
                 {sheet.mode === 'new' ? 'Nová událost' : 'Upravit událost'}
               </h2>
               {sheet.mode === 'edit' && (
@@ -351,31 +380,34 @@ export default function MobileCalendarPage() {
                 className="h-12 text-base"
               />
             </label>
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-sm font-medium text-text-primary">Typ</span>
-                <Select
-                  value={form.kind}
-                  onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value as CalendarEventKind }))}
-                  className="h-12 text-base"
-                >
-                  {Object.entries(CALENDAR_EVENT_KIND_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="flex w-28 flex-col gap-1.5">
-                <span className="text-sm font-medium text-text-primary">Čas</span>
-                <Input
-                  type="time"
-                  value={form.time}
-                  onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-                  className="h-12 text-base"
-                />
-              </label>
-            </div>
+            {/* Typ + Čas každý na VLASTNÍM řádku, ne vedle sebe — nativní
+             * `<input type="time">` má na iOS Safari vlastní minimální
+             * šířku ovládacího prvku, která ve dvousloupcovém řádku na
+             * 390px displeji přetekla mimo viewport (živě nahlášeno
+             * Petrem 2026-07-22, screenshot ukázal uříznuté pole Čas). */}
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-text-primary">Typ</span>
+              <Select
+                value={form.kind}
+                onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value as CalendarEventKind }))}
+                className="h-12 text-base"
+              >
+                {Object.entries(CALENDAR_EVENT_KIND_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-text-primary">Čas</span>
+              <Input
+                type="time"
+                value={form.time}
+                onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
+                className="h-12 w-full text-base"
+              />
+            </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-text-primary">Rodina (volitelné)</span>
               <Select

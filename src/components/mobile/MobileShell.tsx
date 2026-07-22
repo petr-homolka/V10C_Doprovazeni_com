@@ -16,18 +16,19 @@ const TABS = [
  * breadcrumb) — velký dolní tab bar (palcem dosažitelný), bezpečná zóna
  * pro iPhone home indicator (`env(safe-area-inset-bottom)`).
  *
- * `/rodiny`/`/kalendar` odkazy vedou na STÁVAJÍCÍ desktopové stránky
- * (vědomě NEpřestavěné pro mobil teď — SEAM, viz `useIsMobile.ts` komentář
- * v `App.tsx`) — jen domovská obrazovka (`MobileHomePage`) je nově
- * postavená mobil-first, protože to je ta, co KO v terénu skutečně
- * potřebuje ("nadiktovat zprávu", ne procházet seznamy).
+ * Všechny 4 záložky mají VLASTNÍ mobilní stránku (`useIsMobile.ts`
+ * přepínání v `App.tsx`) — žádná nevede na nepřestavěnou desktopovou
+ * stránku.
+ *
+ * `backdrop-blur`+poloprůhledné pozadí — iOS "frosted glass" tab bar
+ * (Petrovo zadání 2026-07-22, "styl aktuálního iOS"), ne plná barva.
  */
 export function MobileShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-[100dvh] flex-col bg-app">
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       <nav
-        className="grid shrink-0 grid-cols-4 border-t border-border bg-surface-soft"
+        className="grid shrink-0 grid-cols-4 border-t border-border bg-surface-soft/85 backdrop-blur-lg"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {TABS.map(({ to, label, icon: Icon, end }) => (
@@ -37,7 +38,7 @@ export function MobileShell({ children }: { children: ReactNode }) {
             end={end}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-text-tertiary transition-colors duration-150',
+                'flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-text-tertiary transition-all duration-150 active:scale-90',
                 isActive && 'text-accent',
               )
             }

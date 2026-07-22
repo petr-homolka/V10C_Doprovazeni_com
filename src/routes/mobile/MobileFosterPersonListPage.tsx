@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Phone, Search, UserRound } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
+import { IosList, IosListRow } from '@/components/mobile/IosList'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -47,46 +48,41 @@ export default function MobileFosterPersonListPage() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-4 px-5 pb-6 pt-6">
-        <h1 className="text-2xl font-normal text-text-primary">Pěstouni</h1>
+        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Pěstouni</h1>
         <div className="relative">
           <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Hledat pěstouna…" className="h-12 pl-10 text-base" />
         </div>
 
-        <div className="flex flex-col gap-2">
-          {filtered === null ? (
-            <p className="text-sm text-text-secondary">Načítám…</p>
-          ) : filtered.length === 0 ? (
-            <EmptyState icon={UserRound} text="Žádný pěstoun neodpovídá hledání." />
-          ) : (
-            filtered.map(({ docId, fosterPerson, name }) => {
+        {filtered === null ? (
+          <p className="text-[15px] text-text-secondary">Načítám…</p>
+        ) : filtered.length === 0 ? (
+          <EmptyState icon={UserRound} text="Žádný pěstoun neodpovídá hledání." />
+        ) : (
+          <IosList>
+            {filtered.map(({ docId, fosterPerson, name }) => {
               const fam = familiesByDocId[fosterPerson.familyId]
               return (
-                <button
-                  key={docId}
-                  type="button"
-                  onClick={() => fam && navigate(`/mobil/rodiny/${fam.uid}`)}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-soft p-4 text-left"
-                >
-                  <span className="flex flex-col gap-0.5">
-                    <span className="text-base font-medium text-text-primary">{name}</span>
-                    {fam && <span className="text-sm text-text-secondary">{fam.label}</span>}
+                <IosListRow key={docId} onClick={() => fam && navigate(`/mobil/rodiny/${fam.uid}`)}>
+                  <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <span className="text-[16px] font-medium text-text-primary">{name}</span>
+                    {fam && <span className="text-[14px] text-text-secondary">{fam.label}</span>}
                   </span>
                   {fosterPerson.phone && (
                     <a
                       href={`tel:${fosterPerson.phone}`}
                       onClick={(e) => e.stopPropagation()}
                       aria-label={`Zavolat ${name}`}
-                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary"
+                      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary transition-transform active:scale-90"
                     >
                       <Phone size={18} />
                     </a>
                   )}
-                </button>
+                </IosListRow>
               )
-            })
-          )}
-        </div>
+            })}
+          </IosList>
+        )}
       </div>
     </MobileShell>
   )

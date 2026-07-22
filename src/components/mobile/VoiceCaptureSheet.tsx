@@ -150,7 +150,7 @@ export function VoiceCaptureSheet({
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-4">
-            <h2 className="shrink-0 text-lg font-normal text-text-primary">Zkontrolovat a odeslat</h2>
+            <h2 className="shrink-0 text-[17px] font-semibold text-text-primary">Zkontrolovat a odeslat</h2>
             {/* min-h-* místo jen `flex-1` — bez spodní meze by textarea u
              * dlouhého textu roztáhla celý sheet a tlačítko "Odeslat do osy"
              * bylo pod hranicí viditelné oblasti (stejná chyba jako u živého

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CalendarClock, Mic } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { VoiceCaptureSheet } from '@/components/mobile/VoiceCaptureSheet'
+import { IosList, IosListRow } from '@/components/mobile/IosList'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import { listCalendarEvents } from '@/services/calendarEventService'
@@ -60,7 +61,7 @@ export default function MobileHomePage() {
   return (
     <MobileShell>
       <div className="relative flex min-h-full flex-col px-5 pb-28 pt-8">
-        <p className="text-2xl font-normal text-text-primary">
+        <p className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">
           {greeting}, {userDoc?.displayName?.split(' ')[0] ?? ''}
         </p>
 
@@ -72,24 +73,26 @@ export default function MobileHomePage() {
         >
           <Mic size={56} strokeWidth={1.75} />
         </button>
-        <p className="mt-4 text-center text-sm text-text-secondary">Ťukněte a nadiktujte zápis</p>
+        <p className="mt-4 text-center text-[15px] text-text-secondary">Ťukněte a nadiktujte zápis</p>
 
         <div className="mt-10">
-          <h2 className="text-sm font-medium uppercase tracking-wide text-text-tertiary">Dnes máte</h2>
-          <div className="mt-3 flex flex-col gap-2">
+          <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Dnes máte</h2>
+          <div className="mt-2">
             {todayEvents === null ? (
-              <p className="text-sm text-text-secondary">Načítám…</p>
+              <p className="text-[15px] text-text-secondary">Načítám…</p>
             ) : todayEvents.length === 0 ? (
               <EmptyState icon={CalendarClock} text="Dnes nemáte v kalendáři žádnou vlastní událost." />
             ) : (
-              todayEvents.map(({ docId, event }) => (
-                <div key={docId} className="flex items-center gap-3 rounded-lg border border-border bg-surface-soft p-4">
-                  <span className="shrink-0 text-sm font-medium text-text-primary">
-                    {new Date(event.start).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm text-text-secondary">{event.title}</span>
-                </div>
-              ))
+              <IosList>
+                {todayEvents.map(({ docId, event }) => (
+                  <IosListRow key={docId} as="div">
+                    <span className="shrink-0 text-[15px] font-medium text-text-primary">
+                      {new Date(event.start).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[15px] text-text-secondary">{event.title}</span>
+                  </IosListRow>
+                ))}
+              </IosList>
             )}
           </div>
         </div>
