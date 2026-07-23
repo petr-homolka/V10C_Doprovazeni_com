@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
 import { CheckSquare, Square, Ban, Plus } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { SidePanel } from '@/components/ui/side-panel'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -58,6 +57,12 @@ const EMPTY_FORM = {
  * nejsou nebo mají jen deadline v budoucnosti?"). Sdílený staff seznam,
  * stejná důvěra napříč rolemi jako Kalendář — kdokoli smí založit/upravit/
  * dokončit ČÍKOLIV úkol.
+ *
+ * Cesta B, čtvrtý průchod (2026-07-23) — nový/upravovaný úkol žije
+ * v pravém `SidePanel`u (stejný vzor jako `CalendarPage.tsx`), ne
+ * v centrovaném `Modal`u — jednotná "editace = panel vpravo" konvence
+ * napříč appkou, na přímé přání Petra ("Události a Úkoly" ve stejném
+ * schovávacím sidebaru).
  */
 export default function TaskListPage() {
   const { userDoc } = useAuth()
@@ -228,70 +233,71 @@ export default function TaskListPage() {
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Úkoly' }]}>
-      <PageHeader
-        title="Úkoly"
-        actions={
-          <>
-            <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
-            <Button size="sm" onClick={openNew}>
-              <Plus size={16} /> Nový úkol
-            </Button>
-          </>
-        }
-      />
+    <AppShell breadcrumb={[{ label: 'Úkoly' }]} fullBleed>
+      <div className="flex h-full min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border-default bg-surface-soft px-8 py-5">
+            <h1 className="text-[22px] font-bold leading-tight text-text-primary">Úkoly</h1>
+            <div className="flex shrink-0 items-center gap-3">
+              <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
+              <Button size="sm" onClick={openNew}>
+                <Plus size={16} /> Nový úkol
+              </Button>
+            </div>
+          </div>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+          <div className="min-h-0 flex-1 overflow-y-auto p-8">
+            {error && (
+              <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
 
-      <div className="mt-4">
-        {visibleTasks === null ? (
-          <p className="text-sm text-text-secondary">Načítám…</p>
-        ) : visibleTasks.length === 0 ? (
-          <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
-        ) : (
-          <Table>
-            <TableHeaderRow columns={TABLE_COLUMNS} labels={['', 'Název', 'Přiřazeno', 'Termín']} />
-            {visibleTasks.map(({ docId, task }) => (
-              <div key={docId} onClick={() => openEdit(docId, task)} className="contents cursor-pointer">
-                <TableRow columns={TABLE_COLUMNS}>
-                  <button
-                    type="button"
-                    onClick={(e) => toggleStatus(docId, task, e)}
-                    className="text-text-tertiary hover:text-primary"
-                    title={task.status === 'hotovo' ? 'Otevřít znovu' : 'Označit jako hotové'}
-                  >
-                    {task.status === 'hotovo' ? <CheckSquare size={18} className="text-primary" /> : <Square size={18} />}
-                  </button>
-                  <span
-                    className={`truncate text-sm font-medium ${
-                      task.status === 'otevreny' ? 'text-text-primary' : 'text-text-tertiary line-through'
-                    }`}
-                  >
-                    {task.title}
-                    {task.status === 'zruseno' && <span className="ml-2 text-xs font-normal text-danger">(zrušeno)</span>}
-                  </span>
-                  <span className="truncate text-sm text-text-secondary">{staffLabel.get(task.assignedToUid) ?? '—'}</span>
-                  <span className="text-sm text-text-secondary">
-                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString('cs-CZ') : '—'}
-                  </span>
-                </TableRow>
-              </div>
-            ))}
-          </Table>
-        )}
-      </div>
+            {visibleTasks === null ? (
+              <p className="text-sm text-text-secondary">Načítám…</p>
+            ) : visibleTasks.length === 0 ? (
+              <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
+            ) : (
+              <Table>
+                <TableHeaderRow columns={TABLE_COLUMNS} labels={['', 'Název', 'Přiřazeno', 'Termín']} />
+                {visibleTasks.map(({ docId, task }) => (
+                  <div key={docId} onClick={() => openEdit(docId, task)} className="contents cursor-pointer">
+                    <TableRow columns={TABLE_COLUMNS}>
+                      <button
+                        type="button"
+                        onClick={(e) => toggleStatus(docId, task, e)}
+                        className="text-text-tertiary hover:text-primary"
+                        title={task.status === 'hotovo' ? 'Otevřít znovu' : 'Označit jako hotové'}
+                      >
+                        {task.status === 'hotovo' ? <CheckSquare size={18} className="text-primary" /> : <Square size={18} />}
+                      </button>
+                      <span
+                        className={`truncate text-sm font-medium ${
+                          task.status === 'otevreny' ? 'text-text-primary' : 'text-text-tertiary line-through'
+                        }`}
+                      >
+                        {task.title}
+                        {task.status === 'zruseno' && <span className="ml-2 text-xs font-normal text-danger">(zrušeno)</span>}
+                      </span>
+                      <span className="truncate text-sm text-text-secondary">{staffLabel.get(task.assignedToUid) ?? '—'}</span>
+                      <span className="text-sm text-text-secondary">
+                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString('cs-CZ') : '—'}
+                      </span>
+                    </TableRow>
+                  </div>
+                ))}
+              </Table>
+            )}
+          </div>
+        </div>
 
-      {modal && (
-        <Modal onClose={() => setModal(null)} className="max-w-[520px]">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-medium text-text-primary">{modal.mode === 'new' ? 'Nový úkol' : 'Upravit úkol'}</h3>
-              {modal.mode === 'edit' && (
-                <div className="flex gap-2">
+        {modal && (
+          <SidePanel
+            title={modal.mode === 'new' ? 'Nový úkol' : 'Upravit úkol'}
+            onClose={() => setModal(null)}
+            actions={
+              modal.mode === 'edit' ? (
+                <>
                   {modal.seriesId && (
                     <Button
                       type="button"
@@ -302,40 +308,39 @@ export default function TaskListPage() {
                       className="text-danger"
                       title="Zruší tenhle i všechny budoucí výskyty stejné opakující se řady."
                     >
-                      <Ban size={14} /> Zrušit celou řadu
+                      <Ban size={14} /> Řada
                     </Button>
                   )}
                   <Button type="button" variant="ghost" size="sm" onClick={handleCancel} className="text-danger">
-                    <Ban size={14} /> Zrušit úkol
+                    <Ban size={14} /> Zrušit
                   </Button>
-                </div>
-              )}
-            </div>
-
+                </>
+              ) : undefined
+            }
+          >
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
               <Input required value={form.title} onChange={(e) => set('title', e.target.value)} />
             </label>
 
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Přiřazeno</span>
-                <Select value={form.assignedToUid} onChange={(e) => set('assignedToUid', e.target.value)}>
-                  {staffList.map((s) => (
-                    <option key={s.uid} value={s.uid}>
-                      {s.displayName}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="flex flex-1 flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Termín (volitelné)</span>
-                <DatePicker value={form.dueDate} onChange={(v) => set('dueDate', v)} />
-              </label>
-            </div>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Přiřazeno</span>
+              <Select value={form.assignedToUid} onChange={(e) => set('assignedToUid', e.target.value)}>
+                {staffList.map((s) => (
+                  <option key={s.uid} value={s.uid}>
+                    {s.displayName}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Termín (volitelné)</span>
+              <DatePicker value={form.dueDate} onChange={(v) => set('dueDate', v)} />
+            </label>
 
             {modal.mode === 'new' && (
-              <div className="flex flex-col gap-2 rounded-sm border border-border-medium bg-inset px-3 py-3">
+              <div className="flex flex-col gap-2 rounded-sm border border-transparent bg-field px-3 py-3">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm font-medium leading-relaxed text-text-primary">Opakovat</span>
                   <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" />
@@ -419,8 +424,9 @@ export default function TaskListPage() {
               </Button>
             </div>
           </form>
-        </Modal>
-      )}
+          </SidePanel>
+        )}
+      </div>
     </AppShell>
   )
 }

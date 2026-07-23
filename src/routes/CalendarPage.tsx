@@ -8,11 +8,11 @@ import { cs } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import '@/styles/calendar-overrides.css'
-import { CalendarPlus, Ban, Settings } from 'lucide-react'
+import { Ban, Settings } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
+import { SidePanel } from '@/components/ui/side-panel'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -42,6 +42,7 @@ import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { SubjectRef } from '@/types/timelineEntry'
+import { cn } from '@/lib/utils'
 
 const locales = { 'cs-CZ': cs }
 const localizer = dateFnsLocalizer({
@@ -171,6 +172,16 @@ function czechPlural(n: number, unit: RecurrenceUnit): string {
  * backendu) — push VÝHRADNĚ vlastních naplánovaných událostí
  * (`assignedToUid === userDoc.uid`) do vlastního Google Kalendáře
  * přihlášeného uživatele.
+ *
+ * Cesta B, čtvrtý průchod (2026-07-23, přímé přání Petra) — STRUKTURÁLNÍ
+ * přestavba layoutu: mřížka teď `fullBleed` (celá šířka/výška obsahové
+ * plochy, žádný `PageHeader`/max-width strop) a všechno "nastavování a
+ * napojování" (filtr zaměstnanců, odkaz na Nastavení, Google sync) i
+ * editace Události zmizelo z centrovaného `Modal`u do pravého SCHOVÁVACÍHO
+ * `SidePanel`u (na rozdíl od `Drawer` bez overlay/backdrop — zbytek appky
+ * zůstává interaktivní, panel jen zmenší šířku mřížky vedle sebe). Dvě
+ * ikony v `CalendarToolbar` (vlevo od mřížky) přepínají, který panel (če
+ * žádný) je otevřený — `panelMode`.
  */
 export default function CalendarPage() {
   const navigate = useNavigate()
@@ -191,6 +202,7 @@ export default function CalendarPage() {
   const [view, setView] = useState<View>(Views.WEEK)
   const [date, setDate] = useState(new Date())
 
+  const [panelMode, setPanelMode] = useState<'none' | 'settings' | 'event'>('none')
   const [slotModal, setSlotModal] = useState<{ mode: 'new' | 'edit'; docId?: string; seriesId?: string | null; start?: string } | null>(
     null,
   )
@@ -260,6 +272,11 @@ export default function CalendarPage() {
     })
   }
 
+  function closePanel() {
+    setPanelMode('none')
+    setSlotModal(null)
+  }
+
   function openNew(start?: Date, end?: Date) {
     const s = start ?? new Date()
     const e = end ?? new Date(s.getTime() + 60 * 60 * 1000)
@@ -267,6 +284,7 @@ export default function CalendarPage() {
     const { date: endDate, time: endTime } = splitIso(e.toISOString())
     setForm({ ...EMPTY_FORM, assignedToUid: userDoc?.uid ?? '', startDate, startTime, endDate, endTime })
     setSlotModal({ mode: 'new' })
+    setPanelMode('event')
   }
 
   function openEdit(item: CalendarItem) {
@@ -289,6 +307,7 @@ export default function CalendarPage() {
       notes: item.event.notes ?? '',
     })
     setSlotModal({ mode: 'edit', docId: item.docId, seriesId: item.event.recurrence?.seriesId ?? null, start: item.event.start })
+    setPanelMode('event')
   }
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -357,7 +376,7 @@ export default function CalendarPage() {
         }
         await reload()
       })
-      setSlotModal(null)
+      closePanel()
     } catch {
       setError('Uložení se nezdařilo.')
     }
@@ -371,7 +390,7 @@ export default function CalendarPage() {
         await cancelCalendarEvent(organizationId, slotModal.docId!)
         await reload()
       })
-      setSlotModal(null)
+      closePanel()
     } catch {
       setError('Zrušení se nezdařilo.')
     }
@@ -388,7 +407,7 @@ export default function CalendarPage() {
         await cancelCalendarEventSeries(organizationId, slotModal.seriesId!, slotModal.start!)
         await reload()
       })
-      setSlotModal(null)
+      closePanel()
     } catch {
       setError('Zrušení celé řady se nezdařilo.')
     }
@@ -436,105 +455,123 @@ export default function CalendarPage() {
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Kalendář' }]}>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {staffList.map((s) => {
-            const hidden = hiddenStaffUids.has(s.uid)
-            return (
-              <button
-                key={s.uid}
-                type="button"
-                onClick={() => toggleStaff(s.uid)}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-opacity ${
-                  hidden ? 'border-border-subtle text-text-tertiary opacity-50' : 'border-border-strong text-text-primary'
-                }`}
-                title={hidden ? `Zobrazit ${s.displayName}` : `Skrýt ${s.displayName}`}
-              >
-                <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: staffColor(s.uid) }} />
-                {s.displayName}
-              </button>
-            )
-          })}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <Link
-            to="/nastaveni/kalendar"
-            aria-label="Nastavení kalendáře"
-            title="Nastavení kalendáře — narozeninová a jmeninová upozornění"
-            className="flex size-9 items-center justify-center rounded-sm text-text-secondary hover:bg-overlay-active hover:text-text-primary"
-          >
-            <Settings size={18} />
-          </Link>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleGoogleSync}
-            loading={syncingGoogle}
-            title="Odešle vaše naplánované události (přiřazené vám) do vašeho Google Kalendáře — přihlásíte se poprvé Google účtem."
-          >
-            Synchronizovat s Google Kalendářem
-          </Button>
-          <Button size="sm" onClick={() => openNew()}>
-            <CalendarPlus size={16} /> Nová událost
-          </Button>
-        </div>
-      </div>
+    <AppShell breadcrumb={[{ label: 'Kalendář' }]} fullBleed>
+      <div className="flex h-full min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
+          {error && (
+            <p className="mb-3 shrink-0 text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface-soft shadow-raised">
+            {loaded && (
+              <DnDCalendar
+                localizer={localizer}
+                culture="cs-CZ"
+                messages={MESSAGES}
+                events={items}
+                view={view}
+                onView={setView}
+                views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA] as View[]}
+                date={date}
+                onNavigate={setDate}
+                style={{ height: '100%' }}
+                selectable
+                components={{
+                  toolbar: (toolbarProps) => (
+                    <CalendarToolbar
+                      {...toolbarProps}
+                      onNewEvent={() => openNew()}
+                      onOpenSettings={() => setPanelMode((p) => (p === 'settings' ? 'none' : 'settings'))}
+                      settingsActive={panelMode === 'settings'}
+                    />
+                  ),
+                }}
+                draggableAccessor={(item) => item.draggable}
+                resizableAccessor={(item) => item.draggable}
+                onSelectSlot={({ start, end }) => openNew(start as Date, end as Date)}
+                onSelectEvent={openEdit}
+                onEventDrop={handleEventDrop}
+                onEventResize={handleEventDrop}
+                eventPropGetter={(item) => {
+                  const color =
+                    item.source === 'agreementVisit' ? TIER_COLORS[item.tier ?? 'ok'] : staffColor(item.staffUid ?? '')
+                  return {
+                    style: {
+                      backgroundColor: lightenHex(color, item.source === 'agreementVisit' ? 0.82 : 0.78),
+                      color: 'var(--text-primary)',
+                      borderLeft: `3px solid ${color}`,
+                      borderTop: 'none',
+                      borderRight: 'none',
+                      borderBottom: 'none',
+                    },
+                  }
+                }}
+              />
+            )}
+          </div>
+        </div>
 
-      <div className="mt-4 rounded-lg border border-border bg-surface-soft p-4 shadow-raised">
-        {loaded && (
-          <DnDCalendar
-            localizer={localizer}
-            culture="cs-CZ"
-            messages={MESSAGES}
-            events={items}
-            view={view}
-            onView={setView}
-            views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA] as View[]}
-            date={date}
-            onNavigate={setDate}
-            style={{ height: 720 }}
-            selectable
-            components={{ toolbar: CalendarToolbar }}
-            draggableAccessor={(item) => item.draggable}
-            resizableAccessor={(item) => item.draggable}
-            onSelectSlot={({ start, end }) => openNew(start as Date, end as Date)}
-            onSelectEvent={openEdit}
-            onEventDrop={handleEventDrop}
-            onEventResize={handleEventDrop}
-            eventPropGetter={(item) => {
-              const color =
-                item.source === 'agreementVisit' ? TIER_COLORS[item.tier ?? 'ok'] : staffColor(item.staffUid ?? '')
-              return {
-                style: {
-                  backgroundColor: lightenHex(color, item.source === 'agreementVisit' ? 0.82 : 0.78),
-                  color: 'var(--text-primary)',
-                  borderLeft: `3px solid ${color}`,
-                  borderTop: 'none',
-                  borderRight: 'none',
-                  borderBottom: 'none',
-                },
-              }
-            }}
-          />
+        {panelMode === 'settings' && (
+          <SidePanel title="Nastavení kalendáře" onClose={closePanel}>
+            <div className="flex flex-col gap-6">
+              <div>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+                  Zobrazit zaměstnance
+                </h3>
+                <div className="mt-2 flex flex-col gap-0.5">
+                  {staffList.map((s) => {
+                    const hidden = hiddenStaffUids.has(s.uid)
+                    return (
+                      <button
+                        key={s.uid}
+                        type="button"
+                        onClick={() => toggleStaff(s.uid)}
+                        className={cn(
+                          'flex items-center gap-2.5 rounded-sm px-2 py-1.5 text-left text-sm transition-colors duration-150 hover:bg-overlay-active',
+                          hidden ? 'text-text-tertiary opacity-60' : 'text-text-primary',
+                        )}
+                      >
+                        <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: staffColor(s.uid) }} />
+                        {s.displayName}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-border-subtle pt-4">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Napojení</h3>
+                <Link
+                  to="/nastaveni/kalendar"
+                  className="flex items-center gap-2 rounded-sm px-2 py-2 text-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
+                >
+                  <Settings size={16} strokeWidth={1.75} className="text-text-secondary" />
+                  Nastavení kalendáře (narozeniny, jmeniny)
+                </Link>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleGoogleSync}
+                  loading={syncingGoogle}
+                  className="w-full justify-center"
+                  title="Odešle vaše naplánované události (přiřazené vám) do vašeho Google Kalendáře — přihlásíte se poprvé Google účtem."
+                >
+                  Synchronizovat s Google Kalendářem
+                </Button>
+              </div>
+            </div>
+          </SidePanel>
         )}
-      </div>
 
-      {slotModal && (
-        <Modal onClose={() => setSlotModal(null)} className="max-w-[520px]">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-medium text-text-primary">
-                {slotModal.mode === 'new' ? 'Nová událost' : 'Upravit událost'}
-              </h3>
-              {slotModal.mode === 'edit' && (
-                <div className="flex gap-2">
+        {panelMode === 'event' && slotModal && (
+          <SidePanel
+            title={slotModal.mode === 'new' ? 'Nová událost' : 'Upravit událost'}
+            onClose={closePanel}
+            actions={
+              slotModal.mode === 'edit' ? (
+                <>
                   {slotModal.seriesId && (
                     <Button
                       type="button"
@@ -545,7 +582,7 @@ export default function CalendarPage() {
                       className="text-danger"
                       title="Zruší tenhle i všechny budoucí výskyty stejné opakující se řady, minulé výskyty zůstanou beze změny."
                     >
-                      <Ban size={14} /> Zrušit celou řadu
+                      <Ban size={14} /> Řada
                     </Button>
                   )}
                   <Button
@@ -556,19 +593,19 @@ export default function CalendarPage() {
                     onClick={handleCancel}
                     className="text-danger"
                   >
-                    <Ban size={14} /> Zrušit událost
+                    <Ban size={14} /> Zrušit
                   </Button>
-                </div>
-              )}
-            </div>
+                </>
+              ) : undefined
+            }
+          >
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
+                <Input required value={form.title} onChange={(e) => set('title', e.target.value)} />
+              </label>
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
-              <Input required value={form.title} onChange={(e) => set('title', e.target.value)} />
-            </label>
-
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
+              <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium leading-relaxed text-text-primary">Typ</span>
                 <Select value={form.kind} onChange={(e) => set('kind', e.target.value as CalendarEventKind)}>
                   {Object.entries(CALENDAR_EVENT_KIND_LABELS).map(([value, label]) => (
@@ -578,7 +615,7 @@ export default function CalendarPage() {
                   ))}
                 </Select>
               </label>
-              <label className="flex flex-1 flex-col gap-1.5">
+              <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium leading-relaxed text-text-primary">Přiřazeno</span>
                 <Select value={form.assignedToUid} onChange={(e) => set('assignedToUid', e.target.value)}>
                   {staffList.map((s) => (
@@ -588,117 +625,113 @@ export default function CalendarPage() {
                   ))}
                 </Select>
               </label>
-            </div>
 
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
+              <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium leading-relaxed text-text-primary">Začátek</span>
                 <div className="flex gap-2">
                   <DatePicker value={form.startDate} onChange={(v) => set('startDate', v)} />
                   <Input type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} />
                 </div>
               </label>
-            </div>
-            <div className="flex gap-3">
-              <label className="flex flex-1 flex-col gap-1.5">
+              <label className="flex flex-col gap-1.5">
                 <span className="text-sm font-medium leading-relaxed text-text-primary">Konec</span>
                 <div className="flex gap-2">
                   <DatePicker value={form.endDate} onChange={(v) => set('endDate', v)} />
                   <Input type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} />
                 </div>
               </label>
-            </div>
 
-            {/* Opakování jen v "new" režimu — editace existujícího výskytu
-             * mění jen TENHLE výskyt, ne celou řadu (viz komentář u
-             * `EventRecurrence` typu proč jsou to nezávislé dokumenty). */}
-            {slotModal.mode === 'new' && (
-              <div className="flex flex-col gap-2 rounded-sm border border-border-medium bg-inset px-3 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-medium leading-relaxed text-text-primary">Opakovat</span>
-                  <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" />
-                </div>
-                {form.recurrenceEnabled && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-text-secondary">Každých</span>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={form.recurrenceInterval}
-                      onChange={(e) => set('recurrenceInterval', Math.max(1, Number(e.target.value) || 1))}
-                      className="w-16"
-                    />
-                    <Select
-                      value={form.recurrenceUnit}
-                      onChange={(e) => set('recurrenceUnit', e.target.value as RecurrenceUnit)}
-                      className="w-28"
-                    >
-                      {(['day', 'week', 'month', 'year'] as RecurrenceUnit[]).map((u) => (
-                        <option key={u} value={u}>
-                          {czechPlural(form.recurrenceInterval, u)}
-                        </option>
-                      ))}
-                    </Select>
-                    <span className="text-sm text-text-secondary">celkem</span>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={104}
-                      value={form.occurrenceCount}
-                      onChange={(e) => set('occurrenceCount', Math.min(104, Math.max(1, Number(e.target.value) || 1)))}
-                      className="w-16"
-                    />
-                    <span className="text-sm text-text-secondary">krát</span>
+              {/* Opakování jen v "new" režimu — editace existujícího výskytu
+               * mění jen TENHLE výskyt, ne celou řadu (viz komentář u
+               * `EventRecurrence` typu proč jsou to nezávislé dokumenty). */}
+              {slotModal.mode === 'new' && (
+                <div className="flex flex-col gap-2 rounded-sm border border-transparent bg-field px-3 py-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-medium leading-relaxed text-text-primary">Opakovat</span>
+                    <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" />
                   </div>
-                )}
-                {form.recurrenceEnabled && (
-                  <p className="text-xs text-text-tertiary">
-                    Založí se každý výskyt zvlášť (max. 104 výskytů/2 roky dopředu) — pozdější dogenerování řady
-                    zatím appka neumí, na dlouhodobě opakující se událost je potřeba se vrátit ručně.
-                  </p>
-                )}
+                  {form.recurrenceEnabled && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm text-text-secondary">Každých</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={99}
+                        value={form.recurrenceInterval}
+                        onChange={(e) => set('recurrenceInterval', Math.max(1, Number(e.target.value) || 1))}
+                        className="w-16"
+                      />
+                      <Select
+                        value={form.recurrenceUnit}
+                        onChange={(e) => set('recurrenceUnit', e.target.value as RecurrenceUnit)}
+                        className="w-28"
+                      >
+                        {(['day', 'week', 'month', 'year'] as RecurrenceUnit[]).map((u) => (
+                          <option key={u} value={u}>
+                            {czechPlural(form.recurrenceInterval, u)}
+                          </option>
+                        ))}
+                      </Select>
+                      <span className="text-sm text-text-secondary">celkem</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={104}
+                        value={form.occurrenceCount}
+                        onChange={(e) => set('occurrenceCount', Math.min(104, Math.max(1, Number(e.target.value) || 1)))}
+                        className="w-16"
+                      />
+                      <span className="text-sm text-text-secondary">krát</span>
+                    </div>
+                  )}
+                  {form.recurrenceEnabled && (
+                    <p className="text-xs text-text-tertiary">
+                      Založí se každý výskyt zvlášť (max. 104 výskytů/2 roky dopředu) — pozdější dogenerování řady
+                      zatím appka neumí, na dlouhodobě opakující se událost je potřeba se vrátit ručně.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Vazba (rodina / dítě / pěstoun)</span>
+                <SubjectRefsPicker
+                  value={form.subjectRefs}
+                  onChange={(refs) => set('subjectRefs', refs)}
+                  families={families}
+                  children={children}
+                  fosterPersons={fosterPersons}
+                />
+              </label>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Poznámka</span>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => set('notes', e.target.value)}
+                  rows={2}
+                  className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
+                />
+              </label>
+
+              {error && (
+                <p className="text-sm text-danger" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex gap-2">
+                <Button type="submit" loading={saving}>
+                  {slotModal.mode === 'new' ? 'Založit' : 'Uložit změny'}
+                </Button>
+                <Button type="button" variant="ghost" onClick={closePanel} disabled={saving}>
+                  Zrušit okno
+                </Button>
               </div>
-            )}
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Vazba (rodina / dítě / pěstoun)</span>
-              <SubjectRefsPicker
-                value={form.subjectRefs}
-                onChange={(refs) => set('subjectRefs', refs)}
-                families={families}
-                children={children}
-                fosterPersons={fosterPersons}
-              />
-            </label>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Poznámka</span>
-              <textarea
-                value={form.notes}
-                onChange={(e) => set('notes', e.target.value)}
-                rows={2}
-                className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
-              />
-            </label>
-
-            {error && (
-              <p className="text-sm text-danger" role="alert">
-                {error}
-              </p>
-            )}
-
-            <div className="flex gap-2">
-              <Button type="submit" loading={saving}>
-                {slotModal.mode === 'new' ? 'Založit' : 'Uložit změny'}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setSlotModal(null)} disabled={saving}>
-                Zrušit okno
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+            </form>
+          </SidePanel>
+        )}
+      </div>
     </AppShell>
   )
 }
