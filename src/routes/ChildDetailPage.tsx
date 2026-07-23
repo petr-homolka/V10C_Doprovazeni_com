@@ -4,10 +4,11 @@ import { AppShell } from '@/components/shell/AppShell'
 import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Button } from '@/components/ui/button'
+import { DatePicker } from '@/components/ui/date-picker'
 import { ChildSupportSection } from '@/components/family/ChildSupportSection'
 import { ChildHandoversSection } from '@/components/family/ChildHandoversSection'
 import { useAuth } from '@/hooks/useAuth'
-import { getChild, getFamilyByUid, listFosterPersonsByRefs } from '@/services/familyService'
+import { getChild, getFamilyByUid, listFosterPersonsByRefs, updateChildBirthDate } from '@/services/familyService'
 import { getChildRespitDaysForYear } from '@/services/respitEventService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
@@ -42,6 +43,17 @@ export default function ChildDetailPage() {
 
   const [primaryFosterName, setPrimaryFosterName] = useState<string | null>(null)
   const familyName = family ? resolveFamilyDisplayName(family, primaryFosterName) : ''
+  const [birthDate, setBirthDate] = useState('')
+
+  async function handleBirthDateChange(value: string) {
+    if (!childId) return
+    setBirthDate(value)
+    try {
+      await updateChildBirthDate(childId, value)
+    } catch {
+      setError('Datum narození se nepodařilo uložit.')
+    }
+  }
 
   useEffect(() => {
     async function reload() {
@@ -56,6 +68,7 @@ export default function ChildDetailPage() {
         setFamily(found.family)
         setFamilyDocId(found.docId)
         setChild(c)
+        setBirthDate(c.birthDate ?? '')
         const [days, fosters] = await Promise.all([
           getChildRespitDaysForYear(childId, new Date().getFullYear()),
           listFosterPersonsByRefs(found.family.fosterPersonRefs),
@@ -108,6 +121,10 @@ export default function ChildDetailPage() {
                     {child.firstName} {child.lastName}
                   </h1>
                   <p className="mt-1 font-mono text-sm text-text-secondary">{child.birthNumber}</p>
+                  <label className="mt-3 flex flex-col gap-1.5">
+                    <span className="text-sm font-medium text-text-primary">Datum narození (volitelné)</span>
+                    <DatePicker value={birthDate} onChange={handleBirthDateChange} className="max-w-[220px]" />
+                  </label>
                   <p className="mt-3 text-sm text-text-secondary">
                     Respit v {new Date().getFullYear()}: {respitDays ?? 0} dní čerpáno
                     <span className="ml-1 text-text-tertiary">

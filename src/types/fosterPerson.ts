@@ -25,6 +25,10 @@ export interface FosterPersonDoc {
   lastName: string
   phone?: string
   email?: string
+  /** 'YYYY-MM-DD' (stejný formát jako `DatePicker`/`ChildDoc.birthDate`) —
+   * volitelné, doplněno 2026-07-23 pro narozeninová upozornění (Petrovo
+   * zadání). Dřív u pěstounů neexistovalo VŮBEC žádné pole data narození. */
+  birthDate?: string
   createdAt: string
   /** Viz stejnojmenné pole na FamilyDoc — import rollback (§5.5, M1.5). */
   createdByImportJobRef?: string

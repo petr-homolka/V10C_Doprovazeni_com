@@ -5,6 +5,115 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Kalendář: Úkoly, opakování, vazba na víc entit, narozeniny/svátky (2026-07-23)
+
+Navazuje na "Výzkum k širším bodům zpětné vazby" níž — Petr zvolil
+nejambicióznější variantu na všechny čtyři otázky ("Navrhni a rovnou
+postav" / "Stejný vzor jako jinde v appce" / "Mobil i desktop najednou" /
+"Přidej pole a pak upozornění"), celé postaveno a živě ověřeno v jedné
+dávce (desktop + mobil, PWA vždy zahrnuto per Petrovo obecné zadání "vždy
+mysli i na to, že to musí fungovat i na pwa").
+
+- **Opakování** (`EventRecurrence` — `types/calendarEvent.ts`) — sdílený
+  typ `{interval, unit, seriesId}`, STEJNÝ princip jako
+  `scheduledActivity`/`assistedContactSeries` (materializace, ne on-the-fly
+  RRULE): `createRecurringCalendarEvents()` založí KAŽDÝ výskyt jako
+  VLASTNÍ `CalendarEventDoc` se sdíleným `seriesId` (max 104 výskytů/2 roky
+  dopředu — appka nemá cron na dogenerování, §10, SEAM zdokumentovaný
+  přímo ve formuláři). `cancelCalendarEventSeries()` hromadně zruší
+  VŠECHNY dosud neproběhlé výskyty (minulé zůstávají, "zrušeno" je stav ne
+  mazání). UI (desktop `CalendarPage.tsx` i mobil `MobileCalendarPage.tsx`,
+  stejný vzor): přepínač "Opakovat" (jen v `new` režimu) + interval/
+  jednotka (den/týden/měsíc/rok, `czechPlural()` pro skloňování) + počet
+  výskytů; v `edit` režimu tlačítko "Zrušit celou řadu" navíc k "Zrušit
+  událost", zobrazené jen má-li výskyt `recurrence.seriesId`.
+- **Úkoly** (`types/task.ts`, `services/taskService.ts`,
+  `routes/TaskListPage.tsx` + `routes/mobile/MobileTaskListPage.tsx`) —
+  VLASTNÍ kolekce `organizations/{orgId}/tasks`, ne varianta kalendářní
+  události (`dueDate` je volitelné ČISTÉ datum, žádný čas). Zprovoznilo
+  `/ukoly` nav položku (`Sidebar.tsx`), co byla mrtvý odkaz od M0. Stejný
+  sdílený-staff-seznam princip jako Kalendář (kdokoli ze stejné
+  organizace smí založit/upravit/dokončit ČÍKOLIV úkol), stejné opakování
+  (`createRecurringTasks`/`cancelTaskSeries`), stejná `subjectRefs`
+  vazba. Desktop: tabulka s checkbox-ikonou pro rychlé
+  dokončení/znovuotevření přímo v řádku (bez otevření modálu), přepínač
+  "Zobrazit i dokončené/zrušené" (výchozí pohled = jen otevřené). Mobil:
+  `IosList` + `BottomSheet` formulář, dostupné přes novou "Zkratky" sekci
+  na `MobileAccountPage` (viz níž).
+- **Vazba na víc entit** (`subjectRefs?: SubjectRef[]` na
+  `CalendarEventDoc` I `TaskDoc`) — znovupoužit STEJNÝ `SubjectRef`/`kind`
+  pattern jako `timelineEntry.ts` (hlasové zápisy), ne nový vynález.
+  Nová sdílená komponenta `SubjectRefsPicker`
+  (`components/calendar/SubjectRefsPicker.tsx`, desktop i mobil) —
+  `Combobox` pro přidání (rodina/dítě/pěstoun v jednom seznamu, štítek
+  "Typ: Jméno") + odebíratelné "čipy" pod tím. `familyDocId`/`familyUid`
+  na obou typech ZŮSTÁVAJÍ (zpětná kompatibilita s
+  `calendarAggregation.ts` deep-linkem a Google sync popisem) — vždy
+  odvozené od PRVNÍ `family` položky v `subjectRefs`, počítané volající UI
+  vrstvou (`CalendarPage.tsx`/`MobileCalendarPage.tsx`/`TaskListPage.tsx`/
+  `MobileTaskListPage.tsx`), ne servisní vrstvou.
+- **Narozeniny/svátky** — `birthDate?: string` doplněno na
+  `FosterPersonDoc` (nové pole, nikdy dřív neexistovalo) a skutečně
+  editovatelné na `ChildDetailPage.tsx`/`FosterPersonDetailPage.tsx`
+  (`ChildDoc.birthDate` v typu existoval, ale ŽÁDNÝ formulář ho nikdy
+  nesbíral — Petrova premisa "systém ví, kdy mají děti narozeniny" byla
+  fakticky nepravdivá, dokud tahle dávka pole nezpřístupnila). Český
+  svátkový (jmeninový) kalendář `data/nameDays.ts` — komunitně udržovaný
+  dataset (`OzzyCzech/namedays-cs`, MIT), 365 dní, zdroj uveden v
+  komentáři. `listBirthdayAlerts()` (`dashboardService.ts`) — SAMOSTATNÁ
+  funkce vedle `listOperationalAlerts()` (ne sloučeno), protože je to
+  JEDINÝ druh upozornění gatovaný osobní preferencí
+  (`UserDoc.notifyBirthdays`), volající kód rozhoduje, zda ji vůbec
+  zavolat. Lookahead 7 dní, jmeniny porovnávané bez diakritiky. Zobrazeno
+  na desktopu (`TodaySections.tsx`, sekce "Provozní upozornění", 🎂/🎉
+  ikona místo výstražného stylu) i na mobilu (`MobileHomePage.tsx`,
+  sekce "Narozeniny a svátky", zobrazená jen když je co ukázat). Přepínač
+  v Nastavení → Oznámení (`NotificationsSettingsPage.tsx`) — PRVNÍ
+  skutečně persistovaný/funkční toggle v týhle sekci (starší "E-mailová
+  upozornění" je čistě lokální UI stav, žádná e-mailová infrastruktura
+  neexistuje, zdokumentováno jako SEAM). `firestore.rules` `users/{uid}`
+  self-update rozšířeno o `notifyBirthdays` vedle `displayName`.
+- **Mobilní "Zkratky"** (`MobileAccountPage.tsx`) — Pěstouni/Děti (z
+  předchozí dávky) i nové Úkoly nemají vlastní tab (dolní lišta má jen 4
+  pevné sloty), a Pěstouni/Děti dřív neměly na mobilu ŽÁDNÝ vstupní bod
+  vůbec (jen skryté routy bez odkazu odkudkoli) — živě odhaleno při
+  ověřování týhle dávky, ne teoreticky. Nová sekce na "Účet" tuhle díru
+  zavírá pro všechny tři najednou.
+- **Bonus oprava (živě odhaleno při ověřování, nesouvisí přímo s výš)** —
+  `firestore.rules` `agreements` read pravidlo (`allow read: if
+  isSuperadmin() || sameOrg(resource.data.organizationId)`) padalo s
+  chybou vyhodnocení pravidel při čtení Dohody, co JEŠTĚ NEEXISTUJE
+  (běžný, UI podporovaný stav pro novou rodinu — "Zatím žádná Dohoda…
+  založit →") — `resource.data` na neexistujícím dokumentu je `null`,
+  přístup na `.organizationId` shodil CELÝ `getDoc` namísto vrácení
+  "neexistuje". Opraveno stejným `resource == null ||` idiomem, co už
+  appka používá jinde (`orgCodeCounters`). Bez týhle opravy nešlo založit
+  rodinu a hned k ní přidat pěstouna/dítě bez první založení Dohody —
+  reálně blokovalo běžný onboarding flow. Rules test doplněn
+  (`m2.rules.test.ts`).
+
+Živě ověřeno (Playwright, čerstvě zaregistrovaná organizace, emulátor,
+desktop 1280px I mobil 390px viewport): založení rodiny → pěstoun → dítě
+→ datum narození "zítra" → narozeninové upozornění na Dnes stránce;
+opakující se událost s vazbou na rodinu (týdně, 4×) → obě viditelné
+v měsíčním pohledu → editace jednoho výskytu ukáže vyplněnou vazbu →
+"Zrušit celou řadu" funguje; Úkol s vazbou na dítě → zobrazí se v
+seznamu → zaškrtnutí zmizí z výchozího pohledu → přepínač
+"Zobrazit i dokončené" ho vrátí přeškrtnutý. Nula konzolových/
+JS chyb během celého průchodu na obou viewportech. `npx tsc -b`,
+`npx oxlint src/`, `npm run test:rules` (136 testů), `npx vitest run`
+(37 testů) a `npm run build` všechny čisté.
+
+### Nevyřešeno (Petrovo zadání bod 7, vědomě odloženo)
+
+"Kde jsou ostatní náhledy na kalendář než den… např 3 dny, týden, měsíc,
+rok, agenda?" — desktop `CalendarPage.tsx` už Měsíc/Týden/Den/Agendu MÁ
+(`react-big-calendar` `views` prop). Mobil (`MobileCalendarPage.tsx`) má
+jen jednodenní agendu s vodorovným pásem dnů — žádný přepínač na
+týden/měsíc zatím nepřidán (mimo rozsah týhle dávky, návrh na
+mobilní vícepohledový kalendář vyžaduje vlastní diskusi/rozhodnutí o UX,
+ne jen mechanické přidání).
+
 ## Kalendář (PWA): animovaný přechod dne + oprava chybějícího data (2026-07-23)
 
 Petrova zpětná vazba měla 7 bodů; dva z nich šlo hned a bezpečně opravit,

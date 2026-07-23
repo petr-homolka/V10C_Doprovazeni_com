@@ -434,6 +434,13 @@ describe('Dodatečně nalezená díra — agreements deterministické ID', () =>
   })
 })
 
+describe('Dodatečně nalezená díra — čtení NEEXISTUJÍCÍ Dohody nesmí shodit getDoc', () => {
+  it('staff MŮŽE getDoc na Dohodu, co ještě neexistuje (nová rodina bez Dohody) — vrátí "neexistuje", ne chybu pravidel', async () => {
+    const asDo1 = testEnv.authenticatedContext('staff-do1')
+    await assertSucceeds(getDoc(doc(asDo1.firestore(), 'families', 'family-2', 'agreements', DO1)))
+  })
+})
+
 describe('timeline/documents create vyžaduje AKTIVNÍ Dohodu, ne jen historickou', () => {
   it('DO1 (Dohoda skončená) NEMŮŽE založit nový timeline záznam', async () => {
     const asDo1 = testEnv.authenticatedContext('staff-do1')

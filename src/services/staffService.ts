@@ -81,3 +81,11 @@ export async function updateStaffCapacitySettings(
 ): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { fte, capacityThresholdOverride })
 }
+
+/** Jediná funkce v tomhle souboru, co uživatel volá SÁM NA SEBE (zbytek je
+ * org_admin nad kolegy) — Nastavení/Oznámení přepínač narozeninových/
+ * jmeninových upozornění (2026-07-23). `firestore.rules` sebeúpravu
+ * omezuje jen na `displayName`+`notifyBirthdays`, žádné jiné pole. */
+export async function updateNotifyBirthdays(uid: string, notifyBirthdays: boolean): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { notifyBirthdays })
+}

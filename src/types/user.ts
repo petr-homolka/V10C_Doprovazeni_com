@@ -88,4 +88,8 @@ export interface UserDoc {
    * modul vypnutý (výchozí stav = vše zakázáno, stejný princip jako M8
    * PERMISSION_KEYS). Nastavuje org_admin/vedení, viz collaboratorService.ts. */
   collaboratorModules?: Partial<Record<CollaboratorModuleKey, boolean>>
+  /** Narozeninová/jmeninová upozornění dětí v Provozních upozorněních
+   * (2026-07-23) — ryze osobní preference, self-editovatelná (viz
+   * firestore.rules). Nenastavené = zapnuto (výchozí stav). */
+  notifyBirthdays?: boolean
 }

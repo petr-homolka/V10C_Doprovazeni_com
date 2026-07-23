@@ -161,6 +161,7 @@ export interface AddFosterPersonInput {
   lastName: string
   phone?: string
   email?: string
+  birthDate?: string
 }
 
 export async function addFosterPersonToFamily(
@@ -185,6 +186,13 @@ export async function addFosterPersonToFamily(
     fosterPersonRefs: arrayUnion(ref.id),
   })
   return { docId: ref.id, fosterPerson: data }
+}
+
+/** Datum narození se dřív u pěstounů nedalo zadat vůbec (žádné pole) —
+ * doplněno 2026-07-23 jako VLASTNÍ update (ne součást `addFosterPersonToFamily`),
+ * ať jde retroaktivně doplnit i u už založených pěstounů z profilu. */
+export async function updateFosterPersonBirthDate(fosterPersonId: string, birthDate: string): Promise<void> {
+  await updateDoc(doc(db, 'fosterPersons', fosterPersonId), { birthDate: birthDate || null })
 }
 
 /**
@@ -223,6 +231,7 @@ export interface AddChildInput {
   firstName: string
   lastName: string
   birthNumber: string
+  birthDate?: string
 }
 
 export async function addChildToFamily(
@@ -244,4 +253,11 @@ export async function addChildToFamily(
   }
   await setDoc(ref, data)
   return { docId: ref.id, child: data }
+}
+
+/** Stejné jako `updateFosterPersonBirthDate` — `ChildDoc.birthDate` v typu
+ * existoval, ale ŽÁDNÝ formulář ho nikdy nesbíral/needitoval (doplněno
+ * 2026-07-23 pro narozeninová upozornění). */
+export async function updateChildBirthDate(childId: string, birthDate: string): Promise<void> {
+  await updateDoc(doc(db, 'children', childId), { birthDate: birthDate || null })
 }

@@ -197,7 +197,9 @@ service cloud.firestore {
          get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.familyId == request.resource.data.fosterFamilyId &&
          get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.fosterPersonRef == request.resource.data.fosterPersonRef);
 
-      // Sebeúprava: jen `displayName` (žádná cesta k vlastnímu povýšení role).
+      // Sebeúprava: `displayName` + `notifyBirthdays` (2026-07-23, přepínač
+      // narozeninových/jmeninových upozornění v Nastavení — ryze osobní
+      // preference, žádná cesta k vlastnímu povýšení role).
       // Org_admin nad zaměstnancem své organizace: `role`/`disabledAt`
       // (soft-delete přes `disabledAt`, nikdy hard delete — audit stopa),
       // nikdy nesahá na `superadmin` roli žádným směrem. DOPLNENI_ZADANI-
@@ -207,7 +209,7 @@ service cloud.firestore {
       // zapínat/vypínat moduly, NIKDY on sám sobě (nesměl by si sám rozšířit rozsah).
       allow update: if
         (request.auth.uid == uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])) ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'notifyBirthdays'])) ||
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(resource.data.organizationId) &&
          resource.data.role != 'superadmin' && request.resource.data.role != 'superadmin' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
@@ -507,7 +509,14 @@ service cloud.firestore {
     // kontrolou.
 
     match /{path=**}/agreements/{agreementId} {
-      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      // `resource == null` — rodina bez Dohody zatím vůbec (běžný, UI
+      // podporovaný stav, `FamilyDetailPage.tsx` "Zatím žádná Dohoda…"),
+      // `agreementId == organizationId` znamená `getActiveAgreement` čte
+      // dokument, co ještě neexistuje — bez týhle pojistky `resource.data`
+      // na `null` shodí CELÝ `getDoc` chybou vyhodnocení pravidel (živě
+      // odhaleno 2026-07-23, ne teoreticky), místo aby vrátil "neexistuje"
+      // (stejný idiom už používá `orgCodeCounters` výš).
+      allow read: if resource == null || isSuperadmin() || sameOrg(resource.data.organizationId);
 
       allow create: if isStaff() &&
         request.resource.data.organizationId == userDoc().organizationId &&
@@ -959,6 +968,29 @@ service cloud.firestore {
     // zůstává i tady (§5 audit stopa přesně jako všude jinde) — "zrušit"
     // v UI nastaví `status:'zruseno'`, nikdy nemaže dokument.
     match /organizations/{orgId}/calendarEvents/{eventId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isSuperadmin() ||
+        (
+          isStaff() && sameOrg(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.createdByUid == request.auth.uid
+        );
+      allow update: if isSuperadmin() ||
+        (
+          isStaff() && sameOrg(orgId) &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          request.resource.data.createdByUid == resource.data.createdByUid
+        );
+      allow delete: if false;
+    }
+
+    // ---- organizations/{orgId}/tasks/{id} — Úkoly ------------------------
+    //
+    // Stejná pravidla jako `calendarEvents` výš (viz tam komentář pro plné
+    // zdůvodnění) — sdílený staff seznam úkolů, `update` nesmí měnit
+    // identitu záznamu (`organizationId`/`createdByUid`), `delete: if
+    // false` (§5 audit stopa — "hotovo"/"zrušeno" je stav, ne mazání).
+    match /organizations/{orgId}/tasks/{taskId} {
       allow read: if isSuperadmin() || sameOrg(orgId);
       allow create: if isSuperadmin() ||
         (

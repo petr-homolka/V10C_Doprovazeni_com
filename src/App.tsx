@@ -17,6 +17,7 @@ const FamilyListPage = lazy(() => import('@/routes/FamilyListPage'))
 const FamilyDetailPage = lazy(() => import('@/routes/FamilyDetailPage'))
 const FosterPersonListPage = lazy(() => import('@/routes/FosterPersonListPage'))
 const ChildListPage = lazy(() => import('@/routes/ChildListPage'))
+const TaskListPage = lazy(() => import('@/routes/TaskListPage'))
 const DocumentListPage = lazy(() => import('@/routes/DocumentListPage'))
 const DocumentDetailPage = lazy(() => import('@/routes/DocumentDetailPage'))
 const DocumentVerifyPage = lazy(() => import('@/routes/DocumentVerifyPage'))
@@ -45,6 +46,7 @@ const MobileFamiliesPage = lazy(() => import('@/routes/mobile/MobileFamiliesPage
 const MobileFamilyDetailPage = lazy(() => import('@/routes/mobile/MobileFamilyDetailPage'))
 const MobileFosterPersonListPage = lazy(() => import('@/routes/mobile/MobileFosterPersonListPage'))
 const MobileChildListPage = lazy(() => import('@/routes/mobile/MobileChildListPage'))
+const MobileTaskListPage = lazy(() => import('@/routes/mobile/MobileTaskListPage'))
 
 function RouteFallback() {
   return (
@@ -95,6 +97,11 @@ function ChildrenRoute() {
   return isMobile ? <MobileChildListPage /> : <ChildListPage />
 }
 
+function TasksRoute() {
+  const isMobile = useIsMobile()
+  return isMobile ? <MobileTaskListPage /> : <TaskListPage />
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
@@ -116,6 +123,7 @@ export default function App() {
                 <Route path="/rodiny" element={<FamiliesRoute />} />
                 <Route path="/pestouni" element={<FosterPersonsRoute />} />
                 <Route path="/deti" element={<ChildrenRoute />} />
+                <Route path="/ukoly" element={<TasksRoute />} />
                 <Route path="/dokumenty" element={<DocumentListPage />} />
                 <Route path="/rodiny/:familyUid" element={<FamilyDetailPage />} />
                 <Route path="/rodiny/:familyUid/dohoda" element={<AgreementDetailPage />} />

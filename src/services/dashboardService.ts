@@ -7,6 +7,9 @@ import { listIppdsNeedingAttention } from '@/services/ippdService'
 import { listInspections, findOverdueCorrectiveActions } from '@/services/inspectionService'
 import { listFosterProspects, suggestDormantProspects } from '@/services/fosterProspectService'
 import { findForgottenOccurrencesForOrg } from '@/services/assistedContactService'
+import { listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
+import { parseDateValue } from '@/lib/dateGrid'
+import { nameDaysFor } from '@/data/nameDays'
 import { WAITING_BUFFER_DAYS, computeVisitAlertTier, daysSince as sharedDaysSince } from '@/lib/familyAlertStatus'
 import type { AlertTier } from '@/lib/familyAlertStatus'
 
@@ -188,7 +191,7 @@ export async function listFamiliesAwaitingVisit(organizationId: string): Promise
  * dotazy jen kvůli deep-linku, mimo rozsah týhle lehké "dnes" obrazovky.
  */
 export interface OperationalAlert {
-  kind: 'ippd' | 'inspection' | 'prospect' | 'assistedContact'
+  kind: 'ippd' | 'inspection' | 'prospect' | 'assistedContact' | 'birthday' | 'nameDay'
   text: string
   overdue: boolean
 }
@@ -237,5 +240,79 @@ export async function listOperationalAlerts(organizationId: string): Promise<Ope
     })
   }
 
+  return alerts
+}
+
+const BIRTHDAY_LOOKAHEAD_DAYS = 7
+
+function stripDiacritics(s: string): string {
+  return s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+/** Kolik dní zbývá do nejbližšího výskytu měsíce/dne od `today` (0 = dnes,
+ * 365 max). `new Date` si sám poradí s 29.2. v nepřestupném roce (posune
+ * na 1.3.) — přijatelné běžné chování, ne chyba. */
+function daysUntilNextOccurrence(month: number, day: number, today: Date): number {
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  let next = new Date(today.getFullYear(), month - 1, day)
+  if (next.getTime() < todayMidnight.getTime()) next = new Date(today.getFullYear() + 1, month - 1, day)
+  return Math.round((next.getTime() - todayMidnight.getTime()) / 86_400_000)
+}
+
+function daysWord(n: number): string {
+  if (n === 1) return 'den'
+  if (n >= 2 && n <= 4) return 'dny'
+  return 'dní'
+}
+
+/**
+ * Narozeninová/jmeninová upozornění (2026-07-23, Petrovo zadání) — ODDĚLENÉ
+ * od `listOperationalAlerts` (ne sloučené dovnitř), protože je to jediné
+ * upozornění řízené OSOBNÍ preferencí (`UserDoc.notifyBirthdays`), volající
+ * strana (Dashboard/mobil) rozhoduje, jestli tuhle funkci vůbec zavolá.
+ *
+ * Narozeniny potřebují `birthDate` (dřív u dětí nikdy nevyplněné, u
+ * pěstounů pole vůbec neexistovalo — doplněno ve stejné dávce), svátek
+ * funguje jen na `firstName` bez ohledu na `birthDate`.
+ */
+export async function listBirthdayAlerts(organizationId: string): Promise<OperationalAlert[]> {
+  const [children, fosters] = await Promise.all([
+    listChildrenForOrg(organizationId),
+    listFosterPersonsForOrg(organizationId),
+  ])
+  const today = new Date()
+  const todayNames = new Set(nameDaysFor(today.getMonth() + 1, today.getDate()).map(stripDiacritics))
+  const people = [
+    ...children.map(({ child }) => ({ firstName: child.firstName, lastName: child.lastName, birthDate: child.birthDate })),
+    ...fosters.map(({ fosterPerson }) => ({
+      firstName: fosterPerson.firstName,
+      lastName: fosterPerson.lastName,
+      birthDate: fosterPerson.birthDate,
+    })),
+  ]
+
+  const alerts: OperationalAlert[] = []
+  for (const p of people) {
+    const fullName = `${p.firstName} ${p.lastName}`
+    if (p.birthDate) {
+      const parsed = parseDateValue(p.birthDate)
+      if (parsed) {
+        const days = daysUntilNextOccurrence(parsed.month + 1, parsed.day, today)
+        if (days <= BIRTHDAY_LOOKAHEAD_DAYS) {
+          alerts.push({
+            kind: 'birthday',
+            text: days === 0 ? `${fullName} má dnes narozeniny.` : `${fullName} má za ${days} ${daysWord(days)} narozeniny.`,
+            overdue: false,
+          })
+        }
+      }
+    }
+    if (todayNames.has(stripDiacritics(p.firstName))) {
+      alerts.push({ kind: 'nameDay', text: `${fullName} má dnes svátek.`, overdue: false })
+    }
+  }
   return alerts
 }

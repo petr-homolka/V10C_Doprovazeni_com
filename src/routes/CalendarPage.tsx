@@ -15,16 +15,19 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { DatePicker } from '@/components/ui/date-picker'
+import { Switch } from '@/components/ui/switch'
+import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { listStaff } from '@/services/staffService'
-import { listFamiliesWithDocIds } from '@/services/familyService'
+import { listFamiliesWithDocIds, listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
 import { listActiveAgreementsForOrg } from '@/services/agreementService'
 import {
   cancelCalendarEvent,
+  cancelCalendarEventSeries,
   createCalendarEvent,
+  createRecurringCalendarEvents,
   listCalendarEvents,
   markCalendarEventSynced,
   rescheduleCalendarEvent,
@@ -33,9 +36,12 @@ import {
 import { getGoogleCalendarAccessToken, upsertGoogleCalendarEvent } from '@/lib/googleCalendar'
 import { agreementToNextVisitItem, calendarEventToItem, type CalendarItem } from '@/lib/calendarAggregation'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
-import { CALENDAR_EVENT_KIND_LABELS, type CalendarEventKind } from '@/types/calendarEvent'
+import { CALENDAR_EVENT_KIND_LABELS, RECURRENCE_UNIT_LABELS, type CalendarEventKind, type RecurrenceUnit } from '@/types/calendarEvent'
 import type { UserDoc } from '@/types/user'
 import type { FamilyDoc } from '@/types/family'
+import type { ChildDoc } from '@/types/child'
+import type { FosterPersonDoc } from '@/types/fosterPerson'
+import type { SubjectRef } from '@/types/timelineEntry'
 
 const locales = { 'cs-CZ': cs }
 const localizer = dateFnsLocalizer({
@@ -129,12 +135,23 @@ const EMPTY_FORM = {
   title: '',
   kind: 'schuzka' as CalendarEventKind,
   assignedToUid: '',
-  familyDocId: '',
+  subjectRefs: [] as SubjectRef[],
   startDate: '',
   startTime: '09:00',
   endDate: '',
   endTime: '10:00',
   notes: '',
+  recurrenceEnabled: false,
+  recurrenceInterval: 1,
+  recurrenceUnit: 'week' as RecurrenceUnit,
+  occurrenceCount: 4,
+}
+
+function czechPlural(n: number, unit: RecurrenceUnit): string {
+  const labels = RECURRENCE_UNIT_LABELS[unit]
+  if (n === 1) return labels.singular
+  if (n >= 2 && n <= 4) return labels.few
+  return labels.many
 }
 
 /**
@@ -158,6 +175,8 @@ export default function CalendarPage() {
 
   const [staffList, setStaffList] = useState<UserDoc[]>([])
   const [families, setFamilies] = useState<Array<{ docId: string; family: FamilyDoc }>>([])
+  const [children, setChildren] = useState<Array<{ docId: string; child: ChildDoc }>>([])
+  const [fosterPersons, setFosterPersons] = useState<Array<{ docId: string; fosterPerson: FosterPersonDoc }>>([])
   const [events, setEvents] = useState<Array<{ docId: string; event: import('@/types/calendarEvent').CalendarEventDoc }>>([])
   const [agreementsByFamilyId, setAgreementsByFamilyId] = useState<
     Record<string, import('@/types/agreement').AgreementDoc>
@@ -168,7 +187,10 @@ export default function CalendarPage() {
   const [view, setView] = useState<View>(Views.WEEK)
   const [date, setDate] = useState(new Date())
 
-  const [slotModal, setSlotModal] = useState<{ mode: 'new' | 'edit'; docId?: string } | null>(null)
+  const [slotModal, setSlotModal] = useState<{ mode: 'new' | 'edit'; docId?: string; seriesId?: string | null; start?: string } | null>(
+    null,
+  )
+  const { loading: cancellingSeries, run: runCancelSeries } = useAsyncSubmit()
   const [form, setForm] = useState(EMPTY_FORM)
   const { loading: saving, run: runSave } = useAsyncSubmit()
   const { loading: cancelling, run: runCancel } = useAsyncSubmit()
@@ -178,14 +200,18 @@ export default function CalendarPage() {
     if (!organizationId) return
     setError(null)
     try {
-      const [staff, fams, evts, agreements] = await Promise.all([
+      const [staff, fams, kids, fosters, evts, agreements] = await Promise.all([
         listStaff(organizationId),
         listFamiliesWithDocIds(organizationId),
+        listChildrenForOrg(organizationId),
+        listFosterPersonsForOrg(organizationId),
         listCalendarEvents(organizationId),
         listActiveAgreementsForOrg(organizationId),
       ])
       setStaffList(staff)
       setFamilies(fams)
+      setChildren(kids)
+      setFosterPersons(fosters)
       setEvents(evts)
       setAgreementsByFamilyId(agreements)
       setLoaded(true)
@@ -206,17 +232,6 @@ export default function CalendarPage() {
     }
     return map
   }, [families])
-
-  const familyOptions: ComboboxOption[] = useMemo(
-    () => [
-      { value: '', label: 'Bez vazby na rodinu' },
-      ...families.map(({ docId, family }) => ({
-        value: docId,
-        label: resolveFamilyDisplayName(family, null) || family.address || docId,
-      })),
-    ],
-    [families],
-  )
 
   const items = useMemo<CalendarItem[]>(() => {
     const now = Date.now()
@@ -258,17 +273,18 @@ export default function CalendarPage() {
     const { date: startDate, time: startTime } = splitIso(item.event.start)
     const { date: endDate, time: endTime } = splitIso(item.event.end)
     setForm({
+      ...EMPTY_FORM,
       title: item.event.title,
       kind: item.event.kind,
       assignedToUid: item.event.assignedToUid,
-      familyDocId: item.event.familyDocId ?? '',
+      subjectRefs: item.event.subjectRefs ?? (item.event.familyDocId ? [{ kind: 'family', id: item.event.familyDocId }] : []),
       startDate,
       startTime,
       endDate,
       endTime,
       notes: item.event.notes ?? '',
     })
-    setSlotModal({ mode: 'edit', docId: item.docId })
+    setSlotModal({ mode: 'edit', docId: item.docId, seriesId: item.event.recurrence?.seriesId ?? null, start: item.event.start })
   }
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -285,10 +301,28 @@ export default function CalendarPage() {
       setError('Konec musí být po začátku.')
       return
     }
-    const fam = form.familyDocId ? familyLabel.get(form.familyDocId) : undefined
+    const primaryFamily = form.subjectRefs.find((r) => r.kind === 'family')
+    const fam = primaryFamily ? familyLabel.get(primaryFamily.id) : undefined
     try {
       await runSave(async () => {
-        if (slotModal.mode === 'new') {
+        if (slotModal.mode === 'new' && form.recurrenceEnabled) {
+          await createRecurringCalendarEvents({
+            organizationId,
+            createdByUid: userDoc.uid,
+            assignedToUid: form.assignedToUid || userDoc.uid,
+            title: form.title.trim(),
+            kind: form.kind,
+            start,
+            end,
+            familyDocId: primaryFamily?.id ?? null,
+            familyUid: fam?.uid ?? null,
+            subjectRefs: form.subjectRefs,
+            notes: form.notes.trim() || null,
+            recurrenceInterval: form.recurrenceInterval,
+            recurrenceUnit: form.recurrenceUnit,
+            occurrenceCount: form.occurrenceCount,
+          })
+        } else if (slotModal.mode === 'new') {
           await createCalendarEvent({
             organizationId,
             createdByUid: userDoc.uid,
@@ -297,8 +331,9 @@ export default function CalendarPage() {
             kind: form.kind,
             start,
             end,
-            familyDocId: form.familyDocId || null,
+            familyDocId: primaryFamily?.id ?? null,
             familyUid: fam?.uid ?? null,
+            subjectRefs: form.subjectRefs,
             notes: form.notes.trim() || null,
           })
         } else if (slotModal.docId) {
@@ -310,8 +345,9 @@ export default function CalendarPage() {
             assignedToUid: form.assignedToUid || userDoc.uid,
             start,
             end,
-            familyDocId: form.familyDocId || null,
+            familyDocId: primaryFamily?.id ?? null,
             familyUid: fam?.uid ?? null,
+            subjectRefs: form.subjectRefs,
             notes: form.notes.trim() || null,
           })
         }
@@ -334,6 +370,23 @@ export default function CalendarPage() {
       setSlotModal(null)
     } catch {
       setError('Zrušení se nezdařilo.')
+    }
+  }
+
+  /** Zruší VŠECHNY dosud neproběhlé výskyty stejné opakující se řady —
+   * dostupné jen pro události s `recurrence` (viz `openEdit`, `seriesId`
+   * uložený v `slotModal`). Minulé výskyty zůstávají beze změny. */
+  async function handleCancelSeries() {
+    if (!organizationId || !slotModal?.seriesId || !slotModal.start) return
+    setError(null)
+    try {
+      await runCancelSeries(async () => {
+        await cancelCalendarEventSeries(organizationId, slotModal.seriesId!, slotModal.start!)
+        await reload()
+      })
+      setSlotModal(null)
+    } catch {
+      setError('Zrušení celé řady se nezdařilo.')
     }
   }
 
@@ -469,16 +522,31 @@ export default function CalendarPage() {
                 {slotModal.mode === 'new' ? 'Nová událost' : 'Upravit událost'}
               </h3>
               {slotModal.mode === 'edit' && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  loading={cancelling}
-                  onClick={handleCancel}
-                  className="text-danger"
-                >
-                  <Ban size={14} /> Zrušit událost
-                </Button>
+                <div className="flex gap-2">
+                  {slotModal.seriesId && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      loading={cancellingSeries}
+                      onClick={handleCancelSeries}
+                      className="text-danger"
+                      title="Zruší tenhle i všechny budoucí výskyty stejné opakující se řady, minulé výskyty zůstanou beze změny."
+                    >
+                      <Ban size={14} /> Zrušit celou řadu
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    loading={cancelling}
+                    onClick={handleCancel}
+                    className="text-danger"
+                  >
+                    <Ban size={14} /> Zrušit událost
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -529,9 +597,67 @@ export default function CalendarPage() {
               </label>
             </div>
 
+            {/* Opakování jen v "new" režimu — editace existujícího výskytu
+             * mění jen TENHLE výskyt, ne celou řadu (viz komentář u
+             * `EventRecurrence` typu proč jsou to nezávislé dokumenty). */}
+            {slotModal.mode === 'new' && (
+              <div className="flex flex-col gap-2 rounded-sm border border-border-medium bg-inset px-3 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-medium leading-relaxed text-text-primary">Opakovat</span>
+                  <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" />
+                </div>
+                {form.recurrenceEnabled && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-text-secondary">Každých</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={99}
+                      value={form.recurrenceInterval}
+                      onChange={(e) => set('recurrenceInterval', Math.max(1, Number(e.target.value) || 1))}
+                      className="w-16"
+                    />
+                    <Select
+                      value={form.recurrenceUnit}
+                      onChange={(e) => set('recurrenceUnit', e.target.value as RecurrenceUnit)}
+                      className="w-28"
+                    >
+                      {(['day', 'week', 'month', 'year'] as RecurrenceUnit[]).map((u) => (
+                        <option key={u} value={u}>
+                          {czechPlural(form.recurrenceInterval, u)}
+                        </option>
+                      ))}
+                    </Select>
+                    <span className="text-sm text-text-secondary">celkem</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={104}
+                      value={form.occurrenceCount}
+                      onChange={(e) => set('occurrenceCount', Math.min(104, Math.max(1, Number(e.target.value) || 1)))}
+                      className="w-16"
+                    />
+                    <span className="text-sm text-text-secondary">krát</span>
+                  </div>
+                )}
+                {form.recurrenceEnabled && (
+                  <p className="text-xs text-text-tertiary">
+                    Založí se každý výskyt zvlášť (max. 104 výskytů/2 roky dopředu) — pozdější dogenerování řady
+                    zatím appka neumí, na dlouhodobě opakující se událost je potřeba se vrátit ručně.
+                  </p>
+                )}
+              </div>
+            )}
+
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Rodina (volitelné)</span>
-              <Combobox options={familyOptions} value={form.familyDocId} onChange={(v) => set('familyDocId', v)} />
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Vazba (rodina / dítě / pěstoun)</span>
+              <SubjectRefsPicker
+                value={form.subjectRefs}
+                onChange={(refs) => set('subjectRefs', refs)}
+                families={families}
+                children={children}
+                fosterPersons={fosterPersons}
+              />
             </label>
 
             <label className="flex flex-col gap-1.5">

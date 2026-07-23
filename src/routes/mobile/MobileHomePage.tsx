@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarClock, Mic } from 'lucide-react'
+import { Cake, CalendarClock, Mic, PartyPopper } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { VoiceCaptureSheet } from '@/components/mobile/VoiceCaptureSheet'
 import { IosList, IosListRow } from '@/components/mobile/IosList'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import { listCalendarEvents } from '@/services/calendarEventService'
+import { listBirthdayAlerts, type OperationalAlert } from '@/services/dashboardService'
 import type { CalendarEventDoc } from '@/types/calendarEvent'
 
 function isToday(iso: string): boolean {
@@ -27,6 +28,7 @@ export default function MobileHomePage() {
   const { userDoc } = useAuth()
   const organizationId = userDoc?.organizationId
   const [todayEvents, setTodayEvents] = useState<Array<{ docId: string; event: CalendarEventDoc }> | null>(null)
+  const [birthdayAlerts, setBirthdayAlerts] = useState<OperationalAlert[]>([])
   const [capturing, setCapturing] = useState(false)
 
   async function reload() {
@@ -50,6 +52,13 @@ export default function MobileHomePage() {
     reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId])
+
+  useEffect(() => {
+    if (!organizationId || userDoc?.notifyBirthdays === false) return
+    listBirthdayAlerts(organizationId)
+      .then(setBirthdayAlerts)
+      .catch(() => setBirthdayAlerts([]))
+  }, [organizationId, userDoc?.notifyBirthdays])
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours()
@@ -96,6 +105,27 @@ export default function MobileHomePage() {
             )}
           </div>
         </div>
+
+        {/* Narozeniny/svátky se zobrazí jen když je co ukázat (2026-07-23) —
+         * mobilní domovská obrazovka má být štíhlá (Petrovo M11 zadání),
+         * prázdná sekce navíc by tomu odporovala. */}
+        {birthdayAlerts.length > 0 && (
+          <div className="mt-6">
+            <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Narozeniny a svátky</h2>
+            <IosList className="mt-2">
+              {birthdayAlerts.map((alert, i) => (
+                <IosListRow key={`${alert.kind}-${i}`} as="div">
+                  {alert.kind === 'birthday' ? (
+                    <Cake size={18} className="shrink-0 text-primary" />
+                  ) : (
+                    <PartyPopper size={18} className="shrink-0 text-primary" />
+                  )}
+                  <span className="min-w-0 flex-1 text-[15px] text-text-primary">{alert.text}</span>
+                </IosListRow>
+              ))}
+            </IosList>
+          </div>
+        )}
       </div>
 
       {capturing && organizationId && userDoc && (
