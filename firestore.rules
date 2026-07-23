@@ -197,9 +197,10 @@ service cloud.firestore {
          get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.familyId == request.resource.data.fosterFamilyId &&
          get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.fosterPersonRef == request.resource.data.fosterPersonRef);
 
-      // Sebeúprava: `displayName` + `notifyBirthdays` (2026-07-23, přepínač
-      // narozeninových/jmeninových upozornění v Nastavení — ryze osobní
-      // preference, žádná cesta k vlastnímu povýšení role).
+      // Sebeúprava: `displayName` + `notifyBirthdays`/`notifyNameDays`
+      // (2026-07-23/24, nezávislé přepínače narozeninových a jmeninových
+      // upozornění na `/nastaveni/kalendar` — ryze osobní preference,
+      // žádná cesta k vlastnímu povýšení role).
       // Org_admin nad zaměstnancem své organizace: `role`/`disabledAt`
       // (soft-delete přes `disabledAt`, nikdy hard delete — audit stopa),
       // nikdy nesahá na `superadmin` roli žádným směrem. DOPLNENI_ZADANI-
@@ -209,7 +210,7 @@ service cloud.firestore {
       // zapínat/vypínat moduly, NIKDY on sám sobě (nesměl by si sám rozšířit rozsah).
       allow update: if
         (request.auth.uid == uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'notifyBirthdays'])) ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'notifyBirthdays', 'notifyNameDays'])) ||
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(resource.data.organizationId) &&
          resource.data.role != 'superadmin' && request.resource.data.role != 'superadmin' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(

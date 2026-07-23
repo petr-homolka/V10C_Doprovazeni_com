@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Calendar as BigCalendar, dateFnsLocalizer, Views, type View } from 'react-big-calendar'
 import * as DragAndDropAddon from 'react-big-calendar/lib/addons/dragAndDrop'
 import type { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop'
@@ -8,7 +8,7 @@ import { cs } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import '@/styles/calendar-overrides.css'
-import { CalendarPlus, Ban } from 'lucide-react'
+import { CalendarPlus, Ban, Settings } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { Button } from '@/components/ui/button'
@@ -454,6 +454,14 @@ export default function CalendarPage() {
           })}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <Link
+            to="/nastaveni/kalendar"
+            aria-label="Nastavení kalendáře"
+            title="Nastavení kalendáře — narozeninová a jmeninová upozornění"
+            className="flex size-9 items-center justify-center rounded-sm text-text-secondary hover:bg-overlay-active hover:text-text-primary"
+          >
+            <Settings size={18} />
+          </Link>
           <Button
             variant="secondary"
             size="sm"

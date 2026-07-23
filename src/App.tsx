@@ -25,6 +25,7 @@ const VisitTimerPage = lazy(() => import('@/routes/VisitTimerPage'))
 const AppearanceSettingsPage = lazy(() => import('@/routes/settings/AppearanceSettingsPage'))
 const AccountSettingsPage = lazy(() => import('@/routes/settings/AccountSettingsPage'))
 const NotificationsSettingsPage = lazy(() => import('@/routes/settings/NotificationsSettingsPage'))
+const CalendarSettingsPage = lazy(() => import('@/routes/settings/CalendarSettingsPage'))
 const ImportSettingsPage = lazy(() => import('@/routes/settings/ImportSettingsPage'))
 const BackupSettingsPage = lazy(() => import('@/routes/settings/BackupSettingsPage'))
 const OrganizationSettingsPage = lazy(() => import('@/routes/settings/OrganizationSettingsPage'))
@@ -135,6 +136,7 @@ export default function App() {
                 <Route path="/nastaveni/vzhled" element={<AppearanceSettingsPage />} />
                 <Route path="/nastaveni/ucet" element={<AccountSettingsPage />} />
                 <Route path="/nastaveni/oznameni" element={<NotificationsSettingsPage />} />
+                <Route path="/nastaveni/kalendar" element={<CalendarSettingsPage />} />
                 <Route path="/nastaveni/import" element={<ImportSettingsPage />} />
                 <Route path="/nastaveni/zalohy" element={<BackupSettingsPage />} />
                 <Route path="/nastaveni/organizace" element={<OrganizationSettingsPage />} />

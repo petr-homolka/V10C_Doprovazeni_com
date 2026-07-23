@@ -3,8 +3,6 @@ import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
 import { Switch } from '@/components/ui/switch'
-import { useAuth } from '@/hooks/useAuth'
-import { updateNotifyBirthdays } from '@/services/staffService'
 
 /**
  * Nastavení / Oznámení — třetí REÁLNÁ stránka Nastavení (Dodatek 13).
@@ -17,28 +15,14 @@ import { updateNotifyBirthdays } from '@/services/staffService'
  * nepravdivé), jen typografický STYL je převzatý přesně.
  *
  * "E-mailová upozornění" zůstává jen lokální UI stav (appka nemá e-mail
- * infrastrukturu — SEAM). Narozeninový/jmeninový přepínač NÍŽE je oproti
- * tomu SKUTEČNĚ persistovaný (`UserDoc.notifyBirthdays`, 2026-07-23,
- * Petrovo zadání "vypnutelné v Nastavení") — řídí `listBirthdayAlerts`
- * volání v `TodaySections.tsx`/`MobileHomePage.tsx`.
+ * infrastrukturu — SEAM). Narozeninový/jmeninový přepínač byl PŮVODNĚ tady
+ * (2026-07-23), ale PŘESUNUT na vlastní `/nastaveni/kalendar`
+ * (`CalendarSettingsPage.tsx`, 2026-07-24, Petrovo zadání "speciální
+ * nastavení PRO KALENDÁŘE") — logicky patří ke Kalendáři, ne k obecným
+ * e-mailovým Oznámením.
  */
 export default function NotificationsSettingsPage() {
-  const { userDoc } = useAuth()
   const [emailNotifications, setEmailNotifications] = useState(true)
-  const [birthdayNotifications, setBirthdayNotifications] = useState(userDoc?.notifyBirthdays !== false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-
-  async function handleBirthdayToggle(checked: boolean) {
-    setBirthdayNotifications(checked)
-    setSaveError(null)
-    if (!userDoc) return
-    try {
-      await updateNotifyBirthdays(userDoc.uid, checked)
-    } catch {
-      setBirthdayNotifications(!checked)
-      setSaveError('Uložení se nezdařilo, zkuste to prosím znovu.')
-    }
-  }
 
   return (
     <AppShell
@@ -67,24 +51,6 @@ export default function NotificationsSettingsPage() {
           . Vypnutím přepínače přestanete dostávat e-maily — systémová upozornění v appce zůstanou
           beze změny.
         </p>
-
-        <p className="mt-6 text-sm font-medium text-text-primary">Narozeniny a svátky</p>
-        <div className="mt-3 flex items-center justify-between gap-5">
-          <span className="text-sm text-text-secondary">
-            Upozornit v Provozních upozorněních na blížící se narozeniny a dnešní svátek dětí a
-            pěstounů ve vaší péči.
-          </span>
-          <Switch
-            checked={birthdayNotifications}
-            onChange={handleBirthdayToggle}
-            label="Narozeninová a jmeninová upozornění"
-          />
-        </div>
-        {saveError && (
-          <p className="mt-2 text-xs text-danger" role="alert">
-            {saveError}
-          </p>
-        )}
       </div>
     </AppShell>
   )

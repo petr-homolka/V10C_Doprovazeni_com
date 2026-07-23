@@ -48,18 +48,22 @@ export function TodaySections() {
     listFamiliesAwaitingVisit(userDoc.organizationId)
       .then(setFamilies)
       .catch(() => setError('Přehled čekajících návštěv se nepodařilo načíst.'))
-    // Narozeninová/jmeninová upozornění jsou OSOBNÍ preference
-    // (`UserDoc.notifyBirthdays`, výchozí zapnuto), proto samostatné
+    // Narozeninová/jmeninová upozornění jsou OSOBNÍ preference, KAŽDÁ
+    // NEZÁVISLE vypínatelná (`UserDoc.notifyBirthdays`/`notifyNameDays`,
+    // výchozí obě zapnuté — `/nastaveni/kalendar`), proto samostatné
     // volání vedle `listOperationalAlerts` — ne jeho součást (ta funkce
     // nezná přihlášeného uživatele, jen organizaci).
     const includeBirthdays = userDoc.notifyBirthdays !== false
+    const includeNameDays = userDoc.notifyNameDays !== false
     Promise.all([
       listOperationalAlerts(userDoc.organizationId),
-      includeBirthdays ? listBirthdayAlerts(userDoc.organizationId) : Promise.resolve([]),
+      includeBirthdays || includeNameDays
+        ? listBirthdayAlerts(userDoc.organizationId, { includeBirthdays, includeNameDays })
+        : Promise.resolve([]),
     ])
       .then(([operational, birthdays]) => setAlerts([...birthdays, ...operational]))
       .catch(() => setAlertsError('Provozní upozornění se nepodařilo načíst.'))
-  }, [userDoc?.organizationId, userDoc?.notifyBirthdays])
+  }, [userDoc?.organizationId, userDoc?.notifyBirthdays, userDoc?.notifyNameDays])
 
   return (
     <>

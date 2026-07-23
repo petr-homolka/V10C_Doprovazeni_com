@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type TouchEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarClock, ChevronLeft, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronLeft, ChevronRight, Plus, Settings, Trash2 } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { BottomSheet } from '@/components/mobile/BottomSheet'
 import { IosList, IosListRow } from '@/components/mobile/IosList'
@@ -14,7 +14,7 @@ import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
 import { formatDateValue, parseDateValue } from '@/lib/dateGrid'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
-import { listStaff } from '@/services/staffService'
+import { listStaff, updateNotifyBirthdays, updateNotifyNameDays } from '@/services/staffService'
 import { listActiveAgreementsForOrg } from '@/services/agreementService'
 import { listFamiliesWithDocIds, listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
 import {
@@ -119,6 +119,40 @@ export default function MobileCalendarPage() {
   // správné strany (Petrovo zadání 2026-07-23, "přechod je moc mechanický"),
   // ne jen tiše nahradit obsah beze změny.
   const [direction, setDirection] = useState<1 | -1>(1)
+  // Nastavení narozeninových/jmeninových upozornění (2026-07-24, Petrovo
+  // zadání "speciální nastavení PRO KALENDÁŘE") — VLASTNÍ mobilní
+  // BottomSheet, ne odkaz na desktopové `/nastaveni/kalendar` (ten žije
+  // v desktopovém `AppShell` se sidebarem, na 390px by to bylo rozbité —
+  // stejný důvod, proč `MobileAccountPage` nikam do Nastavení neediruje,
+  // viz její komentář).
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [notifyBirthdays, setNotifyBirthdays] = useState(true)
+  const [notifyNameDays, setNotifyNameDays] = useState(true)
+
+  useEffect(() => {
+    setNotifyBirthdays(userDoc?.notifyBirthdays !== false)
+    setNotifyNameDays(userDoc?.notifyNameDays !== false)
+  }, [userDoc?.notifyBirthdays, userDoc?.notifyNameDays])
+
+  async function handleNotifyBirthdaysToggle(checked: boolean) {
+    setNotifyBirthdays(checked)
+    if (!userDoc) return
+    try {
+      await updateNotifyBirthdays(userDoc.uid, checked)
+    } catch {
+      setNotifyBirthdays(!checked)
+    }
+  }
+
+  async function handleNotifyNameDaysToggle(checked: boolean) {
+    setNotifyNameDays(checked)
+    if (!userDoc) return
+    try {
+      await updateNotifyNameDays(userDoc.uid, checked)
+    } catch {
+      setNotifyNameDays(!checked)
+    }
+  }
 
   function selectDate(next: Date) {
     setDirection(next.getTime() >= selectedDate.getTime() ? 1 : -1)
@@ -376,7 +410,17 @@ export default function MobileCalendarPage() {
   return (
     <MobileShell>
       <div className="flex flex-col pb-24 pt-6">
-        <h1 className="px-5 text-[32px] font-bold leading-tight tracking-tight text-text-primary">Kalendář</h1>
+        <div className="flex items-center justify-between px-5">
+          <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Kalendář</h1>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Nastavení kalendáře"
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-transform active:scale-90"
+          >
+            <Settings size={22} strokeWidth={1.75} />
+          </button>
+        </div>
 
         {staffList.length > 1 && (
           <div className="mt-3 flex gap-1.5 overflow-x-auto px-5 pb-1">
@@ -708,6 +752,22 @@ export default function MobileCalendarPage() {
               {sheet.mode === 'new' ? 'Založit' : 'Uložit změny'}
             </Button>
           </form>
+        </BottomSheet>
+      )}
+
+      {settingsOpen && (
+        <BottomSheet onClose={() => setSettingsOpen(false)}>
+          <div className="flex flex-col gap-4 px-5 pb-6 pt-4">
+            <h2 className="text-[17px] font-semibold text-text-primary">Nastavení kalendáře</h2>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[15px] text-text-primary">Narozeninová upozornění</span>
+              <Switch checked={notifyBirthdays} onChange={handleNotifyBirthdaysToggle} label="Narozeninová upozornění" />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-[15px] text-text-primary">Jmeninová upozornění</span>
+              <Switch checked={notifyNameDays} onChange={handleNotifyNameDaysToggle} label="Jmeninová upozornění" />
+            </div>
+          </div>
         </BottomSheet>
       )}
     </MobileShell>

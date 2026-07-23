@@ -9,6 +9,7 @@ import { listFosterProspects, suggestDormantProspects } from '@/services/fosterP
 import { findForgottenOccurrencesForOrg } from '@/services/assistedContactService'
 import { listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
 import { parseDateValue } from '@/lib/dateGrid'
+import { resolveChildBirthDate } from '@/lib/birthNumber'
 import { nameDaysFor } from '@/data/nameDays'
 import { WAITING_BUFFER_DAYS, computeVisitAlertTier, daysSince as sharedDaysSince } from '@/lib/familyAlertStatus'
 import type { AlertTier } from '@/lib/familyAlertStatus'
@@ -271,22 +272,39 @@ function daysWord(n: number): string {
 /**
  * Narozeninová/jmeninová upozornění (2026-07-23, Petrovo zadání) — ODDĚLENÉ
  * od `listOperationalAlerts` (ne sloučené dovnitř), protože je to jediné
- * upozornění řízené OSOBNÍ preferencí (`UserDoc.notifyBirthdays`), volající
- * strana (Dashboard/mobil) rozhoduje, jestli tuhle funkci vůbec zavolá.
+ * upozornění řízené OSOBNÍ preferencí (`UserDoc.notifyBirthdays`/
+ * `notifyNameDays` — DVA NEZÁVISLÉ přepínače, 2026-07-24, Petrovo zadání
+ * "musí být možnost zobrazování narozenin A jmenin vypnout" — původně
+ * jeden společný `notifyBirthdays` boolean, teď každý zvlášť), volající
+ * strana (`TodaySections`/`MobileHomePage`) rozhoduje, jestli tuhle funkci
+ * vůbec zavolá a s jakým nastavením `includeBirthdays`/`includeNameDays`.
  *
- * Narozeniny potřebují `birthDate` (dřív u dětí nikdy nevyplněné, u
- * pěstounů pole vůbec neexistovalo — doplněno ve stejné dávce), svátek
- * funguje jen na `firstName` bez ohledu na `birthDate`.
+ * Narozeniny u DĚTÍ se počítají z `resolveChildBirthDate()`
+ * (`lib/birthNumber.ts`) — dopočet z rodného čísla, pokud `birthDate`
+ * není ručně vyplněné (2026-07-24, Petrova poznámka "z rodného čísla jde
+ * narození poznat" — dřív appka vyžadovala ruční zadání, i když rodné
+ * číslo je u dítěte VŽDY povinné pole). U pěstounů rodné číslo appka
+ * nesbírá vůbec, tam zůstává jen ruční `birthDate`. Svátek funguje jen na
+ * `firstName` bez ohledu na datum narození.
  */
-export async function listBirthdayAlerts(organizationId: string): Promise<OperationalAlert[]> {
+export async function listBirthdayAlerts(
+  organizationId: string,
+  options: { includeBirthdays: boolean; includeNameDays: boolean },
+): Promise<OperationalAlert[]> {
   const [children, fosters] = await Promise.all([
     listChildrenForOrg(organizationId),
     listFosterPersonsForOrg(organizationId),
   ])
   const today = new Date()
-  const todayNames = new Set(nameDaysFor(today.getMonth() + 1, today.getDate()).map(stripDiacritics))
+  const todayNames = options.includeNameDays
+    ? new Set(nameDaysFor(today.getMonth() + 1, today.getDate()).map(stripDiacritics))
+    : new Set<string>()
   const people = [
-    ...children.map(({ child }) => ({ firstName: child.firstName, lastName: child.lastName, birthDate: child.birthDate })),
+    ...children.map(({ child }) => ({
+      firstName: child.firstName,
+      lastName: child.lastName,
+      birthDate: resolveChildBirthDate(child),
+    })),
     ...fosters.map(({ fosterPerson }) => ({
       firstName: fosterPerson.firstName,
       lastName: fosterPerson.lastName,
@@ -297,7 +315,7 @@ export async function listBirthdayAlerts(organizationId: string): Promise<Operat
   const alerts: OperationalAlert[] = []
   for (const p of people) {
     const fullName = `${p.firstName} ${p.lastName}`
-    if (p.birthDate) {
+    if (options.includeBirthdays && p.birthDate) {
       const parsed = parseDateValue(p.birthDate)
       if (parsed) {
         const days = daysUntilNextOccurrence(parsed.month + 1, parsed.day, today)
@@ -310,7 +328,7 @@ export async function listBirthdayAlerts(organizationId: string): Promise<Operat
         }
       }
     }
-    if (todayNames.has(stripDiacritics(p.firstName))) {
+    if (options.includeNameDays && todayNames.has(stripDiacritics(p.firstName))) {
       alerts.push({ kind: 'nameDay', text: `${fullName} má dnes svátek.`, overdue: false })
     }
   }

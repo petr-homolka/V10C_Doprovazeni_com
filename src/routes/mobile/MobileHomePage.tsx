@@ -54,11 +54,13 @@ export default function MobileHomePage() {
   }, [organizationId])
 
   useEffect(() => {
-    if (!organizationId || userDoc?.notifyBirthdays === false) return
-    listBirthdayAlerts(organizationId)
+    const includeBirthdays = userDoc?.notifyBirthdays !== false
+    const includeNameDays = userDoc?.notifyNameDays !== false
+    if (!organizationId || (!includeBirthdays && !includeNameDays)) return
+    listBirthdayAlerts(organizationId, { includeBirthdays, includeNameDays })
       .then(setBirthdayAlerts)
       .catch(() => setBirthdayAlerts([]))
-  }, [organizationId, userDoc?.notifyBirthdays])
+  }, [organizationId, userDoc?.notifyBirthdays, userDoc?.notifyNameDays])
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours()

@@ -5,6 +5,66 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Narozeniny dětí z rodného čísla + vlastní Nastavení/Kalendář (2026-07-24)
+
+Přímá Petrova zpětná vazba na dávku níž: "narozeniny a jmeniny pro děti
+jsi vyřešil? ... z rodného čísla jde narození poznat" + "POZOR! určitě
+musí existovat speciální nastavení pro kalendáře ... a tam musí být
+možnost zobrazování narozenin a jmenin vypnout". Obojí byla oprávněná
+připomínka — `child.ts` typ dokonce už od M1 měl komentář "odvození z RČ
+NENÍ implementováno" a společný přepínač žil zahrabaný v obecném
+Nastavení/Oznámení, ne u Kalendáře.
+
+- **Dopočet data narození z rodného čísla** (`lib/birthNumber.ts`, NOVÉ) —
+  `birthDateFromBirthNumber()` parsuje RRMMDD(/)XXXX (měsíc +50 u žen,
+  +20/+70 navíc u čísel vyčerpaných po roce 2004), zkouší 2000+RR i
+  1900+RR a vybere platné datum NEJPOZDĚJI v minulosti (appka eviduje
+  DĚTI, ne stoleté lidi) — kontrolní číslice se neověřuje (historické
+  výjimky). `resolveChildBirthDate()` = explicitní `birthDate` > dopočet
+  z `birthNumber` > `null`. POUŽITO NA DVOU MÍSTECH:
+  1. `dashboardService.listBirthdayAlerts()` — narozeninová upozornění
+     teď fungují pro VŠECHNY děti s rodným číslem, ne jen ty, kde někdo
+     ručně vyplnil datum.
+  2. `ChildDetailPage.tsx` — pole "Datum narození" se zobrazí PŘEDVYPLNĚNÉ
+     dopočtenou hodnotou (s popiskem "Odvozeno z rodného čísla — lze ručně
+     opravit"), BEZ nutnosti cokoli ukládat/migrovat — uloží se jen pokud
+     ho někdo skutečně ručně změní (např. oprava u cizího rodného čísla).
+  Pěstouni rodné číslo v appce nemají (appka ho nesbírá), tam zůstává jen
+  ruční `birthDate` jako dřív. 13 jednotkových testů
+  (`lib/birthNumber.test.ts`) pokrývá muže/ženy/přetečení/needitovatelné
+  vstupy/century-výběr/budoucí-datum-guard.
+- **Nezávislé přepínače narozeniny/jmeniny** — `UserDoc.notifyBirthdays`
+  byl PŮVODNĚ jeden společný boolean pro obojí; teď `notifyNameDays`
+  VLASTNÍ nezávislé pole (`firestore.rules` self-update `hasOnly`
+  rozšířeno, `staffService.updateNotifyNameDays()`, `listBirthdayAlerts()`
+  přijímá `{includeBirthdays, includeNameDays}` misto jednoho společného
+  gatingu). Rules test doplněn (`m1.rules.test.ts`).
+- **Nastavení / Kalendář** (`routes/settings/CalendarSettingsPage.tsx`,
+  NOVÁ stránka, `/nastaveni/kalendar`) — DVA přepínače (Narozeniny/
+  Svátky), PŘESUNUTO sem z `/nastaveni/oznameni` (logicky patří ke
+  Kalendáři, ne k obecným e-mailovým Oznámením — Petr to výslovně chtěl
+  jako "speciální nastavení pro kalendáře", ne schované v Oznámeních).
+  Nová položka v `settingsNavGroups.ts`.
+- **Rychlý přístup přímo z Kalendáře** — gear ikona na desktopové
+  `CalendarPage.tsx` (odkaz na `/nastaveni/kalendar`) I na mobilní
+  `MobileCalendarPage.tsx`. Mobil NEODKAZUJE na desktopovou `/nastaveni/
+  kalendar` stránku (ta žije v desktopovém `AppShell`u se sidebarem — na
+  390px by byla nepoužitelná, stejný důvod jako `MobileAccountPage`
+  historicky nikam do Nastavení neediruje) — místo toho VLASTNÍ
+  `BottomSheet` se stejnými dvěma přepínači, volající STEJNÉ
+  `updateNotifyBirthdays`/`updateNotifyNameDays` funkce.
+
+Živě ověřeno (Playwright, emulátor, čerstvá organizace): dítě založené jen
+s rodným číslem (bez ručního data narození) → profil dítěte ukazuje
+předvyplněné datum narození s "Odvozeno z rodného čísla" popiskem →
+narozeninové upozornění na Dnes stránce se zobrazí SPRÁVNĚ i bez ručního
+zásahu → vypnutí "Narozeniny" na `/nastaveni/kalendar` upozornění
+okamžitě odstraní (přetrvá i po znovunačtení stránky) → gear ikona na
+`/kalendar` vede na tu samou stránku. Mobilní `BottomSheet` s oběma
+přepínači ověřen na 390px viewportu, nula konzolových chyb. `npx tsc -b`,
+`npx oxlint src/`, `npm run test:rules` (138 testů), `npx vitest run`
+(50 testů, +13 nových pro `birthNumber.ts`) a `npm run build` všechny čisté.
+
 ## Kalendář: Úkoly, opakování, vazba na víc entit, narozeniny/svátky (2026-07-23)
 
 Navazuje na "Výzkum k širším bodům zpětné vazby" níž — Petr zvolil
