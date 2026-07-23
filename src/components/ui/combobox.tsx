@@ -159,6 +159,7 @@ export function Combobox({
           if (!open) setOpen(true)
         }}
         onFocus={openDropdown}
+        onClick={openDropdown}
         onKeyDown={handleKeyDown}
       />
       <ChevronDown
