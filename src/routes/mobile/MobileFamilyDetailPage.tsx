@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Mic, Phone } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { VoiceCaptureSheet } from '@/components/mobile/VoiceCaptureSheet'
-import { IosList, IosListRow } from '@/components/mobile/IosList'
+import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
 import { AddressLink } from '@/components/ui/address-link'
 import { useAuth } from '@/hooks/useAuth'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
@@ -70,9 +70,9 @@ export default function MobileFamilyDetailPage() {
         {fosterPersons.length > 0 && (
           <div className="flex flex-col gap-2">
             <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Pěstouni</h2>
-            <IosList>
+            <GroupedList>
               {fosterPersons.map(({ docId, fosterPerson }) => (
-                <IosListRow key={docId} as="div">
+                <GroupedListRow key={docId} as="div">
                   <span className="min-w-0 flex-1 truncate text-[16px] text-text-primary">
                     {fosterPerson.firstName} {fosterPerson.lastName}
                   </span>
@@ -85,24 +85,24 @@ export default function MobileFamilyDetailPage() {
                       <Phone size={18} />
                     </a>
                   )}
-                </IosListRow>
+                </GroupedListRow>
               ))}
-            </IosList>
+            </GroupedList>
           </div>
         )}
 
         {children.length > 0 && (
           <div className="flex flex-col gap-2">
             <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Děti</h2>
-            <IosList>
+            <GroupedList>
               {children.map(({ docId, child }) => (
-                <IosListRow key={docId} as="div">
+                <GroupedListRow key={docId} as="div">
                   <span className="text-[16px] text-text-primary">
                     {child.firstName} {child.lastName}
                   </span>
-                </IosListRow>
+                </GroupedListRow>
               ))}
-            </IosList>
+            </GroupedList>
           </div>
         )}
       </div>

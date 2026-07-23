@@ -144,7 +144,7 @@ export default function BackupSettingsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Zálohy' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zálohy</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Zálohy</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -157,7 +157,7 @@ export default function BackupSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Zálohy' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Zálohy a export</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Zálohy a export</h1>
       <p className="mt-1 text-sm text-text-secondary">
         Data organizace nejsou uzamčená u dodavatele — export i záloha jsou vždy k dispozici.
       </p>

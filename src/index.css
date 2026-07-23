@@ -3,216 +3,211 @@
 @tailwind utilities;
 
 /*
-  Design tokeny — v5 (2026-07-19). Hodnoty vychází z přímo NAMĚŘENÝCH
-  computed styles živé referenční appky (lokální statická kopie, otevřená
-  přes `getComputedStyle`/`getBoundingClientRect` na skutečných
-  elementech) — v dark módu (void pozadí, sidebar panel, hlavní panel, nav
-  položky, header) i teď nově ve SVĚTLÉM módu (dřív jen odhad z CSS textu,
-  teď přepnuto přímo v živém DOMu a přeměřeno na reálně vykreslených
-  plochách). Klíčové zjištění: škála je mnohem JEMNĚJŠÍ v obou režimech
-  (void → app → surface-soft je jen ~5-11 bodů RGB rozdíl na krok, ne naše
-  dřívější velké skoky) a POŘADÍ jasu je STEJNÉ v obou režimech
-  (surface-soft je vždy nejsvětlejší plocha, pak app, pak void nejtmavší/
-  nejtemnější) — světlý blok předtím měl toto pořadí obráceně (app byl
-  nejsvětlejší), opraveno.
+  Design tokeny — CESTA B (2026-07-24). Petrovo zadání: "nejde mi jen o
+  změnu barev, ale o změnu všeho... prosím překvap mě" — tohle NENÍ
+  retint Cesty A, je to nový vizuální jazyk, odvozený z Lumo/Vaadin
+  Design Systemu (viz DESIGN_PATH_B.md pro plné zdůvodnění a zdroj).
+  Datové modely/logika appky beze změny — mění se výhradně vzhled.
 
-  BAREVNÉ zůstávají výhradně subjektové/sémantické tokeny (badge, výstrahy)
-  PLUS jeden nový `--accent` (modrá) — vyhrazený pro interaktivní stavy
-  formulářových prvků (focus border, zapnutý switch, tučné inline odkazy),
-  konstantní přes obě témata, viz komentář u definice níže.
+  KLÍČOVÝ ARCHITEKTONICKÝ TAH: stejná SADA proměnných jako Cesta A
+  (--bg-app, --text-primary, --border-medium, --primary, --accent, …) —
+  jen s NOVÝMI hodnotami. `tailwind.config.js` na ně mapuje stejné
+  utility třídy (`bg-app`, `text-text-primary`, …), takže celá appka
+  (desktop i mobil, ~60 stránek) se přebarví/přetypografuje NAPŘÍČ
+  automaticky, beze změny per-stránkového kódu — jen komponenty se
+  strukturální odchylkou (Button, Input, Table, shell…) se upravují
+  zvlášť (viz jejich vlastní soubory).
 
-  Světlý režim = výchozí :root. Tmavý režim = @media (prefers-color-scheme:
-  dark) NEBO explicitní [data-theme="dark"] (přepínač v TopBaru,
-  useTheme.ts — dočasně přes localStorage, dokud §5.6/M9.5 nepřinese
-  per-uživatel uložené nastavení). [data-theme="light"] vynucuje světlý
-  i když OS preferuje tmavý.
+  Filosofická změna oproti Cestě A:
+  - Cesta A: monochromní chrome (černá/bílá), barva JEN na subjektových
+    badge — decentní, konzervativní, "iOS nastavení".
+  - Cesta B: SEBEVĚDOMÁ modrá (Lumo Primary #006AF5) jako skutečná
+    primární barva chrome (tlačítka, aktivní stavy, focus ring) —
+    "enterprise nástroj", ne jen textový editor. Hustší, ostřejší
+    (menší radiusy), výraznější stínová škála (5 úrovní místo 2),
+    grid/tabulkový charakter namísto kartového.
 */
 :root {
-  /* Pozadí a plochy — přeměřeno přímo na živém DOMu (přepnutím tématu a
-     čtením computed background na skutečných panelech), ne odhadem z CSS
-     textu. Pořadí jasu: void < app < surface-soft (stejné v obou režimech). */
-  --bg-app: #FAFAFA;
-  --bg-surface: #F5F5F5;
+  /* Pozadí a plochy — Lumo "Contrast" škála (odvozeno z jejich %
+     kontrastu vůči základu), ne libovolné odhady. Pořadí jasu zůstává
+     void < app < surface-soft (stejná konvence jako Cesta A, jen jiné
+     konkrétní hodnoty). */
+  --bg-app: #F7F9FC;
+  --bg-surface: #EEF2F8;
   --bg-surface-soft: #FFFFFF;
   --bg-inset: #FFFFFF;
-  /* "Void" za plovoucími panely (sidebar/hlavní obsah). */
-  --bg-void: #F5F5F5;
-  /* Aktivní položka navigace — jemný alpha overlay, NE plná barva
-     (dark: rgba(255,255,255,.15), tohle je symetrický odhad pro light —
-     nebyl přímo naměřen, na rozdíl od --toggle-off níž). */
-  --overlay-active: rgba(0, 0, 0, .06);
-  /* Vypnutý stav přepínače (Switch) — přeměřeno NEZÁVISLE na --overlay-active
-     (jiný podkladový odstín, ne černá) — dvě rozdílné role, co v dark módu
-     náhodou vycházejí na stejné číslo. */
-  --toggle-off: rgba(115, 115, 115, .15);
-  /* Jediná barevná akcentní hodnota mimo subjektové tokeny — vyhrazená pro
-     interaktivní stav formulářových prvků: focus border inputu, zapnutý
-     Switch, tučné inline odkazy (viz §9 do budoucna: až M9.5 přinese per-
-     organizaci branding, tohle je kandidát na konfigurovatelnou barvu
-     místo pevné hodnoty). Konstantní přes obě témata. */
-  --accent: #4F69F2;
-  /* Switch thumb — přeměřeno jako KONSTANTNÍ #FAFAFA v obou režimech
-     (na rozdíl od --primary-foreground, který se mezi tématy obrací) —
-     drží se stínem (shadow-raised), ne kontrastem barvy vůči tracku. */
-  --toggle-thumb: #FAFAFA;
+  --bg-void: #E4E9F2;
+  --overlay-active: rgba(0, 43, 122, .07);
+  --toggle-off: rgba(30, 41, 59, .16);
+  /* Accent = STEJNÁ barva jako --primary na Cestě B (na rozdíl od Cesty
+     A, kde je --accent jediná barevná výjimka v jinak monochromním
+     systému) — tady je modrá všude záměrně stejná, jeden sebevědomý
+     akcent, ne dvě různé modré vedle sebe. */
+  --accent: #006AF5;
+  --toggle-thumb: #FFFFFF;
 
-  /* Text — přeměřeno na živé referenční appce (light blok) */
-  --text-primary: #1A1A1A;
-  --text-secondary: #616161;
-  --text-tertiary: #737373;
+  /* Text — Lumo body/contrast text */
+  --text-primary: #12203D;
+  --text-secondary: #435374;
+  --text-tertiary: #7587A8;
   --text-inverse: #FFFFFF;
 
-  /* Čáry — alpha-black. 4 úrovně teď podložené opakovaným měřením napříč
-     komponentami (Dodatek 11): subtle (Plugins list border, surface-
-     border-alpha-0), default (beze změny), medium (Input/URL box border —
-     stejná hodnota naměřena na DVOU nezávislých komponentách), strong
-     (table/card divider, surface-border-alpha-2/surface-3). */
-  --border-subtle: rgba(16, 16, 16, .05);
-  --border-default: rgba(16, 16, 16, .10);
-  --border-medium: rgba(16, 16, 16, .15);
-  --border-strong: rgba(16, 16, 16, .20);
+  /* Čáry — o něco výraznější/modřejší tón než neutrálně šedá Cesty A
+     (Lumo "contrast" odstín má jemný modrý nádech, ne čistě černý). */
+  --border-subtle: rgba(18, 32, 61, .08);
+  --border-default: rgba(18, 32, 61, .13);
+  --border-medium: rgba(18, 32, 61, .18);
+  --border-strong: rgba(18, 32, 61, .26);
 
-  /* Primární akcent — monochromní (skoro černá v light, skoro bílá v
-     dark), NE barevná. Barva je vyhrazená výhradně subjektovým/
-     sémantickým tokenům níže. */
-  --primary: #1A1A1A;
-  --primary-hover: #353535;
-  --primary-foreground: #FAFAFA;
-  --primary-soft: #E3E3E3;
-  --primary-soft-hover: #DBDBDB;
-  --ring: #1A1A1A;
+  /* Primární akcent — SKUTEČNÁ modrá (Lumo Primary), ne monochrom. */
+  --primary: #006AF5;
+  --primary-hover: #0058D6;
+  --primary-foreground: #FFFFFF;
+  --primary-soft: #DCEBFF;
+  --primary-soft-hover: #C7DFFF;
+  --ring: #006AF5;
 
-  /* Sémantika subjektů/stavů — JEDINÉ místo s barvou v celé appce (badge/
-     tečka/proužek, nikdy plochy). Foreground konstantní přes obě témata,
-     jen -bg se mění v dark bloku níže. */
-  --subject-foster: #14A372;
-  --subject-foster-bg: #E7F5F0;
-  --subject-ospod: #4F69F2;
-  --subject-ospod-bg: #EDF0FD;
-  --subject-court: #6B7280;
-  --subject-court-bg: #F0F1F3;
-  --subject-bio: #E7AD16;
-  --subject-bio-bg: #FDF8EA;
-  --crisis: #F66950;
-  --crisis-bg: #FEF0ED;
+  /* Sémantika subjektů/stavů — Lumo Error/Success paleta, subjektové
+     tóny odvozené ze stejné harmonie (modrá/zelená/šedá/žlutá), aby
+     zůstaly rozlišitelné VEDLE sebe (barvoslepost-safe pořadí zachováno
+     z Cesty A). */
+  --subject-foster: #0F9D58;
+  --subject-foster-bg: #E4F7EC;
+  --subject-ospod: #006AF5;
+  --subject-ospod-bg: #E3EFFF;
+  --subject-court: #5B6B8C;
+  --subject-court-bg: #EAEDF4;
+  --subject-bio: #C8790A;
+  --subject-bio-bg: #FCF0DD;
+  --crisis: #E21D12;
+  --crisis-bg: #FCE7E5;
 
-  --success: #14A372;
-  --success-bg: #E7F5F0;
-  --warning: #E7AD16;
-  --warning-bg: #FDF8EA;
-  --danger: #F66950;
-  --danger-bg: #FEF0ED;
-  /* Konstantní přes obě témata — destruktivní tlačítko (§6.1) potřebuje
-     vždy dost sytou plochu pro bílý text. */
-  --danger-solid: #DA2A0B;
+  --success: #158444;
+  --success-bg: #E4F7EC;
+  --warning: #C8790A;
+  --warning-bg: #FCF0DD;
+  --danger: #E21D12;
+  --danger-bg: #FCE7E5;
+  --danger-solid: #CA150C;
 
-  /* Úrovňový/tier tag (§5.8 základní/prémiové) — přeměřeno na živé
-     referenční appce ("Business"/"New" pilulky, Settings nav), konstantní přes obě témata
-     (alpha pozadí se přizpůsobí libovolné ploše samo). Zatím nikde
-     nepoužito ve funkčním kódu — token je připravený pro M9.5/entitlementy. */
-  --tier-accent: #FF58AE;
-  --tier-accent-bg: rgba(255, 88, 174, .15);
+  --tier-accent: #C0389E;
+  --tier-accent-bg: rgba(192, 56, 158, .14);
 
-  /* Radiusy */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  /* Radiusy — CRISPŠÍ než Cesta A (Lumo defaultně používá menší
+     zaoblení než konzumní iOS chrome — "nástroj", ne "hračka"). */
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 13px;
   --radius-full: 9999px;
 
-  /* Stíny — jen dvě úrovně, vždy měkké */
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, .06), 0 4px 12px rgba(0, 0, 0, .05);
-  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .14);
+  /* Stíny — Lumo 5-úrovňová elevace (XS→XL), ostřejší/mělčí offset než
+     Cesty A velmi difúzní "iOS" stíny — hrana je čitelnější, ne
+     rozmlžená. */
+  --shadow-xs: 0 1px 2px rgba(18, 32, 61, .06);
+  --shadow-raised: 0 1px 2px rgba(18, 32, 61, .07), 0 2px 6px rgba(18, 32, 61, .06);
+  --shadow-md: 0 2px 6px rgba(18, 32, 61, .08), 0 6px 16px rgba(18, 32, 61, .07);
+  --shadow-overlay: 0 8px 24px rgba(18, 32, 61, .16), 0 2px 6px rgba(18, 32, 61, .08);
+  --shadow-xl: 0 16px 48px rgba(18, 32, 61, .22);
+  /* Focus ring — Lumo dává formulářovým prvkům SKUTEČNÝ modrý glow
+     (box-shadow), ne jen tlustší border jako Cesta A — jasnější
+     afordance "tohle je teď aktivní". */
+  --focus-ring: 0 0 0 3px rgba(0, 106, 245, .22);
 
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    /* Naměřeno přímo (getComputedStyle) na skutečných elementech:
-       void rgb(16,16,16), hlavní panel rgb(22,22,22), sidebar/nav panel
-       rgb(26,26,26) — velmi těsná škála. --bg-inset teď overlay (5% bílá
-       přes podklad), ne plochá barva — přesně jak se formulářové pole
-       reálně skládá (viz komentář u --accent v :root). */
-    --bg-void: #101010;
-    --bg-app: #161616;
-    --bg-surface-soft: #1A1A1A;
-    --bg-surface: #202020;
-    --bg-inset: rgba(255, 255, 255, .05);
-    --overlay-active: rgba(255, 255, 255, .15);
-    --toggle-off: rgba(255, 255, 255, .15);
+    --bg-void: #0A1220;
+    --bg-app: #0F1B2E;
+    --bg-surface-soft: #16233A;
+    --bg-surface: #1C2A44;
+    --bg-inset: rgba(255, 255, 255, .04);
+    --overlay-active: rgba(144, 189, 249, .14);
+    --toggle-off: rgba(203, 213, 235, .18);
+    --accent: #4C9AFF;
 
-    --text-primary: #F5F5F5;
-    --text-secondary: #AAAAAA;
-    --text-tertiary: #737373;
-    --text-inverse: #101010;
+    --text-primary: #EDF2FA;
+    --text-secondary: #A9B8D6;
+    --text-tertiary: #7587A8;
+    --text-inverse: #0A1220;
 
-    --border-subtle: rgba(255, 255, 255, .05);
-    --border-default: rgba(255, 255, 255, .10);
-    --border-medium: rgba(255, 255, 255, .15);
-    --border-strong: rgba(255, 255, 255, .20);
+    --border-subtle: rgba(203, 219, 250, .08);
+    --border-default: rgba(203, 219, 250, .13);
+    --border-medium: rgba(203, 219, 250, .18);
+    --border-strong: rgba(203, 219, 250, .26);
 
-    --primary: #F5F5F5;
-    --primary-hover: #E3E3E3;
-    --primary-foreground: #101010;
-    --primary-soft: #353535;
-    --primary-soft-hover: #424242;
-    --ring: #F5F5F5;
+    --primary: #4C9AFF;
+    --primary-hover: #6FADFF;
+    --primary-foreground: #0A1220;
+    --primary-soft: #1D3A63;
+    --primary-soft-hover: #244A7C;
+    --ring: #4C9AFF;
 
-    --subject-foster-bg: #112E24;
-    --subject-ospod-bg: #1D223D;
-    --subject-court-bg: #26292E;
-    --subject-bio-bg: #3D3623;
-    --crisis-bg: #2F1410;
+    --subject-foster-bg: #123522;
+    --subject-ospod-bg: #14233F;
+    --subject-court-bg: #232E45;
+    --subject-bio-bg: #3B2C10;
+    --crisis-bg: #3B1512;
 
-    --success-bg: #112E24;
-    --warning-bg: #3D3623;
-    --danger-bg: #2F1410;
+    --success-bg: #123522;
+    --warning-bg: #3B2C10;
+    --danger-bg: #3B1512;
 
-    --shadow-raised: 0 1px 3px rgba(0, 0, 0, .40), 0 4px 12px rgba(0, 0, 0, .32);
-    --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .55);
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, .45);
+    --shadow-raised: 0 1px 2px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .35);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, .5), 0 6px 20px rgba(0, 0, 0, .4);
+    --shadow-overlay: 0 8px 28px rgba(0, 0, 0, .6), 0 2px 8px rgba(0, 0, 0, .4);
+    --shadow-xl: 0 20px 56px rgba(0, 0, 0, .65);
+    --focus-ring: 0 0 0 3px rgba(76, 154, 255, .3);
 
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --bg-void: #101010;
-  --bg-app: #161616;
-  --bg-surface-soft: #1A1A1A;
-  --bg-surface: #202020;
-  --bg-inset: rgba(255, 255, 255, .05);
-  --overlay-active: rgba(255, 255, 255, .15);
-  --toggle-off: rgba(255, 255, 255, .15);
+  --bg-void: #0A1220;
+  --bg-app: #0F1B2E;
+  --bg-surface-soft: #16233A;
+  --bg-surface: #1C2A44;
+  --bg-inset: rgba(255, 255, 255, .04);
+  --overlay-active: rgba(144, 189, 249, .14);
+  --toggle-off: rgba(203, 213, 235, .18);
+  --accent: #4C9AFF;
 
-  --text-primary: #F5F5F5;
-  --text-secondary: #AAAAAA;
-  --text-tertiary: #737373;
-  --text-inverse: #101010;
+  --text-primary: #EDF2FA;
+  --text-secondary: #A9B8D6;
+  --text-tertiary: #7587A8;
+  --text-inverse: #0A1220;
 
-  --border-subtle: rgba(255, 255, 255, .05);
-  --border-default: rgba(255, 255, 255, .10);
-  --border-medium: rgba(255, 255, 255, .15);
-  --border-strong: rgba(255, 255, 255, .20);
+  --border-subtle: rgba(203, 219, 250, .08);
+  --border-default: rgba(203, 219, 250, .13);
+  --border-medium: rgba(203, 219, 250, .18);
+  --border-strong: rgba(203, 219, 250, .26);
 
-  --primary: #F5F5F5;
-  --primary-hover: #E3E3E3;
-  --primary-foreground: #101010;
-  --primary-soft: #353535;
-  --primary-soft-hover: #424242;
-  --ring: #F5F5F5;
+  --primary: #4C9AFF;
+  --primary-hover: #6FADFF;
+  --primary-foreground: #0A1220;
+  --primary-soft: #1D3A63;
+  --primary-soft-hover: #244A7C;
+  --ring: #4C9AFF;
 
-  --subject-foster-bg: #112E24;
-  --subject-ospod-bg: #1D223D;
-  --subject-court-bg: #26292E;
-  --subject-bio-bg: #3D3623;
-  --crisis-bg: #2F1410;
+  --subject-foster-bg: #123522;
+  --subject-ospod-bg: #14233F;
+  --subject-court-bg: #232E45;
+  --subject-bio-bg: #3B2C10;
+  --crisis-bg: #3B1512;
 
-  --success-bg: #112E24;
-  --warning-bg: #3D3623;
-  --danger-bg: #2F1410;
+  --success-bg: #123522;
+  --warning-bg: #3B2C10;
+  --danger-bg: #3B1512;
 
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, .40), 0 4px 12px rgba(0, 0, 0, .32);
-  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .55);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .45);
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .35);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, .5), 0 6px 20px rgba(0, 0, 0, .4);
+  --shadow-overlay: 0 8px 28px rgba(0, 0, 0, .6), 0 2px 8px rgba(0, 0, 0, .4);
+  --shadow-xl: 0 20px 56px rgba(0, 0, 0, .65);
+  --focus-ring: 0 0 0 3px rgba(76, 154, 255, .3);
 
   color-scheme: dark;
 }
@@ -225,11 +220,12 @@ body {
   margin: 0;
   background: var(--bg-void);
   color: var(--text-primary);
-  font-family: 'Geist Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
 }
 
 /* §9.3 — input text nikdy pod 16px, jinak iOS Safari zoomuje po focusu */
@@ -250,18 +246,15 @@ select {
   }
 }
 
-/* "Naléhavé" stav v seznamu Rodin (UX zpětná vazba 2026-07-21) — pulz
-   patří k "ještě je čas reagovat", ne k "už je pozdě" (na to je statický
-   štítek "Po termínu"). 0%/100% jsou VĚDOMĚ stejné jako klidový stav, aby
-   `prefers-reduced-motion` výše (animation-iteration-count: 1) zamrzlo na
-   vizuálně korektním, čitelném snímku — ne v půlce pulzu. */
+/* "Naléhavé" stav v seznamu Rodin — pulz patří k "ještě je čas reagovat",
+   ne k "už je pozdě" (na to je statický štítek "Po termínu"). */
 @keyframes pulse-alert {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(218, 42, 11, 0.45);
+    box-shadow: 0 0 0 0 rgba(226, 29, 18, 0.45);
   }
   50% {
-    box-shadow: 0 0 0 5px rgba(218, 42, 11, 0);
+    box-shadow: 0 0 0 5px rgba(226, 29, 18, 0);
   }
 }
 

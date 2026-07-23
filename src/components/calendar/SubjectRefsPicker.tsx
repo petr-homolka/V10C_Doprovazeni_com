@@ -24,7 +24,7 @@ const KIND_LABELS: Record<'family' | 'child' | 'fosterPerson', string> = {
  * výběr — PWA/mobil-bezpečná, viz její vlastní komentář) s kombinovaným
  * seznamem všech tří typů, štítek "Typ: Jméno" odliší entity od sebe.
  * Vybrané zobrazené jako odebíratelné "čipy" pod tím — žádný nový
- * primitiv, `IosList`/`Table` by tady byly zbytečná komplikace pro pár
+ * primitiv, `GroupedList`/`Table` by tady byly zbytečná komplikace pro pár
  * kusů.
  */
 export function SubjectRefsPicker({

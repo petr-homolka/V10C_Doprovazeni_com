@@ -58,7 +58,7 @@ export default function PlatformSettingsPage() {
   if (!isSuperadmin) {
     return (
       <AppShell breadcrumb={[{ label: 'Platforma' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Platforma</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Platforma</h1>
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je jen pro superadmina.</p>
       </AppShell>
     )
@@ -66,7 +66,7 @@ export default function PlatformSettingsPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Platforma' }]}>
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Platforma</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Platforma</h1>
       <p className="mt-1 text-sm text-text-secondary">
         Výchozí hodnoty pro všechny organizace, dokud si je organizace sama nepřepíše.
       </p>

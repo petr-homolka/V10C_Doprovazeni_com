@@ -53,7 +53,7 @@ export default function CalendarSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Kalendář' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Kalendář</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Kalendář</h1>
 
       <div className="mt-6 max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">Narozeniny</p>

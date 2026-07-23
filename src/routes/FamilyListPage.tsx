@@ -306,7 +306,7 @@ export default function FamilyListPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Rodiny' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Rodiny</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Rodiny</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -317,7 +317,7 @@ export default function FamilyListPage() {
   return (
     <AppShell breadcrumb={[{ label: 'Rodiny' }]}>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Rodiny</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Rodiny</h1>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? (
             'Zrušit'
@@ -482,7 +482,7 @@ export default function FamilyListPage() {
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Např. byla oznámena dovolená klíčové osoby…"
-                className="w-full rounded-sm border border-border-medium bg-inset px-3 py-2 text-[15px] text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
+                className="w-full rounded-sm border border-border-medium bg-inset px-3 py-2 text-[15px] text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
             <p className="text-xs text-text-tertiary">

@@ -2,23 +2,27 @@ import type { CSSProperties, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * "Seskupený seznam" — iOS Nastavení/Kontakty vzor (M11, 2026-07-22,
- * Petrovo zadání "udělej appku do stylu aktuálního iOS"): JEDEN zaoblený
- * kontejner s tenkými dělítky mezi řádky, ne samostatné orámované karty
- * pro každou položku (to působilo víc Android/Material než iOS). Nahrazuje
- * dřívější `<button className="rounded-lg border ...">` vzor napříč
- * mobilními seznamy (Rodiny, Pěstouni, Děti, události Kalendáře/Dnes).
+ * "Seskupený seznam" (Cesta B, 2026-07-24, přejmenováno z `IosList` — viz
+ * `DESIGN_PATH_B.md`) — interakční VZOR (jeden zaoblený kontejner místo
+ * samostatných karet) je pořád dobrý, jen vizuál teď Lumo-inspirovaný:
+ * `radius-md` (crisp, ne přehnaně kulaté `2xl`), o krok výraznější
+ * `border-default` místo `border-subtle`, jemný `shadow-xs` (na Cestě A
+ * seznam neměl žádný stín — tady dostává lehkou "kartu nad plochou"
+ * hloubku, souhlasí s obecně bohatší stínovou škálou Cesty B).
  */
-export function IosList({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('overflow-hidden rounded-2xl border border-border-subtle bg-surface-soft', className)}>{children}</div>
+export function GroupedList({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('overflow-hidden rounded-md border border-border-default bg-surface-soft shadow-xs', className)}>
+      {children}
+    </div>
+  )
 }
 
 /**
  * Jeden řádek seskupeného seznamu. `active:bg-overlay-active` dává řádku
- * okamžitou dotykovou odezvu (iOS řádky ztmavnou při stisku, nečekají na
- * navigaci) — `transition-colors` dělá i puštění plynulé, ne trhavé.
+ * okamžitou dotykovou odezvu.
  */
-export function IosListRow({
+export function GroupedListRow({
   children,
   onClick,
   className,

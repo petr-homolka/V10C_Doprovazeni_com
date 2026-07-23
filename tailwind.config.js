@@ -76,11 +76,15 @@ export default {
         full: 'var(--radius-full)',
       },
       boxShadow: {
+        xs: 'var(--shadow-xs)',
         raised: 'var(--shadow-raised)',
+        md: 'var(--shadow-md)',
         overlay: 'var(--shadow-overlay)',
+        xl: 'var(--shadow-xl)',
+        focus: 'var(--focus-ring)',
       },
       fontFamily: {
-        sans: ['Geist Sans', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: [
           'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas',
           '"Liberation Mono"', '"Courier New"', 'monospace',

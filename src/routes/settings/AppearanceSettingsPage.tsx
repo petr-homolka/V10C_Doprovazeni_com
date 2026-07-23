@@ -28,7 +28,7 @@ export default function AppearanceSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Vzhled' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Vzhled</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Vzhled</h1>
       <p className="mt-1 text-sm text-text-secondary">
         Osobní předvolba — platí jen pro váš účet, nemění nic pro ostatní v organizaci.
       </p>

@@ -13,6 +13,16 @@
           "v10c-design-b"
         ]
       }
+    },
+    "demo-doprovazeni": {
+      "hosting": {
+        "path-a": [
+          "demo-doprovazeni"
+        ],
+        "design-b": [
+          "demo-doprovazeni"
+        ]
+      }
     }
   },
   "etags": {}

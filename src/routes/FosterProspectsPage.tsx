@@ -168,7 +168,7 @@ export default function FosterProspectsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Zájemci' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zájemci</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Zájemci</h1>
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -179,7 +179,7 @@ export default function FosterProspectsPage() {
   return (
     <AppShell breadcrumb={[{ label: 'Zájemci' }]}>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zájemci o pěstounství</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Zájemci o pěstounství</h1>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zájemce</>)}
         </Button>

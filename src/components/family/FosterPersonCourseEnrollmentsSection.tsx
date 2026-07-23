@@ -55,7 +55,7 @@ const COURSE_TYPE_LABELS: Record<CourseDoc['type'], string> = {
 }
 
 const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none'
+  'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
 
 type Enrollment = { docId: string; enrollment: CourseEnrollmentDoc }
 

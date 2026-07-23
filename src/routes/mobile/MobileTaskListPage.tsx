@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'r
 import { CheckSquare, Square, Ban, Plus } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { BottomSheet } from '@/components/mobile/BottomSheet'
-import { IosList, IosListRow } from '@/components/mobile/IosList'
+import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -236,9 +236,9 @@ export default function MobileTaskListPage() {
           ) : visibleTasks.length === 0 ? (
             <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
           ) : (
-            <IosList>
+            <GroupedList>
               {visibleTasks.map(({ docId, task }) => (
-                <IosListRow key={docId} onClick={() => openEdit(docId, task)}>
+                <GroupedListRow key={docId} onClick={() => openEdit(docId, task)}>
                   <button
                     type="button"
                     onClick={(e) => toggleStatus(docId, task, e)}
@@ -259,9 +259,9 @@ export default function MobileTaskListPage() {
                       <span className="text-[13px] text-text-secondary">{new Date(task.dueDate).toLocaleDateString('cs-CZ')}</span>
                     )}
                   </span>
-                </IosListRow>
+                </GroupedListRow>
               ))}
-            </IosList>
+            </GroupedList>
           )}
         </div>
       </div>
@@ -398,7 +398,7 @@ export default function MobileTaskListPage() {
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                 rows={3}
                 placeholder="Doplňující poznámka…"
-                className="w-full resize-none rounded-sm border border-border-medium bg-inset px-3 py-2.5 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
+                className="w-full resize-none rounded-sm border border-border-medium bg-inset px-3 py-2.5 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
             <Button type="submit" loading={saving} className="h-14 text-base">

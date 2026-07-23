@@ -2,22 +2,22 @@ import type { CSSProperties, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * Table — přeměřeno 2026-07-19 na živé referenční appce (People stránka,
- * Members/Role/Credits): CSS grid řádky (ne <table>), border-strong dělítko mezi řádky
- * (poslední bez), padding 12px/16px. DESIGN_SYSTEM.md §6.5: tabulku použij
- * jen tam, kde se sloupce SKUTEČNĚ porovnávají (jejich vlastní příklad:
- * "přehled vzdělávání per pěstoun vs. limit hodin") — jinak seznam karet.
+ * Cesta B (2026-07-24) — Table teď "datová mřížka" (Lumo Grid vzor), ne
+ * jen odděl­ené řádky: hlavička má vlastní tónované pozadí (`bg-surface`)
+ * a menší uppercase tracking (odlišuje se od obsahu jasněji než Cesty A
+ * subtilní `text-xs`), řádky dostávají jemný hover tón (naznačuje
+ * interaktivitu tam, kde řádek vede na detail — většina použití v appce).
  */
 const gridStyle = (columns: string): CSSProperties => ({ gridTemplateColumns: columns })
 
 export function Table({ children }: { children: ReactNode }) {
-  return <div className="overflow-hidden rounded-lg border border-border-subtle">{children}</div>
+  return <div className="overflow-hidden rounded-md border border-border-default">{children}</div>
 }
 
 export function TableHeaderRow({ columns, labels }: { columns: string; labels: string[] }) {
   return (
     <div
-      className="grid items-center gap-x-2 border-b border-border-strong px-4 py-3"
+      className="grid items-center gap-x-2 border-b border-border-default bg-surface px-4 py-2.5"
       style={gridStyle(columns)}
     >
       {/* Index jako key je tu správně, ne zkratka — `labels` je pevná,
@@ -27,7 +27,7 @@ export function TableHeaderRow({ columns, labels }: { columns: string; labels: s
        * bez nadpisu, '' se objevilo dvakrát → React "duplicate key"
        * varování v konzoli na každé stránce s touhle tabulkou). */}
       {labels.map((label, i) => (
-        <span key={i} className="text-xs font-medium text-text-primary">
+        <span key={i} className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
           {label}
         </span>
       ))}
@@ -46,7 +46,10 @@ export function TableRow({
 }) {
   return (
     <div
-      className={cn('grid items-center gap-x-2 border-b border-border-strong px-4 py-3 last:border-b-0', className)}
+      className={cn(
+        'grid items-center gap-x-2 border-b border-border-subtle px-4 py-3 transition-colors duration-100 last:border-b-0 hover:bg-overlay-active',
+        className,
+      )}
       style={gridStyle(columns)}
     >
       {children}

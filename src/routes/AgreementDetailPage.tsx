@@ -228,7 +228,7 @@ export default function AgreementDetailPage() {
       ]}
       secondaryPanel={<ProfileSectionNav sections={SECTIONS} active={activeSection} onSelect={setActiveSection} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Dohoda</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Dohoda</h1>
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">

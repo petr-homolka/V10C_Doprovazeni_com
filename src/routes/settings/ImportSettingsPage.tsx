@@ -176,7 +176,7 @@ export default function ImportSettingsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Import dat' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Import dat</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Import dat</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -189,7 +189,7 @@ export default function ImportSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Import dat' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Import dat</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Import dat</h1>
       <p className="mt-1 text-sm text-text-secondary">
         Hromadné nahrání rodin, pěstounů, dětí a Dohod ze souboru. Nahrání a náhled nic nezaloží —
         až po výslovném potvrzení a spuštění, a i pak jde do 30 dnů celé vrátit zpět.

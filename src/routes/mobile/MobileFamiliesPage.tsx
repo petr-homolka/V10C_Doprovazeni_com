@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Search, Users } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
-import { IosList, IosListRow } from '@/components/mobile/IosList'
+import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -71,9 +71,9 @@ export default function MobileFamiliesPage() {
         ) : filtered.length === 0 ? (
           <EmptyState icon={Users} text="Žádná rodina neodpovídá hledání." />
         ) : (
-          <IosList>
+          <GroupedList>
             {filtered.map(({ docId, family, label }) => (
-              <IosListRow key={docId} onClick={() => navigate(`/mobil/rodiny/${family.uid}`)}>
+              <GroupedListRow key={docId} onClick={() => navigate(`/mobil/rodiny/${family.uid}`)}>
                 <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
                   <span className="text-[16px] font-medium text-text-primary">{label}</span>
                   {family.address && family.address !== label && (
@@ -81,9 +81,9 @@ export default function MobileFamiliesPage() {
                   )}
                 </span>
                 <ChevronRight size={18} className="shrink-0 text-text-tertiary" />
-              </IosListRow>
+              </GroupedListRow>
             ))}
-          </IosList>
+          </GroupedList>
         )}
       </div>
     </MobileShell>

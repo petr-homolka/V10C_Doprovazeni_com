@@ -159,7 +159,7 @@ export default function StaffPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zaměstnanci</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Zaměstnanci</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -170,7 +170,7 @@ export default function StaffPage() {
   return (
     <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]}>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zaměstnanci</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Zaměstnanci</h1>
         {isOrgAdmin && (
           <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
             {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zaměstnance</>)}

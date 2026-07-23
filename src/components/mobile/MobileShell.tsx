@@ -11,24 +11,21 @@ const TABS = [
 ] as const
 
 /**
- * Mobilní/PWA shell (M11) — ÚPLNĚ jiná appka na telefonu, ne responzivní
- * zmenšenina staffového `AppShell`u (žádný sidebar, žádný TopBar
- * breadcrumb) — velký dolní tab bar (palcem dosažitelný), bezpečná zóna
- * pro iPhone home indicator (`env(safe-area-inset-bottom)`).
- *
- * Všechny 4 záložky mají VLASTNÍ mobilní stránku (`useIsMobile.ts`
- * přepínání v `App.tsx`) — žádná nevede na nepřestavěnou desktopovou
- * stránku.
- *
- * `backdrop-blur`+poloprůhledné pozadí — iOS "frosted glass" tab bar
- * (Petrovo zadání 2026-07-22, "styl aktuálního iOS"), ne plná barva.
+ * Mobilní/PWA shell — Cesta B (2026-07-24). Stejná struktura jako Cesta A
+ * (velký dolní tab bar, bezpečná zóna pro home indicator), ale JINÝ
+ * vizuální jazyk: SOLID pozadí místo Cesty A "iOS frosted glass"
+ * (`backdrop-blur` je typicky Apple afordance, tady záměrně pryč — Lumo/
+ * enterprise nástroje nepoužívají průhlednost jako chrome), a aktivní
+ * záložka dostává VYPLNĚNOU pilulku za ikonou (Material 3 "active
+ * indicator" vzor) namísto Cesty A pouhého probarvení ikony/textu —
+ * jasnější, sebevědomější signál "tady jsi".
  */
 export function MobileShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-[100dvh] flex-col bg-app">
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       <nav
-        className="grid shrink-0 grid-cols-4 border-t border-border bg-surface-soft/85 backdrop-blur-lg"
+        className="grid shrink-0 grid-cols-4 border-t border-border-default bg-surface-soft"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         {TABS.map(({ to, label, icon: Icon, end }) => (
@@ -38,13 +35,24 @@ export function MobileShell({ children }: { children: ReactNode }) {
             end={end}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-text-tertiary transition-all duration-150 active:scale-90',
-                isActive && 'text-accent',
+                'flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-text-tertiary transition-transform duration-150 active:scale-90',
+                isActive && 'text-primary',
               )
             }
           >
-            <Icon size={22} strokeWidth={1.75} />
-            {label}
+            {({ isActive }) => (
+              <>
+                <span
+                  className={cn(
+                    'flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-150',
+                    isActive && 'bg-primary-soft',
+                  )}
+                >
+                  <Icon size={20} strokeWidth={isActive ? 2.25 : 1.75} />
+                </span>
+                {label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

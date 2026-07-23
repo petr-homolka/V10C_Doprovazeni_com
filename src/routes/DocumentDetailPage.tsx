@@ -284,7 +284,7 @@ export default function DocumentDetailPage() {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-normal leading-normal text-text-primary">{document.title}</h1>
+          <h1 className="text-[26px] font-bold leading-tight text-text-primary">{document.title}</h1>
           <p className="mt-1 text-sm text-text-secondary">
             {document.uid} · verze {document.currentVersion} · {DOCUMENT_STATUS_LABELS[status]}
           </p>
@@ -408,7 +408,7 @@ export default function DocumentDetailPage() {
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       rows={3}
-                      className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary focus:border-2 focus:border-accent focus:outline-none"
+                      className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                     />
                   </label>
                   <Button

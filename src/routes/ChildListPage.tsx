@@ -51,7 +51,7 @@ export default function ChildListPage() {
   return (
     <AppShell breadcrumb={[{ label: 'Děti' }]}>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Děti</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Děti</h1>
       </div>
 
       <div className="relative mt-4 max-w-[320px]">

@@ -229,7 +229,7 @@ export default function TaskListPage() {
   return (
     <AppShell breadcrumb={[{ label: 'Úkoly' }]}>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Úkoly</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Úkoly</h1>
         <div className="flex items-center gap-3">
           <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
           <Button size="sm" onClick={openNew}>
@@ -397,7 +397,7 @@ export default function TaskListPage() {
                 value={form.notes}
                 onChange={(e) => set('notes', e.target.value)}
                 rows={2}
-                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary focus:border-2 focus:border-accent focus:outline-none"
+                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
 

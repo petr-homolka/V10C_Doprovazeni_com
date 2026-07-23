@@ -87,9 +87,13 @@ const withDragAndDrop = unwrapDefault<typeof import('react-big-calendar/lib/addo
 )
 const DnDCalendar = withDragAndDrop<CalendarItem>(BigCalendar)
 
+// Cesta B (2026-07-24) — kategorická paleta VĚDOMĚ vynechává modrou (teď
+// --primary, konfliktovalo by s barvou appky samotné) a čistě červenou
+// (--danger) — zbytek spektra, ať zaměstnanci zůstanou vzájemně
+// rozlišitelní i vedle nového sebevědomě modrého chrome.
 const STAFF_PALETTE = [
-  '#4F69F2', '#E0507A', '#2E9E6D', '#D97706',
-  '#7C3AED', '#0EA5E9', '#DC2626', '#65A30D',
+  '#8B5CF6', '#DB2777', '#EA580C', '#0D9488',
+  '#65A30D', '#0891B2', '#D97706', '#9333EA',
 ]
 
 function staffColor(uid: string): string {
@@ -112,10 +116,10 @@ function lightenHex(hex: string, amount: number): string {
 }
 
 const TIER_COLORS: Record<string, string> = {
-  ok: '#9CA3AF',
-  waiting: '#D97706',
-  warning: '#DC2626',
-  crisis: '#DC2626',
+  ok: '#7587A8',
+  waiting: '#C8790A',
+  warning: '#E21D12',
+  crisis: '#E21D12',
 }
 
 function splitIso(iso: string): { date: string; time: string } {
@@ -674,7 +678,7 @@ export default function CalendarPage() {
                 value={form.notes}
                 onChange={(e) => set('notes', e.target.value)}
                 rows={2}
-                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary focus:border-2 focus:border-accent focus:outline-none"
+                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
 

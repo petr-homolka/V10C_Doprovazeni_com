@@ -140,9 +140,9 @@ export function DateRangePicker({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'flex h-10 w-full items-center justify-between rounded-sm border border-border-medium bg-inset px-3 text-[16px]',
+          'flex h-9 w-full items-center justify-between rounded-sm border border-border-medium bg-inset px-3 text-[16px] transition-shadow duration-150',
           from ? 'text-text-primary' : 'text-text-tertiary',
-          'focus:border-2 focus:border-accent focus:outline-none disabled:opacity-50',
+          'focus:border-accent focus:outline-none focus:shadow-focus disabled:opacity-50',
         )}
       >
         <span className="truncate">{displayText}</span>

@@ -29,7 +29,7 @@ export default function NotificationsSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Oznámení' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Oznámení</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Oznámení</h1>
 
       <div className="mt-6 max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">E-mailová upozornění</p>

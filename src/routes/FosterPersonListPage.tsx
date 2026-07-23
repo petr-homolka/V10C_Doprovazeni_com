@@ -53,7 +53,7 @@ export default function FosterPersonListPage() {
   return (
     <AppShell breadcrumb={[{ label: 'Pěstouni' }]}>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Pěstouni</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Pěstouni</h1>
       </div>
 
       <div className="relative mt-4 max-w-[320px]">

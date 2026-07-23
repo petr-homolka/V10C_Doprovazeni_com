@@ -143,7 +143,7 @@ export default function InspectionsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Kvalita' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Kvalita</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Kvalita</h1>
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -154,7 +154,7 @@ export default function InspectionsPage() {
   return (
     <AppShell breadcrumb={[{ label: 'Kvalita' }]}>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Kvalita — evidence inspekcí</h1>
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Kvalita — evidence inspekcí</h1>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat inspekci</>)}
         </Button>

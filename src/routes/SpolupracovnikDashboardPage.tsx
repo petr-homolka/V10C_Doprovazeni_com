@@ -83,7 +83,7 @@ export default function SpolupracovnikDashboardPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Spolupráce' }]}>
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Moje přiřazené osoby</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Moje přiřazené osoby</h1>
       <p className="mt-1 text-sm text-text-secondary">
         Vidíte jen osoby a moduly, co vám přiřadí klíčová osoba nebo vedení.
       </p>
@@ -140,7 +140,7 @@ export default function SpolupracovnikDashboardPage() {
                             value={entryText}
                             onChange={(e) => setEntryText(e.target.value)}
                             placeholder="Co jste dnes dělali (pro výkaz práce)…"
-                            className="w-full rounded-sm border border-border-medium bg-inset px-3 py-2 text-[15px] text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
+                            className="w-full rounded-sm border border-border-medium bg-inset px-3 py-2 text-[15px] text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                           />
                           <Button type="submit" size="sm" loading={savingEntry} success={saveEntrySuccess} className="w-fit">
                             Uložit zápis

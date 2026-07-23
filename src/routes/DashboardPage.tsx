@@ -31,7 +31,7 @@ export default function DashboardPage() {
   return (
     <AppShell>
       <div>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">
+        <h1 className="text-[26px] font-bold leading-tight text-text-primary">
           Dnes
         </h1>
         <p className="mt-1 text-[13px] text-text-secondary">

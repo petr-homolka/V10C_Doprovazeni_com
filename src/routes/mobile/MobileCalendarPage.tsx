@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { CalendarClock, ChevronLeft, ChevronRight, Plus, Settings, Trash2 } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { BottomSheet } from '@/components/mobile/BottomSheet'
-import { IosList, IosListRow } from '@/components/mobile/IosList'
+import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -40,7 +40,11 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { AgreementDoc } from '@/types/agreement'
 import type { SubjectRef } from '@/types/timelineEntry'
 
-const STAFF_PALETTE = ['#4F69F2', '#E0507A', '#2E9E6D', '#D97706', '#7C3AED', '#0EA5E9', '#DC2626', '#65A30D']
+// Cesta B — stejná paleta jako desktopová `CalendarPage.tsx` (jeden zdroj
+// pravdy pro "jaké barvy má appka", i když je zatím duplikovaná napříč
+// dvěma soubory — sdílený `lib/staffColor.ts` je SEAM, mimo rozsah týhle
+// dávky).
+const STAFF_PALETTE = ['#8B5CF6', '#DB2777', '#EA580C', '#0D9488', '#65A30D', '#0891B2', '#D97706', '#9333EA']
 function staffColor(uid: string): string {
   let hash = 0
   for (let i = 0; i < uid.length; i++) hash = (hash * 31 + uid.charCodeAt(i)) | 0
@@ -500,19 +504,19 @@ export default function MobileCalendarPage() {
           {dayItems.length === 0 ? (
             <EmptyState icon={CalendarClock} text="Pro tenhle den nemáte žádné události." />
           ) : (
-            <IosList>
+            <GroupedList>
               {dayItems.map((item) => {
-                const color = item.source === 'agreementVisit' ? '#9CA3AF' : staffColor(item.staffUid ?? '')
+                const color = item.source === 'agreementVisit' ? '#7587A8' : staffColor(item.staffUid ?? '')
                 return (
-                  <IosListRow key={item.id} onClick={() => openEdit(item)} className="border-l-4" style={{ borderLeftColor: color }}>
+                  <GroupedListRow key={item.id} onClick={() => openEdit(item)} className="border-l-4" style={{ borderLeftColor: color }}>
                     <span className="w-14 shrink-0 text-[14px] font-medium text-text-primary">
                       {item.allDay ? 'Celý den' : item.start.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[15px] text-text-secondary">{item.title}</span>
-                  </IosListRow>
+                  </GroupedListRow>
                 )
               })}
-            </IosList>
+            </GroupedList>
           )}
         </div>
       </div>
@@ -745,7 +749,7 @@ export default function MobileCalendarPage() {
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                 rows={3}
                 placeholder="Doplňující poznámka…"
-                className="w-full resize-none rounded-sm border border-border-medium bg-inset px-3 py-2.5 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
+                className="w-full resize-none rounded-sm border border-border-medium bg-inset px-3 py-2.5 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
             <Button type="submit" loading={saving} className="h-14 text-base">

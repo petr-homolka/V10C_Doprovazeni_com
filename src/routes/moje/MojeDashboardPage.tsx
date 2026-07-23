@@ -172,7 +172,7 @@ export default function MojeDashboardPage() {
 
   return (
     <MojeShell>
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Vítejte, {userDoc?.displayName}</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Vítejte, {userDoc?.displayName}</h1>
       {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
 
       {error && (
@@ -269,7 +269,7 @@ export default function MojeDashboardPage() {
             onChange={(e) => setMessageBody(e.target.value)}
             placeholder="Napište klíčové osobě…"
             rows={2}
-            className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary focus:border-2 focus:border-accent focus:outline-none"
+            className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
           />
           <Button type="submit" size="sm" className="w-fit" loading={sendingMessage} disabled={!messageBody.trim()}>
             <Send size={16} /> Odeslat
@@ -308,7 +308,7 @@ export default function MojeDashboardPage() {
                         onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [docId]: e.target.value }))}
                         placeholder="Nebo napište komentář…"
                         rows={2}
-                        className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary focus:border-2 focus:border-accent focus:outline-none"
+                        className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                       />
                       <Button
                         variant="secondary"

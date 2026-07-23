@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Cake, CalendarClock, Mic, PartyPopper } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { VoiceCaptureSheet } from '@/components/mobile/VoiceCaptureSheet'
-import { IosList, IosListRow } from '@/components/mobile/IosList'
+import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import { listCalendarEvents } from '@/services/calendarEventService'
@@ -94,16 +94,16 @@ export default function MobileHomePage() {
             ) : todayEvents.length === 0 ? (
               <EmptyState icon={CalendarClock} text="Dnes nemáte v kalendáři žádnou vlastní událost." />
             ) : (
-              <IosList>
+              <GroupedList>
                 {todayEvents.map(({ docId, event }) => (
-                  <IosListRow key={docId} as="div">
+                  <GroupedListRow key={docId} as="div">
                     <span className="shrink-0 text-[15px] font-medium text-text-primary">
                       {new Date(event.start).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-[15px] text-text-secondary">{event.title}</span>
-                  </IosListRow>
+                  </GroupedListRow>
                 ))}
-              </IosList>
+              </GroupedList>
             )}
           </div>
         </div>
@@ -114,18 +114,18 @@ export default function MobileHomePage() {
         {birthdayAlerts.length > 0 && (
           <div className="mt-6">
             <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Narozeniny a svátky</h2>
-            <IosList className="mt-2">
+            <GroupedList className="mt-2">
               {birthdayAlerts.map((alert, i) => (
-                <IosListRow key={`${alert.kind}-${i}`} as="div">
+                <GroupedListRow key={`${alert.kind}-${i}`} as="div">
                   {alert.kind === 'birthday' ? (
                     <Cake size={18} className="shrink-0 text-primary" />
                   ) : (
                     <PartyPopper size={18} className="shrink-0 text-primary" />
                   )}
                   <span className="min-w-0 flex-1 text-[15px] text-text-primary">{alert.text}</span>
-                </IosListRow>
+                </GroupedListRow>
               ))}
-            </IosList>
+            </GroupedList>
           </div>
         )}
       </div>

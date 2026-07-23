@@ -125,7 +125,7 @@ export default function ChildDetailPage() {
                   size="lg"
                 />
                 <div>
-                  <h1 className="text-lg font-normal leading-normal text-text-primary">
+                  <h1 className="text-[26px] font-bold leading-tight text-text-primary">
                     {child.firstName} {child.lastName}
                   </h1>
                   <p className="mt-1 font-mono text-sm text-text-secondary">{child.birthNumber}</p>

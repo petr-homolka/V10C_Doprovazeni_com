@@ -70,7 +70,7 @@ export function BottomSheet({
         role="dialog"
         aria-modal="true"
         className={cn(
-          'flex max-h-[88vh] w-full min-h-0 flex-col overflow-y-auto rounded-t-2xl bg-surface shadow-overlay transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
+          'flex max-h-[88vh] w-full min-h-0 flex-col overflow-y-auto rounded-t-[var(--radius-lg)] bg-surface shadow-overlay transition-transform duration-[380ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
           visible ? 'translate-y-0' : 'translate-y-full',
           className,
         )}

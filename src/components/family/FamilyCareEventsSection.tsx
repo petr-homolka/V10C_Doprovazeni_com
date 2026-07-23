@@ -63,7 +63,7 @@ const RECURRENCE_LABELS: Record<AssistedContactScheduleRecurrence['frequency'], 
 
 const TEXTAREA_CLASSNAME =
   'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed ' +
-  'text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none'
+  'text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
 
 function StatusBadge({ label, tone = 'default' }: { label: string; tone?: 'default' | 'warning' }) {
   return (

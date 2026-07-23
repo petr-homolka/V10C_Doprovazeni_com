@@ -214,7 +214,7 @@ export function VoiceRecorderPanel({
     <Drawer onClose={onClose}>
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
-          <h2 className="text-lg font-normal leading-normal text-text-primary">
+          <h2 className="text-[17px] font-semibold leading-snug text-text-primary">
             {visit ? 'Zápis z návštěvy' : 'Hlasový zápis'}
           </h2>
           {visit && (
@@ -294,7 +294,7 @@ export function VoiceRecorderPanel({
               className={cn(
                 'w-full flex-1 resize-none rounded-sm border border-border-medium bg-inset px-4 py-3',
                 'text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary',
-                'focus:border-2 focus:border-accent focus:outline-none',
+                'transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none',
               )}
             />
 
