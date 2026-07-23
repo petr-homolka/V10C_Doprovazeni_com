@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/shell/AppShell'
 import { PageHeader } from '@/components/ui/page-header'
 import { TodaySections } from '@/components/TodaySections'
+import { TeamWidget } from '@/components/TeamWidget'
 import { listOverCapacityKos, type OverCapacityKo } from '@/services/agreementService'
 import { isReadOnlyManagerRole } from '@/types/user'
 
@@ -15,6 +16,10 @@ import { isReadOnlyManagerRole } from '@/types/user'
  * 5) — viditelný jen org_adminovi/vedení (§5.7 matice), NIKDY blokující,
  * jen upozornění (stejný princip jako `FamilyDetailPage`'s per-KO
  * upozornění při zakládání Dohody).
+ *
+ * Cesta D — přivítání nad titulkem + "Tým" widget (`TeamWidget`,
+ * Woorkroom "Workload" vzor ze SPEC.md) doplněny nad stávající reálná
+ * data `TodaySections`.
  */
 export default function DashboardPage() {
   const { userDoc, firebaseUser } = useAuth()
@@ -29,15 +34,15 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canSeeCapacityBanner, userDoc?.organizationId])
 
+  const firstName = (userDoc?.displayName ?? firebaseUser?.email ?? '').split(' ')[0]
+
   return (
     <AppShell>
-      <PageHeader
-        title="Dnes"
-        description={`Přihlášen jako ${userDoc?.displayName ?? firebaseUser?.email ?? ''}${userDoc?.role ? ` · ${userDoc.role}` : ''}`}
-      />
+      {firstName && <p className="-mt-1 mb-1 text-sm text-text-secondary">Vítejte zpět, {firstName}!</p>}
+      <PageHeader title="Dnes" />
 
       {canSeeCapacityBanner && overCapacity.length > 0 && (
-        <div className="mt-4 max-w-[928px] rounded-lg border border-warning bg-warning-bg p-4">
+        <div className="mb-2 max-w-[928px] rounded-lg border border-warning bg-warning-bg p-4">
           <p className="text-sm font-medium text-text-primary">
             {overCapacity.length === 1
               ? '1 klíčová osoba má překročenou kapacitu'
@@ -48,6 +53,8 @@ export default function DashboardPage() {
           </p>
         </div>
       )}
+
+      {userDoc?.organizationId && <TeamWidget organizationId={userDoc.organizationId} />}
 
       <TodaySections />
     </AppShell>

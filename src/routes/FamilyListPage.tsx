@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { PageHeader } from '@/components/ui/page-header'
 import { ListToolbar } from '@/components/ui/list-toolbar'
-import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
+import { RecordCard, RecordCardList } from '@/components/ui/record-card'
+import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { Fab } from '@/components/ui/fab'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -39,10 +41,8 @@ import type { FamilyDoc } from '@/types/family'
 import type { AgreementDoc } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { SubjectRef } from '@/types/timelineEntry'
-import { cn } from '@/lib/utils'
 import { Mic, Plus, Star, Users } from 'lucide-react'
 
-const TABLE_COLUMNS = '92px 2fr 130px 110px 110px 140px'
 const SORT_OPTIONS = [
   { value: 'adresa' as const, label: 'Adresa' },
   { value: 'dotek' as const, label: 'Poslední kontakt' },
@@ -375,38 +375,22 @@ export default function FamilyListPage() {
           )}
         </ListToolbar>
         {families === null ? (
-          <p className="rounded-b-md border border-t-0 border-border-default bg-surface p-4 text-sm text-text-secondary">
-            Načítám…
-          </p>
+          <p className="mt-3 text-sm text-text-secondary">Načítám…</p>
         ) : sortedRows.length === 0 ? (
-          <div className="rounded-b-md border border-t-0 border-border-default bg-surface p-8">
+          <div className="mt-3 rounded-lg bg-surface-soft p-8 shadow-raised">
             <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
           </div>
         ) : (
-          <Table className="rounded-t-none border-t-0">
-            <TableHeaderRow
-              columns={TABLE_COLUMNS}
-              labels={['', 'Rodina', 'Klíčová osoba', 'Poslední kontakt', 'Poslední návštěva', 'Stav']}
-            />
+          <RecordCardList className="mt-3">
             {sortedRows.map((row) => {
               const { docId, family, displayName, assignedToDisplay, alert } = row
-              const isCrisis = alert?.tier === 'crisis'
               return (
-                // Ne `<Link>` — řádek teď obsahuje `AddressLink` (taky `<a>`),
-                // a `<a>` uvnitř `<a>` je neplatné HTML (React na to živě
-                // upozorňuje, prohlížeč DOM tiše "opraví" nepředvídatelně).
-                // Klik na řádek naviguje ručně, jednotlivé vnořené ovládací
-                // prvky (checkbox/hvězdička/mikrofon/adresa) mají vlastní
-                // `stopPropagation` už od dřívějška.
-                <div
+                <RecordCard
                   key={family.uid}
                   onClick={() => navigate(`/rodiny/${family.uid}`)}
-                  className="contents cursor-pointer">
-                  <TableRow
-                    columns={TABLE_COLUMNS}
-                    className={cn('group', isCrisis && 'bg-crisis-bg')}
-                  >
-                    <div className="flex items-center gap-1.5">
+                  highlight={alert?.tier === 'crisis'}
+                  leading={
+                    <>
                       <input
                         type="checkbox"
                         checked={selected.has(docId)}
@@ -417,6 +401,36 @@ export default function FamilyListPage() {
                         }}
                         className="size-4 shrink-0 rounded-sm border-border-medium accent-primary"
                       />
+                      <EntityAvatar label={displayName} fallbackIcon={Users} />
+                    </>
+                  }
+                  title={displayName}
+                  subtitle={
+                    family.address ? (
+                      <AddressLink address={family.address} className="text-xs" />
+                    ) : (
+                      'Adresa neuvedena'
+                    )
+                  }
+                  meta={
+                    <>
+                      {assignedToDisplay && (
+                        <div className="hidden text-right sm:block">
+                          <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Klíčová osoba</p>
+                          <p className="text-sm text-text-secondary">{assignedToDisplay}</p>
+                        </div>
+                      )}
+                      <div className="hidden text-right md:block">
+                        <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Poslední kontakt</p>
+                        <p className="text-sm text-text-secondary">
+                          {family.lastTouchAt ? new Date(family.lastTouchAt).toLocaleDateString('cs-CZ') : 'Nikdy'}
+                        </p>
+                      </div>
+                      {alert && <AlertTag tier={alert.tier} title={`${alert.reason} — ${alert.action}`} />}
+                    </>
+                  }
+                  trailing={
+                    <>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -425,7 +439,7 @@ export default function FamilyListPage() {
                           toggleStar(docId)
                         }}
                         title={starredIds.has(docId) ? 'Odebrat hvězdičku' : 'Označit hvězdičkou'}
-                        className="flex shrink-0 items-center justify-center text-text-tertiary hover:text-warning"
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-warning"
                       >
                         <Star
                           size={16}
@@ -442,36 +456,16 @@ export default function FamilyListPage() {
                         }}
                         title={recorderLoadingDocId === docId ? 'Načítám…' : 'Nahrát hlasový zápis'}
                         disabled={recorderLoadingDocId === docId}
-                        className="flex size-6 shrink-0 items-center justify-center rounded-full text-text-tertiary opacity-0 transition-opacity hover:bg-danger-solid hover:text-white group-hover:opacity-100 disabled:opacity-40"
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-text-tertiary opacity-0 transition-opacity hover:bg-danger-solid hover:text-white group-hover:opacity-100 disabled:opacity-40"
                       >
-                        <Mic size={13} strokeWidth={2} />
+                        <Mic size={14} strokeWidth={2} />
                       </button>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-text-primary">{displayName}</p>
-                      {family.address ? (
-                        <span className="text-xs">
-                          <AddressLink address={family.address} className="text-xs" />
-                        </span>
-                      ) : (
-                        <p className="truncate text-xs text-text-tertiary">Adresa neuvedena</p>
-                      )}
-                    </div>
-                    <span className="truncate text-sm text-text-secondary">{assignedToDisplay ?? '—'}</span>
-                    <span className="text-sm text-text-secondary">
-                      {family.lastTouchAt ? new Date(family.lastTouchAt).toLocaleDateString('cs-CZ') : 'Nikdy'}
-                    </span>
-                    <span className="text-sm text-text-secondary">
-                      {row.agreement?.lastVisitAt
-                        ? new Date(row.agreement.lastVisitAt).toLocaleDateString('cs-CZ')
-                        : 'Nikdy'}
-                    </span>
-                    <div>{alert && <AlertTag tier={alert.tier} title={`${alert.reason} — ${alert.action}`} />}</div>
-                  </TableRow>
-                </div>
+                    </>
+                  }
+                />
               )
             })}
-          </Table>
+          </RecordCardList>
         )}
       </div>
 
@@ -554,6 +548,8 @@ export default function FamilyListPage() {
           onSaved={reload}
         />
       )}
+
+      <Fab onClick={() => setShowForm(true)} aria-label="Nová rodina" title="Nová rodina" />
     </AppShell>
   )
 }

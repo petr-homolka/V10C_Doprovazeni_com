@@ -30,6 +30,11 @@ import { AccountMenu } from './AccountMenu'
  * OTEVÍRÁ panel oznámení (není to on/off přepínač), takže se ho princip
  * netýká — až M9 přinese možnost oznámení ztlumit, doplnit BellOff stav.
  * Theme toggle princip už splňuje (ikona = cílový stav, Moon/Sun).
+ *
+ * Cesta D — "plovoucí pilulka" místo celo-šířkové lišty s `border-b`:
+ * hlavička je samostatná plně zaoblená bílá karta se stínem, s mezerou
+ * (`bg-app`) kolem sebe na všech stranách — Woorkroom reference (SPEC.md
+ * "Top bar / header"), kde titulek stránky žije POD pilulkou, ne uvnitř ní.
  */
 export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
   const { resolvedTheme, toggleTheme } = useTheme()
@@ -37,39 +42,41 @@ export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
     resolvedTheme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'
 
   return (
-    <div className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border-default bg-surface-soft px-4">
-      <div className="min-w-0 flex-1">{breadcrumb && <Breadcrumb items={breadcrumb} />}</div>
+    <div className="shrink-0 bg-app px-4 pt-3">
+      <div className="flex h-14 items-center justify-between gap-4 rounded-full bg-surface-soft px-4 shadow-raised">
+        <div className="min-w-0 flex-1">{breadcrumb && <Breadcrumb items={breadcrumb} />}</div>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label={themeLabel}
-          title={themeLabel}
-          className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
-        >
-          {resolvedTheme === 'light' ? <Moon size={18} strokeWidth={1.75} /> : <Sun size={18} strokeWidth={1.75} />}
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={themeLabel}
+            title={themeLabel}
+            className="flex size-9 items-center justify-center rounded-full text-text-primary transition-colors duration-150 hover:bg-overlay-active"
+          >
+            {resolvedTheme === 'light' ? <Moon size={18} strokeWidth={1.75} /> : <Sun size={18} strokeWidth={1.75} />}
+          </button>
 
-        <Link
-          to="/nastaveni/vzhled"
-          aria-label="Nastavení"
-          title="Nastavení"
-          className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
-        >
-          <Settings size={18} strokeWidth={1.75} />
-        </Link>
+          <Link
+            to="/nastaveni/vzhled"
+            aria-label="Nastavení"
+            title="Nastavení"
+            className="flex size-9 items-center justify-center rounded-full text-text-primary transition-colors duration-150 hover:bg-overlay-active"
+          >
+            <Settings size={18} strokeWidth={1.75} />
+          </Link>
 
-        <button
-          type="button"
-          aria-label="Oznámení"
-          title="Oznámení"
-          className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
-        >
-          <Bell size={18} strokeWidth={1.75} />
-        </button>
+          <button
+            type="button"
+            aria-label="Oznámení"
+            title="Oznámení"
+            className="flex size-9 items-center justify-center rounded-full text-text-primary transition-colors duration-150 hover:bg-overlay-active"
+          >
+            <Bell size={18} strokeWidth={1.75} />
+          </button>
 
-        <AccountMenu />
+          <AccountMenu />
+        </div>
       </div>
     </div>
   )

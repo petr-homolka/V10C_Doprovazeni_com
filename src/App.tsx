@@ -40,6 +40,7 @@ const FosterPersonDetailPage = lazy(() => import('@/routes/FosterPersonDetailPag
 const ChildDetailPage = lazy(() => import('@/routes/ChildDetailPage'))
 const SpolupracovnikDashboardPage = lazy(() => import('@/routes/SpolupracovnikDashboardPage'))
 const CalendarPage = lazy(() => import('@/routes/CalendarPage'))
+const MessengerPage = lazy(() => import('@/routes/MessengerPage'))
 const MobileHomePage = lazy(() => import('@/routes/mobile/MobileHomePage'))
 const MobileAccountPage = lazy(() => import('@/routes/mobile/MobileAccountPage'))
 const MobileCalendarPage = lazy(() => import('@/routes/mobile/MobileCalendarPage'))
@@ -146,6 +147,7 @@ export default function App() {
                 <Route path="/externiste" element={<ExternalParticipantsPage />} />
                 <Route path="/spolupracovnik" element={<SpolupracovnikDashboardPage />} />
                 <Route path="/kalendar" element={<CalendarRoute />} />
+                <Route path="/zpravy" element={<MessengerPage />} />
               </Route>
             </Routes>
           </Suspense>

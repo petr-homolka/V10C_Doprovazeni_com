@@ -38,7 +38,7 @@ export function FamilyCard({
   return (
     <article
       onClick={onClick}
-      className="flex cursor-pointer items-center gap-4 rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-surface-soft"
+      className="flex cursor-pointer items-center gap-4 rounded-lg bg-surface-soft p-4 shadow-raised transition-shadow duration-150 hover:shadow-md"
     >
       <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft font-semibold text-primary">
         {initials}

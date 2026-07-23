@@ -1,0 +1,66 @@
+import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
+
+/**
+ * RecordCard — Cesta D, round 2. Nahrazuje `<Table>`/`<TableRow>` na
+ * seznamových stránkách (Rodiny, Zaměstnanci, Pěstouni, Děti, Úkoly…) —
+ * Woorkroom reference (SPEC.md "Avatar + role-subtitle list row",
+ * "Card") nezobrazuje záznamy jako řádky tabulky se sloupci, ale jako
+ * samostatné bílé zaoblené KARTY, jedna pod druhou, s avatarem/ikonou
+ * vlevo, jménem+podtextem uprostřed a volitelnou metadata/akce sekcí
+ * vpravo. Tohle je TA strukturální změna, kterou round 1 vynechal (jen
+ * přebarvil `Table`) — Petrem právem odmítnuto jako povrchní.
+ *
+ * `leading` = avatar/ikona/checkbox shluk vlevo (fixní šířka, viz
+ * volající kód pro přesné složení). `meta` = pravá strana (badge/datum/
+ * počty) — na širších obrazovkách vedle sebe, `trailing` = akce, co se
+ * objeví až při hoveru (mikrofon, hvězdička…) — volitelné, viditelné
+ * jinak jen na mobilu/dotykových zařízeních natrvalo (`group-hover`
+ * princip řeší volající).
+ */
+export function RecordCard({
+  leading,
+  title,
+  subtitle,
+  meta,
+  trailing,
+  onClick,
+  highlight,
+  className,
+}: {
+  leading?: ReactNode
+  title: ReactNode
+  subtitle?: ReactNode
+  meta?: ReactNode
+  trailing?: ReactNode
+  onClick?: () => void
+  /** Naléhavý stav (krize) — jemné červené podbarvení celé karty. */
+  highlight?: boolean
+  className?: string
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className={cn(
+        'group flex items-center gap-3.5 rounded-lg bg-surface-soft p-3.5 shadow-raised transition-shadow duration-150',
+        onClick && 'cursor-pointer hover:shadow-md',
+        highlight && 'bg-crisis-bg',
+        className,
+      )}
+    >
+      {leading && <div className="flex shrink-0 items-center gap-2">{leading}</div>}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold text-text-primary">{title}</div>
+        {subtitle && <div className="truncate text-xs text-text-secondary">{subtitle}</div>}
+      </div>
+      {meta && <div className="flex shrink-0 items-center gap-4">{meta}</div>}
+      {trailing && <div className="flex shrink-0 items-center gap-1">{trailing}</div>}
+    </div>
+  )
+}
+
+/** Vertikální stack `RecordCard`ů s jednotnou mezerou — použij místo
+ * `<Table>` na seznamové stránce. */
+export function RecordCardList({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn('flex flex-col gap-2.5', className)}>{children}</div>
+}

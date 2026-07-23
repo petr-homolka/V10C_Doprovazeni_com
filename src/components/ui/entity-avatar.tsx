@@ -40,6 +40,8 @@ export function EntityAvatar({
   onQuickRecord,
   quickRecordDisabledReason,
   onChangePhoto,
+  ring,
+  online,
   className,
 }: {
   photoURL?: string | null
@@ -49,6 +51,11 @@ export function EntityAvatar({
   onQuickRecord?: () => void
   quickRecordDisabledReason?: string
   onChangePhoto?: () => void
+  /** Cesta D: 2px modrý prstenec kolem avataru — "tohle je aktuální
+   * uživatel/kontext" konvence z Woorkroom reference. */
+  ring?: boolean
+  /** Cesta D: zelená tečka vpravo dole — online/přítomnost (Messenger). */
+  online?: boolean
   className?: string
 }) {
   const dimension = size === 'lg' ? 'size-24' : 'size-8'
@@ -72,7 +79,8 @@ export function EntityAvatar({
     <div className={cn('group relative shrink-0 rounded-full', dimension, className)}>
       <div
         className={cn(
-          'flex h-full w-full items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-soft text-text-secondary',
+          'flex h-full w-full items-center justify-center overflow-hidden rounded-full border bg-surface-soft text-text-secondary',
+          ring ? 'border-2 border-primary' : 'border-border-strong',
           size === 'lg' ? 'text-xl font-semibold' : 'text-[11px] font-semibold',
         )}
       >
@@ -84,6 +92,15 @@ export function EntityAvatar({
           computeInitials(label) || '?'
         )}
       </div>
+      {online && (
+        <span
+          aria-hidden
+          className={cn(
+            'absolute rounded-full border-2 border-surface-soft bg-online',
+            size === 'lg' ? 'bottom-0.5 right-0.5 size-4' : 'bottom-0 right-0 size-2.5',
+          )}
+        />
+      )}
 
       {onQuickRecord && (
         <button

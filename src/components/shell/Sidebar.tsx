@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Baby, Calendar, CheckSquare, ClipboardCheck, FileText, Home, UserCog, UserPlus, UserRound, UserSquare2, Users } from 'lucide-react'
+import { Baby, Calendar, CheckSquare, ClipboardCheck, FileText, Home, MessageCircle, UserCog, UserPlus, UserRound, UserSquare2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { isStaffRole } from '@/types/user'
@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { to: '/zamestnanci', label: 'Zaměstnanci', icon: UserCog, end: false, staffOnly: true },
   { to: '/ukoly', label: 'Úkoly', icon: CheckSquare, end: false, staffOnly: false },
   { to: '/kalendar', label: 'Kalendář', icon: Calendar, end: false, staffOnly: false },
+  { to: '/zpravy', label: 'Zprávy', icon: MessageCircle, end: false, staffOnly: false },
   { to: '/dokumenty', label: 'Dokumenty', icon: FileText, end: false, staffOnly: false },
   { to: '/zajemci', label: 'Zájemci', icon: UserPlus, end: false, staffOnly: true },
   { to: '/kvalita', label: 'Kvalita', icon: ClipboardCheck, end: false, staffOnly: true },
@@ -64,7 +65,7 @@ export function Sidebar() {
             D
           </div>
           {!collapsed && (
-            <span className="truncate text-[15px] font-bold text-text-primary">
+            <span className="truncate font-heading text-[15px] font-bold text-text-primary">
               Doprovázení
             </span>
           )}

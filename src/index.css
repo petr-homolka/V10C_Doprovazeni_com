@@ -3,221 +3,198 @@
 @tailwind utilities;
 
 /*
-  Design tokeny — CESTA B (2026-07-24). Petrovo zadání: "nejde mi jen o
-  změnu barev, ale o změnu všeho... prosím překvap mě" — tohle NENÍ
-  retint Cesty A, je to nový vizuální jazyk, odvozený z Lumo/Vaadin
-  Design Systemu (viz DESIGN_PATH_B.md pro plné zdůvodnění a zdroj).
-  Datové modely/logika appky beze změny — mění se výhradně vzhled.
+  Design tokeny — CESTA D, round 2 (2026-07-23). Round 1 byl Petrem
+  právem odmítnut jako povrchní přebarvení Cesty B kostry ("jen jsi to
+  obarvil" znovu). Tenhle round je genuinní strukturální přestavba podle
+  Woorkroom Community reference (SPEC.md ve scratchpadu) — seznamy jsou
+  KARTY (RecordCard), ne tabulky, Dashboard je skládačka widgetů, ne tři
+  seznamy. Tokeny samotné (paleta/radius/stín) zůstávají z round 1 — na
+  těch Petr výhrady neměl, problém byla STRUKTURA komponent nad nimi.
 
-  KLÍČOVÝ ARCHITEKTONICKÝ TAH: stejná SADA proměnných jako Cesta A
-  (--bg-app, --text-primary, --border-medium, --primary, --accent, …) —
-  jen s NOVÝMI hodnotami. `tailwind.config.js` na ně mapuje stejné
-  utility třídy (`bg-app`, `text-text-primary`, …), takže celá appka
-  (desktop i mobil, ~60 stránek) se přebarví/přetypografuje NAPŘÍČ
-  automaticky, beze změny per-stránkového kódu — jen komponenty se
-  strukturální odchylkou (Button, Input, Table, shell…) se upravují
-  zvlášť (viz jejich vlastní soubory).
-
-  Filosofická změna oproti Cestě A:
-  - Cesta A: monochromní chrome (černá/bílá), barva JEN na subjektových
-    badge — decentní, konzervativní, "iOS nastavení".
-  - Cesta B: SEBEVĚDOMÁ modrá (Lumo Primary #006AF5) jako skutečná
-    primární barva chrome (tlačítka, aktivní stavy, focus ring) —
-    "enterprise nástroj", ne jen textový editor. Hustší, ostřejší
-    (menší radiusy), výraznější stínová škála (5 úrovní místo 2),
-    grid/tabulkový charakter namísto kartového.
+  KLÍČOVÝ ARCHITEKTONICKÝ TAH (stejný trik jako ostatní cesty): STEJNÁ
+  SADA proměnných — jen nové hodnoty. `tailwind.config.js` na ně mapuje
+  stejné utility třídy, takže barvy/radius/stín se šíří napříč appkou
+  automaticky — ale komponenty samotné (`RecordCard` místo `Table`,
+  Dashboard widgety, Messenger) jsou tenhle round PŘEPSANÉ, ne jen
+  přebarvené.
 */
 :root {
-  /* Pozadí a plochy — Lumo "Contrast" škála (odvozeno z jejich %
-     kontrastu vůči základu), ne libovolné odhady. Pořadí jasu zůstává
-     void < app < surface-soft (stejná konvence jako Cesta A, jen jiné
-     konkrétní hodnoty). */
-  --bg-app: #F7F9FC;
-  --bg-surface: #EEF2F8;
+  /* Pozadí a plochy — bledě periwinkle appka, čistě bílé karty. */
+  --bg-app: #EAF0FB;
+  --bg-surface: #F2F6FC;
   --bg-surface-soft: #FFFFFF;
-  --bg-inset: #FFFFFF;
-  --bg-void: #E4E9F2;
-  --overlay-active: rgba(0, 43, 122, .07);
-  /* Vyplněné pole (Input/Select/Combobox/DatePicker/textarea) — Lumo
-     TextField konvence z referenčního screenshotu (vyplněné pole BEZ
-     obrysu, ne bílý box s šedým rámečkem). Alpha, ne pevný hex — MUSÍ
-     zůstat viditelné na jakémkoli pozadí pod sebou (stránka/karta/
-     modál/toolbar mají různé odstíny `--bg-*`), pevná barva by na
-     některém z nich splynula (viz oprava 2026-07-23: `bg-surface`
-     splynulo s kartou formuláře, co má taky `bg-surface`). */
-  --field-bg: rgba(18, 32, 61, .05);
-  --toggle-off: rgba(30, 41, 59, .16);
-  /* Accent = STEJNÁ barva jako --primary na Cestě B (na rozdíl od Cesty
-     A, kde je --accent jediná barevná výjimka v jinak monochromním
-     systému) — tady je modrá všude záměrně stejná, jeden sebevědomý
-     akcent, ne dvě různé modré vedle sebe. */
-  --accent: #006AF5;
+  --bg-inset: #F5F8FC;
+  --bg-void: #DCE6F7;
+  --overlay-active: rgba(62, 123, 250, .09);
+  --field-bg: rgba(138, 148, 166, .10);
+  --toggle-off: #D7DCE5;
+  --accent: #3E7BFA;
   --toggle-thumb: #FFFFFF;
 
-  /* Text — Lumo body/contrast text */
-  --text-primary: #12203D;
-  --text-secondary: #435374;
-  --text-tertiary: #7587A8;
+  /* Text */
+  --text-primary: #171A2B;
+  --text-secondary: #8A94A6;
+  --text-tertiary: #B7BFCC;
   --text-inverse: #FFFFFF;
 
-  /* Čáry — o něco výraznější/modřejší tón než neutrálně šedá Cesty A
-     (Lumo "contrast" odstín má jemný modrý nádech, ne čistě černý). */
-  --border-subtle: rgba(18, 32, 61, .08);
-  --border-default: rgba(18, 32, 61, .13);
-  --border-medium: rgba(18, 32, 61, .18);
-  --border-strong: rgba(18, 32, 61, .26);
+  /* Čáry — velmi jemné, appka spoléhá na kartu + stín, ne na obrys. */
+  --border-subtle: #F1F4F9;
+  --border-default: #E3E8F0;
+  --border-medium: #D7DCE5;
+  --border-strong: #C3CBDA;
 
-  /* Primární akcent — SKUTEČNÁ modrá (Lumo Primary), ne monochrom. */
-  --primary: #006AF5;
-  --primary-hover: #0058D6;
+  /* Primární akcent — periwinkle modrá z reference. */
+  --primary: #3E7BFA;
+  --primary-hover: #2F5FD6;
   --primary-foreground: #FFFFFF;
-  --primary-soft: #DCEBFF;
-  --primary-soft-hover: #C7DFFF;
-  --ring: #006AF5;
+  --primary-soft: #E3ECFF;
+  --primary-soft-hover: #D2E1FF;
+  --ring: #3E7BFA;
 
-  /* Sémantika subjektů/stavů — Lumo Error/Success paleta, subjektové
-     tóny odvozené ze stejné harmonie (modrá/zelená/šedá/žlutá), aby
-     zůstaly rozlišitelné VEDLE sebe (barvoslepost-safe pořadí zachováno
-     z Cesty A). */
-  --subject-foster: #0F9D58;
-  --subject-foster-bg: #E4F7EC;
-  --subject-ospod: #006AF5;
-  --subject-ospod-bg: #E3EFFF;
-  --subject-court: #5B6B8C;
-  --subject-court-bg: #EAEDF4;
-  --subject-bio: #C8790A;
-  --subject-bio-bg: #FCF0DD;
-  --crisis: #E21D12;
-  --crisis-bg: #FCE7E5;
+  /* Sémantika subjektů/stavů. */
+  --subject-foster: #17C68C;
+  --subject-foster-bg: #D3F6E7;
+  --subject-ospod: #3E7BFA;
+  --subject-ospod-bg: #E3ECFF;
+  --subject-court: #8A94A6;
+  --subject-court-bg: #EDF0F5;
+  --subject-bio: #FFA53D;
+  --subject-bio-bg: #FFF1E0;
+  --crisis: #F35B5B;
+  --crisis-bg: #FDE7E7;
 
-  --success: #158444;
-  --success-bg: #E4F7EC;
-  --warning: #C8790A;
-  --warning-bg: #FCF0DD;
-  --danger: #E21D12;
-  --danger-bg: #FCE7E5;
-  --danger-solid: #CA150C;
+  --success: #1BC47D;
+  --success-bg: #D3F6E7;
+  --warning: #FFA53D;
+  --warning-bg: #FFF1E0;
+  --danger: #F35B5B;
+  --danger-bg: #FDE7E7;
+  --danger-solid: #E14B4B;
 
-  --tier-accent: #C0389E;
-  --tier-accent-bg: rgba(192, 56, 158, .14);
+  --tier-accent: #B84FE0;
+  --tier-accent-bg: #F4E3FD;
 
-  /* Radiusy — CRISPŠÍ než Cesta A (Lumo defaultně používá menší
-     zaoblení než konzumní iOS chrome — "nástroj", ne "hračka"). */
-  --radius-sm: 6px;
-  --radius-md: 9px;
-  --radius-lg: 13px;
+  /* Presence/online stav (Messenger). */
+  --online: #3ED598;
+
+  /* Radiusy — VELKORYSÉ, "měkký" konzumní SaaS vzhled: karty nápadně
+     kulatější než tlačítka/pole. */
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
   --radius-full: 9999px;
 
-  /* Stíny — Lumo 5-úrovňová elevace (XS→XL), ostřejší/mělčí offset než
-     Cesty A velmi difúzní "iOS" stíny — hrana je čitelnější, ne
-     rozmlžená. */
-  --shadow-xs: 0 1px 2px rgba(18, 32, 61, .06);
-  --shadow-raised: 0 1px 2px rgba(18, 32, 61, .07), 0 2px 6px rgba(18, 32, 61, .06);
-  --shadow-md: 0 2px 6px rgba(18, 32, 61, .08), 0 6px 16px rgba(18, 32, 61, .07);
-  --shadow-overlay: 0 8px 24px rgba(18, 32, 61, .16), 0 2px 6px rgba(18, 32, 61, .08);
-  --shadow-xl: 0 16px 48px rgba(18, 32, 61, .22);
-  /* Focus ring — Lumo dává formulářovým prvkům SKUTEČNÝ modrý glow
-     (box-shadow), ne jen tlustší border jako Cesta A — jasnější
-     afordance "tohle je teď aktivní". */
-  --focus-ring: 0 0 0 3px rgba(0, 106, 245, .22);
+  /* Stíny — velmi měkké, nízko-kontrastní, velký rozostření. */
+  --shadow-xs: 0 1px 2px rgba(23, 26, 43, .05);
+  --shadow-raised: 0 2px 6px rgba(23, 26, 43, .04), 0 4px 14px rgba(23, 26, 43, .05);
+  --shadow-md: 0 4px 12px rgba(23, 26, 43, .05), 0 10px 28px rgba(23, 26, 43, .07);
+  --shadow-overlay: 0 12px 32px rgba(23, 26, 43, .12), 0 4px 12px rgba(23, 26, 43, .06);
+  --shadow-xl: 0 24px 64px rgba(23, 26, 43, .16);
+  --focus-ring: 0 0 0 3px rgba(62, 123, 250, .22);
 
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg-void: #0A1220;
-    --bg-app: #0F1B2E;
-    --bg-surface-soft: #16233A;
-    --bg-surface: #1C2A44;
+    --bg-void: #0B1220;
+    --bg-app: #10182C;
+    --bg-surface-soft: #182140;
+    --bg-surface: #1E2A4E;
     --bg-inset: rgba(255, 255, 255, .04);
-    --overlay-active: rgba(144, 189, 249, .14);
-    --field-bg: rgba(144, 189, 249, .09);
+    --overlay-active: rgba(120, 160, 255, .14);
+    --field-bg: rgba(120, 160, 255, .09);
     --toggle-off: rgba(203, 213, 235, .18);
-    --accent: #4C9AFF;
+    --accent: #6B9BFF;
 
-    --text-primary: #EDF2FA;
-    --text-secondary: #A9B8D6;
-    --text-tertiary: #7587A8;
-    --text-inverse: #0A1220;
+    --text-primary: #EEF2FC;
+    --text-secondary: #A6B2D6;
+    --text-tertiary: #7987B0;
+    --text-inverse: #0B1220;
 
-    --border-subtle: rgba(203, 219, 250, .08);
-    --border-default: rgba(203, 219, 250, .13);
-    --border-medium: rgba(203, 219, 250, .18);
-    --border-strong: rgba(203, 219, 250, .26);
+    --border-subtle: rgba(180, 200, 250, .08);
+    --border-default: rgba(180, 200, 250, .13);
+    --border-medium: rgba(180, 200, 250, .18);
+    --border-strong: rgba(180, 200, 250, .26);
 
-    --primary: #4C9AFF;
-    --primary-hover: #6FADFF;
-    --primary-foreground: #0A1220;
-    --primary-soft: #1D3A63;
-    --primary-soft-hover: #244A7C;
-    --ring: #4C9AFF;
+    --primary: #6B9BFF;
+    --primary-hover: #8FB2FF;
+    --primary-foreground: #0B1220;
+    --primary-soft: #223561;
+    --primary-soft-hover: #2B4278;
+    --ring: #6B9BFF;
 
-    --subject-foster-bg: #123522;
-    --subject-ospod-bg: #14233F;
-    --subject-court-bg: #232E45;
-    --subject-bio-bg: #3B2C10;
-    --crisis-bg: #3B1512;
+    --subject-foster-bg: #103526;
+    --subject-ospod-bg: #182B4E;
+    --subject-court-bg: #26304E;
+    --subject-bio-bg: #402E10;
+    --crisis-bg: #401A1A;
 
-    --success-bg: #123522;
-    --warning-bg: #3B2C10;
-    --danger-bg: #3B1512;
+    --success-bg: #103526;
+    --warning-bg: #402E10;
+    --danger-bg: #401A1A;
+    --tier-accent-bg: #351A45;
 
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, .45);
-    --shadow-raised: 0 1px 2px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .35);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, .5), 0 6px 20px rgba(0, 0, 0, .4);
-    --shadow-overlay: 0 8px 28px rgba(0, 0, 0, .6), 0 2px 8px rgba(0, 0, 0, .4);
-    --shadow-xl: 0 20px 56px rgba(0, 0, 0, .65);
-    --focus-ring: 0 0 0 3px rgba(76, 154, 255, .3);
+    --online: #3ED598;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-raised: 0 2px 8px rgba(0, 0, 0, .35), 0 4px 16px rgba(0, 0, 0, .3);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .35);
+    --shadow-overlay: 0 14px 36px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .35);
+    --shadow-xl: 0 26px 64px rgba(0, 0, 0, .55);
+    --focus-ring: 0 0 0 3px rgba(107, 155, 255, .3);
 
     color-scheme: dark;
   }
 }
 
 :root[data-theme='dark'] {
-  --bg-void: #0A1220;
-  --bg-app: #0F1B2E;
-  --bg-surface-soft: #16233A;
-  --bg-surface: #1C2A44;
+  --bg-void: #0B1220;
+  --bg-app: #10182C;
+  --bg-surface-soft: #182140;
+  --bg-surface: #1E2A4E;
   --bg-inset: rgba(255, 255, 255, .04);
-  --overlay-active: rgba(144, 189, 249, .14);
-  --field-bg: rgba(144, 189, 249, .09);
+  --overlay-active: rgba(120, 160, 255, .14);
+  --field-bg: rgba(120, 160, 255, .09);
   --toggle-off: rgba(203, 213, 235, .18);
-  --accent: #4C9AFF;
+  --accent: #6B9BFF;
 
-  --text-primary: #EDF2FA;
-  --text-secondary: #A9B8D6;
-  --text-tertiary: #7587A8;
-  --text-inverse: #0A1220;
+  --text-primary: #EEF2FC;
+  --text-secondary: #A6B2D6;
+  --text-tertiary: #7987B0;
+  --text-inverse: #0B1220;
 
-  --border-subtle: rgba(203, 219, 250, .08);
-  --border-default: rgba(203, 219, 250, .13);
-  --border-medium: rgba(203, 219, 250, .18);
-  --border-strong: rgba(203, 219, 250, .26);
+  --border-subtle: rgba(180, 200, 250, .08);
+  --border-default: rgba(180, 200, 250, .13);
+  --border-medium: rgba(180, 200, 250, .18);
+  --border-strong: rgba(180, 200, 250, .26);
 
-  --primary: #4C9AFF;
-  --primary-hover: #6FADFF;
-  --primary-foreground: #0A1220;
-  --primary-soft: #1D3A63;
-  --primary-soft-hover: #244A7C;
-  --ring: #4C9AFF;
+  --primary: #6B9BFF;
+  --primary-hover: #8FB2FF;
+  --primary-foreground: #0B1220;
+  --primary-soft: #223561;
+  --primary-soft-hover: #2B4278;
+  --ring: #6B9BFF;
 
-  --subject-foster-bg: #123522;
-  --subject-ospod-bg: #14233F;
-  --subject-court-bg: #232E45;
-  --subject-bio-bg: #3B2C10;
-  --crisis-bg: #3B1512;
+  --subject-foster-bg: #103526;
+  --subject-ospod-bg: #182B4E;
+  --subject-court-bg: #26304E;
+  --subject-bio-bg: #402E10;
+  --crisis-bg: #401A1A;
 
-  --success-bg: #123522;
-  --warning-bg: #3B2C10;
-  --danger-bg: #3B1512;
+  --success-bg: #103526;
+  --warning-bg: #402E10;
+  --danger-bg: #401A1A;
+  --tier-accent-bg: #351A45;
 
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .45);
-  --shadow-raised: 0 1px 2px rgba(0, 0, 0, .45), 0 2px 8px rgba(0, 0, 0, .35);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, .5), 0 6px 20px rgba(0, 0, 0, .4);
-  --shadow-overlay: 0 8px 28px rgba(0, 0, 0, .6), 0 2px 8px rgba(0, 0, 0, .4);
-  --shadow-xl: 0 20px 56px rgba(0, 0, 0, .65);
-  --focus-ring: 0 0 0 3px rgba(76, 154, 255, .3);
+  --online: #3ED598;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-raised: 0 2px 8px rgba(0, 0, 0, .35), 0 4px 16px rgba(0, 0, 0, .3);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .35);
+  --shadow-overlay: 0 14px 36px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .35);
+  --shadow-xl: 0 26px 64px rgba(0, 0, 0, .55);
+  --focus-ring: 0 0 0 3px rgba(107, 155, 255, .3);
 
   color-scheme: dark;
 }

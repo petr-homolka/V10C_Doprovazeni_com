@@ -69,6 +69,7 @@ export default {
           DEFAULT: 'var(--tier-accent)',
           bg: 'var(--tier-accent-bg)',
         },
+        online: 'var(--online)',
       },
       borderRadius: {
         sm: 'var(--radius-sm)',
@@ -86,6 +87,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Poppins', 'Inter', 'system-ui', 'sans-serif'],
         mono: [
           'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas',
           '"Liberation Mono"', '"Courier New"', 'monospace',

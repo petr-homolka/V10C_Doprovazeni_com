@@ -68,7 +68,7 @@ export function TodaySections() {
   return (
     <>
       <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Čeká na vás</h2>
+        <h2 className="font-heading text-lg font-bold leading-tight text-text-primary">Čeká na vás</h2>
         <div className="mt-3 flex flex-col gap-3">
           {error ? (
             <p className="text-sm text-danger" role="alert">
@@ -101,7 +101,7 @@ export function TodaySections() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Provozní upozornění</h2>
+        <h2 className="font-heading text-lg font-bold leading-tight text-text-primary">Provozní upozornění</h2>
         <div className="mt-3 flex flex-col gap-2">
           {alertsError ? (
             <p className="text-sm text-danger" role="alert">
@@ -135,7 +135,7 @@ export function TodaySections() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Poslední zápisy</h2>
+        <h2 className="font-heading text-lg font-bold leading-tight text-text-primary">Poslední zápisy</h2>
         <div className="mt-3">
           <EmptyState
             icon={NotebookPen}
