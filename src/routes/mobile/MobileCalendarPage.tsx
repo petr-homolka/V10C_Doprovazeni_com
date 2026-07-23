@@ -749,7 +749,7 @@ export default function MobileCalendarPage() {
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                 rows={3}
                 placeholder="Doplňující poznámka…"
-                className="w-full resize-none rounded-sm border border-border-medium bg-inset px-3 py-2.5 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
+                className="w-full resize-none rounded-sm border border-transparent bg-field px-3 py-2.5 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
             <Button type="submit" loading={saving} className="h-14 text-base">

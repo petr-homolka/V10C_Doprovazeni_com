@@ -62,7 +62,7 @@ export function MarkdownEditor({
     'flex h-8 w-8 items-center justify-center rounded-md text-text-secondary transition-colors duration-150 hover:bg-overlay-active hover:text-text-primary'
 
   return (
-    <div className="overflow-hidden rounded-md border border-border-medium bg-inset">
+    <div className="overflow-hidden rounded-md border border-transparent bg-field">
       <div className="flex items-center justify-between border-b border-border-subtle bg-surface-soft px-2 py-1.5">
         <div className="flex items-center gap-0.5">
           <button type="button" className={toolButton} title="Tučně" onClick={() => applyWrap({ before: '**', after: '**' })}>

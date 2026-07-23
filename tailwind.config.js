@@ -9,6 +9,7 @@ export default {
         app: 'var(--bg-app)',
         surface: 'var(--bg-surface)',
         'surface-soft': 'var(--bg-surface-soft)',
+        field: 'var(--field-bg)',
         inset: 'var(--bg-inset)',
         void: 'var(--bg-void)',
         'overlay-active': 'var(--overlay-active)',

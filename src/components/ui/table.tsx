@@ -2,11 +2,11 @@ import type { CSSProperties, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * Cesta B (2026-07-24) — Table teď "datová mřížka" (Lumo Grid vzor), ne
- * jen odděl­ené řádky: hlavička má vlastní tónované pozadí (`bg-surface`)
- * a menší uppercase tracking (odlišuje se od obsahu jasněji než Cesty A
- * subtilní `text-xs`), řádky dostávají jemný hover tón (naznačuje
- * interaktivitu tam, kde řádek vede na detail — většina použití v appce).
+ * Cesta B, třetí průchod (2026-07-23) — hlavička sloupců přepsána z
+ * uppercase/tracking-wide (obecná "enterprise dashboard" konvence, co
+ * ale NENÍ v referenčním Lumo screenshotu) na obyčejný semibold text
+ * přesného casu ("First"/"Last"/…, ne "FIRST"/"LAST") — přímo podle
+ * ukázky datové tabulky v `.fig` component showcase.
  */
 const gridStyle = (columns: string): CSSProperties => ({ gridTemplateColumns: columns })
 
@@ -29,7 +29,7 @@ export function TableHeaderRow({ columns, labels }: { columns: string; labels: s
        * bez nadpisu, '' se objevilo dvakrát → React "duplicate key"
        * varování v konzoli na každé stránce s touhle tabulkou). */}
       {labels.map((label, i) => (
-        <span key={i} className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">
+        <span key={i} className="text-[13px] font-semibold text-text-secondary">
           {label}
         </span>
       ))}

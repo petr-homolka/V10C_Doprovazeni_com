@@ -108,7 +108,7 @@ export function Combobox({
         aria-autocomplete="list"
         disabled={disabled}
         className={cn(
-          'h-9 w-full rounded-sm border border-border-medium bg-inset px-3 pr-9 text-[16px]',
+          'h-9 w-full rounded-sm border border-transparent bg-field px-3 pr-9 text-[16px]',
           'text-text-primary placeholder:text-text-tertiary transition-shadow duration-150',
           'focus:border-accent focus:outline-none focus:shadow-focus',
           'disabled:opacity-50',

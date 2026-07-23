@@ -292,7 +292,7 @@ export function VoiceRecorderPanel({
               placeholder="Text zápisu…"
               autoFocus
               className={cn(
-                'w-full flex-1 resize-none rounded-sm border border-border-medium bg-inset px-4 py-3',
+                'w-full flex-1 resize-none rounded-sm border border-transparent bg-field px-4 py-3',
                 'text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary',
                 'transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none',
               )}

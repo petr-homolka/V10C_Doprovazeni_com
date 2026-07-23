@@ -38,6 +38,14 @@
   --bg-inset: #FFFFFF;
   --bg-void: #E4E9F2;
   --overlay-active: rgba(0, 43, 122, .07);
+  /* Vyplněné pole (Input/Select/Combobox/DatePicker/textarea) — Lumo
+     TextField konvence z referenčního screenshotu (vyplněné pole BEZ
+     obrysu, ne bílý box s šedým rámečkem). Alpha, ne pevný hex — MUSÍ
+     zůstat viditelné na jakémkoli pozadí pod sebou (stránka/karta/
+     modál/toolbar mají různé odstíny `--bg-*`), pevná barva by na
+     některém z nich splynula (viz oprava 2026-07-23: `bg-surface`
+     splynulo s kartou formuláře, co má taky `bg-surface`). */
+  --field-bg: rgba(18, 32, 61, .05);
   --toggle-off: rgba(30, 41, 59, .16);
   /* Accent = STEJNÁ barva jako --primary na Cestě B (na rozdíl od Cesty
      A, kde je --accent jediná barevná výjimka v jinak monochromním
@@ -124,6 +132,7 @@
     --bg-surface: #1C2A44;
     --bg-inset: rgba(255, 255, 255, .04);
     --overlay-active: rgba(144, 189, 249, .14);
+    --field-bg: rgba(144, 189, 249, .09);
     --toggle-off: rgba(203, 213, 235, .18);
     --accent: #4C9AFF;
 
@@ -172,6 +181,7 @@
   --bg-surface: #1C2A44;
   --bg-inset: rgba(255, 255, 255, .04);
   --overlay-active: rgba(144, 189, 249, .14);
+  --field-bg: rgba(144, 189, 249, .09);
   --toggle-off: rgba(203, 213, 235, .18);
   --accent: #4C9AFF;
 

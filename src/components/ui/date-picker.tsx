@@ -96,7 +96,7 @@ export function DatePicker({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'flex h-9 w-full items-center justify-between rounded-sm border border-border-medium bg-inset px-3 text-[16px] transition-shadow duration-150',
+          'flex h-9 w-full items-center justify-between rounded-sm border border-transparent bg-field px-3 text-[16px] transition-shadow duration-150',
           value ? 'text-text-primary' : 'text-text-tertiary',
           'focus:border-accent focus:outline-none focus:shadow-focus disabled:opacity-50',
         )}

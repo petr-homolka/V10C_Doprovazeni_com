@@ -161,7 +161,7 @@ export function VoiceCaptureSheet({
               onChange={(e) => setBody(e.target.value)}
               rows={7}
               placeholder="Text zápisu…"
-              className="min-h-[120px] w-full flex-1 resize-none rounded-lg border border-border-medium bg-inset px-4 py-3 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
+              className="min-h-[120px] w-full flex-1 resize-none rounded-lg border border-transparent bg-field px-4 py-3 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
             />
             <Button
               variant="secondary"

@@ -400,7 +400,7 @@ export default function TaskListPage() {
                 value={form.notes}
                 onChange={(e) => set('notes', e.target.value)}
                 rows={2}
-                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
+                className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
 

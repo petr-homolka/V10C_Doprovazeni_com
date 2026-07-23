@@ -58,7 +58,7 @@ function StatusBadge({ label }: { label: string }) {
 }
 
 const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed ' +
+  'w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-[16px] leading-relaxed ' +
   'text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
 
 /**
