@@ -136,6 +136,13 @@ function toIso(date: string, time: string): string {
   return new Date(`${date}T${time || '00:00'}`).toISOString()
 }
 
+// Bez tohohle DnDCalendar (Týden/Den pohled) naskočí na půlnoc — vidět je
+// tak hlavně hodiny 0:00-7:00, kde nikdy nic není, a pracovní dopoledne je
+// potřeba nejdřív odscrollovat. 7:00 dává rovnou vidět celou pracovní dobu
+// bez scrollování (živě ověřeno 2026-07-23 — Petrova zpětná vazba "kalendář
+// nevyplňuje celý prostor" byla z většiny právě tohle).
+const SCROLL_TO_TIME = new Date(1970, 0, 1, 7, 0, 0)
+
 const EMPTY_FORM = {
   title: '',
   kind: 'schuzka' as CalendarEventKind,
@@ -464,7 +471,7 @@ export default function CalendarPage() {
             </p>
           )}
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface-soft shadow-raised">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface-soft p-4 shadow-raised">
             {loaded && (
               <DnDCalendar
                 localizer={localizer}
@@ -476,6 +483,7 @@ export default function CalendarPage() {
                 views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA] as View[]}
                 date={date}
                 onNavigate={setDate}
+                scrollToTime={SCROLL_TO_TIME}
                 style={{ height: '100%' }}
                 selectable
                 components={{

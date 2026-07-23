@@ -78,7 +78,7 @@ export function CalendarToolbar({
               aria-pressed={settingsActive}
               title="Nastavení a napojení kalendáře"
               className={cn(
-                'flex size-9 items-center justify-center rounded-sm transition-colors duration-150',
+                'flex size-8 shrink-0 items-center justify-center rounded-sm transition-colors duration-150',
                 settingsActive
                   ? 'bg-primary-soft text-primary'
                   : 'text-text-secondary hover:bg-overlay-active hover:text-text-primary',
