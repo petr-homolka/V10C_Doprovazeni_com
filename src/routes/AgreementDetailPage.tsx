@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
+import { Tabs, type TabItem } from '@/components/ui/tabs'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
@@ -36,7 +37,7 @@ const CARE_TYPE_LABELS: Record<CareType, string> = {
   nezprostredkovana: 'Nezprostředkovaná — příbuzenská (18 h/12 měsíců)',
 }
 
-const SECTIONS: ProfileSection[] = [
+const SECTIONS: TabItem[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'ippd', label: 'IPPD' },
   { key: 'ukonceni', label: 'Ukončení Dohody' },
@@ -226,9 +227,9 @@ export default function AgreementDetailPage() {
         { label: familyName, href: `/rodiny/${familyUid}` },
         { label: 'Dohoda' },
       ]}
-      secondaryPanel={<ProfileSectionNav sections={SECTIONS} active={activeSection} onSelect={setActiveSection} />}
     >
-      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Dohoda</h1>
+      <PageHeader title="Dohoda" />
+      <Tabs items={SECTIONS} active={activeSection} onSelect={setActiveSection} />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">

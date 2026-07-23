@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHeader } from '@/components/ui/page-header'
 import { SegmentedTabs } from '@/components/ui/segmented-tabs'
 import { useTheme } from '@/hooks/useTheme'
 
@@ -28,12 +29,13 @@ export default function AppearanceSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Vzhled' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Vzhled</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Osobní předvolba — platí jen pro váš účet, nemění nic pro ostatní v organizaci.
-      </p>
+      <PageHeader
+        title="Vzhled"
+        description="Osobní předvolba — platí jen pro váš účet, nemění nic pro ostatní v organizaci."
+        variant="settings"
+      />
 
-      <div className="mt-6 max-w-[560px] space-y-6">
+      <div className="max-w-[560px] space-y-6">
         <section>
           <p className="text-sm font-medium text-text-primary">Režim vzhledu</p>
           <p className="mt-0.5 text-sm text-text-secondary">

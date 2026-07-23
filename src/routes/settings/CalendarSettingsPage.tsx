@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHeader } from '@/components/ui/page-header'
 import { Switch } from '@/components/ui/switch'
 import { useAuth } from '@/hooks/useAuth'
 import { updateNotifyBirthdays, updateNotifyNameDays } from '@/services/staffService'
@@ -53,9 +54,9 @@ export default function CalendarSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Kalendář' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Kalendář</h1>
+      <PageHeader title="Kalendář" variant="settings" />
 
-      <div className="mt-6 max-w-[560px]">
+      <div className="max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">Narozeniny</p>
         <div className="mt-3 flex items-center justify-between gap-5">
           <span className="text-sm text-text-secondary">

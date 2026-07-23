@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
+import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -23,7 +23,7 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
 import { UserRound, UserSquare2 } from 'lucide-react'
 
-const SECTIONS: ProfileSection[] = [
+const SECTIONS: TabItem[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'vzdelavani', label: 'Vzdělávání a dávky' },
   { key: 'prihlasky', label: 'Přihlášky na kurzy' },
@@ -134,8 +134,9 @@ export default function FosterPersonDetailPage() {
         { label: familyName, href: `/rodiny/${familyUid}` },
         { label: fosterPerson ? `${fosterPerson.firstName} ${fosterPerson.lastName}` : '' },
       ]}
-      secondaryPanel={<ProfileSectionNav sections={SECTIONS} active={activeSection} onSelect={setActiveSection} />}
     >
+      <Tabs items={SECTIONS} active={activeSection} onSelect={setActiveSection} />
+
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">
           {error}

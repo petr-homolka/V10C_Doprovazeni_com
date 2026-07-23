@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
 import { CheckSquare, Square, Ban, Plus } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -228,15 +229,17 @@ export default function TaskListPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Úkoly' }]}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Úkoly</h1>
-        <div className="flex items-center gap-3">
-          <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
-          <Button size="sm" onClick={openNew}>
-            <Plus size={16} /> Nový úkol
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Úkoly"
+        actions={
+          <>
+            <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
+            <Button size="sm" onClick={openNew}>
+              <Plus size={16} /> Nový úkol
+            </Button>
+          </>
+        }
+      />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">
@@ -244,7 +247,7 @@ export default function TaskListPage() {
         </p>
       )}
 
-      <div className="mt-4 max-w-[928px]">
+      <div className="mt-4">
         {visibleTasks === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : visibleTasks.length === 0 ? (

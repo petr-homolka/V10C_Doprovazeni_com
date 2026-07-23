@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
@@ -76,7 +77,7 @@ export default function OrganizationSettingsPage() {
   if (!isOrgAdmin) {
     return (
       <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Organizace' }]} secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}>
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Organizace</h1>
+        <PageHeader title="Organizace" variant="settings" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je jen pro org_admina.</p>
       </AppShell>
     )
@@ -87,10 +88,11 @@ export default function OrganizationSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Organizace' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Organizace</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Vlastní výchozí hodnoty pro tuhle organizaci — prázdné pole = použít platformní výchozí.
-      </p>
+      <PageHeader
+        title="Organizace"
+        description="Vlastní výchozí hodnoty pro tuhle organizaci — prázdné pole = použít platformní výchozí."
+        variant="settings"
+      />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">

@@ -43,7 +43,7 @@ export function AppShell({
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1200px] px-8 pb-8 pt-6">{children}</div>
+            <div className="mx-auto max-w-[1440px] px-8 pb-8 pt-6">{children}</div>
           </div>
         )}
       </main>

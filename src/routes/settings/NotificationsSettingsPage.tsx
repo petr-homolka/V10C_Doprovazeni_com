@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHeader } from '@/components/ui/page-header'
 import { Switch } from '@/components/ui/switch'
 
 /**
@@ -29,9 +30,9 @@ export default function NotificationsSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Oznámení' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Oznámení</h1>
+      <PageHeader title="Oznámení" variant="settings" />
 
-      <div className="mt-6 max-w-[560px]">
+      <div className="max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">E-mailová upozornění</p>
         <div className="mb-4 mt-3 flex items-center justify-between gap-5">
           <span className="text-sm text-text-secondary">

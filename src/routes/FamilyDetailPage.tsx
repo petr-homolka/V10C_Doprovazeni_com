@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
+import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -69,7 +69,7 @@ const CARE_TYPE_LABELS: Record<CareType, string> = {
   nezprostredkovana: 'Nezprostředkovaná — příbuzenská (18 h/12 měsíců)',
 }
 
-const SECTIONS: ProfileSection[] = [
+const SECTIONS: TabItem[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'casova-osa', label: 'Časová osa' },
   { key: 'dokumenty', label: 'Dokumenty' },
@@ -423,54 +423,53 @@ export default function FamilyDetailPage() {
   }
 
   return (
-    <AppShell
-      breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: displayName }]}
-      secondaryPanel={<ProfileSectionNav sections={SECTIONS} active={activeSection} onSelect={setActiveSection} />}
-    >
-      <div className="max-w-[928px]">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            {editingName ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  autoFocus
-                  value={nameDraft}
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  className="h-9 w-64"
-                  placeholder={primaryFosterName ?? family?.address ?? ''}
-                />
-                <Button size="sm" onClick={handleSaveName} loading={savingName} success={savingNameSuccess}>
-                  Uložit
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
-                  Zrušit
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-normal leading-tight text-text-primary">{displayName}</h1>
-                <button
-                  type="button"
-                  onClick={startEditName}
-                  aria-label="Upravit název rodiny"
-                  title="Upravit název rodiny"
-                  className="text-text-tertiary transition-colors duration-150 hover:text-text-primary"
-                >
-                  <Pencil size={14} />
-                </button>
-              </div>
-            )}
-            {family?.address && (
-              <p className="mt-1.5 text-sm">
-                <AddressLink address={family.address} />
-              </p>
-            )}
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">Spis</p>
-            <p className="font-mono text-sm text-text-secondary">{familyUid}</p>
-          </div>
+    <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: displayName }]}>
+      <div className="-mx-8 -mt-6 mb-6 flex items-start justify-between gap-4 border-b border-border-default bg-surface-soft px-8 py-5">
+        <div className="min-w-0">
+          {editingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                className="h-9 w-64"
+                placeholder={primaryFosterName ?? family?.address ?? ''}
+              />
+              <Button size="sm" onClick={handleSaveName} loading={savingName} success={savingNameSuccess}>
+                Uložit
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
+                Zrušit
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h1 className="text-[22px] font-bold leading-tight text-text-primary">{displayName}</h1>
+              <button
+                type="button"
+                onClick={startEditName}
+                aria-label="Upravit název rodiny"
+                title="Upravit název rodiny"
+                className="text-text-tertiary transition-colors duration-150 hover:text-text-primary"
+              >
+                <Pencil size={14} />
+              </button>
+            </div>
+          )}
+          {family?.address && (
+            <p className="mt-1 text-sm">
+              <AddressLink address={family.address} />
+            </p>
+          )}
         </div>
+        <div className="shrink-0 text-right">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">Spis</p>
+          <p className="font-mono text-sm text-text-secondary">{familyUid}</p>
+        </div>
+      </div>
+
+      <div className="max-w-[928px]">
+        <Tabs items={SECTIONS} active={activeSection} onSelect={setActiveSection} />
 
         {error && (
           <p className="mt-3 text-sm text-danger" role="alert">

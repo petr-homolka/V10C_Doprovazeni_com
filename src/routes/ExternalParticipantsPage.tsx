@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -281,7 +282,7 @@ export default function ExternalParticipantsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Externisté' }]}>
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Externisté</h1>
+        <PageHeader title="Externisté" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -289,14 +290,16 @@ export default function ExternalParticipantsPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Externisté' }]}>
-      <div className="flex max-w-[560px] items-center justify-between gap-4">
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Externí spolupracovníci</h1>
-        {canRequest && (
-          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat externistu</>)}
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Externí spolupracovníci"
+        actions={
+          canRequest && (
+            <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
+              {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat externistu</>)}
+            </Button>
+          )
+        }
+      />
 
       {error && (
         <p className="mt-3 max-w-[560px] text-sm text-danger" role="alert">

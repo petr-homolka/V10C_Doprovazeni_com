@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -83,10 +84,10 @@ export default function SpolupracovnikDashboardPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Spolupráce' }]}>
-      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Moje přiřazené osoby</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Vidíte jen osoby a moduly, co vám přiřadí klíčová osoba nebo vedení.
-      </p>
+      <PageHeader
+        title="Moje přiřazené osoby"
+        description="Vidíte jen osoby a moduly, co vám přiřadí klíčová osoba nebo vedení."
+      />
 
       {error && (
         <p className="mt-3 max-w-[560px] text-sm text-danger" role="alert">

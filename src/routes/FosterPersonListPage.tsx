@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -52,11 +53,9 @@ export default function FosterPersonListPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Pěstouni' }]}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Pěstouni</h1>
-      </div>
+      <PageHeader title="Pěstouni" />
 
-      <div className="relative mt-4 max-w-[320px]">
+      <div className="relative max-w-[320px]">
         <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
         <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Hledat pěstouna…" className="pl-9" />
       </div>
@@ -67,7 +66,7 @@ export default function FosterPersonListPage() {
         </p>
       )}
 
-      <div className="mt-4 max-w-[928px]">
+      <div className="mt-4">
         {filtered === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : filtered.length === 0 ? (

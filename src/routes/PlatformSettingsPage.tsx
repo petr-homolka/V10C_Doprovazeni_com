@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
@@ -58,7 +59,7 @@ export default function PlatformSettingsPage() {
   if (!isSuperadmin) {
     return (
       <AppShell breadcrumb={[{ label: 'Platforma' }]}>
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Platforma</h1>
+        <PageHeader title="Platforma" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je jen pro superadmina.</p>
       </AppShell>
     )
@@ -66,10 +67,10 @@ export default function PlatformSettingsPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Platforma' }]}>
-      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Platforma</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Výchozí hodnoty pro všechny organizace, dokud si je organizace sama nepřepíše.
-      </p>
+      <PageHeader
+        title="Platforma"
+        description="Výchozí hodnoty pro všechny organizace, dokud si je organizace sama nepřepíše."
+      />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">

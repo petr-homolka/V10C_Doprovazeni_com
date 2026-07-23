@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -143,7 +144,7 @@ export default function InspectionsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Kvalita' }]}>
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Kvalita</h1>
+        <PageHeader title="Kvalita" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -153,12 +154,14 @@ export default function InspectionsPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Kvalita' }]}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Kvalita — evidence inspekcí</h1>
-        <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat inspekci</>)}
-        </Button>
-      </div>
+      <PageHeader
+        title="Kvalita — evidence inspekcí"
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat inspekci</>)}
+          </Button>
+        }
+      />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">
@@ -268,7 +271,7 @@ export default function InspectionsPage() {
         </form>
       )}
 
-      <div className="mt-4 max-w-[928px]">
+      <div className="mt-4">
         {inspections === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : inspections.length === 0 ? (

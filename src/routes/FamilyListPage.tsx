@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
+import { ListToolbar } from '@/components/ui/list-toolbar'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -316,21 +318,23 @@ export default function FamilyListPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Rodiny' }]}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Rodiny</h1>
-        <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? (
-            'Zrušit'
-          ) : (
-            <>
-              <Plus size={16} /> Nová rodina
-            </>
-          )}
-        </Button>
-      </div>
+      <PageHeader
+        title="Rodiny"
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? (
+              'Zrušit'
+            ) : (
+              <>
+                <Plus size={16} /> Nová rodina
+              </>
+            )}
+          </Button>
+        }
+      />
 
       {error && (
-        <p className="mt-3 max-w-[928px] text-sm text-danger" role="alert">
+        <p className="mt-3 max-w-xl text-sm text-danger" role="alert">
           {error}
         </p>
       )}
@@ -352,31 +356,34 @@ export default function FamilyListPage() {
         </form>
       )}
 
-      <div className="mt-6 flex max-w-[928px] items-center justify-between gap-4">
-        <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
-        {selected.size > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
-            <Button variant="secondary" size="sm" onClick={() => setNoteModalOpen(true)}>
-              + Poznámka
-            </Button>
-            <Button variant="secondary" size="sm" onClick={() => setReassignModalOpen(true)}>
-              Předat
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
-              Zrušit výběr
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-3 max-w-[928px]">
+      <div className="mt-6">
+        <ListToolbar>
+          <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
+              <Button variant="secondary" size="sm" onClick={() => setNoteModalOpen(true)}>
+                + Poznámka
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => setReassignModalOpen(true)}>
+                Předat
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
+                Zrušit výběr
+              </Button>
+            </div>
+          )}
+        </ListToolbar>
         {families === null ? (
-          <p className="text-sm text-text-secondary">Načítám…</p>
+          <p className="rounded-b-md border border-t-0 border-border-default bg-surface p-4 text-sm text-text-secondary">
+            Načítám…
+          </p>
         ) : sortedRows.length === 0 ? (
-          <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
+          <div className="rounded-b-md border border-t-0 border-border-default bg-surface p-8">
+            <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
+          </div>
         ) : (
-          <Table>
+          <Table className="rounded-t-none border-t-0">
             <TableHeaderRow
               columns={TABLE_COLUMNS}
               labels={['', 'Rodina', 'Klíčová osoba', 'Poslední kontakt', 'Poslední návštěva', 'Stav']}

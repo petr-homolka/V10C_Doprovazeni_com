@@ -10,8 +10,10 @@ import { cn } from '@/lib/utils'
  */
 const gridStyle = (columns: string): CSSProperties => ({ gridTemplateColumns: columns })
 
-export function Table({ children }: { children: ReactNode }) {
-  return <div className="overflow-hidden rounded-md border border-border-default">{children}</div>
+export function Table({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('overflow-hidden rounded-md border border-border-default', className)}>{children}</div>
+  )
 }
 
 export function TableHeaderRow({ columns, labels }: { columns: string; labels: string[] }) {

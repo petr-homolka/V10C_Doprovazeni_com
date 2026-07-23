@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
+import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -16,7 +16,7 @@ import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
 import { Baby, UserSquare2 } from 'lucide-react'
 
-const SECTIONS: ProfileSection[] = [
+const SECTIONS: TabItem[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'podpora', label: 'Podpůrné aktivity a výdaje' },
   { key: 'predani', label: 'Předání dítěte' },
@@ -105,8 +105,9 @@ export default function ChildDetailPage() {
         { label: familyName, href: `/rodiny/${familyUid}` },
         { label: child ? `${child.firstName} ${child.lastName}` : '' },
       ]}
-      secondaryPanel={<ProfileSectionNav sections={SECTIONS} active={activeSection} onSelect={setActiveSection} />}
     >
+      <Tabs items={SECTIONS} active={activeSection} onSelect={setActiveSection} />
+
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">
           {error}

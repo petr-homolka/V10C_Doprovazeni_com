@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -169,17 +170,19 @@ export default function StaffPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Zaměstnanci</h1>
-        {isOrgAdmin && (
-          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zaměstnance</>)}
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Zaměstnanci"
+        actions={
+          isOrgAdmin && (
+            <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
+              {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zaměstnance</>)}
+            </Button>
+          )
+        }
+      />
 
       {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
+        <p className="mt-3 max-w-xl text-sm text-danger" role="alert">
           {error}
         </p>
       )}
@@ -318,7 +321,7 @@ export default function StaffPage() {
         </form>
       )}
 
-      <div className="mt-6 max-w-[928px]">
+      <div className="mt-6">
         {staff === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : staff.length === 0 ? (
