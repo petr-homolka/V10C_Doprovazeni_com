@@ -1,10 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   createInspection,
   findOverdueCorrectiveActions,
@@ -55,7 +59,7 @@ export default function InspectionsPage() {
   const [subject, setSubject] = useState('')
   const [standardRef, setStandardRef] = useState<QualityStandardRef>('priloha_2')
   const [findingDrafts, setFindingDrafts] = useState<FindingDraft[]>([emptyFindingDraft()])
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [formError, setFormError] = useState<string | null>(null)
 
   async function reload() {
@@ -85,8 +89,8 @@ export default function InspectionsPage() {
       .map((f) => ({
         criterionCode: f.criterionCode.trim(),
         score: f.score,
-        deficiencyNote: f.deficiencyNote || undefined,
-        correctiveAction: f.correctiveAction || undefined,
+        ...(f.deficiencyNote ? { deficiencyNote: f.deficiencyNote } : {}),
+        ...(f.correctiveAction ? { correctiveAction: f.correctiveAction } : {}),
         correctiveDeadline: f.correctiveDeadline ? new Date(f.correctiveDeadline).toISOString() : null,
       }))
     if (findings.length === 0) {
@@ -94,22 +98,24 @@ export default function InspectionsPage() {
       return
     }
     if (!organizationId) return
-    setSubmitting(true)
     try {
-      await createInspection(
-        organizationId,
-        {
-          inspectionDateFrom: new Date(inspectionDateFrom).toISOString(),
-          inspectionDateTo: new Date(inspectionDateTo).toISOString(),
-          inspectingAuthorityName,
-          subject,
-          standardRef,
-          findings,
-          resultDocumentRef: null,
-          createdBy: userDoc!.uid,
-        },
-        userDoc!.uid,
-      )
+      await run(async () => {
+        await createInspection(
+          organizationId,
+          {
+            inspectionDateFrom: new Date(inspectionDateFrom).toISOString(),
+            inspectionDateTo: new Date(inspectionDateTo).toISOString(),
+            inspectingAuthorityName,
+            subject,
+            standardRef,
+            findings,
+            resultDocumentRef: null,
+            createdBy: userDoc!.uid,
+          },
+          userDoc!.uid,
+        )
+        await reload()
+      })
       setShowForm(false)
       setInspectionDateFrom('')
       setInspectionDateTo('')
@@ -117,11 +123,8 @@ export default function InspectionsPage() {
       setSubject('')
       setStandardRef('priloha_2')
       setFindingDrafts([emptyFindingDraft()])
-      await reload()
     } catch {
       setFormError('Zaznamenání inspekce se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -141,7 +144,7 @@ export default function InspectionsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Kvalita' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Kvalita</h1>
+        <PageHeader title="Kvalita" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -151,12 +154,14 @@ export default function InspectionsPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Kvalita' }]}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Kvalita — evidence inspekcí</h1>
-        <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat inspekci</>)}
-        </Button>
-      </div>
+      <PageHeader
+        title="Kvalita — evidence inspekcí"
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat inspekci</>)}
+          </Button>
+        }
+      />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">
@@ -179,17 +184,15 @@ export default function InspectionsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Datum od
-              <Input type="date" required value={inspectionDateFrom} onChange={(e) => setInspectionDateFrom(e.target.value)} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Datum do
-              <Input type="date" required value={inspectionDateTo} onChange={(e) => setInspectionDateTo(e.target.value)} />
-            </label>
-          </div>
+        <form onSubmit={handleSubmit} className="mt-4 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+            Období inspekce
+            <DateRangePicker
+              from={inspectionDateFrom}
+              to={inspectionDateTo}
+              onChange={({ from, to }) => { setInspectionDateFrom(from); setInspectionDateTo(to) }}
+            />
+          </label>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Kontrolující orgán
             <Input required value={inspectingAuthorityName} onChange={(e) => setInspectingAuthorityName(e.target.value)} />
@@ -239,10 +242,9 @@ export default function InspectionsPage() {
                 </label>
                 <label className="flex flex-col gap-1 text-sm text-text-secondary">
                   Termín nápravy (volitelné)
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={draft.correctiveDeadline}
-                    onChange={(e) => updateFindingDraft(idx, { correctiveDeadline: e.target.value })}
+                    onChange={(v) => updateFindingDraft(idx, { correctiveDeadline: v })}
                   />
                 </label>
               </div>
@@ -259,8 +261,8 @@ export default function InspectionsPage() {
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit inspekci'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit inspekci
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit

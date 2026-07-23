@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import typography from '@tailwindcss/typography'
+
 export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
@@ -7,6 +9,7 @@ export default {
         app: 'var(--bg-app)',
         surface: 'var(--bg-surface)',
         'surface-soft': 'var(--bg-surface-soft)',
+        field: 'var(--field-bg)',
         inset: 'var(--bg-inset)',
         void: 'var(--bg-void)',
         'overlay-active': 'var(--overlay-active)',
@@ -74,11 +77,15 @@ export default {
         full: 'var(--radius-full)',
       },
       boxShadow: {
+        xs: 'var(--shadow-xs)',
         raised: 'var(--shadow-raised)',
+        md: 'var(--shadow-md)',
         overlay: 'var(--shadow-overlay)',
+        xl: 'var(--shadow-xl)',
+        focus: 'var(--focus-ring)',
       },
       fontFamily: {
-        sans: ['Geist Sans', 'system-ui', 'sans-serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: [
           'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas',
           '"Liberation Mono"', '"Courier New"', 'monospace',
@@ -101,13 +108,49 @@ export default {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
         },
+        'day-in-forward': {
+          from: { transform: 'translateX(24px)', opacity: '0' },
+          to: { transform: 'translateX(0)', opacity: '1' },
+        },
+        'day-in-backward': {
+          from: { transform: 'translateX(-24px)', opacity: '0' },
+          to: { transform: 'translateX(0)', opacity: '1' },
+        },
       },
       animation: {
         'mic-breathe': 'mic-breathe 1.4s ease-in-out infinite',
         'mic-ring': 'mic-ring 1.4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite',
+        'day-in-forward': 'day-in-forward 220ms cubic-bezier(0.32, 0.72, 0, 1)',
+        'day-in-backward': 'day-in-backward 220ms cubic-bezier(0.32, 0.72, 0, 1)',
         'slide-in-right': 'slide-in-right 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      // `prose` (dokumenty, náhled editoru, moje dashboard) navázané na naše
+      // tokeny, ne na natvrdo šedé odstíny Tailwind Typography — jinak by
+      // nadpisy/tučné byly v tmavém režimu neviditelné (tokeny se přepínají
+      // podle světla/tmy, viz index.css).
+      typography: {
+        DEFAULT: {
+          css: {
+            '--tw-prose-body': 'var(--text-primary)',
+            '--tw-prose-headings': 'var(--text-primary)',
+            '--tw-prose-lead': 'var(--text-secondary)',
+            '--tw-prose-links': 'var(--accent)',
+            '--tw-prose-bold': 'var(--text-primary)',
+            '--tw-prose-counters': 'var(--text-tertiary)',
+            '--tw-prose-bullets': 'var(--text-tertiary)',
+            '--tw-prose-hr': 'var(--border-default)',
+            '--tw-prose-quotes': 'var(--text-secondary)',
+            '--tw-prose-quote-borders': 'var(--border-default)',
+            '--tw-prose-captions': 'var(--text-tertiary)',
+            '--tw-prose-code': 'var(--text-primary)',
+            '--tw-prose-pre-code': 'var(--text-primary)',
+            '--tw-prose-pre-bg': 'var(--bg-inset)',
+            '--tw-prose-th-borders': 'var(--border-strong)',
+            '--tw-prose-td-borders': 'var(--border-subtle)',
+          },
+        },
       },
     },
   },
-  plugins: [],
+  plugins: [typography],
 }

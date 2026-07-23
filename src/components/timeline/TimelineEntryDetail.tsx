@@ -34,7 +34,7 @@ export function TimelineEntryDetail({
   return (
     <Drawer onClose={onClose}>
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="text-lg font-normal leading-normal text-text-primary">Detail zápisu</h2>
+        <h2 className="text-[17px] font-semibold leading-snug text-text-primary">Detail zápisu</h2>
         <button
           type="button"
           onClick={onClose}

@@ -3,9 +3,14 @@ import { HeartHandshake, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
+import { DatePicker } from '@/components/ui/date-picker'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ProgressBar } from '@/components/ui/progress-bar'
 import { cn } from '@/lib/utils'
+
+const RESPIT_ANNUAL_MIN = 14
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   computeDaysCount,
   computeStravaUbytovaniSplit,
@@ -15,10 +20,8 @@ import {
 import {
   cancelOccurrence,
   createAssistedContactSeries,
-  createChildHandover,
   evaluateOccurrence,
   listAssistedContactSeries,
-  listChildHandovers,
   listOccurrences,
   markAssistanceDone,
   markPreparationDone,
@@ -30,18 +33,12 @@ import type {
   AssistedContactScheduleRecurrence,
   AssistedContactSeriesDoc,
 } from '@/types/assistedContactSeries'
-import type { ChildHandoverDoc } from '@/types/childHandover'
 
 export interface FamilyCareEventsSectionProps {
   familyDocId: string
   organizationId: string
   currentUid: string
   children: Array<{ docId: string; child: { firstName: string; lastName: string } }>
-}
-
-const HANDOVER_TO_WHOM_LABELS: Record<ChildHandoverDoc['toWhom'], string> = {
-  biologicka_rodina: 'Biologická rodina',
-  jina_nahradni_rodina: 'Jiná náhradní rodina',
 }
 
 const SERIES_STATUS_LABELS: Record<AssistedContactSeriesDoc['status'], string> = {
@@ -65,8 +62,8 @@ const RECURRENCE_LABELS: Record<AssistedContactScheduleRecurrence['frequency'], 
 }
 
 const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed ' +
-  'text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none'
+  'w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-[16px] leading-relaxed ' +
+  'text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
 
 function StatusBadge({ label, tone = 'default' }: { label: string; tone?: 'default' | 'warning' }) {
   return (
@@ -103,7 +100,7 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
   const [includeStravaUbytovani, setIncludeStravaUbytovani] = useState(false)
   const [skutecneNaklady, setSkutecneNaklady] = useState('')
   const [includeUbytovani, setIncludeUbytovani] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   async function reloadStats() {
     setError(null)
@@ -143,29 +140,31 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
       setError('Vyberte aspoň jedno dítě.')
       return
     }
-    setSubmitting(true)
     try {
-      const stravaUbytovani =
-        kind === 'pobyt' && includeStravaUbytovani && skutecneNaklady
-          ? await computeStravaUbytovaniSplit(
-              organizationId,
-              computeDaysCount(new Date(dateFrom).toISOString(), new Date(dateTo).toISOString()),
-              Number(skutecneNaklady),
-              includeUbytovani,
-            )
-          : null
-      await createRespitEvent({
-        familyId: familyDocId,
-        organizationId,
-        childIds: Array.from(selectedChildIds),
-        dateFrom: new Date(dateFrom).toISOString(),
-        dateTo: new Date(dateTo).toISOString(),
-        reason: reason || undefined,
-        kind,
-        cost: kind === 'celodenni_pece' && cost ? Number(cost) : null,
-        costCoveredByOrg: kind === 'pobyt' && costCoveredByOrg ? Number(costCoveredByOrg) : null,
-        stravaUbytovani,
-        createdBy: currentUid,
+      await run(async () => {
+        const stravaUbytovani =
+          kind === 'pobyt' && includeStravaUbytovani && skutecneNaklady
+            ? await computeStravaUbytovaniSplit(
+                organizationId,
+                computeDaysCount(new Date(dateFrom).toISOString(), new Date(dateTo).toISOString()),
+                Number(skutecneNaklady),
+                includeUbytovani,
+              )
+            : null
+        await createRespitEvent({
+          familyId: familyDocId,
+          organizationId,
+          childIds: Array.from(selectedChildIds),
+          dateFrom: new Date(dateFrom).toISOString(),
+          dateTo: new Date(dateTo).toISOString(),
+          reason: reason || undefined,
+          kind,
+          cost: kind === 'celodenni_pece' && cost ? Number(cost) : null,
+          costCoveredByOrg: kind === 'pobyt' && costCoveredByOrg ? Number(costCoveredByOrg) : null,
+          stravaUbytovani,
+          createdBy: currentUid,
+        })
+        await reloadStats()
       })
       setShowForm(false)
       setKind('celodenni_pece')
@@ -178,37 +177,52 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
       setIncludeStravaUbytovani(false)
       setSkutecneNaklady('')
       setIncludeUbytovani(false)
-      await reloadStats()
     } catch {
       setError('Respit se nepodařilo zaznamenat.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
   return (
-    <div className="mt-6">
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="text-base font-medium text-text-primary">Respit (§4.4.B)</h3>
+    <div>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h3 className="text-base font-medium text-text-primary">Respit</h3>
+          <p className="mt-0.5 text-[13px] text-text-tertiary">
+            Nárok pěstouna na odpočinek — min. 14 dní / rok (§47a ZSPOD)
+          </p>
+        </div>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat respit</>)}
         </Button>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-4 flex max-w-[560px] flex-col gap-3">
         {daysUsed === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
+        ) : children.length === 0 ? (
+          <p className="text-sm text-text-secondary">Nejdřív přidejte svěřené děti.</p>
         ) : (
-          children.map((c) => (
-            <span key={c.docId} className="rounded-md border border-border-subtle bg-surface px-3 py-1.5 text-sm text-text-secondary">
-              {c.child.firstName} {c.child.lastName}: {daysUsed[c.docId] ?? 0} dní čerpáno v {currentYear}
-            </span>
-          ))
+          children.map((c) => {
+            const used = daysUsed[c.docId] ?? 0
+            return (
+              <div key={c.docId} className="flex flex-col gap-1.5">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm text-text-primary">
+                    {c.child.firstName} {c.child.lastName}
+                  </span>
+                  <span className="text-[13px] tabular-nums text-text-secondary">
+                    {used} / {RESPIT_ANNUAL_MIN} dní <span className="text-text-tertiary">· {currentYear}</span>
+                  </span>
+                </div>
+                <ProgressBar value={used} max={RESPIT_ANNUAL_MIN} />
+              </div>
+            )
+          })
         )}
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Druh
             <Select value={kind} onChange={(e) => setKind(e.target.value as RespitEventKind)}>
@@ -229,16 +243,10 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Od
-              <Input type="date" required value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Do
-              <Input type="date" required value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+            Období
+            <DateRangePicker from={dateFrom} to={dateTo} onChange={({ from, to }) => { setDateFrom(from); setDateTo(to) }} />
+          </label>
 
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Důvod (povinné nad 14 dní/rok)
@@ -288,8 +296,8 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -328,7 +336,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
   const [frequency, setFrequency] = useState<AssistedContactScheduleRecurrence['frequency']>('weekly')
   const [interval, setInterval] = useState('1')
   const [defaultLocation, setDefaultLocation] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [formError, setFormError] = useState<string | null>(null)
 
   const [scheduleDates, setScheduleDates] = useState<Record<string, string>>({})
@@ -365,23 +373,25 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
       setFormError('Vyberte dítě.')
       return
     }
-    setSubmitting(true)
     try {
       // participantRefs → external_participants (§5.1) NENÍ v týhle dávce
       // napojeno na výběr existujících účastníků (plný grant engine je M8),
       // takže se tu jen textově zapíše "kdo" do `purpose`, samotné pole
       // zůstává prázdné pole.
-      await createAssistedContactSeries(familyDocId, {
-        organizationId,
-        childRef,
-        participantRefs: [],
-        purpose: participants ? `${purpose} (účastní se: ${participants})` : purpose,
-        schedule: {
-          startDate: new Date(startDate).toISOString(),
-          recurrence: { frequency, interval: Number(interval) },
-        },
-        defaultLocation: defaultLocation || undefined,
-        createdBy: currentUid,
+      await run(async () => {
+        await createAssistedContactSeries(familyDocId, {
+          organizationId,
+          childRef,
+          participantRefs: [],
+          purpose: participants ? `${purpose} (účastní se: ${participants})` : purpose,
+          schedule: {
+            startDate: new Date(startDate).toISOString(),
+            recurrence: { frequency, interval: Number(interval) },
+          },
+          ...(defaultLocation ? { defaultLocation } : {}),
+          createdBy: currentUid,
+        })
+        await reload()
       })
       setShowForm(false)
       setChildRef('')
@@ -391,11 +401,8 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
       setFrequency('weekly')
       setInterval('1')
       setDefaultLocation('')
-      await reload()
     } catch {
       setFormError('Založení série se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -472,16 +479,19 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
   }
 
   return (
-    <div className="mt-6">
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="text-base font-medium text-text-primary">Asistovaný kontakt (§B.10.2)</h3>
+    <div>
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h3 className="text-base font-medium text-text-primary">Asistovaný kontakt</h3>
+          <p className="mt-0.5 text-[13px] text-text-tertiary">Opakovaný styk dítěte s biologickou rodinou</p>
+        </div>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Zrušit' : (<><Plus size={16} /> Založit sérii</>)}
         </Button>
       </div>
 
       {showForm && (
-        <form onSubmit={handleCreateSeries} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleCreateSeries} className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Dítě
             <Select value={childRef} onChange={(e) => setChildRef(e.target.value)}>
@@ -504,7 +514,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Začátek
-              <Input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <DatePicker value={startDate} onChange={setStartDate} />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Opakování
@@ -532,8 +542,8 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Zakládám…' : 'Založit sérii'}
+            <Button type="submit" loading={submitting} success={success}>
+              Založit sérii
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -552,7 +562,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
         ) : rows.length === 0 ? (
           <EmptyState icon={HeartHandshake} text="Zatím žádná série asistovaného kontaktu." />
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex max-w-[928px] flex-col gap-3">
             {rows.map(({ docId: seriesId, series, occurrences }) => (
               <div key={seriesId} className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -567,10 +577,9 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={scheduleDates[seriesId] ?? ''}
-                    onChange={(e) => setScheduleDates((prev) => ({ ...prev, [seriesId]: e.target.value }))}
+                    onChange={(v) => setScheduleDates((prev) => ({ ...prev, [seriesId]: v }))}
                     className="w-auto"
                   />
                   <Button variant="secondary" size="sm" onClick={() => handleSchedule(seriesId)}>
@@ -702,182 +711,24 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
   )
 }
 
-// ---- Předání dítěte (§B.10.2, jednorázové) -------------------------------
-
-const HANDOVER_COLUMNS = '1.2fr 1fr 1.2fr 2fr'
-
-function ChildHandoversSubsection({ familyDocId, organizationId, currentUid, children }: FamilyCareEventsSectionProps) {
-  const [handovers, setHandovers] = useState<Array<{ docId: string; handover: ChildHandoverDoc }> | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [childRef, setChildRef] = useState('')
-  const [handoverDate, setHandoverDate] = useState('')
-  const [toWhom, setToWhom] = useState<ChildHandoverDoc['toWhom']>('biologicka_rodina')
-  const [reason, setReason] = useState('')
-  const [transportCost, setTransportCost] = useState('')
-  const [accommodationNights, setAccommodationNights] = useState('')
-  const [accommodationCost, setAccommodationCost] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-
-  async function reload() {
-    setError(null)
-    try {
-      setHandovers(await listChildHandovers(familyDocId, organizationId))
-    } catch {
-      setError('Předání se nepodařilo načíst.')
-    }
-  }
-
-  useEffect(() => {
-    reload()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [familyDocId])
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
-    setError(null)
-    if (!childRef || !reason.trim()) {
-      setError('Vyberte dítě a vyplňte důvod.')
-      return
-    }
-    setSubmitting(true)
-    try {
-      await createChildHandover(familyDocId, {
-        organizationId,
-        childRef,
-        handoverDate: new Date(handoverDate).toISOString(),
-        toWhom,
-        reason,
-        transportCost: transportCost ? Number(transportCost) : undefined,
-        accommodationNights: accommodationNights ? Number(accommodationNights) : undefined,
-        accommodationCost: accommodationCost ? Number(accommodationCost) : undefined,
-        createdBy: currentUid,
-      })
-      setShowForm(false)
-      setChildRef('')
-      setHandoverDate('')
-      setToWhom('biologicka_rodina')
-      setReason('')
-      setTransportCost('')
-      setAccommodationNights('')
-      setAccommodationCost('')
-      await reload()
-    } catch {
-      setError('Zaznamenání předání se nezdařilo.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  return (
-    <div className="mt-6">
-      <div className="flex items-center justify-between gap-4">
-        <h3 className="text-base font-medium text-text-primary">Předání dítěte</h3>
-        <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat předání</>)}
-        </Button>
-      </div>
-
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
-          <label className="flex flex-col gap-1 text-sm text-text-secondary">
-            Dítě
-            <Select value={childRef} onChange={(e) => setChildRef(e.target.value)}>
-              <option value="">Vyberte…</option>
-              {children.map((c) => (
-                <option key={c.docId} value={c.docId}>
-                  {c.child.firstName} {c.child.lastName}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Datum předání
-              <Input type="date" required value={handoverDate} onChange={(e) => setHandoverDate(e.target.value)} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Komu
-              <Select value={toWhom} onChange={(e) => setToWhom(e.target.value as ChildHandoverDoc['toWhom'])}>
-                <option value="biologicka_rodina">Biologická rodina</option>
-                <option value="jina_nahradni_rodina">Jiná náhradní rodina</option>
-              </Select>
-            </label>
-          </div>
-          <label className="flex flex-col gap-1 text-sm text-text-secondary">
-            Důvod (odůvodněnost — vzdálenost bydliště)
-            <Input required value={reason} onChange={(e) => setReason(e.target.value)} />
-          </label>
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Doprava (Kč)
-              <Input type="number" value={transportCost} onChange={(e) => setTransportCost(e.target.value)} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Nocí ubytování (max 5)
-              <Input type="number" max={5} value={accommodationNights} onChange={(e) => setAccommodationNights(e.target.value)} />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Ubytování (Kč)
-              <Input type="number" value={accommodationCost} onChange={(e) => setAccommodationCost(e.target.value)} />
-            </label>
-          </div>
-          {error && (
-            <p className="text-sm text-danger" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
-              Zrušit
-            </Button>
-          </div>
-        </form>
-      )}
-
-      <div className="mt-3">
-        {error && !showForm ? (
-          <p className="text-sm text-danger" role="alert">
-            {error}
-          </p>
-        ) : handovers === null ? (
-          <p className="text-sm text-text-secondary">Načítám…</p>
-        ) : handovers.length === 0 ? (
-          <EmptyState icon={HeartHandshake} text="Zatím žádné předání dítěte." />
-        ) : (
-          <Table>
-            <TableHeaderRow columns={HANDOVER_COLUMNS} labels={['Dítě', 'Datum', 'Komu', 'Důvod']} />
-            {handovers.map(({ docId, handover }) => (
-              <TableRow key={docId} columns={HANDOVER_COLUMNS}>
-                <span className="text-sm text-text-primary">{childName(children, handover.childRef)}</span>
-                <span className="text-sm text-text-secondary">{new Date(handover.handoverDate).toLocaleDateString('cs-CZ')}</span>
-                <span className="text-sm text-text-secondary">{HANDOVER_TO_WHOM_LABELS[handover.toWhom]}</span>
-                <span className="text-sm text-text-secondary">{handover.reason}</span>
-              </TableRow>
-            ))}
-          </Table>
-        )}
-      </div>
-    </div>
-  )
-}
-
 /**
- * M7 §4.4.B + §B.10.2 — tři příbuzné funkce jedné rodiny svázané společným
- * tématem "péče mimo přímý dohled organizace" (respit, asistovaný kontakt
- * s biologickou rodinou, jednorázové předání dítěte) v jedné sekci, aby
- * FamilyDetailPage.tsx nezískal tři další samostatné sekce navíc.
+ * M7 §4.4.B — respit (nárok pěstouna na odpočinek) a asistovaný kontakt
+ * (opakovaný styk s biologickou rodinou) jsou DVĚ NEZÁVISLÉ rodinné
+ * agendy, každá vlastní sekce s vlastním nadpisem (UX zpětná vazba
+ * 2026-07-21 — dřívější sdružující nadpis "Respit, asistovaný kontakt a
+ * předání dítěte" mísil nesouvisející věci). Jednorázové PŘEDÁNÍ dítěte
+ * se přestěhovalo na profil dítěte (ChildDetailPage) — je vždy o
+ * konkrétním dítěti, ne o rodině jako celku.
  */
 export function FamilyCareEventsSection(props: FamilyCareEventsSectionProps) {
   return (
-    <section className="mt-8">
-      <h2 className="text-lg font-normal leading-tight text-text-primary">Respit, asistovaný kontakt a předání dítěte</h2>
-      <RespitSubsection {...props} />
-      <AssistedContactSubsection {...props} />
-      <ChildHandoversSubsection {...props} />
-    </section>
+    <>
+      <section className="mt-10">
+        <RespitSubsection {...props} />
+      </section>
+      <section className="mt-10">
+        <AssistedContactSubsection {...props} />
+      </section>
+    </>
   )
 }

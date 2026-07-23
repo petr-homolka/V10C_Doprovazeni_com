@@ -17,7 +17,7 @@ export default function LoginPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
       navigate('/', { replace: true })
     } catch {
       setError('Přihlášení se nezdařilo. Zkontrolujte e-mail a heslo.')
@@ -29,7 +29,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="w-full max-w-[380px] rounded-lg border border-border bg-surface p-6 shadow-raised">
-        <h1 className="mb-1 text-lg font-normal leading-normal text-text-primary">
+        <h1 className="mb-1 text-[26px] font-bold leading-tight text-text-primary">
           Doprovázení.com
         </h1>
         <p className="mb-6 text-sm text-text-secondary">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHeader } from '@/components/ui/page-header'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -144,7 +145,7 @@ export default function BackupSettingsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Zálohy' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zálohy</h1>
+        <PageHeader title="Zálohy" variant="settings" />
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -157,10 +158,11 @@ export default function BackupSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Zálohy' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Zálohy a export</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Data organizace nejsou uzamčená u dodavatele — export i záloha jsou vždy k dispozici.
-      </p>
+      <PageHeader
+        title="Zálohy a export"
+        description="Data organizace nejsou uzamčená u dodavatele — export i záloha jsou vždy k dispozici."
+        variant="settings"
+      />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">
@@ -169,7 +171,7 @@ export default function BackupSettingsPage() {
       )}
       {notice && <p className="mt-3 text-sm text-success">{notice}</p>}
 
-      <div className="mt-6 max-w-[560px] space-y-6">
+      <div className="max-w-[560px] space-y-6">
         <section className="rounded-lg border border-border bg-surface p-5">
           <p className="text-sm font-medium text-text-primary">Export všech dat organizace</p>
           <p className="mt-1 text-sm text-text-secondary">

@@ -6,8 +6,10 @@ import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
 import { getActiveAgreement } from '@/services/agreementService'
 import { listStaff } from '@/services/staffService'
@@ -64,7 +66,15 @@ export default function DocumentDetailPage() {
 
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+
+  const { loading: savingEdit, success: savingEditSuccess, run: runSaveEdit } = useAsyncSubmit()
+  const { loading: sendingToFoster, success: sendingToFosterSuccess, run: runSendToFoster } = useAsyncSubmit()
+  const { loading: markingFinal, success: markingFinalSuccess, run: runMarkFinal } = useAsyncSubmit()
+  const { loading: sendingToMgmt, success: sendingToMgmtSuccess, run: runSendToMgmt } = useAsyncSubmit()
+  const { loading: rejecting, success: rejectingSuccess, run: runReject } = useAsyncSubmit()
+  const { loading: closing, success: closingSuccess, run: runClose } = useAsyncSubmit()
+  const { loading: sendingToAuthority, success: sendingToAuthoritySuccess, run: runSendToAuthority } = useAsyncSubmit()
+  const { loading: filing, success: filingSuccess, run: runFile } = useAsyncSubmit()
 
   async function reload() {
     if (!familyUid || !docId || !organizationId) return
@@ -136,64 +146,111 @@ export default function DocumentDetailPage() {
   const isVedeni = userDoc && (userDoc.role === 'org_admin' || isReadOnlyManagerRole(userDoc.role))
   const bodyChanged = document && (title !== document.title || body !== document.body)
 
-  async function withSubmitting(fn: () => Promise<void>) {
-    setSubmitting(true)
-    setError(null)
-    try {
-      await fn()
-      await reload()
-    } catch {
-      setError('Akci se nepodařilo provést.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   async function handleSaveEdit() {
     if (!familyDocId || !docId || !organizationId || !userDoc || !document) return
-    await withSubmitting(() => editDocument(familyDocId, docId, organizationId, userDoc.uid, title, body, document.currentVersion))
+    setError(null)
+    try {
+      await runSaveEdit(async () => {
+        await editDocument(familyDocId, docId, organizationId, userDoc.uid, title, body, document.currentVersion)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleSendToFoster() {
     if (!familyDocId || !docId || !organizationId || !userDoc || !document) return
-    await withSubmitting(async () => {
-      if (bodyChanged) await editDocument(familyDocId, docId, organizationId, userDoc.uid, title, body, document.currentVersion)
-      await sendToFosterReview(familyDocId, docId)
-    })
+    setError(null)
+    try {
+      await runSendToFoster(async () => {
+        if (bodyChanged) await editDocument(familyDocId, docId, organizationId, userDoc.uid, title, body, document.currentVersion)
+        await sendToFosterReview(familyDocId, docId)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleMarkFinal() {
     if (!familyDocId || !docId || !userDoc) return
-    await withSubmitting(() => markDocumentFinal(familyDocId, docId, userDoc.uid, assignedKoUid))
+    setError(null)
+    try {
+      await runMarkFinal(async () => {
+        await markDocumentFinal(familyDocId, docId, userDoc.uid, assignedKoUid)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleSendToMgmt() {
     if (!familyDocId || !docId) return
-    await withSubmitting(() => sendToMgmtReview(familyDocId, docId, reviewerUid || undefined))
+    setError(null)
+    try {
+      await runSendToMgmt(async () => {
+        await sendToMgmtReview(familyDocId, docId, reviewerUid || undefined)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleReject() {
     if (!familyDocId || !docId || !rejectReason.trim()) return
-    await withSubmitting(async () => {
-      await rejectDocumentToDraft(familyDocId, docId, rejectReason.trim())
+    setError(null)
+    try {
+      await runReject(async () => {
+        await rejectDocumentToDraft(familyDocId, docId, rejectReason.trim())
+        await reload()
+      })
       setShowRejectForm(false)
       setRejectReason('')
-    })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleClose() {
     if (!familyDocId || !docId || !document) return
-    await withSubmitting(() => closeDocument(familyDocId, docId, document))
+    setError(null)
+    try {
+      await runClose(async () => {
+        await closeDocument(familyDocId, docId, document)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleSendToAuthority() {
     if (!familyDocId || !docId || !organizationId || !document) return
-    await withSubmitting(() => sendDocumentToAuthority({ familyDocId, docId, organizationId, title: document.title, sentTo }))
+    setError(null)
+    try {
+      await runSendToAuthority(async () => {
+        await sendDocumentToAuthority({ familyDocId, docId, organizationId, title: document.title, sentTo })
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleFile() {
     if (!familyDocId || !docId) return
-    await withSubmitting(() => fileDocument(familyDocId, docId))
+    setError(null)
+    try {
+      await runFile(async () => {
+        await fileDocument(familyDocId, docId)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   if (notFound) {
@@ -227,7 +284,7 @@ export default function DocumentDetailPage() {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-lg font-normal leading-normal text-text-primary">{document.title}</h1>
+          <h1 className="text-[26px] font-bold leading-tight text-text-primary">{document.title}</h1>
           <p className="mt-1 text-sm text-text-secondary">
             {document.uid} · verze {document.currentVersion} · {DOCUMENT_STATUS_LABELS[status]}
           </p>
@@ -248,20 +305,20 @@ export default function DocumentDetailPage() {
       )}
 
       {document.rejectionReason && status === 'draft' && (
-        <div className="mt-4 rounded-lg border border-warning bg-warning-bg p-4">
+        <div className="mt-4 max-w-[560px] rounded-lg border border-warning bg-warning-bg p-4">
           <p className="text-sm font-medium text-text-primary">Vedení dokument zamítlo</p>
           <p className="mt-1 text-sm text-text-secondary">{document.rejectionReason}</p>
         </div>
       )}
 
       {document.fosterComments && (status === 'commented' || status === 'draft') && (
-        <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+        <div className="mt-4 max-w-[560px] rounded-lg border border-border bg-surface p-4">
           <p className="text-sm font-medium text-text-primary">Komentář pěstouna</p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-text-secondary">{document.fosterComments}</p>
         </div>
       )}
 
-      <section className="mt-6">
+      <section className="mt-6 max-w-[928px]">
         {isEditable ? (
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
@@ -269,19 +326,20 @@ export default function DocumentDetailPage() {
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah (markdown)</span>
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={16}
-                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-4 py-3 text-[16px] leading-relaxed text-text-primary focus:border-2 focus:border-accent focus:outline-none"
-              />
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
+              <MarkdownEditor value={body} onChange={setBody} rows={18} placeholder="Začněte psát obsah dokumentu…" />
             </label>
             <div className="flex items-center gap-2">
-              <Button onClick={handleSaveEdit} disabled={submitting || !bodyChanged} variant="secondary">
+              <Button
+                onClick={handleSaveEdit}
+                disabled={!bodyChanged}
+                loading={savingEdit}
+                success={savingEditSuccess}
+                variant="secondary"
+              >
                 Uložit koncept
               </Button>
-              <Button onClick={handleSendToFoster} disabled={submitting}>
+              <Button onClick={handleSendToFoster} loading={sendingToFoster} success={sendingToFosterSuccess}>
                 Poslat pěstounovi
               </Button>
             </div>
@@ -301,14 +359,14 @@ export default function DocumentDetailPage() {
 
       {(status === 'commented' || status === 'approved_foster') && (
         <div className="mt-4 flex items-center gap-2">
-          <Button onClick={handleMarkFinal} disabled={submitting}>
+          <Button onClick={handleMarkFinal} loading={markingFinal} success={markingFinalSuccess}>
             Označit jako Konečný
           </Button>
         </div>
       )}
 
       {status === 'final' && (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="mt-4 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border bg-surface p-5">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Schvalovatel (volitelné)</span>
             <Select
@@ -323,7 +381,7 @@ export default function DocumentDetailPage() {
               ))}
             </Select>
           </label>
-          <Button onClick={handleSendToMgmt} disabled={submitting} className="w-fit">
+          <Button onClick={handleSendToMgmt} loading={sendingToMgmt} success={sendingToMgmtSuccess} className="w-fit">
             Poslat vedení
           </Button>
         </div>
@@ -335,25 +393,31 @@ export default function DocumentDetailPage() {
           {isVedeni && (
             <div className="mt-3 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <Button onClick={handleClose} disabled={submitting}>
+                <Button onClick={handleClose} loading={closing} success={closingSuccess}>
                   Schválit a uzavřít
                 </Button>
-                <Button variant="outline" onClick={() => setShowRejectForm((v) => !v)} disabled={submitting}>
+                <Button variant="outline" onClick={() => setShowRejectForm((v) => !v)} disabled={closing}>
                   Zamítnout
                 </Button>
               </div>
               {showRejectForm && (
-                <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+                <div className="flex max-w-[560px] flex-col gap-2 rounded-lg border border-border bg-surface p-4">
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-relaxed text-text-primary">Důvod zamítnutí</span>
                     <textarea
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       rows={3}
-                      className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary focus:border-2 focus:border-accent focus:outline-none"
+                      className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                     />
                   </label>
-                  <Button onClick={handleReject} disabled={submitting || !rejectReason.trim()} className="w-fit">
+                  <Button
+                    onClick={handleReject}
+                    disabled={!rejectReason.trim()}
+                    loading={rejecting}
+                    success={rejectingSuccess}
+                    className="w-fit"
+                  >
                     Zamítnout a vrátit do konceptu
                   </Button>
                 </div>
@@ -367,7 +431,7 @@ export default function DocumentDetailPage() {
         status === 'closed_foster_unapproved' ||
         status === 'closed_ko_unapproved' ||
         status === 'closed_both_unapproved') && (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="mt-4 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border bg-surface p-5">
           <p className="text-sm text-text-primary">{DOCUMENT_STATUS_LABELS[status]}</p>
           <div className="flex items-center gap-2">
             <Select
@@ -377,10 +441,15 @@ export default function DocumentDetailPage() {
               <option value="ospod">OSPOD</option>
               <option value="soud">Soud</option>
             </Select>
-            <Button onClick={handleSendToAuthority} disabled={submitting}>
+            <Button onClick={handleSendToAuthority} loading={sendingToAuthority} success={sendingToAuthoritySuccess}>
               Odeslat na úřad
             </Button>
-            <Button variant="secondary" onClick={handleFile} disabled={submitting}>
+            <Button
+              variant="secondary"
+              onClick={handleFile}
+              loading={filing}
+              success={filingSuccess}
+            >
               Uložit do spisu
             </Button>
           </div>
@@ -401,7 +470,7 @@ export default function DocumentDetailPage() {
 
       <section className="mt-8">
         <h2 className="text-lg font-normal leading-tight text-text-primary">Historie verzí</h2>
-        <div className="mt-3 flex flex-col gap-2">
+        <div className="mt-3 flex max-w-[928px] flex-col gap-2">
           {versions.map(({ docId: vId, version }) => (
             <div key={vId} className="rounded-lg border border-border bg-surface p-3 text-sm">
               <p className="text-text-primary">

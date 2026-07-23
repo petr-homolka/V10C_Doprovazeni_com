@@ -1,82 +1,77 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Calendar, CheckSquare, ClipboardCheck, FileText, Home, UserCog, UserPlus, Users } from 'lucide-react'
+import { Baby, Calendar, CheckSquare, ClipboardCheck, FileText, Home, UserCog, UserPlus, UserRound, UserSquare2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { isStaffRole } from '@/types/user'
 
 /**
- * Sidebar — přeměřeno 2026-07-19 přímo na živé referenční appce
- * (getComputedStyle, ne jen screenshot): šířka 224px (ne 240), položky
- * výšky ~32px s radius-sm (8px, ne radius-md), aktivní stav = jemný alpha
- * overlay (`--overlay-active`) přes CELOU plochu položky, NE plná barva
- * --primary-soft. Text nav položek je STEJNĚ jasný aktivní i neaktivní
- * (text se nedimuje, rozlišuje jen přes pozadí).
- *
- * `bg-app` (STEJNÁ barva jako hlavní obsah, ne --bg-surface-soft) — na
- * žádost uživatele sidebar a hlavní panel splývají barevně, odlišuje je
- * jen mezera (--bg-void) mezi nimi, ne odstín.
- *
- * Sbalitelný na ikonový rail — sbalení/rozbalení se ovládá kliknutím na
- * logo nahoře. Nastavení, přepínač Světlý/Tmavý a účet/profil žijí v
- * TopBar.tsx — sidebar dole už nemá žádnou identitu/akci, jen navigaci.
- *
- * Skutečná sada položek/oprávnění (kdo vidí co) je funkční záležitost M1+
- * (role-aware nav) — tady je jen reprezentativní sada, ne finální seznam.
- * "Zaměstnanci" (M1, §5.7 "Nastavení ≠ Správa entit" — vlastní stránka,
- * NE záložka v Nastavení) je zatím JEDINÁ položka s reálným role-gatingem
- * (jen `isStaffRole` vidí týmový seznam) — zbytek nav zůstává viditelný
- * pro všechny, dokud se neřeší širší role-aware nav (mimo rozsah M1).
+ * Sidebar — Cesta B (2026-07-24). Distinktní `bg-surface-soft` (skoro
+ * bílá) oproti hlavnímu obsahu `bg-app` (jemně namodralá) — na rozdíl od
+ * Cesty A (sidebar STEJNÁ barva jako obsah, "splývá") tady navigace a
+ * obsah vizuálně SOUTĚŽÍ o pozornost jasně odděleně (`border-r`),
+ * klasický enterprise dashboard vzor. Aktivní položka dostává PLNÝ
+ * `primary-soft` podklad + modrý text/ikonu + 3px LEVÝ AKCENT PRUH
+ * (Lumo/enterprise "tady jsi" konvence) — Cesta A měla jen jemný alpha
+ * overlay, tady je stav mnohem sebevědomější/čitelnější. Levý accent
+ * pruh je REZERVOVANÝ (`border-l-[3px] border-transparent`) na VŠECH
+ * položkách, ne jen aktivní — jinak by se text neaktivních posunul o 3px
+ * doprava vůči aktivní (layout shift při přepnutí).
  */
 const NAV_ITEMS = [
   { to: '/', label: 'Dnes', icon: Home, end: true, staffOnly: false },
   { to: '/rodiny', label: 'Rodiny', icon: Users, end: false, staffOnly: false },
+  { to: '/pestouni', label: 'Pěstouni', icon: UserRound, end: false, staffOnly: false },
+  { to: '/deti', label: 'Děti', icon: Baby, end: false, staffOnly: false },
   { to: '/zamestnanci', label: 'Zaměstnanci', icon: UserCog, end: false, staffOnly: true },
   { to: '/ukoly', label: 'Úkoly', icon: CheckSquare, end: false, staffOnly: false },
   { to: '/kalendar', label: 'Kalendář', icon: Calendar, end: false, staffOnly: false },
   { to: '/dokumenty', label: 'Dokumenty', icon: FileText, end: false, staffOnly: false },
   { to: '/zajemci', label: 'Zájemci', icon: UserPlus, end: false, staffOnly: true },
   { to: '/kvalita', label: 'Kvalita', icon: ClipboardCheck, end: false, staffOnly: true },
+  { to: '/externiste', label: 'Externisté', icon: UserSquare2, end: false, staffOnly: true },
 ] as const
+
+const COLLABORATOR_NAV_ITEM = { to: '/spolupracovnik', label: 'Spolupráce', icon: UserSquare2, end: false } as const
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { userDoc } = useAuth()
-  const items = NAV_ITEMS.filter((item) => !item.staffOnly || (userDoc && isStaffRole(userDoc.role)))
+  const items: readonly { to: string; label: string; icon: typeof Home; end: boolean }[] =
+    userDoc?.role === 'spolupracovnik'
+      ? [COLLABORATOR_NAV_ITEM]
+      : NAV_ITEMS.filter((item) => !item.staffOnly || (userDoc && isStaffRole(userDoc.role)))
 
   return (
     <aside
       className={cn(
-        'flex h-full flex-col bg-app transition-[width] duration-200',
-        collapsed ? 'w-[72px]' : 'w-56',
+        'flex h-full shrink-0 flex-col border-r border-border-default bg-surface-soft transition-[width] duration-200',
+        collapsed ? 'w-[72px]' : 'w-60',
       )}
     >
-      {/* h-14 = STEJNÁ výška jako TopBar.tsx header — zarovnává logo s
-          breadcrumbem/ikonami napravo přesně na stejnou osu (na žádost
-          uživatele, viz CURRENT_STATE.md Dodatek 10). */}
-      <div className="flex h-14 shrink-0 items-center px-3">
+      <div className="flex h-14 shrink-0 items-center border-b border-border-subtle px-3">
         <button
           type="button"
           onClick={() => setCollapsed((v) => !v)}
           aria-label={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
           title={collapsed ? 'Rozbalit postranní panel' : 'Sbalit postranní panel'}
           className={cn(
-            'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 transition-colors duration-150 hover:bg-overlay-active',
+            'flex w-full items-center gap-2.5 rounded-sm px-2 py-1.5 transition-colors duration-150 hover:bg-overlay-active',
             collapsed && 'justify-center px-0',
           )}
         >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-[13px] font-semibold text-primary-foreground">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-[13px] font-bold text-primary-foreground">
             D
           </div>
           {!collapsed && (
-            <span className="truncate text-[15px] font-semibold text-text-primary">
+            <span className="truncate text-[15px] font-bold text-text-primary">
               Doprovázení
             </span>
           )}
         </button>
       </div>
 
-      <nav className="flex-1 space-y-0.5 px-3 pt-2">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2.5 pt-3">
         {items.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
@@ -84,13 +79,13 @@ export function Sidebar() {
             end={end}
             className={({ isActive }) =>
               cn(
-                'flex h-8 items-center gap-2.5 rounded-sm px-2.5 text-[14px] font-medium text-text-primary transition-colors duration-150 hover:bg-overlay-active',
+                'flex h-9 items-center gap-2.5 rounded-sm border-l-[3px] border-transparent px-2.5 text-[14px] font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-active hover:text-text-primary',
                 collapsed && 'justify-center px-0',
-                isActive && 'bg-overlay-active',
+                isActive && 'border-primary bg-primary-soft font-semibold text-primary hover:bg-primary-soft hover:text-primary',
               )
             }
           >
-            <Icon size={18} strokeWidth={1.75} className="shrink-0" />
+            <Icon size={18} strokeWidth={1.9} className="shrink-0" />
             {!collapsed && <span className="truncate">{label}</span>}
           </NavLink>
         ))}
