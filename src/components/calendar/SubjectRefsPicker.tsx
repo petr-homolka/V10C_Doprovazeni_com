@@ -121,7 +121,7 @@ export function SubjectRefsPicker({
                 key={`${ref.kind}-${ref.id}`}
                 title={chip.label}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs font-medium',
+                  'inline-flex items-center gap-1.5 rounded-full py-1 pl-2.5 pr-2.5 text-xs font-medium',
                   chip.className,
                 )}
               >
