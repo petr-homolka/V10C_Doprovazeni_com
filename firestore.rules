@@ -314,6 +314,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- organizations/{orgId}/enumOptions/{listId} — Cesta B 2026-07-23 -
+    //
+    // Vlastní (org-scoped) položky "otevřených" číselníků (typ události…) —
+    // ZÁMĚRNĚ volnější než `organizations/{orgId}` samotný: KTERÝKOLI
+    // zaměstnanec organizace smí přidat novou položku (ne jen org_admin),
+    // protože jde o nízko-rizikovou popisnou taxonomii bez byznys logiky
+    // navázané na konkrétní hodnotu (na rozdíl od `role`/`careType`, které
+    // ZŮSTÁVAJÍ pevné enumy — na těch je postavená autorizace/§47a výpočet
+    // hodin). Delete zatím záměrně není (žádná položka se nemaže, jen
+    // přibývají — nejjednodušší bezpečné chování, stejný vzor jako
+    // `importJobs`).
+    match /organizations/{orgId}/enumOptions/{listId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create, update: if isStaff() && sameOrg(orgId);
+      allow delete: if false;
+    }
+
     // ---- platformDefaults/{docId} — DOPLNENI_ZADANI-DO-M5 §1 bod 3 -----
     //
     // Jediný globální singleton (`global`), nejnižší úroveň kaskády prahu

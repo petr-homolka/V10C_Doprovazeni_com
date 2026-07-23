@@ -101,8 +101,8 @@ export function DatePicker({
           'focus:border-accent focus:outline-none focus:shadow-focus disabled:opacity-50',
         )}
       >
-        {value ? formatDisplay(value) : placeholder}
-        <CalendarIcon size={16} strokeWidth={1.75} className="shrink-0 text-text-secondary" />
+        <span className="truncate">{value ? formatDisplay(value) : placeholder}</span>
+        <CalendarIcon size={16} strokeWidth={1.75} className="ml-2 shrink-0 text-text-secondary" />
       </button>
 
       {open && (

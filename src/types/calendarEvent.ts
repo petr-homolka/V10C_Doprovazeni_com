@@ -16,10 +16,19 @@
  * celou appkou, audit stopa). Zrušená událost zmizí z výchozího zobrazení
  * kalendáře, ale zůstává v Firestore.
  */
-export type CalendarEventKind = 'schuzka' | 'supervize' | 'jine'
+/**
+ * Cesta B (2026-07-23) — "Typ události" už NENÍ uzavřený výčet (Petrovo
+ * zadání: "číselníky nesmí mít konečný počet variant"). `kind` je teď
+ * libovolný string — `schuzka`/`supervize`/`jine` zůstávají zabudované
+ * výchozí, ale organizace si může přes `enumOptionsService.ts`
+ * (`organizations/{orgId}/enumOptions/calendarEventKind`) přidat vlastní.
+ * Žádná byznys logika na konkrétní hodnotě `kind` nezávisí (jen se ukládá/
+ * zobrazuje), takže rozšíření je bezpečné.
+ */
+export type CalendarEventKind = string
 export type CalendarEventStatus = 'planovano' | 'zruseno'
 
-export const CALENDAR_EVENT_KIND_LABELS: Record<CalendarEventKind, string> = {
+export const CALENDAR_EVENT_KIND_LABELS: Record<string, string> = {
   schuzka: 'Schůzka',
   supervize: 'Supervize',
   jine: 'Jiné',

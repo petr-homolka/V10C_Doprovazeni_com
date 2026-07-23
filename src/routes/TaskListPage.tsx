@@ -318,26 +318,31 @@ export default function TaskListPage() {
               ) : undefined
             }
           >
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
-              <Input required value={form.title} onChange={(e) => set('title', e.target.value)} />
-            </label>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+            <div className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
+                <Input required autoFocus value={form.title} onChange={(e) => set('title', e.target.value)} />
+              </label>
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Přiřazeno</span>
-              <Select value={form.assignedToUid} onChange={(e) => set('assignedToUid', e.target.value)}>
-                {staffList.map((s) => (
-                  <option key={s.uid} value={s.uid}>
-                    {s.displayName}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Termín (volitelné)</span>
-              <DatePicker value={form.dueDate} onChange={(v) => set('dueDate', v)} />
-            </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Přiřazeno</span>
+                <Select value={form.assignedToUid} onChange={(e) => set('assignedToUid', e.target.value)}>
+                  {staffList.map((s) => (
+                    <option key={s.uid} value={s.uid}>
+                      {s.displayName}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Termín</h3>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Termín (volitelné)</span>
+                <DatePicker value={form.dueDate} onChange={(v) => set('dueDate', v)} />
+              </label>
 
             {modal.mode === 'new' && (
               <div className="flex flex-col gap-2 rounded-sm border border-transparent bg-field px-3 py-3">
@@ -387,27 +392,30 @@ export default function TaskListPage() {
                 )}
               </div>
             )}
+            </div>
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Vazba (rodina / dítě / pěstoun)</span>
-              <SubjectRefsPicker
-                value={form.subjectRefs}
-                onChange={(refs) => set('subjectRefs', refs)}
-                families={families}
-                children={children}
-                fosterPersons={fosterPersons}
-              />
-            </label>
+            <div className="flex flex-col gap-4 border-t border-border-subtle pt-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Vazba (rodina / dítě / pěstoun)</span>
+                <SubjectRefsPicker
+                  value={form.subjectRefs}
+                  onChange={(refs) => set('subjectRefs', refs)}
+                  families={families}
+                  children={children}
+                  fosterPersons={fosterPersons}
+                />
+              </label>
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Poznámka</span>
-              <textarea
-                value={form.notes}
-                onChange={(e) => set('notes', e.target.value)}
-                rows={2}
-                className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
-              />
-            </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Poznámka</span>
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => set('notes', e.target.value)}
+                  rows={2}
+                  className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
+                />
+              </label>
+            </div>
 
             {error && (
               <p className="text-sm text-danger" role="alert">
@@ -415,7 +423,7 @@ export default function TaskListPage() {
               </p>
             )}
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 border-t border-border-default pt-4">
               <Button type="submit" loading={saving}>
                 {modal.mode === 'new' ? 'Založit' : 'Uložit změny'}
               </Button>
