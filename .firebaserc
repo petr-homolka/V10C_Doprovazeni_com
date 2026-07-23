@@ -11,6 +11,12 @@
         ],
         "design-b": [
           "v10c-design-b"
+        ],
+        "design-c": [
+          "v10c-design-c"
+        ],
+        "design-d": [
+          "v10c-design-d"
         ]
       }
     },
@@ -20,6 +26,12 @@
           "demo-doprovazeni"
         ],
         "design-b": [
+          "demo-doprovazeni"
+        ],
+        "design-c": [
+          "demo-doprovazeni"
+        ],
+        "design-d": [
           "demo-doprovazeni"
         ]
       }
