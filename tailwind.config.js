@@ -103,10 +103,20 @@ export default {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
         },
+        'day-in-forward': {
+          from: { transform: 'translateX(24px)', opacity: '0' },
+          to: { transform: 'translateX(0)', opacity: '1' },
+        },
+        'day-in-backward': {
+          from: { transform: 'translateX(-24px)', opacity: '0' },
+          to: { transform: 'translateX(0)', opacity: '1' },
+        },
       },
       animation: {
         'mic-breathe': 'mic-breathe 1.4s ease-in-out infinite',
         'mic-ring': 'mic-ring 1.4s cubic-bezier(0.2, 0.6, 0.4, 1) infinite',
+        'day-in-forward': 'day-in-forward 220ms cubic-bezier(0.32, 0.72, 0, 1)',
+        'day-in-backward': 'day-in-backward 220ms cubic-bezier(0.32, 0.72, 0, 1)',
         'slide-in-right': 'slide-in-right 250ms cubic-bezier(0.16, 1, 0.3, 1)',
       },
       // `prose` (dokumenty, náhled editoru, moje dashboard) navázané na naše

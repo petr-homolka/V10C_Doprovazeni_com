@@ -5,6 +5,64 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Kalendář (PWA): animovaný přechod dne + oprava chybějícího data (2026-07-23)
+
+Petrova zpětná vazba měla 7 bodů; dva z nich šlo hned a bezpečně opravit,
+zbytek (Úkoly, opakování, vazba na více entit, narozeniny/svátky, další
+zobrazení) je návrhové rozhodnutí většího rozsahu — probráno v chatu,
+neimplementováno naslepo (viz "Výzkum k širším bodům zpětné vazby" níže
+pro proč).
+
+- **Animovaný přechod dne** — `direction` stav (1/-1) nastavovaný při
+  každé změně `selectedDate` (den-pás, šipky, swipe), obsah dne (nadpis +
+  seznam událostí) teď při každé změně nabíhá zprava/zleva
+  (`animate-day-in-forward`/`-backward`, nové keyframy v
+  `tailwind.config.js`, `cubic-bezier(0.32,0.72,0,1)` — stejná křivka
+  jako `BottomSheet`) místo tichého okamžitého nahrazení obsahu.
+- **Chybějící datum ve formuláři** (regrese z předchozí dávky) — přidání
+  Konec/Přiřazeno/Poznámky formulář nikde needitovalo ANI nezobrazovalo,
+  KTERÉHO dne se událost týká (tiše se přebíralo z aktuálně zobrazeného
+  dne agendy). Přidáno pole "Datum" (`DatePicker` — STEJNÁ komponenta
+  jako desktopová `CalendarPage.tsx`, záměrně ne nativní
+  `<input type="date">`, viz komentář u `Select`/`type="time"` výš). Po
+  uložení agenda navíc přeskočí na den události (uložíte na jiný den, než
+  zrovna prohlížíte → hned ho uvidíte).
+
+Živě ověřeno (Playwright, emulátor): `animate-day-in-forward`/`-backward`
+třída se aplikuje správně podle směru, pole Datum se otevře předvyplněné
+aktuálně zobrazeným dnem a `DatePicker` popover se vejde do sheetu beze
+střihu.
+
+### Výzkum k širším bodům zpětné vazby (2026-07-23, nezapočato)
+
+Petr se ptal i na Úkoly (bez vazby na čas/jen deadline), opakování
+událostí (týdně/měsíčně/vlastní), vazbu na dítě/pěstouna/víc entit
+najednou, a automatické upozornění na narozeniny/svátky dětí. Výzkum
+před rozhodnutím (žádný kód nezměněn):
+
+- **Úkoly** — `Sidebar.tsx` má nav položku `/ukoly` už od M0 jako
+  zástupný nápad, ale ŽÁDNÝ `TaskDoc`/service/route neexistuje. Úplně
+  zelená louka.
+- **Opakování** — `CalendarEventDoc` nemá ŽÁDNÉ opakovací pole. Existují
+  dva DOMÉNOVĚ ÚZKÉ precedenty jinde (`scheduledActivity.ts`,
+  `assistedContactSeries.ts` — frekvence pole + MATERIALIZOVANÉ
+  jednotlivé výskyty jako samostatné dokumenty, ne on-the-fly RRULE) —
+  použitelný vzor, ale nikde sdílený/obecný.
+- **Vazba na víc entit** — `SubjectRef`/`subjectRefs[]`
+  (`timelineEntry.ts`) už přesně tohle řeší pro hlasové zápisy (kind:
+  family/fosterPerson/child/agreement, pole). `CalendarEventDoc` má jen
+  singulární `familyDocId`/`familyUid` — rozšíření o `subjectRefs[]` by
+  bylo přirozené, ale zasahuje `calendarAggregation.ts` i Google sync
+  (čte `familyDocId`), tedy víc než jen mobilní formulář.
+- **Narozeniny/svátky** — `ChildDoc.birthDate` existuje v typu, ale
+  NIKDY se v praxi nevyplňuje (žádný formulář pro založení/editaci
+  dítěte ho nesbírá, jen `firstName`/`lastName`/`birthNumber` — sám typ
+  komentář přiznává "odvození z RČ NENÍ v M1 implementováno"). U
+  `FosterPersonDoc` neexistuje ŽÁDNÉ datové pole narození. Svátky
+  (jmeniny) — nulová existující infrastruktura (žádný dataset, žádná
+  logika). Petrova premisa "systém ví, kdy mají děti narozeniny" tedy
+  dnes neplatí v datech, i když typ pole existuje.
+
 ## Mobilní formulář události: doplněna pole (2026-07-23)
 
 Petr poslal screenshot Google Kalendáře jako inspiraci s poznámkou "málo

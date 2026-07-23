@@ -7,7 +7,9 @@ import { IosList, IosListRow } from '@/components/mobile/IosList'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
+import { formatDateValue, parseDateValue } from '@/lib/dateGrid'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { listStaff } from '@/services/staffService'
@@ -50,6 +52,7 @@ const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))
 const EMPTY_FORM = {
   title: '',
   kind: 'schuzka' as CalendarEventKind,
+  date: '',
   time: '09:00',
   endTime: '10:00',
   assignedToUid: '',
@@ -84,8 +87,18 @@ export default function MobileCalendarPage() {
   const { loading: cancelling, run: runCancel } = useAsyncSubmit()
   const selectedDayRef = useRef<HTMLButtonElement | null>(null)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  // Směr poslední změny dne — den vpřed/vzad se má vizuálně "přisunout" ze
+  // správné strany (Petrovo zadání 2026-07-23, "přechod je moc mechanický"),
+  // ne jen tiše nahradit obsah beze změny.
+  const [direction, setDirection] = useState<1 | -1>(1)
+
+  function selectDate(next: Date) {
+    setDirection(next.getTime() >= selectedDate.getTime() ? 1 : -1)
+    setSelectedDate(next)
+  }
 
   function goToDay(delta: number) {
+    setDirection(delta > 0 ? 1 : -1)
     setSelectedDate((d) => {
       const n = new Date(d)
       n.setDate(n.getDate() + delta)
@@ -190,7 +203,11 @@ export default function MobileCalendarPage() {
   }
 
   function openNew() {
-    setForm({ ...EMPTY_FORM, assignedToUid: userDoc?.uid ?? '' })
+    setForm({
+      ...EMPTY_FORM,
+      date: formatDateValue(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()),
+      assignedToUid: userDoc?.uid ?? '',
+    })
     setSheet({ mode: 'new' })
   }
 
@@ -205,6 +222,7 @@ export default function MobileCalendarPage() {
     setForm({
       title: item.event.title,
       kind: item.event.kind,
+      date: formatDateValue(d.getFullYear(), d.getMonth(), d.getDate()),
       time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
       endTime: `${pad(dEnd.getHours())}:${pad(dEnd.getMinutes())}`,
       assignedToUid: item.event.assignedToUid,
@@ -218,10 +236,15 @@ export default function MobileCalendarPage() {
     e.preventDefault()
     if (!organizationId || !userDoc || !sheet) return
     setError(null)
-    const start = new Date(selectedDate)
+    const dateParts = parseDateValue(form.date)
+    if (!dateParts) {
+      setError('Zadejte platné datum.')
+      return
+    }
+    const start = new Date(dateParts.year, dateParts.month, dateParts.day)
     const [h, m] = form.time.split(':').map(Number)
     start.setHours(h, m, 0, 0)
-    const end = new Date(selectedDate)
+    const end = new Date(dateParts.year, dateParts.month, dateParts.day)
     const [eh, em] = form.endTime.split(':').map(Number)
     end.setHours(eh, em, 0, 0)
     const fam = form.familyDocId ? familyLabel.get(form.familyDocId) : undefined
@@ -259,6 +282,11 @@ export default function MobileCalendarPage() {
         await reload()
       })
       setSheet(null)
+      // Uložená událost může patřit jinému dni, než se právě prohlíží
+      // (Petrovo zadání 2026-07-23 — datum ve formuláři je teď editovatelné,
+      // ne napevno "aktuálně zobrazený den") — po uložení přeskoč agendu na
+      // ten den, ať výsledek hned uvidíte.
+      selectDate(startOfDay(start))
     } catch {
       setError('Uložení se nezdařilo.')
     }
@@ -312,7 +340,7 @@ export default function MobileCalendarPage() {
                 key={d.toISOString()}
                 ref={selected ? selectedDayRef : undefined}
                 type="button"
-                onClick={() => setSelectedDate(d)}
+                onClick={() => selectDate(d)}
                 className={`flex shrink-0 flex-col items-center gap-0.5 rounded-xl px-3 py-2 transition-all duration-150 active:scale-90 ${
                   selected ? 'bg-primary text-primary-foreground' : 'text-text-primary'
                 }`}
@@ -347,8 +375,16 @@ export default function MobileCalendarPage() {
         {/* Swipe vlevo/vpravo kdekoli v seznamu událostí přepíná den (Petrovo
          * zadání 2026-07-22, "jako v nativním kalendáři") — na TÉTHLE
          * oblasti, ne na pásu dnů výš (ten už má svůj vlastní vodorovný
-         * scroll, swipe by se s ním rval). */}
-        <div className="mt-4 min-h-[40vh] px-5" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+         * scroll, swipe by se s ním rval). `key` na datu + animace podle
+         * směru (`direction`) — přechod byl "moc mechanický" (Petrovo
+         * zadání 2026-07-23), obsah dne teď při každé změně nabíhá zprava/
+         * zleva podle toho, jestli jde o den vpřed/vzad. */}
+        <div
+          key={selectedDate.toDateString()}
+          className={`mt-4 min-h-[40vh] px-5 ${direction === 1 ? 'animate-day-in-forward' : 'animate-day-in-backward'}`}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {dayItems.length === 0 ? (
             <EmptyState icon={CalendarClock} text="Pro tenhle den nemáte žádné události." />
           ) : (
@@ -399,6 +435,17 @@ export default function MobileCalendarPage() {
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 className="h-12 text-base"
               />
+            </label>
+            {/* Datum — dřív jen tiše převzaté z aktuálně zobrazeného dne
+             * agendy, nikde ve formuláři vidět ani editovatelné (živě
+             * nahlášeno Petrem 2026-07-23: "zmizelo datum, kterého se
+             * událost týká"). `DatePicker` = stejná komponenta jako
+             * desktopová `CalendarPage.tsx`, záměrně NE nativní
+             * `<input type="date">` (viz komentář u `Select` výš — u
+             * `type="time"` to na iOS Safari přeteklo mimo viewport). */}
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-text-primary">Datum</span>
+              <DatePicker value={form.date} onChange={(v) => setForm((f) => ({ ...f, date: v }))} className="h-12 text-base" />
             </label>
             {/* Typ + Čas každý na VLASTNÍM řádku, ne vedle sebe (živě
              * nahlášeno Petrem 2026-07-22). Čas navíc NENÍ nativní
