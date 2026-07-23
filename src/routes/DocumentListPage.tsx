@@ -55,7 +55,7 @@ export default function DocumentListPage() {
         </p>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 max-w-[928px]">
         {documents === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : documents.length === 0 ? (

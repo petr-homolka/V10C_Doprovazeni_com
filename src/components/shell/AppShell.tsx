@@ -65,7 +65,11 @@ export function AppShell({
         ) : (
           <div className="relative min-h-0 flex-1 overflow-hidden">
             <div className="h-full overflow-y-auto">
-              <div className="mx-auto max-w-[1200px] px-8 pb-8">{children}</div>
+              {/* `pt-6` — chybělo úplně (jen `px-8 pb-8`), obsah stránky
+                  proto začínal na Y=0 scrollovatelné oblasti, přesně pod
+                  6px fade gradientem níž — živě nahlášeno 2026-07-22
+                  (screenshot Kalendáře, "obsah pod přechodem"). */}
+              <div className="mx-auto max-w-[1200px] px-8 pb-8 pt-6">{children}</div>
             </div>
             <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-app to-transparent" />
           </div>

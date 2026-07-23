@@ -3,13 +3,17 @@ import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
+import { Combobox } from '@/components/ui/combobox'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DangerZone } from '@/components/ui/danger-zone'
 import { IppdSection } from '@/components/family/IppdSection'
 import { useAuth } from '@/hooks/useAuth'
-import { getOrganization } from '@/services/organizationService'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
+import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
+import { computeEffectiveAgreementDurationMonths, addMonthsToDateValue } from '@/lib/agreementDuration'
+import { DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS } from '@/types/platformDefaults'
 import { listStaff } from '@/services/staffService'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
 import {
@@ -73,10 +77,16 @@ export default function AgreementDetailPage() {
   const [careType, setCareType] = useState<CareType>('zprostredkovana')
   const [assignedTo, setAssignedTo] = useState('')
   const [capacityNote, setCapacityNote] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
+
+  const todayIsoDate = new Date().toISOString().slice(0, 10)
+  const [validFrom, setValidFrom] = useState(todayIsoDate)
+  const [validTo, setValidTo] = useState('')
+  const [validToTouched, setValidToTouched] = useState(false)
+  const [durationMonths, setDurationMonths] = useState(DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS)
 
   const [endDateDraft, setEndDateDraft] = useState('')
-  const [endSubmitting, setEndSubmitting] = useState(false)
+  const { loading: endSubmitting, success: endSuccess, run: runEnd } = useAsyncSubmit()
 
   const primaryFosterName = fosterPersons[0]
     ? `${fosterPersons[0].fosterPerson.firstName} ${fosterPersons[0].fosterPerson.lastName}`
@@ -126,57 +136,78 @@ export default function AgreementDetailPage() {
     }
   }
 
+  async function openAgreementForm() {
+    setShowAgreementForm(true)
+    setValidFrom(todayIsoDate)
+    setValidToTouched(false)
+    if (!organizationId) return
+    const [org, platformDefaults] = await Promise.all([getOrganization(organizationId), getPlatformDefaults()])
+    const months = computeEffectiveAgreementDurationMonths(
+      org?.agreementDefaultDurationMonths,
+      platformDefaults?.agreementDefaultDurationMonths ?? DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS,
+    )
+    setDurationMonths(months)
+    setValidTo(addMonthsToDateValue(todayIsoDate, months))
+  }
+
+  function handleValidFromChange(next: string) {
+    setValidFrom(next)
+    // §47b zákona 359/1999 Sb. — appka jen NABÍZÍ odhad, dokud KO/vedení
+    // sama neupraví "Platí do" — pak už predikci dál nepřepisujeme, i
+    // když se "Platí od" ještě jednou změní (respektuje ruční volbu).
+    if (!validToTouched) setValidTo(addMonthsToDateValue(next, durationMonths))
+  }
+
   async function handleCreateAgreement(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId) return
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await createAgreement({
-        familyDocId: docId,
-        organizationId,
-        orgCode: org.orgCode,
-        careType,
-        assignedTo: assignedTo || undefined,
+      await run(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        await createAgreement({
+          familyDocId: docId,
+          organizationId,
+          orgCode: org.orgCode,
+          careType,
+          assignedTo: assignedTo || undefined,
+          validFrom: new Date(validFrom).toISOString(),
+          validTo: validTo ? new Date(validTo).toISOString() : null,
+        })
+        await reload()
       })
       setShowAgreementForm(false)
       setCapacityNote(null)
-      await reload()
     } catch {
       setError('Založení Dohody se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
   async function handleScheduleEnd() {
     if (!docId || !organizationId || !endDateDraft) return
-    setEndSubmitting(true)
     setError(null)
     try {
-      await scheduleAgreementEnd(docId, organizationId, new Date(endDateDraft).toISOString())
+      await runEnd(async () => {
+        await scheduleAgreementEnd(docId, organizationId, new Date(endDateDraft).toISOString())
+        await reload()
+      })
       setEndDateDraft('')
-      await reload()
     } catch {
       setError('Naplánování ukončení se nezdařilo.')
-    } finally {
-      setEndSubmitting(false)
     }
   }
 
   async function handleCancelPendingEnd() {
     if (!docId || !organizationId) return
-    setEndSubmitting(true)
     setError(null)
     try {
-      await cancelPendingAgreementEnd(docId, organizationId)
-      await reload()
+      await runEnd(async () => {
+        await cancelPendingAgreementEnd(docId, organizationId)
+        await reload()
+      })
     } catch {
       setError('Zrušení naplánovaného ukončení se nezdařilo.')
-    } finally {
-      setEndSubmitting(false)
     }
   }
 
@@ -208,7 +239,7 @@ export default function AgreementDetailPage() {
       {activeSection === 'prehled' && (
         <div className="mt-6 flex flex-col gap-6">
           {agreement ? (
-            <div className="rounded-lg border border-border bg-surface p-5">
+            <div className="max-w-[560px] rounded-lg border border-border bg-surface p-5">
               <p className="text-sm text-text-primary">{CARE_TYPE_LABELS[agreement.careType]}</p>
               <p className="mt-1 text-sm text-text-secondary">
                 Platí od {new Date(agreement.validFrom).toLocaleDateString('cs-CZ')}
@@ -231,7 +262,7 @@ export default function AgreementDetailPage() {
               {!showAgreementForm && (
                 <div className="flex flex-col items-center gap-3">
                   <EmptyState icon={FileText} text="Zatím žádná Dohoda s vaší organizací." />
-                  <Button variant="secondary" size="sm" onClick={() => setShowAgreementForm(true)}>
+                  <Button variant="secondary" size="sm" onClick={openAgreementForm}>
                     <Plus size={16} /> Založit Dohodu
                   </Button>
                 </div>
@@ -239,7 +270,7 @@ export default function AgreementDetailPage() {
               {showAgreementForm && (
                 <form
                   onSubmit={handleCreateAgreement}
-                  className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                  className="flex max-w-[560px] flex-col gap-4 rounded-lg border border-border bg-surface p-5"
                 >
                   <div className="grid grid-cols-2 gap-4">
                     <label className="flex flex-col gap-1.5">
@@ -254,20 +285,40 @@ export default function AgreementDetailPage() {
                     </label>
                     <label className="flex flex-col gap-1.5">
                       <span className="text-sm font-medium leading-relaxed text-text-primary">Klíčová osoba</span>
-                      <Select value={assignedTo} onChange={(e) => handleAssignedToChange(e.target.value)}>
-                        <option value="">Nepřiřazeno</option>
-                        {koOptions.map((ko) => (
-                          <option key={ko.uid} value={ko.uid}>
-                            {ko.displayName}
-                          </option>
-                        ))}
-                      </Select>
+                      <Combobox
+                        value={assignedTo}
+                        onChange={handleAssignedToChange}
+                        placeholder="Nepřiřazeno"
+                        options={[
+                          { value: '', label: 'Nepřiřazeno' },
+                          ...koOptions.map((ko) => ({ value: ko.uid, label: ko.displayName })),
+                        ]}
+                      />
+                    </label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium leading-relaxed text-text-primary">Platí od</span>
+                      <DatePicker value={validFrom} onChange={handleValidFromChange} />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium leading-relaxed text-text-primary">
+                        Platí do <span className="font-normal text-text-tertiary">(odhad, uprav dle potřeby)</span>
+                      </span>
+                      <DatePicker
+                        value={validTo}
+                        onChange={(v) => {
+                          setValidTo(v)
+                          setValidToTouched(true)
+                        }}
+                        min={validFrom}
+                      />
                     </label>
                   </div>
                   {capacityNote && <p className="text-sm text-warning">{capacityNote}</p>}
                   <div className="flex gap-2">
-                    <Button type="submit" disabled={submitting} className="w-fit">
-                      {submitting ? 'Zakládám…' : 'Založit Dohodu'}
+                    <Button type="submit" loading={submitting} success={success} className="w-fit">
+                      Založit Dohodu
                     </Button>
                     <Button
                       type="button"
@@ -298,7 +349,7 @@ export default function AgreementDetailPage() {
       )}
 
       {activeSection === 'ukonceni' && (
-        <div className="mt-6">
+        <div className="mt-6 max-w-[560px]">
           {!agreement ? (
             <p className="text-sm text-text-secondary">Nejdřív založte Dohodu na záložce Přehled.</p>
           ) : agreement.pendingEndDate ? (
@@ -314,9 +365,10 @@ export default function AgreementDetailPage() {
                 size="sm"
                 className="mt-3"
                 onClick={handleCancelPendingEnd}
-                disabled={endSubmitting}
+                loading={endSubmitting}
+                success={endSuccess}
               >
-                {endSubmitting ? 'Ruším…' : 'Zrušit ukončení'}
+                Zrušit ukončení
               </Button>
             </div>
           ) : (
@@ -328,20 +380,21 @@ export default function AgreementDetailPage() {
                   ukončení kdykoli zrušit.
                 </p>
                 <div className="mt-1 flex items-center gap-2">
-                  <Input
-                    type="date"
+                  <DatePicker
                     min={tomorrowIsoDate()}
                     value={endDateDraft}
-                    onChange={(e) => setEndDateDraft(e.target.value)}
+                    onChange={setEndDateDraft}
                     className="w-auto"
                   />
                   <Button
                     variant="destructive"
                     size="sm"
                     onClick={handleScheduleEnd}
-                    disabled={!endDateDraft || endSubmitting}
+                    disabled={!endDateDraft}
+                    loading={endSubmitting}
+                    success={endSuccess}
                   >
-                    {endSubmitting ? 'Ukládám…' : 'Naplánovat ukončení'}
+                    Naplánovat ukončení
                   </Button>
                 </div>
               </div>

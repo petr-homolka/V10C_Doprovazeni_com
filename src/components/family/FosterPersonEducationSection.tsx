@@ -4,6 +4,7 @@ import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ProgressBar } from '@/components/ui/progress-bar'
 import { addCourse, listCourses, recordBenefitCheck, type AddCourseInput } from '@/services/courseService'
@@ -219,7 +220,7 @@ export function FosterPersonEducationSection({
       {showCourseForm && (
         <form
           onSubmit={handleAddCourse}
-          className="mt-3 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
+          className="mt-3 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
         >
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
@@ -250,12 +251,7 @@ export function FosterPersonEducationSection({
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Datum</span>
-              <Input
-                required
-                type="date"
-                value={courseOccurredAt}
-                onChange={(e) => setCourseOccurredAt(e.target.value)}
-              />
+              <DatePicker value={courseOccurredAt} onChange={setCourseOccurredAt} />
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Cena (Kč, volitelné)</span>
@@ -282,7 +278,7 @@ export function FosterPersonEducationSection({
         </form>
       )}
 
-      <div className="mt-4">
+      <div className="mt-4 max-w-[928px]">
         {coursesError ? (
           <p className="text-sm text-danger" role="alert">
             {coursesError}
@@ -317,7 +313,7 @@ export function FosterPersonEducationSection({
 
       <div className="mt-6">
         <h3 className="text-sm font-medium text-text-primary">Stav dávek</h3>
-        <div className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           {BENEFIT_KEYS.map((key) => (
             <div key={key} className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm text-text-primary">{BENEFIT_LABELS[key]}</span>

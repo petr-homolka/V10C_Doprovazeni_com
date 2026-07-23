@@ -89,6 +89,18 @@ export async function cancelPendingAgreementEnd(familyDocId: string, organizatio
   await updateDoc(agreementRef(familyDocId, organizationId), { pendingEndDate: null })
 }
 
+/** "Předat" (UX zpětná vazba 2026-07-21) — přeřazení klíčové osoby na
+ * VLASTNÍ Dohodě volající organizace (`assignedTo`). Protože `agreementId
+ * === organizationId` (viz AgreementDoc), je vždy jednoznačné, kterou
+ * Dohodu rodiny přeřazujeme — žádné hledání "aktivní" mezi víc dokumenty. */
+export async function updateAgreementAssignedTo(
+  familyDocId: string,
+  organizationId: string,
+  assignedTo: string | null,
+): Promise<void> {
+  await updateDoc(agreementRef(familyDocId, organizationId), { assignedTo })
+}
+
 export interface CreateAgreementInput {
   familyDocId: string
   organizationId: string
@@ -100,12 +112,17 @@ export interface CreateAgreementInput {
    * skutečné datum ze zdrojových dat organizace. Ruční založení (UI) tohle
    * pole nepředává, chová se tedy přesně jako dřív (výchozí "teď"). */
   validFrom?: string
+  /** §47b zákona 359/1999 Sb. — Dohoda se standardně uzavírá na dobu
+   * určitou (viz src/lib/agreementDuration.ts pro odhad délky), ale appka
+   * nikdy nevynucuje konkrétní datum — `null` = zatím bez plánovaného
+   * konce (stejné chování jako dřív, když tohle pole neexistovalo). */
+  validTo?: string | null
   /** Viz FamilyDoc stejnojmenné pole — import rollback (§5.5, M1.5). */
   createdByImportJobRef?: string
 }
 
 export async function createAgreement(input: CreateAgreementInput): Promise<AgreementDoc> {
-  const { familyDocId, organizationId, orgCode, careType, assignedTo, validFrom, createdByImportJobRef } = input
+  const { familyDocId, organizationId, orgCode, careType, assignedTo, validFrom, validTo, createdByImportJobRef } = input
   const uid = await allocateUid(organizationId, orgCode, 'agreement')
   const data: AgreementDoc = {
     uid,
@@ -114,7 +131,7 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
     careType,
     status: 'active',
     validFrom: validFrom ?? new Date().toISOString(),
-    validTo: null,
+    validTo: validTo ?? null,
     assignedTo: assignedTo ?? null,
     visitIntervalDays: DEFAULT_VISIT_INTERVAL_DAYS,
     educationHoursTarget: EDUCATION_HOURS_TARGET[careType],
@@ -279,4 +296,27 @@ export async function listOverCapacityKos(organizationId: string): Promise<OverC
       return { uid: member.uid, displayName: member.displayName, activeCaseload, threshold }
     })
     .filter((k) => k.activeCaseload > 0 && k.activeCaseload >= k.threshold)
+}
+
+/** Seznam Rodin (UX zpětná vazba 2026-07-21) — vlastní AKTIVNÍ Dohoda pro
+ * KAŽDÝ Spis organizace, klíčováno `familyId` (stejný `collectionGroup`
+ * dotaz/index jako `listFamiliesAwaitingVisit` v dashboardService.ts, jen
+ * bez následného filtrování na "už přehledné" — tady se dál rozhoduje
+ * podle KO/termínu/stavu pro VŠECHNY, ne jen pro overdue). Spisy bez
+ * aktivní Dohody týhle organizace (jen historická návaznost, §4.5) v
+ * mapě chybí — volající to čte jako "žádná KO, žádný termín ke sledování". */
+export async function listActiveAgreementsForOrg(organizationId: string): Promise<Record<string, AgreementDoc>> {
+  const snap = await getDocs(
+    query(
+      collectionGroup(db, 'agreements'),
+      where('organizationId', '==', organizationId),
+      where('status', '==', 'active'),
+    ),
+  )
+  const byFamilyId: Record<string, AgreementDoc> = {}
+  for (const d of snap.docs) {
+    const agreement = d.data() as AgreementDoc
+    byFamilyId[agreement.familyId] = agreement
+  }
+  return byFamilyId
 }

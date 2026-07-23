@@ -3,6 +3,7 @@ import { GraduationCap, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   approveCourseEnrollment,
@@ -312,7 +313,7 @@ export function FosterPersonCourseEnrollmentsSection({
           </div>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-text-secondary">Datum konání</span>
-            <Input type="date" value={completeOccurredAt} onChange={(e) => setCompleteOccurredAt(e.target.value)} />
+            <DatePicker value={completeOccurredAt} onChange={setCompleteOccurredAt} />
           </label>
           <div className="flex gap-2">
             <Button
@@ -407,7 +408,7 @@ export function FosterPersonCourseEnrollmentsSection({
       )}
 
       {showNewForm && (
-        <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleCreate} className="mt-4 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Podnět</span>
             <Select

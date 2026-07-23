@@ -101,7 +101,7 @@ export default function MojeLoginPage() {
 
   function handleEmailSubmit(e: FormEvent) {
     e.preventDefault()
-    if (emailInput.trim()) completeSignIn(emailInput.trim())
+    if (emailInput.trim()) completeSignIn(emailInput.trim().toLowerCase())
   }
 
   return (

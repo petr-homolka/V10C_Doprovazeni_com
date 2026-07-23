@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
@@ -8,14 +8,19 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Switch } from '@/components/ui/switch'
+import { Combobox } from '@/components/ui/combobox'
+import { Modal } from '@/components/ui/modal'
+import { AddressLink } from '@/components/ui/address-link'
+import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/components/timeline/VoiceRecorderPanel'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { OspodReportSection } from '@/components/family/OspodReportSection'
 import { FamilyCareEventsSection } from '@/components/family/FamilyCareEventsSection'
+import { FamilyChatSection } from '@/components/family/FamilyChatSection'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getOrganization } from '@/services/organizationService'
 import { listStaff } from '@/services/staffService'
-import { uploadEntityAvatar } from '@/services/avatarService'
 import { listTimelineEntries } from '@/services/timelineService'
 import {
   addChildToFamily,
@@ -27,9 +32,11 @@ import {
   updateFamilyPartnerSharingDefault,
 } from '@/services/familyService'
 import { getActiveAgreement } from '@/services/agreementService'
+import { assignEntityToCollaborator } from '@/services/collaboratorService'
 import { createDocument, listFamilyDocuments } from '@/services/documentService'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
+import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -37,10 +44,10 @@ import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
-import { Baby, Clock, FileText, Handshake, Home, Mic, Pencil, Plus, StickyNote, UserRound } from 'lucide-react'
+import { Baby, Clock, FileText, Handshake, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from 'lucide-react'
 
-const FOSTER_COLUMNS = '40px 1.4fr 1fr 24px'
-const CHILD_COLUMNS = '40px 1fr 24px'
+const FOSTER_COLUMNS = '40px 1.4fr 1fr 32px 24px'
+const CHILD_COLUMNS = '40px 1fr 32px 24px'
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
   note: 'Poznámka',
   visit: 'Návštěva',
@@ -66,6 +73,7 @@ const SECTIONS: ProfileSection[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'casova-osa', label: 'Časová osa' },
   { key: 'dokumenty', label: 'Dokumenty' },
+  { key: 'chat', label: 'Chat' },
 ]
 
 /**
@@ -103,13 +111,15 @@ export default function FamilyDetailPage() {
 
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
-  const [savingName, setSavingName] = useState(false)
+  const { loading: savingName, success: savingNameSuccess, run: runSaveName } = useAsyncSubmit()
 
   const [showFosterForm, setShowFosterForm] = useState(false)
   const [fosterFirstName, setFosterFirstName] = useState('')
   const [fosterLastName, setFosterLastName] = useState('')
   const [fosterPhone, setFosterPhone] = useState('')
+  const [fosterPhoneError, setFosterPhoneError] = useState<string | null>(null)
   const [fosterEmail, setFosterEmail] = useState('')
+  const [fosterEmailError, setFosterEmailError] = useState<string | null>(null)
 
   const [showChildForm, setShowChildForm] = useState(false)
   const [childFirstName, setChildFirstName] = useState('')
@@ -121,10 +131,19 @@ export default function FamilyDetailPage() {
     preselectedPeopleKeys: string[]
     visit?: VisitContext
   } | null>(null)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const familyAvatarInputRef = useRef<HTMLInputElement>(null)
 
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: addingFoster, success: addingFosterSuccess, run: runAddFoster } = useAsyncSubmit()
+  const { loading: addingChild, success: addingChildSuccess, run: runAddChild } = useAsyncSubmit()
+
+  const [assigningEntity, setAssigningEntity] = useState<{
+    entityType: 'child' | 'fosterPerson'
+    entityId: string
+    label: string
+  } | null>(null)
+  const [assignTarget, setAssignTarget] = useState('')
+  const { loading: assigningCollaborator, success: assignCollaboratorSuccess, run: runAssignCollaborator } =
+    useAsyncSubmit()
+  const { loading: creatingDocument, success: creatingDocumentSuccess, run: runCreateDocument } = useAsyncSubmit()
   const [loaded, setLoaded] = useState(false)
 
   const [documents, setDocuments] = useState<Array<{ docId: string; document: FamilyDocumentDoc }>>([])
@@ -137,6 +156,7 @@ export default function FamilyDetailPage() {
     ? `${fosterPersons[0].fosterPerson.firstName} ${fosterPersons[0].fosterPerson.lastName}`
     : null
   const displayName = family ? resolveFamilyDisplayName(family, primaryFosterName) : ''
+  const collaboratorOptions = staffList.filter((s) => s.role === 'spolupracovnik')
 
   async function reload() {
     if (!familyUid || !organizationId) return
@@ -217,21 +237,6 @@ export default function FamilyDetailPage() {
     setRecorder({ implicitSubjects, preselectedPeopleKeys })
   }
 
-  async function handleFamilyAvatarChange(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file || !docId) return
-    setUploadingAvatar(true)
-    setError(null)
-    try {
-      await uploadEntityAvatar({ kind: 'family', id: docId, file })
-      await reload()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Fotku se nepodařilo nahrát.')
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }
 
   function startEditName() {
     setNameDraft(family?.displayName ?? '')
@@ -241,16 +246,15 @@ export default function FamilyDetailPage() {
   async function handleSaveName() {
     if (!docId) return
     const next = nameDraft.trim()
-    setSavingName(true)
     setFamily((prev) => (prev ? { ...prev, displayName: next || undefined } : prev))
-    setEditingName(false)
     try {
-      await updateFamilyDisplayName(docId, next)
+      await runSaveName(async () => {
+        await updateFamilyDisplayName(docId, next)
+      })
+      setEditingName(false)
     } catch {
       setError('Název se nepodařilo uložit.')
       await reload()
-    } finally {
-      setSavingName(false)
     }
   }
 
@@ -275,27 +279,33 @@ export default function FamilyDetailPage() {
   async function handleAddFoster(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId) return
-    setSubmitting(true)
+    const phoneCheck = checkPhone(fosterPhone)
+    const emailCheck = checkEmail(fosterEmail)
+    setFosterPhone(phoneCheck.value)
+    setFosterEmail(emailCheck.value)
+    setFosterPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
+    setFosterEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
+    if (!phoneCheck.ok || !emailCheck.ok) return
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await addFosterPersonToFamily(docId, organizationId, org.orgCode, {
-        firstName: fosterFirstName,
-        lastName: fosterLastName,
-        phone: fosterPhone || undefined,
-        email: fosterEmail || undefined,
+      await runAddFoster(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        await addFosterPersonToFamily(docId, organizationId, org.orgCode, {
+          firstName: fosterFirstName,
+          lastName: fosterLastName,
+          ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
+          ...(emailCheck.value ? { email: emailCheck.value } : {}),
+        })
+        await reload()
       })
       setFosterFirstName('')
       setFosterLastName('')
       setFosterPhone('')
       setFosterEmail('')
       setShowFosterForm(false)
-      await reload()
     } catch {
       setError('Přidání pěstouna se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -320,25 +330,45 @@ export default function FamilyDetailPage() {
   async function handleAddChild(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId) return
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await addChildToFamily(docId, organizationId, org.orgCode, {
-        firstName: childFirstName,
-        lastName: childLastName,
-        birthNumber: childBirthNumber,
+      await runAddChild(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        await addChildToFamily(docId, organizationId, org.orgCode, {
+          firstName: childFirstName,
+          lastName: childLastName,
+          birthNumber: childBirthNumber,
+        })
+        await reload()
       })
       setChildFirstName('')
       setChildLastName('')
       setChildBirthNumber('')
       setShowChildForm(false)
-      await reload()
     } catch {
       setError('Přidání dítěte se nezdařilo.')
-    } finally {
-      setSubmitting(false)
+    }
+  }
+
+  async function handleAssignCollaborator(e: FormEvent) {
+    e.preventDefault()
+    if (!assigningEntity || !organizationId || !userDoc || !assignTarget) return
+    setError(null)
+    try {
+      await runAssignCollaborator(async () => {
+        await assignEntityToCollaborator({
+          organizationId,
+          collaboratorUid: assignTarget,
+          entityType: assigningEntity.entityType,
+          entityId: assigningEntity.entityId,
+          createdBy: userDoc.uid,
+        })
+      })
+      setAssigningEntity(null)
+      setAssignTarget('')
+    } catch {
+      setError('Přiřazení spolupracovníkovi se nezdařilo.')
     }
   }
 
@@ -354,22 +384,25 @@ export default function FamilyDetailPage() {
   async function handleCreateDocument(e: FormEvent) {
     e.preventDefault()
     if (!docId || !organizationId || !userDoc) return
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      const subjectRefs: SubjectRef[] = recordablePeople
-        .filter((p) => docSubjectKeys.has(`${p.kind}:${p.id}`))
-        .map(({ kind, id }) => ({ kind, id }))
-      const { docId: newDocId } = await createDocument({
-        familyDocId: docId,
-        organizationId,
-        orgCode: org.orgCode,
-        createdByUid: userDoc.uid,
-        title: docTitle,
-        body: docBody,
-        subjectRefs,
+      let newDocId = ''
+      await runCreateDocument(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        const subjectRefs: SubjectRef[] = recordablePeople
+          .filter((p) => docSubjectKeys.has(`${p.kind}:${p.id}`))
+          .map(({ kind, id }) => ({ kind, id }))
+        const result = await createDocument({
+          familyDocId: docId,
+          organizationId,
+          orgCode: org.orgCode,
+          createdByUid: userDoc.uid,
+          title: docTitle,
+          body: docBody,
+          subjectRefs,
+        })
+        newDocId = result.docId
       })
       setDocTitle('')
       setDocBody('')
@@ -378,8 +411,6 @@ export default function FamilyDetailPage() {
       navigate(`/rodiny/${familyUid}/dokumenty/${newDocId}`)
     } catch {
       setError('Založení dokumentu se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -396,73 +427,68 @@ export default function FamilyDetailPage() {
       breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: displayName }]}
       secondaryPanel={<ProfileSectionNav sections={SECTIONS} active={activeSection} onSelect={setActiveSection} />}
     >
-      <div className="flex items-center gap-4">
-        <EntityAvatar
-          photoURL={family?.avatarUrl}
-          label={displayName || 'Spis'}
-          fallbackIcon={Home}
-          size="lg"
-          onChangePhoto={uploadingAvatar ? undefined : () => familyAvatarInputRef.current?.click()}
-        />
-        <div>
-          {editingName ? (
-            <div className="flex items-center gap-2">
-              <Input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                className="h-9 w-64"
-                placeholder={primaryFosterName ?? family?.address ?? ''}
-              />
-              <Button size="sm" onClick={handleSaveName} disabled={savingName}>
-                Uložit
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
-                Zrušit
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-normal leading-normal text-text-primary">{displayName}</h1>
-              <button
-                type="button"
-                onClick={startEditName}
-                aria-label="Upravit název rodiny"
-                title="Upravit název rodiny"
-                className="text-text-tertiary transition-colors duration-150 hover:text-text-primary"
-              >
-                <Pencil size={14} />
-              </button>
-            </div>
-          )}
-          <p className="mt-1 font-mono text-xs text-text-tertiary">{familyUid}</p>
-          {family?.address && <p className="text-sm text-text-secondary">{family.address}</p>}
+      <div className="max-w-[928px]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            {editingName ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  autoFocus
+                  value={nameDraft}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  className="h-9 w-64"
+                  placeholder={primaryFosterName ?? family?.address ?? ''}
+                />
+                <Button size="sm" onClick={handleSaveName} loading={savingName} success={savingNameSuccess}>
+                  Uložit
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
+                  Zrušit
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-normal leading-tight text-text-primary">{displayName}</h1>
+                <button
+                  type="button"
+                  onClick={startEditName}
+                  aria-label="Upravit název rodiny"
+                  title="Upravit název rodiny"
+                  className="text-text-tertiary transition-colors duration-150 hover:text-text-primary"
+                >
+                  <Pencil size={14} />
+                </button>
+              </div>
+            )}
+            {family?.address && (
+              <p className="mt-1.5 text-sm">
+                <AddressLink address={family.address} />
+              </p>
+            )}
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">Spis</p>
+            <p className="font-mono text-sm text-text-secondary">{familyUid}</p>
+          </div>
         </div>
-      </div>
-      <input
-        ref={familyAvatarInputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handleFamilyAvatarChange}
-      />
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+        {error && (
+          <p className="mt-3 text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
 
-      {activeSection === 'prehled' && (
-        <>
-          <section className="mt-8">
-            <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
-            <Link
-              to={`/rodiny/${familyUid}/dohoda`}
-              className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-overlay-hover"
-            >
-              <div className="flex items-center gap-3">
-                <EntityAvatar label="Dohoda" fallbackIcon={Handshake} />
+        {activeSection === 'prehled' && (
+          <>
+            <section className="mt-8">
+              <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
+              <Link
+                to={`/rodiny/${familyUid}/dohoda`}
+                className="mt-3 flex items-center gap-3 max-w-[560px] rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-overlay-hover"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
+                  <Handshake size={18} strokeWidth={1.75} />
+                </span>
                 {agreement ? (
                   <div>
                     <p className="text-sm text-text-primary">{CARE_TYPE_LABELS[agreement.careType]}</p>
@@ -475,9 +501,8 @@ export default function FamilyDetailPage() {
                 ) : (
                   <p className="text-sm text-text-secondary">Zatím žádná Dohoda s vaší organizací — založit →</p>
                 )}
-              </div>
-            </Link>
-          </section>
+              </Link>
+            </section>
 
           <section className="mt-8">
             <div className="flex items-center justify-between gap-4">
@@ -493,7 +518,7 @@ export default function FamilyDetailPage() {
               </Button>
             </div>
             {family && family.fosterPersonRefs.length >= 2 && (
-              <div className="mt-3 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4">
+              <div className="mt-3 flex items-center justify-between gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-4">
                 <span className="text-sm text-text-primary">Nové zápisy výchozí sdílet s oběma pěstouny</span>
                 <Switch
                   checked={family.partnerSharingDefault ?? true}
@@ -506,7 +531,7 @@ export default function FamilyDetailPage() {
             {showFosterForm && (
               <form
                 onSubmit={handleAddFoster}
-                className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                className="mt-4 flex flex-col gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-5"
               >
                 <div className="grid grid-cols-2 gap-4">
                   <label className="flex flex-col gap-1.5">
@@ -519,25 +544,44 @@ export default function FamilyDetailPage() {
                   </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-relaxed text-text-primary">Telefon</span>
-                    <Input value={fosterPhone} onChange={(e) => setFosterPhone(e.target.value)} />
+                    <Input
+                      value={fosterPhone}
+                      onChange={(e) => { setFosterPhone(e.target.value); setFosterPhoneError(null) }}
+                      onBlur={() => {
+                        const result = checkPhone(fosterPhone)
+                        setFosterPhone(result.value)
+                        setFosterPhoneError(result.ok ? null : (result.message ?? null))
+                      }}
+                    />
+                    {fosterPhoneError && <span className="text-xs text-danger">{fosterPhoneError}</span>}
                   </label>
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
-                    <Input type="email" value={fosterEmail} onChange={(e) => setFosterEmail(e.target.value)} />
+                    <Input
+                      type="email"
+                      value={fosterEmail}
+                      onChange={(e) => { setFosterEmail(e.target.value); setFosterEmailError(null) }}
+                      onBlur={() => {
+                        const result = checkEmail(fosterEmail)
+                        setFosterEmail(result.value)
+                        setFosterEmailError(result.ok ? null : (result.message ?? null))
+                      }}
+                    />
+                    {fosterEmailError && <span className="text-xs text-danger">{fosterEmailError}</span>}
                   </label>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-fit">
-                  {submitting ? 'Přidávám…' : 'Přidat'}
+                <Button type="submit" loading={addingFoster} success={addingFosterSuccess} className="w-fit">
+                  Přidat
                 </Button>
               </form>
             )}
 
-            <div className="mt-4">
+            <div className="mt-4 max-w-[928px]">
               {fosterPersons.length === 0 ? (
                 <EmptyState icon={UserRound} text="Zatím žádní pěstouni." />
               ) : (
                 <Table>
-                  <TableHeaderRow columns={FOSTER_COLUMNS} labels={['', 'Jméno', 'Telefon', '']} />
+                  <TableHeaderRow columns={FOSTER_COLUMNS} labels={['', 'Jméno', 'Telefon', '', '']} />
                   {fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => (
                     <Link key={fpId} to={`/rodiny/${familyUid}/pestoun/${fpId}`} className="contents">
                       <TableRow columns={FOSTER_COLUMNS}>
@@ -553,6 +597,22 @@ export default function FamilyDetailPage() {
                           {fp.firstName} {fp.lastName}
                         </span>
                         <span className="text-sm text-text-secondary">{fp.phone || '—'}</span>
+                        <button
+                          type="button"
+                          title="Přiřadit spolupracovníkovi"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setAssigningEntity({
+                              entityType: 'fosterPerson',
+                              entityId: fpId,
+                              label: `${fp.firstName} ${fp.lastName}`,
+                            })
+                          }}
+                          className="flex size-6 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
+                        >
+                          <UserSquare2 size={14} strokeWidth={2} />
+                        </button>
                         <span className="text-text-tertiary">›</span>
                       </TableRow>
                     </Link>
@@ -579,7 +639,7 @@ export default function FamilyDetailPage() {
             {showChildForm && (
               <form
                 onSubmit={handleAddChild}
-                className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                className="mt-4 flex flex-col gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-5"
               >
                 <div className="grid grid-cols-3 gap-4">
                   <label className="flex flex-col gap-1.5">
@@ -595,18 +655,18 @@ export default function FamilyDetailPage() {
                     <Input required value={childBirthNumber} onChange={(e) => setChildBirthNumber(e.target.value)} />
                   </label>
                 </div>
-                <Button type="submit" disabled={submitting} className="w-fit">
-                  {submitting ? 'Přidávám…' : 'Přidat'}
+                <Button type="submit" loading={addingChild} success={addingChildSuccess} className="w-fit">
+                  Přidat
                 </Button>
               </form>
             )}
 
-            <div className="mt-4">
+            <div className="mt-4 max-w-[928px]">
               {children.length === 0 ? (
                 <EmptyState icon={Baby} text="Zatím žádné svěřené děti." />
               ) : (
                 <Table>
-                  <TableHeaderRow columns={CHILD_COLUMNS} labels={['', 'Jméno', '']} />
+                  <TableHeaderRow columns={CHILD_COLUMNS} labels={['', 'Jméno', '', '']} />
                   {children.map(({ docId: childId, child }) => (
                     <Link key={childId} to={`/rodiny/${familyUid}/dite/${childId}`} className="contents">
                       <TableRow columns={CHILD_COLUMNS}>
@@ -621,6 +681,22 @@ export default function FamilyDetailPage() {
                         <span className="text-sm text-text-primary">
                           {child.firstName} {child.lastName}
                         </span>
+                        <button
+                          type="button"
+                          title="Přiřadit spolupracovníkovi"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setAssigningEntity({
+                              entityType: 'child',
+                              entityId: childId,
+                              label: `${child.firstName} ${child.lastName}`,
+                            })
+                          }}
+                          className="flex size-6 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
+                        >
+                          <UserSquare2 size={14} strokeWidth={2} />
+                        </button>
                         <span className="text-text-tertiary">›</span>
                       </TableRow>
                     </Link>
@@ -660,7 +736,7 @@ export default function FamilyDetailPage() {
             {timelineEntries.length === 0 ? (
               <EmptyState icon={Clock} text="Zatím žádné zápisy v časové ose." />
             ) : (
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-2 max-w-[928px]">
                 {timelineEntries.map(({ docId: entryId, entry }) => {
                   const Icon = TIMELINE_TYPE_ICONS[entry.type]
                   const subjectLabels = resolveSubjectLabels(entry.subjectRefs)
@@ -732,20 +808,15 @@ export default function FamilyDetailPage() {
             {showDocumentForm && (
               <form
                 onSubmit={handleCreateDocument}
-                className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                className="mt-4 flex flex-col gap-4 max-w-[928px] rounded-lg border border-border bg-surface p-5"
               >
-                <label className="flex flex-col gap-1.5">
+                <label className="flex flex-col gap-1.5 max-w-[560px]">
                   <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
                   <Input required value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
                 </label>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah (markdown)</span>
-                  <textarea
-                    value={docBody}
-                    onChange={(e) => setDocBody(e.target.value)}
-                    rows={8}
-                    className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none"
-                  />
+                  <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
+                  <MarkdownEditor value={docBody} onChange={setDocBody} rows={10} placeholder="Začněte psát obsah dokumentu…" />
                 </label>
                 {recordablePeople.length > 0 && (
                   <div>
@@ -772,8 +843,8 @@ export default function FamilyDetailPage() {
                     </div>
                   </div>
                 )}
-                <Button type="submit" disabled={submitting} className="w-fit">
-                  {submitting ? 'Zakládám…' : 'Založit koncept'}
+                <Button type="submit" loading={creatingDocument} success={creatingDocumentSuccess} className="w-fit">
+                  Založit koncept
                 </Button>
               </form>
             )}
@@ -782,7 +853,7 @@ export default function FamilyDetailPage() {
               {documents.length === 0 ? (
                 <EmptyState icon={FileText} text="Zatím žádné dokumenty." />
               ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 max-w-[928px]">
                   {documents.map(({ docId: fdId, document: fd }) => (
                     <button
                       key={fdId}
@@ -806,6 +877,18 @@ export default function FamilyDetailPage() {
         </>
       )}
 
+      {activeSection === 'chat' && docId && organizationId && userDoc && (
+        <div className="mt-8">
+          <FamilyChatSection
+            familyDocId={docId}
+            organizationId={organizationId}
+            currentUid={userDoc.uid}
+            staffList={staffList}
+          />
+        </div>
+      )}
+      </div>
+
       {recorder && docId && organizationId && userDoc && (
         <VoiceRecorderPanel
           familyDocId={docId}
@@ -828,6 +911,47 @@ export default function FamilyDetailPage() {
           subjectLabels={resolveSubjectLabels(selectedEntry.entry.subjectRefs)}
           onClose={() => setSelectedEntry(null)}
         />
+      )}
+
+      {assigningEntity && (
+        <Modal onClose={() => setAssigningEntity(null)}>
+          <form onSubmit={handleAssignCollaborator} className="flex flex-col gap-4">
+            <h2 className="text-base font-medium text-text-primary">
+              Přiřadit spolupracovníkovi — {assigningEntity.label}
+            </h2>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Spolupracovník</span>
+              <Combobox
+                options={collaboratorOptions.map((c) => ({ value: c.uid, label: c.displayName }))}
+                value={assignTarget}
+                onChange={setAssignTarget}
+                placeholder="Vybrat…"
+                emptyText="V organizaci zatím není žádný spolupracovník (založíte na stránce Zaměstnanci)."
+              />
+            </label>
+            <p className="text-xs text-text-tertiary">
+              Uvidí jen moduly, co mu KO/vedení povolí na stránce Zaměstnanci.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                loading={assigningCollaborator}
+                success={assignCollaboratorSuccess}
+                disabled={!assignTarget}
+              >
+                Přiřadit
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setAssigningEntity(null)}
+                disabled={assigningCollaborator}
+              >
+                Zrušit
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </AppShell>
   )

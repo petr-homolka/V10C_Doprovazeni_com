@@ -63,7 +63,7 @@ export default function DocumentVerifyPage() {
       )}
 
       {result && (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="mt-4 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border bg-surface p-5">
           <p className="text-sm text-text-primary">
             <span className="font-medium">{result.document.title}</span> · verze {result.document.currentVersion}
           </p>

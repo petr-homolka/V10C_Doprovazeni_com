@@ -73,7 +73,7 @@ export async function createRespitEvent(input: CreateRespitEventInput): Promise<
     daysCount,
     calendarYear,
     providerRef: input.providerRef ?? null,
-    reason: input.reason,
+    ...(input.reason ? { reason: input.reason } : {}),
     cost: input.cost ?? null,
     organizedWith: input.organizedWith ?? null,
     costCoveredByOrg: input.costCoveredByOrg ?? null,

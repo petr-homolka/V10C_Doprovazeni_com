@@ -1,20 +1,27 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { ProfileSectionNav, type ProfileSection } from '@/components/profile/ProfileSectionNav'
 import { Button } from '@/components/ui/button'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { DatePicker } from '@/components/ui/date-picker'
 import { FosterPersonEducationSection } from '@/components/family/FosterPersonEducationSection'
 import { FosterPersonCourseEnrollmentsSection } from '@/components/family/FosterPersonCourseEnrollmentsSection'
 import { EducationPlanSection } from '@/components/family/EducationPlanSection'
 import { useAuth } from '@/hooks/useAuth'
-import { getFamilyByUid, getFosterPerson, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
+import {
+  getFamilyByUid,
+  getFosterPerson,
+  listChildrenForFamily,
+  listFosterPersonsByRefs,
+  updateFosterPersonBirthDate,
+} from '@/services/familyService'
 import { sendFosterInvitation } from '@/services/fosterInvitationService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
-import { UserRound } from 'lucide-react'
+import { UserRound, UserSquare2 } from 'lucide-react'
 
 const SECTIONS: ProfileSection[] = [
   { key: 'prehled', label: 'Přehled' },
@@ -32,6 +39,7 @@ const SECTIONS: ProfileSection[] = [
  */
 export default function FosterPersonDetailPage() {
   const { familyUid, fosterPersonId } = useParams<{ familyUid: string; fosterPersonId: string }>()
+  const navigate = useNavigate()
   const { userDoc } = useAuth()
   const organizationId = userDoc?.organizationId
 
@@ -46,6 +54,7 @@ export default function FosterPersonDetailPage() {
 
   const [primaryFosterName, setPrimaryFosterName] = useState<string | null>(null)
   const familyName = family ? resolveFamilyDisplayName(family, primaryFosterName) : ''
+  const [birthDate, setBirthDate] = useState('')
 
   async function reload() {
     if (!familyUid || !fosterPersonId || !organizationId) return
@@ -59,6 +68,7 @@ export default function FosterPersonDetailPage() {
       }
       setFamily(found.family)
       setFosterPerson(fp)
+      setBirthDate(fp.birthDate ?? '')
       const [kids, fosters] = await Promise.all([
         listChildrenForFamily(found.docId, organizationId),
         listFosterPersonsByRefs(found.family.fosterPersonRefs),
@@ -74,6 +84,16 @@ export default function FosterPersonDetailPage() {
     reload()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyUid, fosterPersonId, organizationId])
+
+  async function handleBirthDateChange(value: string) {
+    if (!fosterPersonId) return
+    setBirthDate(value)
+    try {
+      await updateFosterPersonBirthDate(fosterPersonId, value)
+    } catch {
+      setError('Datum narození se nepodařilo uložit.')
+    }
+  }
 
   async function handleInvite() {
     if (!familyUid || !fosterPersonId || !organizationId || !userDoc || !fosterPerson?.email) return
@@ -125,31 +145,51 @@ export default function FosterPersonDetailPage() {
       {fosterPerson && (
         <>
           {activeSection === 'prehled' && (
-            <div className="mt-2 flex items-start gap-4">
-              <EntityAvatar
-                photoURL={fosterPerson.avatarUrl}
-                label={`${fosterPerson.firstName} ${fosterPerson.lastName}`}
-                fallbackIcon={UserRound}
-                size="lg"
-              />
-              <div>
-                <h1 className="text-lg font-normal leading-normal text-text-primary">
-                  {fosterPerson.firstName} {fosterPerson.lastName}
-                </h1>
-                <p className="mt-1 text-sm text-text-secondary">{fosterPerson.phone || '—'}</p>
-                <p className="text-sm text-text-secondary">{fosterPerson.email || '—'}</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  disabled={!fosterPerson.email || invitingFoster}
-                  onClick={handleInvite}
-                  title={!fosterPerson.email ? 'Pěstoun nemá vyplněný e-mail' : undefined}
-                >
-                  {invitingFoster ? 'Odesílám…' : 'Pozvat'}
-                </Button>
-                {inviteMessage && <p className="mt-2 text-sm text-text-secondary">{inviteMessage}</p>}
+            <div className="mt-2 flex max-w-[928px] items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <EntityAvatar
+                  photoURL={fosterPerson.avatarUrl}
+                  label={`${fosterPerson.firstName} ${fosterPerson.lastName}`}
+                  fallbackIcon={UserRound}
+                  size="lg"
+                />
+                <div>
+                  <h1 className="text-lg font-normal leading-normal text-text-primary">
+                    {fosterPerson.firstName} {fosterPerson.lastName}
+                  </h1>
+                  <p className="mt-1 text-sm text-text-secondary">{fosterPerson.phone || '—'}</p>
+                  <p className="text-sm text-text-secondary">{fosterPerson.email || '—'}</p>
+                  <label className="mt-3 flex flex-col gap-1.5">
+                    <span className="text-sm font-medium text-text-primary">Datum narození (volitelné)</span>
+                    <DatePicker value={birthDate} onChange={handleBirthDateChange} className="max-w-[220px]" />
+                  </label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                    disabled={!fosterPerson.email || invitingFoster}
+                    onClick={handleInvite}
+                    title={!fosterPerson.email ? 'Pěstoun nemá vyplněný e-mail' : undefined}
+                  >
+                    {invitingFoster ? 'Odesílám…' : 'Pozvat'}
+                  </Button>
+                  {inviteMessage && <p className="mt-2 text-sm text-text-secondary">{inviteMessage}</p>}
+                </div>
               </div>
+              {fosterPersonId && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() =>
+                    navigate(
+                      `/externiste?entityType=fosterPerson&entityId=${encodeURIComponent(fosterPersonId)}`,
+                    )
+                  }
+                >
+                  <UserSquare2 size={16} /> Přidat externistu
+                </Button>
+              )}
             </div>
           )}
 

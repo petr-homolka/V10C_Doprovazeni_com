@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { generateOspodReport } from '@/services/ospodReportService'
 import { getOrganization } from '@/services/organizationService'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 
 interface OspodReportSectionProps {
@@ -41,31 +43,33 @@ export function OspodReportSection({
   const [open, setOpen] = useState(false)
   const [period, setPeriod] = useState(defaultPeriod)
   const [title, setTitle] = useState('Zpráva o průběhu péče pro OSPOD')
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      const { docId } = await generateOspodReport({
-        familyDocId,
-        organizationId,
-        orgCode: org.orgCode,
-        createdByUid,
-        title,
-        periodFrom: new Date(period.from).toISOString(),
-        periodTo: new Date(period.to).toISOString(),
-        childIds,
-        fosterPersons,
+      let generatedDocId: string | undefined
+      await run(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('org not found')
+        const { docId } = await generateOspodReport({
+          familyDocId,
+          organizationId,
+          orgCode: org.orgCode,
+          createdByUid,
+          title,
+          periodFrom: new Date(period.from).toISOString(),
+          periodTo: new Date(period.to).toISOString(),
+          childIds,
+          fosterPersons,
+        })
+        generatedDocId = docId
       })
-      navigate(`/rodiny/${familyUid}/dokumenty/${docId}`)
+      navigate(`/rodiny/${familyUid}/dokumenty/${generatedDocId}`)
     } catch {
       setError('Report se nepodařilo vygenerovat.')
-      setSubmitting(false)
     }
   }
 
@@ -80,39 +84,23 @@ export function OspodReportSection({
         )}
       </div>
       {open && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Název dokumentu
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
           </label>
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Období od
-              <Input
-                type="date"
-                value={period.from}
-                onChange={(e) => setPeriod((p) => ({ ...p, from: e.target.value }))}
-                required
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Období do
-              <Input
-                type="date"
-                value={period.to}
-                onChange={(e) => setPeriod((p) => ({ ...p, to: e.target.value }))}
-                required
-              />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+            Období
+            <DateRangePicker from={period.from} to={period.to} onChange={setPeriod} />
+          </label>
           {error && (
             <p className="text-sm text-danger" role="alert">
               {error}
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Generuji…' : 'Vygenerovat report'}
+            <Button type="submit" loading={submitting} success={success}>
+              Vygenerovat report
             </Button>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={submitting}>
               Zrušit

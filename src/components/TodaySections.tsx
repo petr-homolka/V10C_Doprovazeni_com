@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, CalendarCheck, NotebookPen } from 'lucide-react'
+import { AlertTriangle, CalendarCheck, Cake, NotebookPen, PartyPopper } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FamilyCard } from '@/components/FamilyCard'
 import { useAuth } from '@/hooks/useAuth'
 import {
+  listBirthdayAlerts,
   listFamiliesAwaitingVisit,
   listOperationalAlerts,
   type FamilyAwaitingVisit,
@@ -47,10 +48,22 @@ export function TodaySections() {
     listFamiliesAwaitingVisit(userDoc.organizationId)
       .then(setFamilies)
       .catch(() => setError('Přehled čekajících návštěv se nepodařilo načíst.'))
-    listOperationalAlerts(userDoc.organizationId)
-      .then(setAlerts)
+    // Narozeninová/jmeninová upozornění jsou OSOBNÍ preference, KAŽDÁ
+    // NEZÁVISLE vypínatelná (`UserDoc.notifyBirthdays`/`notifyNameDays`,
+    // výchozí obě zapnuté — `/nastaveni/kalendar`), proto samostatné
+    // volání vedle `listOperationalAlerts` — ne jeho součást (ta funkce
+    // nezná přihlášeného uživatele, jen organizaci).
+    const includeBirthdays = userDoc.notifyBirthdays !== false
+    const includeNameDays = userDoc.notifyNameDays !== false
+    Promise.all([
+      listOperationalAlerts(userDoc.organizationId),
+      includeBirthdays || includeNameDays
+        ? listBirthdayAlerts(userDoc.organizationId, { includeBirthdays, includeNameDays })
+        : Promise.resolve([]),
+    ])
+      .then(([operational, birthdays]) => setAlerts([...birthdays, ...operational]))
       .catch(() => setAlertsError('Provozní upozornění se nepodařilo načíst.'))
-  }, [userDoc?.organizationId])
+  }, [userDoc?.organizationId, userDoc?.notifyBirthdays, userDoc?.notifyNameDays])
 
   return (
     <>
@@ -99,17 +112,24 @@ export function TodaySections() {
           ) : alerts.length === 0 ? (
             <EmptyState icon={AlertTriangle} text="Žádná provozní upozornění." />
           ) : (
-            alerts.map((alert, i) => (
-              <div
-                key={`${alert.kind}-${i}`}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  alert.overdue ? 'bg-danger-bg text-danger' : 'bg-warning-bg text-warning'
-                }`}
-              >
-                <AlertTriangle className="size-4 shrink-0" />
-                <span>{alert.text}</span>
-              </div>
-            ))
+            alerts.map((alert, i) => {
+              // Narozeniny/svátek jsou milá připomínka, ne problém — vlastní
+              // ikona a NEUTRÁLNÍ (ne žlutá "warning") barva, ať nepůsobí
+              // jako chyba/prodlení mezi skutečnými provozními upozorněními.
+              const isCelebration = alert.kind === 'birthday' || alert.kind === 'nameDay'
+              const Icon = alert.kind === 'birthday' ? Cake : alert.kind === 'nameDay' ? PartyPopper : AlertTriangle
+              return (
+                <div
+                  key={`${alert.kind}-${i}`}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                    isCelebration ? 'bg-primary-soft text-primary' : alert.overdue ? 'bg-danger-bg text-danger' : 'bg-warning-bg text-warning'
+                  }`}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span>{alert.text}</span>
+                </div>
+              )
+            })
           )}
         </div>
       </section>

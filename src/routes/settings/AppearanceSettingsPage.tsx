@@ -33,7 +33,7 @@ export default function AppearanceSettingsPage() {
         Osobní předvolba — platí jen pro váš účet, nemění nic pro ostatní v organizaci.
       </p>
 
-      <div className="mt-6 max-w-[480px] space-y-6">
+      <div className="mt-6 max-w-[560px] space-y-6">
         <section>
           <p className="text-sm font-medium text-text-primary">Režim vzhledu</p>
           <p className="mt-0.5 text-sm text-text-secondary">

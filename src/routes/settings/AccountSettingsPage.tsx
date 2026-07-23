@@ -23,7 +23,7 @@ export default function AccountSettingsPage() {
     >
       <h1 className="text-lg font-normal leading-normal text-text-primary">Účet</h1>
 
-      <div className="mt-6 max-w-[480px] space-y-5">
+      <div className="mt-6 max-w-[560px] space-y-5">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
           <Input defaultValue="Jana Málková" />

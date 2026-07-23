@@ -249,3 +249,22 @@ select {
     scroll-behavior: auto !important;
   }
 }
+
+/* "Naléhavé" stav v seznamu Rodin (UX zpětná vazba 2026-07-21) — pulz
+   patří k "ještě je čas reagovat", ne k "už je pozdě" (na to je statický
+   štítek "Po termínu"). 0%/100% jsou VĚDOMĚ stejné jako klidový stav, aby
+   `prefers-reduced-motion` výše (animation-iteration-count: 1) zamrzlo na
+   vizuálně korektním, čitelném snímku — ne v půlce pulzu. */
+@keyframes pulse-alert {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(218, 42, 11, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(218, 42, 11, 0);
+  }
+}
+
+.animate-pulse-alert {
+  animation: pulse-alert 1.8s ease-in-out infinite;
+}

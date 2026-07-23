@@ -3,7 +3,9 @@ import { GraduationCap, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   activateEducationPlan,
   approveEducationPlan,
@@ -93,7 +95,7 @@ export function EducationPlanSection({
   const [windowEnd, setWindowEnd] = useState('')
   const [itemRows, setItemRows] = useState<ItemRow[]>([emptyItemRow()])
   const [formError, setFormError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   async function reload() {
     try {
@@ -168,7 +170,6 @@ export function EducationPlanSection({
       return
     }
     setFormError(null)
-    setSubmitting(true)
     try {
       const items: EducationPlanItem[] = validRows.map((r) => ({
         id: r.id,
@@ -181,22 +182,22 @@ export function EducationPlanSection({
         status: 'planovano',
         courseEnrollmentRef: null,
       }))
-      await createEducationPlan(
-        fosterPersonId,
-        organizationId,
-        agreementId,
-        new Date(windowStart).toISOString(),
-        new Date(windowEnd).toISOString(),
-        items,
-        currentUid,
-      )
+      await run(async () => {
+        await createEducationPlan(
+          fosterPersonId,
+          organizationId,
+          agreementId,
+          new Date(windowStart).toISOString(),
+          new Date(windowEnd).toISOString(),
+          items,
+          currentUid,
+        )
+        await reload()
+      })
       resetForm()
       setShowForm(false)
-      await reload()
     } catch {
       setFormError('Plán se nepodařilo uložit.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -225,18 +226,12 @@ export function EducationPlanSection({
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="mt-4 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
+          className="mt-4 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
         >
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Období od</span>
-              <Input type="date" required value={windowStart} onChange={(e) => setWindowStart(e.target.value)} />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Období do</span>
-              <Input type="date" required value={windowEnd} onChange={(e) => setWindowEnd(e.target.value)} />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Období</span>
+            <DateRangePicker from={windowStart} to={windowEnd} onChange={({ from, to }) => { setWindowStart(from); setWindowEnd(to) }} />
+          </label>
 
           <div className="flex flex-col gap-3">
             {itemRows.map((row) => (
@@ -313,8 +308,8 @@ export function EducationPlanSection({
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting} className="w-fit">
-              {submitting ? 'Ukládám…' : 'Uložit návrh plánu'}
+            <Button type="submit" loading={submitting} success={success} className="w-fit">
+              Uložit návrh plánu
             </Button>
             <Button
               type="button"

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Calendar, CheckSquare, ClipboardCheck, FileText, Home, UserCog, UserPlus, Users } from 'lucide-react'
+import { Baby, Calendar, CheckSquare, ClipboardCheck, FileText, Home, UserCog, UserPlus, UserRound, UserSquare2, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { isStaffRole } from '@/types/user'
@@ -31,18 +31,29 @@ import { isStaffRole } from '@/types/user'
 const NAV_ITEMS = [
   { to: '/', label: 'Dnes', icon: Home, end: true, staffOnly: false },
   { to: '/rodiny', label: 'Rodiny', icon: Users, end: false, staffOnly: false },
+  { to: '/pestouni', label: 'Pěstouni', icon: UserRound, end: false, staffOnly: false },
+  { to: '/deti', label: 'Děti', icon: Baby, end: false, staffOnly: false },
   { to: '/zamestnanci', label: 'Zaměstnanci', icon: UserCog, end: false, staffOnly: true },
   { to: '/ukoly', label: 'Úkoly', icon: CheckSquare, end: false, staffOnly: false },
   { to: '/kalendar', label: 'Kalendář', icon: Calendar, end: false, staffOnly: false },
   { to: '/dokumenty', label: 'Dokumenty', icon: FileText, end: false, staffOnly: false },
   { to: '/zajemci', label: 'Zájemci', icon: UserPlus, end: false, staffOnly: true },
   { to: '/kvalita', label: 'Kvalita', icon: ClipboardCheck, end: false, staffOnly: true },
+  { to: '/externiste', label: 'Externisté', icon: UserSquare2, end: false, staffOnly: true },
 ] as const
+
+// M9 (UX zpětná vazba 2026-07-21) — spolupracovník vidí VÝHRADNĚ tuhle
+// jednu položku, žádnou z NAV_ITEMS výš (viz RequireAuth.tsx pro shodné
+// omezení na úrovni routování).
+const COLLABORATOR_NAV_ITEM = { to: '/spolupracovnik', label: 'Spolupráce', icon: UserSquare2, end: false } as const
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { userDoc } = useAuth()
-  const items = NAV_ITEMS.filter((item) => !item.staffOnly || (userDoc && isStaffRole(userDoc.role)))
+  const items: readonly { to: string; label: string; icon: typeof Home; end: boolean }[] =
+    userDoc?.role === 'spolupracovnik'
+      ? [COLLABORATOR_NAV_ITEM]
+      : NAV_ITEMS.filter((item) => !item.staffOnly || (userDoc && isStaffRole(userDoc.role)))
 
   return (
     <aside
