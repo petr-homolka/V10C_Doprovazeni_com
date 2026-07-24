@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { listCalendarEvents } from '@/services/calendarEventService'
+import { listEnumOptions } from '@/services/enumOptionsService'
 import { CALENDAR_EVENT_KIND_LABELS } from '@/types/calendarEvent'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { CalendarEventDoc } from '@/types/calendarEvent'
@@ -23,12 +24,22 @@ export function EntityAgenda({
   subjectId: string
 }) {
   const [events, setEvents] = useState<Array<{ docId: string; event: CalendarEventDoc }> | null>(null)
+  /** Typ události je OTEVŘENÝ číselník (organizace si přidává vlastní, viz
+   * `enumOptionsService`) — bez tohohle by se u vlastního typu zobrazil
+   * technický klíč („navsteva-rodiny") místo popisku. */
+  const [kindLabels, setKindLabels] = useState<Record<string, string>>(CALENDAR_EVENT_KIND_LABELS)
 
   useEffect(() => {
     let cancelled = false
     listCalendarEvents(organizationId)
       .then((all) => { if (!cancelled) setEvents(all) })
       .catch(() => { if (!cancelled) setEvents([]) })
+    listEnumOptions(organizationId, 'calendarEventKind')
+      .then((opts) => {
+        if (cancelled) return
+        setKindLabels({ ...CALENDAR_EVENT_KIND_LABELS, ...Object.fromEntries(opts.map((o) => [o.key, o.label])) })
+      })
+      .catch(() => { /* vlastní typy se nenačetly — zabudované popisky pořád platí */ })
     return () => { cancelled = true }
   }, [organizationId])
 
@@ -55,10 +66,10 @@ export function EntityAgenda({
   return (
     <div className="flex max-w-[720px] flex-col gap-5">
       {upcoming.length > 0 && (
-        <AgendaGroup title="Nadcházející" rows={upcoming} />
+        <AgendaGroup title="Nadcházející" rows={upcoming} kindLabels={kindLabels} />
       )}
       {past.length > 0 && (
-        <AgendaGroup title="Proběhlé" rows={past} muted />
+        <AgendaGroup title="Proběhlé" rows={past} kindLabels={kindLabels} muted />
       )}
     </div>
   )
@@ -67,10 +78,12 @@ export function EntityAgenda({
 function AgendaGroup({
   title,
   rows,
+  kindLabels,
   muted,
 }: {
   title: string
   rows: Array<{ docId: string; event: CalendarEventDoc }>
+  kindLabels: Record<string, string>
   muted?: boolean
 }) {
   return (
@@ -98,7 +111,7 @@ function AgendaGroup({
                   {'–'}
                   {end.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
                   {' · '}
-                  {CALENDAR_EVENT_KIND_LABELS[event.kind] ?? event.kind}
+                  {kindLabels[event.kind] ?? event.kind}
                 </p>
               </div>
             </div>

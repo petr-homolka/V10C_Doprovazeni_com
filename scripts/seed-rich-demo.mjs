@@ -10,42 +10,27 @@
  * doplní fotky i k původním 5 pěstounům / 6 dětem. Idempotentní — pevná doc
  * ID, opětovné spuštění přepíše, nezduplikuje.
  *
- * Stejný přístup jako `seed-demo-org.mjs`: NEpoužívá firebase-admin (žádná
- * nová závislost), píše přes Firestore REST API, autentizováno access tokenem
- * z `gcloud auth print-access-token`.
+ * Píše přes Firestore REST API (žádná nová závislost). Token si bere buď ze
+ * `GOOGLE_APPLICATION_CREDENTIALS`, nebo z přihlášeného `gcloud` — viz
+ * `lib/firestore-rest.mjs`. Díky tomu je jedna jediná verze skriptu, co
+ * poběží lokálně i v prostředí bez gcloud (dřív existovaly dvě rozešlé
+ * kopie a produkci naplnila ta neverzovaná).
+ *
+ * POZOR: zakládá NOVÁ data s pevnými ID `rich-fam-*`. Pokud chceš jen
+ * doplnit chybějící fotky u dat, co už v databázi jsou, použij
+ * `npm run backfill:avatars` — tenhle skript na to není.
  *
  * Spustit: `npm run seed:rich`
- * (potřebuje `gcloud` přihlášené s právy na v10c-doprovazeni-com;
- *  Petr se pak přihlásí jako petr@doprovazeni.com / heslo123).
+ * (Petr se pak přihlásí jako petr@doprovazeni.com / heslo123).
  */
-import { execSync } from 'node:child_process'
+import { getAccessToken, firestoreCommit, PROJECT_ID } from './lib/firestore-rest.mjs'
 
-const PROJECT_ID = 'v10c-doprovazeni-com'
 const ORG_ID = 'demo-org'
 const ORG_CODE = '0001'
 
 // KO/staff uids už v demo-org existují (viz seed-demo-org.mjs)
 const KO_POOL = ['demo-ko', 'demo-asistent', 'demo-teamleader', 'demo-vedouci']
 const STAFF_POOL = ['demo-ko', 'demo-asistent', 'demo-teamleader', 'demo-vedouci', 'demo-zamestnanec']
-
-// ---- REST auth + commit --------------------------------------------------
-function accessToken() {
-  return execSync('gcloud auth print-access-token', { encoding: 'utf8' }).trim()
-}
-async function firestoreCommit(writes) {
-  const token = accessToken()
-  const res = await fetch(
-    `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:commit`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'x-goog-user-project': PROJECT_ID, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ writes }),
-    },
-  )
-  const body = await res.json()
-  if (!res.ok) throw new Error(`Firestore commit selhal: ${JSON.stringify(body)}`)
-  return body
-}
 
 // ---- value encoding (mirror seed-demo-org.mjs) ---------------------------
 function toValue(v) {
@@ -143,19 +128,22 @@ for (let i = 1; i <= FAMILY_COUNT; i++) {
   const fosterRefs = []
   const fosters = []
 
-  // mother (primary)
+  // mother (primary) — její fotka slouží i jako fotka celé rodiny (appka
+  // rodinu takhle už pojmenovává, viz `resolveFamilyDisplayName`)
+  let primaryFosterPhoto
   {
     const id = `rich-fp-${i}-a`
     fpSeq++
     const by = 1955 + Math.floor(rnd() * 30)
     const first = pick(FEMALE), last = femSurname(surname)
+    primaryFosterPhoto = adultPhoto(true, ++photo)
     writes.push(writeDoc(`fosterPersons/${id}`, {
       uid: buildUid('fosterPerson', fpSeq), orgAccessList: [ORG_ID], familyId: famId,
       firstName: first, lastName: last,
       phone: `+4207${Math.floor(10000000 + rnd() * 89999999)}`,
       email: noDia(`${first}.${last}@example.cz`.toLowerCase()),
       birthDate: `${by}-0${1 + Math.floor(rnd() * 8)}-1${Math.floor(rnd() * 8)}`,
-      avatarUrl: adultPhoto(true, ++photo), createdAt: created,
+      avatarUrl: primaryFosterPhoto, createdAt: created,
     }))
     fosterRefs.push(id); fosters.push(id)
   }
@@ -179,6 +167,7 @@ for (let i = 1; i <= FAMILY_COUNT; i++) {
   writes.push(writeDoc(`families/${famId}`, {
     uid: buildUid('familyFile', famSeq), orgAccessList: [ORG_ID], fosterPersonRefs: fosterRefs,
     address: `${pick(STREETS)} ${1 + Math.floor(rnd() * 90)}, ${pick(CITIES)}`,
+    avatarUrl: primaryFosterPhoto,
     partnerSharingDefault: true, createdAt: created, lastTouchAt: iso(daysAgo(Math.floor(rnd() * 30))),
   }))
 
@@ -282,7 +271,7 @@ const staffPhotos = {
   'demo-teamleader': adultPhoto(false, 32), 'demo-vedouci': adultPhoto(true, 33),
   'demo-zamestnanec': adultPhoto(false, 34),
 }
-for (const [uid, url] of Object.entries(staffPhotos)) writes.push(mergeDoc(`users/${uid}`, { photoURL: url }))
+for (const [uid, url] of Object.entries(staffPhotos)) writes.push(mergeDoc(`users/${uid}`, { avatarUrl: url }))
 
 // backfill avatars on pre-existing demo-org fosters/children (MERGE)
 const fpAvatars = { 'demo-foster-1a': adultPhoto(true, 21), 'demo-foster-1b': adultPhoto(false, 22), 'demo-foster-2a': adultPhoto(true, 23), 'demo-foster-3a': adultPhoto(true, 24), 'demo-foster-3b': adultPhoto(false, 25) }

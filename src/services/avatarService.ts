@@ -56,7 +56,7 @@ export interface UploadAvatarInput {
 /**
  * Fotka zaměstnance (`users/{uid}`) — vlastní model mimo čtyři "subjekt"
  * entity (uživatel není SubjectRefKind). Cesta zrcadlí storage.rules
- * `avatars/users/{uid}/avatar.jpg`, `photoURL` na users dokumentu je jen
+ * `avatars/users/{uid}/avatar.jpg`, `avatarUrl` na users dokumentu je jen
  * zobrazovací cache. Zapisovat smí sám uživatel nebo org_admin (rules).
  */
 export async function uploadUserAvatar(uid: string, file: File): Promise<string> {
@@ -68,9 +68,9 @@ export async function uploadUserAvatar(uid: string, file: File): Promise<string>
   }
   const storageRef = ref(storage, `avatars/users/${uid}/avatar.jpg`)
   await uploadBytes(storageRef, file, { contentType: file.type })
-  const photoURL = await getDownloadURL(storageRef)
-  await updateDoc(doc(db, 'users', uid), { photoURL })
-  return photoURL
+  const avatarUrl = await getDownloadURL(storageRef)
+  await updateDoc(doc(db, 'users', uid), { avatarUrl })
+  return avatarUrl
 }
 
 export async function uploadEntityAvatar(input: UploadAvatarInput): Promise<string> {

@@ -390,7 +390,7 @@ export default function StaffPage() {
                   return (
                     <RecordCard
                       key={member.uid}
-                      leading={<EntityAvatar photoURL={member.photoURL} label={member.displayName} fallbackIcon={UserCog} />}
+                      leading={<EntityAvatar photoURL={member.avatarUrl} label={member.displayName} fallbackIcon={UserCog} />}
                       title={member.displayName}
                       subtitle={member.email}
                       meta={

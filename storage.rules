@@ -34,6 +34,11 @@ service firebase.storage {
       return isSignedIn() && userDoc().role == 'superadmin';
     }
 
+    /** Organizace CIZÍHO uživatele — pro scoping fotek zaměstnanců. */
+    function targetUserOrg(uid) {
+      return firestore.get(/databases/(default)/documents/users/$(uid)).data.organizationId;
+    }
+
     // `request.resource` je `null` při delete — `isReasonableImage()` musí
     // tenhle případ propustit (jinak by delete VŽDY selhal, i pro
     // superadmina). `image/(jpeg|png|webp)` záměrně vylučuje `image/svg+xml`
@@ -75,15 +80,22 @@ service firebase.storage {
       );
     }
 
-    // Fotka zaměstnance: čte kdokoli přihlášený ze stejné organizace
-    // (jméno+fotka se ukazují napříč appkou); zapisuje buď sám uživatel,
-    // nebo org_admin téže organizace (viz users/{uid} update rule).
+    // Fotka zaměstnance. ČTENÍ zúženo na STEJNOU organizaci (2026-07-24) —
+    // dřív stačilo být kdokoli přihlášený, takže i pěstoun z cizí
+    // organizace si mohl přečíst fotku cizího zaměstnance, když znal jeho
+    // uid. Vlastní fotku vidí uživatel vždy (i role bez organizace).
+    // ZÁPIS: sám uživatel, nebo org_admin téže organizace (zrcadlí
+    // `users/{uid}` update pravidlo ve firestore.rules).
     match /avatars/users/{uid}/{fileName} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid ||
+        isSuperadmin() ||
+        userDoc().organizationId == targetUserOrg(uid)
+      );
       allow write: if isReasonableImage() && (
         request.auth.uid == uid ||
         (isStaff() && userDoc().role == 'org_admin' &&
-         userDoc().organizationId == firestore.get(/databases/(default)/documents/users/$(uid)).data.organizationId)
+         userDoc().organizationId == targetUserOrg(uid))
       );
     }
 

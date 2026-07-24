@@ -210,11 +210,11 @@ service cloud.firestore {
       // zapínat/vypínat moduly, NIKDY on sám sobě (nesměl by si sám rozšířit rozsah).
       allow update: if
         (request.auth.uid == uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'notifyBirthdays', 'notifyNameDays', 'photoURL'])) ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'notifyBirthdays', 'notifyNameDays', 'avatarUrl'])) ||
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(resource.data.organizationId) &&
          resource.data.role != 'superadmin' && request.resource.data.role != 'superadmin' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-           ['role', 'disabledAt', 'displayName', 'fte', 'capacityThresholdOverride', 'collaboratorModules', 'photoURL']
+           ['role', 'disabledAt', 'displayName', 'fte', 'capacityThresholdOverride', 'collaboratorModules', 'avatarUrl']
          ));
 
       // Žádný hard delete profilu — jen `disabledAt` (viz update výše).

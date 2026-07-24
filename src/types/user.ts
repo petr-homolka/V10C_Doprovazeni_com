@@ -100,5 +100,5 @@ export interface UserDoc {
   /** Profilová fotka zaměstnance (Cloud Storage download URL, cesta
    * `avatars/users/{uid}/avatar.jpg`) — jen zobrazovací cache, zdroj pravdy
    * je Storage objekt. Nahrává `avatarService.uploadUserAvatar`. */
-  photoURL?: string | null
+  avatarUrl?: string | null
 }
