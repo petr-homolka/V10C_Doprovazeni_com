@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   addFosterProspectNote,
   createFosterProspect,
@@ -14,6 +16,7 @@ import {
   updateFosterProspectStatus,
 } from '@/services/fosterProspectService'
 import type { FosterProspectDoc, FosterProspectExistingStatus, FosterProspectNoteDoc, FosterProspectStatus } from '@/types/fosterProspect'
+import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import { Plus, UserPlus } from 'lucide-react'
 
 const STATUS_LABELS: Record<FosterProspectStatus, string> = {
@@ -48,15 +51,25 @@ export default function FosterProspectsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [notes, setNotes] = useState<Array<{ docId: string; note: FosterProspectNoteDoc }> | null>(null)
   const [newNoteText, setNewNoteText] = useState('')
+  const { loading: noteSubmitting, success: noteSuccess, run: runAddNote } = useAsyncSubmit()
 
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [contactPhone, setContactPhone] = useState('')
+  const [phoneError, setPhoneError] = useState<string | null>(null)
   const [source, setSource] = useState('')
   const [existingFosterStatus, setExistingFosterStatus] = useState<FosterProspectExistingStatus>('neznamo')
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [formError, setFormError] = useState<string | null>(null)
+
+  // Stav se mění per-řádek (Select ve výpisu), ne globálně — sdílená
+  // loading proměnná by při změně jednoho zájemce vizuálně "zamkla" i
+  // selecty ostatních řádků. Sledujeme tedy jen ID právě probíhající
+  // změny, useAsyncSubmit hlídá jen samotný běh akce.
+  const [statusChangingId, setStatusChangingId] = useState<string | null>(null)
+  const { run: runStatusChange } = useAsyncSubmit()
 
   async function reload() {
     if (!organizationId) return
@@ -77,16 +90,25 @@ export default function FosterProspectsPage() {
     e.preventDefault()
     setFormError(null)
     if (!name.trim() || !organizationId || !userDoc) return
-    setSubmitting(true)
+    const emailCheck = checkEmail(contactEmail)
+    const phoneCheck = checkPhone(contactPhone)
+    setContactEmail(emailCheck.value)
+    setContactPhone(phoneCheck.value)
+    setEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
+    setPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
+    if (!emailCheck.ok || !phoneCheck.ok) return
     try {
-      await createFosterProspect({
-        organizationId,
-        name,
-        contactEmail: contactEmail || undefined,
-        contactPhone: contactPhone || undefined,
-        source: source || undefined,
-        existingFosterStatus,
-        assignedTo: userDoc.uid,
+      await run(async () => {
+        await createFosterProspect({
+          organizationId,
+          name,
+          ...(emailCheck.value ? { contactEmail: emailCheck.value } : {}),
+          ...(phoneCheck.value ? { contactPhone: phoneCheck.value } : {}),
+          ...(source ? { source } : {}),
+          existingFosterStatus,
+          assignedTo: userDoc.uid,
+        })
+        await reload()
       })
       setShowForm(false)
       setName('')
@@ -94,21 +116,23 @@ export default function FosterProspectsPage() {
       setContactPhone('')
       setSource('')
       setExistingFosterStatus('neznamo')
-      await reload()
     } catch {
       setFormError('Přidání zájemce se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
   async function handleStatusChange(prospectId: string, status: FosterProspectStatus) {
     setActionError(null)
+    setStatusChangingId(prospectId)
     try {
-      await updateFosterProspectStatus(prospectId, status)
-      await reload()
+      await runStatusChange(async () => {
+        await updateFosterProspectStatus(prospectId, status)
+        await reload()
+      })
     } catch {
       setActionError('Změna stavu se nezdařila.')
+    } finally {
+      setStatusChangingId(null)
     }
   }
 
@@ -131,10 +155,12 @@ export default function FosterProspectsPage() {
     if (!newNoteText.trim() || !userDoc) return
     setActionError(null)
     try {
-      await addFosterProspectNote(prospectId, userDoc.uid, newNoteText.trim())
+      await runAddNote(async () => {
+        await addFosterProspectNote(prospectId, userDoc.uid, newNoteText.trim())
+        setNotes(await listFosterProspectNotes(prospectId))
+        await reload()
+      })
       setNewNoteText('')
-      setNotes(await listFosterProspectNotes(prospectId))
-      await reload()
     } catch {
       setActionError('Poznámku se nepodařilo uložit.')
     }
@@ -143,7 +169,7 @@ export default function FosterProspectsPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Zájemci' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zájemci</h1>
+        <PageHeader title="Zájemci" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -153,12 +179,14 @@ export default function FosterProspectsPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Zájemci' }]}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zájemci o pěstounství</h1>
-        <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zájemce</>)}
-        </Button>
-      </div>
+      <PageHeader
+        title="Zájemci o pěstounství"
+        actions={
+          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zájemce</>)}
+          </Button>
+        }
+      />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">
@@ -177,7 +205,7 @@ export default function FosterProspectsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-4 flex flex-col max-w-[560px] gap-3 rounded-lg border border-border-subtle bg-surface p-4">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Jméno
             <Input required value={name} onChange={(e) => setName(e.target.value)} />
@@ -185,11 +213,30 @@ export default function FosterProspectsPage() {
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               E-mail (volitelné)
-              <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
+              <Input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => { setContactEmail(e.target.value); setEmailError(null) }}
+                onBlur={() => {
+                  const result = checkEmail(contactEmail)
+                  setContactEmail(result.value)
+                  setEmailError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {emailError && <span className="text-xs text-danger">{emailError}</span>}
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Telefon (volitelné)
-              <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
+              <Input
+                value={contactPhone}
+                onChange={(e) => { setContactPhone(e.target.value); setPhoneError(null) }}
+                onBlur={() => {
+                  const result = checkPhone(contactPhone)
+                  setContactPhone(result.value)
+                  setPhoneError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {phoneError && <span className="text-xs text-danger">{phoneError}</span>}
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
@@ -215,8 +262,8 @@ export default function FosterProspectsPage() {
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -244,7 +291,7 @@ export default function FosterProspectsPage() {
               return (
                 <div key={status}>
                   <h2 className="text-sm font-medium text-text-primary">{STATUS_LABELS[status]}</h2>
-                  <div className="mt-2 flex flex-col gap-2">
+                  <div className="mt-2 flex flex-col max-w-[560px] gap-2">
                     {inStatus.map(({ docId, prospect }) => (
                       <div key={docId} className="rounded-lg border border-border-subtle bg-surface p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -263,6 +310,7 @@ export default function FosterProspectsPage() {
                           <Select
                             value={prospect.status}
                             onChange={(e) => handleStatusChange(docId, e.target.value as FosterProspectStatus)}
+                            disabled={statusChangingId === docId}
                           >
                             {STATUS_ORDER.map((s) => (
                               <option key={s} value={s}>
@@ -277,7 +325,7 @@ export default function FosterProspectsPage() {
                         </Button>
 
                         {expandedId === docId && (
-                          <div className="mt-2 flex flex-col gap-2 border-t border-border-subtle pt-2">
+                          <div className="mt-2 flex flex-col max-w-[560px] gap-2 border-t border-border-subtle pt-2">
                             {notes === null ? (
                               <p className="text-sm text-text-secondary">Načítám…</p>
                             ) : notes.length === 0 ? (
@@ -296,7 +344,12 @@ export default function FosterProspectsPage() {
                                 value={newNoteText}
                                 onChange={(e) => setNewNoteText(e.target.value)}
                               />
-                              <Button size="sm" onClick={() => handleAddNote(docId)}>
+                              <Button
+                                size="sm"
+                                onClick={() => handleAddNote(docId)}
+                                loading={noteSubmitting}
+                                success={noteSuccess}
+                              >
                                 Přidat
                               </Button>
                             </div>

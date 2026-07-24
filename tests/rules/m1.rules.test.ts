@@ -235,6 +235,34 @@ describe('users/{uid} update rules', () => {
     await assertFails(updateDoc(doc(asKoA1.firestore(), 'users', 'ko-a1'), { role: 'org_admin' }))
   })
 
+  it('a user can toggle their own notifyBirthdays preference', async () => {
+    const asKoA1 = testEnv.authenticatedContext('ko-a1')
+    await assertSucceeds(
+      updateDoc(doc(asKoA1.firestore(), 'users', 'ko-a1'), { notifyBirthdays: false }),
+    )
+  })
+
+  it('a user CANNOT sneak role change in alongside notifyBirthdays', async () => {
+    const asKoA1 = testEnv.authenticatedContext('ko-a1')
+    await assertFails(
+      updateDoc(doc(asKoA1.firestore(), 'users', 'ko-a1'), { notifyBirthdays: false, role: 'org_admin' }),
+    )
+  })
+
+  it('a user can toggle their own notifyNameDays preference INDEPENDENTLY of notifyBirthdays', async () => {
+    const asKoA1 = testEnv.authenticatedContext('ko-a1')
+    await assertSucceeds(
+      updateDoc(doc(asKoA1.firestore(), 'users', 'ko-a1'), { notifyNameDays: false }),
+    )
+  })
+
+  it('a user CANNOT sneak role change in alongside notifyNameDays', async () => {
+    const asKoA1 = testEnv.authenticatedContext('ko-a1')
+    await assertFails(
+      updateDoc(doc(asKoA1.firestore(), 'users', 'ko-a1'), { notifyNameDays: false, role: 'org_admin' }),
+    )
+  })
+
   it('org_admin can disable a colleague in their own org (soft-delete via disabledAt)', async () => {
     const asAdminA = testEnv.authenticatedContext('org-admin-a')
     await assertSucceeds(

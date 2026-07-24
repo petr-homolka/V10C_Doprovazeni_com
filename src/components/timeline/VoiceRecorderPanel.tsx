@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Mic, Square, X } from 'lucide-react'
 import { Drawer } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { MicWaveform } from '@/components/ui/mic-waveform'
 import { cn } from '@/lib/utils'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
+import { useMicLevels } from '@/hooks/useMicLevels'
 import { createVisitTimelineEntry, createVoiceTimelineEntry } from '@/services/timelineService'
+import { summarizeVoiceEntry } from '@/lib/ai'
 import type { SharingLevel } from '@/types/sharing'
 import type { SubjectRef } from '@/types/timelineEntry'
 
@@ -37,8 +40,14 @@ function formatDuration(seconds: number): string {
 
 /**
  * Avatar+mikrofon rychlý hlasový zápis — pravý vyjížděcí panel (§7.6 vzor,
- * ne modál — potřebuje plnou výšku pro víceminutový diktát). Otevře se
- * VŽDY už nahrávající (§7.1 "ihned začne nahrávání").
+ * ne modál — potřebuje plnou výšku pro víceminutový diktát).
+ *
+ * Přepracováno 2026-07-24 (Petrova inspirace diktovací lištou v Claude
+ * Code): JEDNO kompaktní pole zvládá psaní i diktování zároveň — malé
+ * kruhové tlačítko mikrofonu + živý waveform (`useMicLevels`/
+ * `MicWaveform`) nad textarea, mikrofon je VYPNUTÝ při otevření (žádné
+ * automatické spuštění nahrávání jako dřív) — textarea je hned viditelná
+ * a editovatelná, mikrofon je jen doplněk k psaní, ne povinná brána.
  *
  * "Zařadit k" ukazuje jen OSOBY (pěstoun/dítě) stejné rodiny — rodina
  * samotná a Dohoda NEJSOU volitelné položky (nejsou to lidé, ke kterým by
@@ -47,8 +56,9 @@ function formatDuration(seconds: number): string {
  * nahrávání spustilo z jejího avataru) — beze změny zadání §7.3, jen jiné
  * zobrazení.
  *
- * "AI souhrn" je viditelné, ale VYPNUTÉ — žádný AI backend v tomhle
- * buildu (M10 SEAM). Jen "Uložit text" je skutečně funkční.
+ * "AI souhrn" (M10 SEAM uzavřený) — `lib/ai.ts` `summarizeVoiceEntry`,
+ * Firebase AI Logic/Gemini. Nahradí `body` učesanou verzí, surový přepis
+ * PŘED úpravou se uloží do `originalTranscript` (§7.5, nikdy nemazané).
  */
 export function VoiceRecorderPanel({
   familyDocId,
@@ -76,9 +86,12 @@ export function VoiceRecorderPanel({
   onSaved?: () => void
 }) {
   const recognizer = useSpeechRecognition()
+  const [recording, setRecording] = useState(false)
+  const micLevels = useMicLevels(recording)
   const fosterPeople = people.filter((p) => p.kind === 'fosterPerson')
-  const [stopped, setStopped] = useState(false)
   const [body, setBody] = useState('')
+  const [originalTranscript, setOriginalTranscript] = useState<string | null>(null)
+  const [summarizing, setSummarizing] = useState(false)
   const [checkedKeys, setCheckedKeys] = useState<Set<string>>(() => new Set(preselectedPeopleKeys))
   const [isPrivate, setIsPrivate] = useState(false)
   /** DOPLNENI_ZADANI-DO-M5 §2 — SEAM uzavřený touhle dávkou: `sharingLevel:
@@ -91,20 +104,27 @@ export function VoiceRecorderPanel({
   const [shareBothPartners, setShareBothPartners] = useState(partnerSharingDefault)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (recognizer.isSupported) {
-      recognizer.start()
-    } else {
-      setStopped(true)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    textareaRef.current?.focus()
   }, [])
 
-  function handleStop() {
-    recognizer.stop()
-    setBody(recognizer.transcript)
-    setStopped(true)
+  // Živý přepis proudí přímo do textového pole, dokud se nahrává.
+  useEffect(() => {
+    if (recording) setBody(recognizer.transcript)
+  }, [recognizer.transcript, recording])
+
+  function toggleRecording() {
+    if (recording) {
+      recognizer.stop()
+      setRecording(false)
+      return
+    }
+    if (!recognizer.isSupported) return
+    recognizer.reset()
+    setRecording(true)
+    recognizer.start()
   }
 
   function togglePerson(key: string) {
@@ -119,6 +139,29 @@ export function VoiceRecorderPanel({
   const showPartnerToggle = fosterPeople.length >= 2
   const usePartnerScoped = showPartnerToggle && !shareBothPartners
 
+  /** M10 — nahradí `body` učesanou AI verzí, surový přepis se uchová v
+   * `originalTranscript` (§7.5, nikdy nemazané, i když se v hlavním
+   * zobrazení nepoužívá). Druhé kliknutí (po další ruční úpravě) znovu
+   * učeše AKTUÁLNÍ text, `originalTranscript` ale zůstává PRVNÍ surová
+   * verze, ne mezistav. */
+  async function handleAiSummary() {
+    if (!body.trim() || summarizing) return
+    setSummarizing(true)
+    setError(null)
+    try {
+      const rawBefore = body
+      const summary = await summarizeVoiceEntry(body)
+      setOriginalTranscript((prev) => prev ?? rawBefore)
+      setBody(summary)
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('AI souhrn selhal:', e)
+      setError('AI souhrn se nepodařilo vytvořit — zkuste to znovu nebo pokračujte s textem ručně.')
+    } finally {
+      setSummarizing(false)
+    }
+  }
+
   async function handleSave() {
     if (!body.trim()) {
       setError('Zápis je prázdný.')
@@ -128,6 +171,7 @@ export function VoiceRecorderPanel({
       setError('Vyberte v „Zařadit k", kterého pěstouna se zápis týká.')
       return
     }
+    if (recording) toggleRecording()
     setSaving(true)
     setError(null)
     try {
@@ -160,6 +204,7 @@ export function VoiceRecorderPanel({
           endedAt: visit.endedAt,
           durationSeconds: visit.durationSeconds,
           location: visit.location,
+          originalTranscript,
           stampFosterPersonIds,
         })
       } else {
@@ -170,6 +215,7 @@ export function VoiceRecorderPanel({
           subjectRefs,
           sharingLevel,
           body: body.trim(),
+          originalTranscript,
         })
       }
       onSaved?.()
@@ -187,8 +233,8 @@ export function VoiceRecorderPanel({
     <Drawer onClose={onClose}>
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
-          <h2 className="text-lg font-normal leading-normal text-text-primary">
-            {visit ? 'Zápis z návštěvy' : 'Hlasový zápis'}
+          <h2 className="text-[17px] font-semibold leading-snug text-text-primary">
+            {visit ? 'Zápis z návštěvy' : 'Zápis'}
           </h2>
           {visit && (
             <p className="mt-0.5 text-xs text-text-secondary">
@@ -234,94 +280,99 @@ export function VoiceRecorderPanel({
           </div>
         )}
 
-        {!stopped ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-6 py-4">
-            <div className="relative flex size-20 items-center justify-center">
-              <span className="absolute inset-0 rounded-full bg-danger-solid animate-mic-ring" />
-              <span className="absolute inset-0 rounded-full bg-danger-solid/40 animate-mic-ring [animation-delay:0.7s]" />
-              <span className="relative flex size-20 items-center justify-center rounded-full bg-danger-solid text-white shadow-overlay animate-mic-breathe">
-                <Mic size={32} strokeWidth={2} />
-              </span>
-            </div>
-            <p className="max-w-[320px] text-center text-sm text-text-secondary">
-              {recognizer.transcript || 'Nahrávám… mluvte.'}
-            </p>
-            {recognizer.error && <p className="text-sm text-danger">{recognizer.error}</p>}
-            <Button variant="destructive" onClick={handleStop} className="gap-2">
-              <Square size={14} strokeWidth={2} />
-              Zastavit
-            </Button>
+        {/* Kompaktní řádek: kruhové tlačítko mikrofonu + živý waveform
+         * (nahráváno) / nápověda (klid) — nahrazuje dřívější "nahrávám"
+         * stav na celou výšku panelu. */}
+        <div className="flex h-10 shrink-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleRecording}
+            disabled={!recognizer.isSupported}
+            aria-label={recording ? 'Zastavit nahrávání' : 'Nahrát hlasem'}
+            title={recognizer.isSupported ? undefined : 'Rozpoznávání řeči tenhle prohlížeč nepodporuje'}
+            className={cn(
+              'flex size-10 shrink-0 items-center justify-center rounded-full transition-colors duration-150 disabled:opacity-40',
+              recording ? 'bg-danger-solid text-white' : 'bg-primary-soft text-primary',
+            )}
+          >
+            {recording ? <Square size={15} strokeWidth={2} /> : <Mic size={18} strokeWidth={2} />}
+          </button>
+          {recording ? (
+            <MicWaveform levels={micLevels} className="h-6 flex-1" />
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-sm text-text-tertiary">
+              {recognizer.isSupported
+                ? 'Napište zápis, nebo klikněte na mikrofon a nadiktujte ho'
+                : 'Rozpoznávání řeči tenhle prohlížeč nepodporuje — napište zápis ručně'}
+            </span>
+          )}
+        </div>
+        {recognizer.error && <p className="text-sm text-danger">{recognizer.error}</p>}
+
+        <textarea
+          ref={textareaRef}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Text zápisu…"
+          className={cn(
+            'w-full flex-1 resize-none rounded-sm border border-transparent bg-field px-4 py-3',
+            'text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary',
+            'transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none',
+          )}
+        />
+
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm text-text-primary">Soukromá poznámka</span>
+          <Switch checked={isPrivate} onChange={setIsPrivate} label="Soukromá poznámka" />
+        </div>
+
+        {!isPrivate && (
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-text-primary">Sdílet s pěstounem</span>
+            <Switch checked={shareWithFoster} onChange={setShareWithFoster} label="Sdílet s pěstounem" />
           </div>
-        ) : (
-          <>
-            {!recognizer.isSupported && (
-              <p className="text-xs text-text-tertiary">
-                Rozpoznávání řeči není v tomhle prohlížeči podporované — zápis napište ručně.
-              </p>
-            )}
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Text zápisu…"
-              autoFocus
-              className={cn(
-                'w-full flex-1 resize-none rounded-sm border border-border-medium bg-inset px-4 py-3',
-                'text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary',
-                'focus:border-2 focus:border-accent focus:outline-none',
-              )}
+        )}
+
+        {showPartnerToggle && (
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-text-primary">Sdílet s oběma pěstouny</span>
+            <Switch
+              checked={shareBothPartners}
+              onChange={setShareBothPartners}
+              label="Sdílet s oběma pěstouny"
             />
+          </div>
+        )}
 
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-text-primary">Soukromá poznámka</span>
-              <Switch checked={isPrivate} onChange={setIsPrivate} label="Soukromá poznámka" />
-            </div>
+        {usePartnerScoped && (
+          <p className="text-xs text-text-tertiary">
+            Vyberte výš v „Zařadit k", kterého pěstouna se zápis týká — druhý partner ho neuvidí.
+          </p>
+        )}
 
-            {!isPrivate && (
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm text-text-primary">Sdílet s pěstounem</span>
-                <Switch checked={shareWithFoster} onChange={setShareWithFoster} label="Sdílet s pěstounem" />
-              </div>
-            )}
-
-            {showPartnerToggle && (
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm text-text-primary">Sdílet s oběma pěstouny</span>
-                <Switch
-                  checked={shareBothPartners}
-                  onChange={setShareBothPartners}
-                  label="Sdílet s oběma pěstouny"
-                />
-              </div>
-            )}
-
-            {usePartnerScoped && (
-              <p className="text-xs text-text-tertiary">
-                Vyberte výš v „Zařadit k", kterého pěstouna se zápis týká — druhý partner ho neuvidí.
-              </p>
-            )}
-
-            {error && (
-              <p className="text-sm text-danger" role="alert">
-                {error}
-              </p>
-            )}
-          </>
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
         )}
       </div>
 
-      {stopped && (
-        <div className="flex items-center gap-2 border-t border-border px-5 py-4">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? 'Ukládám…' : 'Uložit text'}
-          </Button>
-          <Button variant="secondary" disabled title="AI souhrn zatím čeká na napojení (M10)">
-            AI souhrn
-          </Button>
-          <Button variant="ghost" onClick={onClose} disabled={saving}>
-            Zrušit
-          </Button>
-        </div>
-      )}
+      <div className="flex items-center gap-2 border-t border-border px-5 py-4">
+        <Button onClick={handleSave} disabled={saving}>
+          {saving ? 'Ukládám…' : 'Uložit text'}
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={handleAiSummary}
+          disabled={saving || summarizing || !body.trim()}
+          title="Vyčistí mluvenou řeč do stručného profesionálního textu (Gemini) — surový přepis zůstává uložený, nic se neztrácí."
+        >
+          {summarizing ? 'Vytvářím souhrn…' : 'AI souhrn'}
+        </Button>
+        <Button variant="ghost" onClick={onClose} disabled={saving}>
+          Zrušit
+        </Button>
+      </div>
     </Drawer>
   )
 }

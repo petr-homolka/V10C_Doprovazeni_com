@@ -4,12 +4,21 @@
  * (bez právních účinků) + přidělená oprávnění (granty) + audit. Výchozí
  * stav = vše zakázáno. RČ ani WhatsApp se PŘI REGISTRACI NEPOŽADUJÍ.
  */
+/** `child` i `fosterPerson` — externista nemusí patřit jen k dítěti (viz
+ * `access/{entityId}/grants` níž, kde `entityId` je docId jednoho, nebo
+ * druhého). `primary*` jen usnadňuje UI (předvyplnění při registraci),
+ * granty samotné na tomhle poli nezávisí. */
+export type ExternalEntityType = 'child' | 'fosterPerson'
+
 export interface ExternalParticipantDoc {
   organizationId: string
   name: string
   email: string
   phone?: string
   relationLabel: string // popisný, žádná logika oprávnění sama o sobě
+  primaryEntityType?: ExternalEntityType
+  primaryEntityId?: string
+  primaryEntityLabel?: string
   createdAt: string
   disabledAt?: string | null
 }
@@ -47,7 +56,8 @@ export interface TimeWindow {
 }
 
 /**
- * external_participants/{epId}/access/{childId}/grants/{grantId} — verzované,
+ * external_participants/{epId}/access/{entityId}/grants/{grantId} — `entityId`
+ * je docId dítěte NEBO pěstouna (viz `ExternalEntityType` výš), verzované,
  * `revoke` = nastavení `validTo`, NIKDY delete. Citlivá oprávnění = 3 kroky/
  * 3 aktéři (`requestGrant→approveGrant→activateGrant`), necitlivá = `grantDirect`.
  */

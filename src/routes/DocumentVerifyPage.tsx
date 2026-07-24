@@ -48,7 +48,7 @@ export default function DocumentVerifyPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Ověření dokumentu' }]}>
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Ověření dokumentu {uid}</h1>
+      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Ověření dokumentu {uid}</h1>
 
       {error && (
         <p className="mt-4 text-sm text-danger" role="alert">
@@ -63,7 +63,7 @@ export default function DocumentVerifyPage() {
       )}
 
       {result && (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="mt-4 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border bg-surface p-5">
           <p className="text-sm text-text-primary">
             <span className="font-medium">{result.document.title}</span> · verze {result.document.currentVersion}
           </p>

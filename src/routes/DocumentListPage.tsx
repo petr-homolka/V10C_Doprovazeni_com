@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
@@ -39,7 +40,7 @@ export default function DocumentListPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Dokumenty' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Dokumenty</h1>
+        <PageHeader title="Dokumenty" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -47,7 +48,7 @@ export default function DocumentListPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Dokumenty' }]}>
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Dokumenty</h1>
+      <PageHeader title="Dokumenty" />
 
       {error && (
         <p className="mt-3 text-sm text-danger" role="alert">

@@ -28,7 +28,8 @@ export function Switch({
       aria-label={label}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex h-5 w-10 shrink-0 items-center rounded-full transition-colors duration-150',
+        'relative inline-flex h-5 w-10 shrink-0 items-center rounded-full transition-[background-color,box-shadow] duration-150',
+        'focus-visible:outline-none focus-visible:shadow-focus',
         checked ? 'bg-accent' : 'bg-toggle-off',
       )}
     >

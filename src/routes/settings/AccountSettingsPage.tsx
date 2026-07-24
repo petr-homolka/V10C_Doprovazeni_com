@@ -1,6 +1,7 @@
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHeader } from '@/components/ui/page-header'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
@@ -21,9 +22,9 @@ export default function AccountSettingsPage() {
       breadcrumb={[{ label: 'Nastavení' }, { label: 'Účet' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Účet</h1>
+      <PageHeader title="Účet" variant="settings" />
 
-      <div className="mt-6 max-w-[480px] space-y-5">
+      <div className="max-w-[560px] space-y-5">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
           <Input defaultValue="Jana Málková" />

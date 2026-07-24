@@ -13,6 +13,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
       { to: '/nastaveni/ucet', label: 'Účet' },
       { to: '/nastaveni/vzhled', label: 'Vzhled' },
       { to: '/nastaveni/oznameni', label: 'Oznámení' },
+      { to: '/nastaveni/kalendar', label: 'Kalendář' },
     ],
   },
   {

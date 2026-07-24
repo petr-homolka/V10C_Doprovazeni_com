@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHeader } from '@/components/ui/page-header'
 import { TodaySections } from '@/components/TodaySections'
 import { listOverCapacityKos, type OverCapacityKo } from '@/services/agreementService'
 import { isReadOnlyManagerRole } from '@/types/user'
@@ -30,18 +31,13 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      <div>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">
-          Dnes
-        </h1>
-        <p className="mt-1 text-[13px] text-text-secondary">
-          Přihlášen jako {userDoc?.displayName ?? firebaseUser?.email}
-          {userDoc?.role ? ` · ${userDoc.role}` : ''}
-        </p>
-      </div>
+      <PageHeader
+        title="Dnes"
+        description={`Přihlášen jako ${userDoc?.displayName ?? firebaseUser?.email ?? ''}${userDoc?.role ? ` · ${userDoc.role}` : ''}`}
+      />
 
       {canSeeCapacityBanner && overCapacity.length > 0 && (
-        <div className="mt-4 rounded-lg border border-warning bg-warning-bg p-4">
+        <div className="mt-4 max-w-[928px] rounded-lg border border-warning bg-warning-bg p-4">
           <p className="text-sm font-medium text-text-primary">
             {overCapacity.length === 1
               ? '1 klíčová osoba má překročenou kapacitu'

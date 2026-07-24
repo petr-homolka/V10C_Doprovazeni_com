@@ -37,7 +37,7 @@ export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
     resolvedTheme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'
 
   return (
-    <div className="flex h-14 items-center justify-between gap-4 px-4">
+    <div className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border-default bg-surface-soft px-4">
       <div className="min-w-0 flex-1">{breadcrumb && <Breadcrumb items={breadcrumb} />}</div>
 
       <div className="flex shrink-0 items-center gap-1">

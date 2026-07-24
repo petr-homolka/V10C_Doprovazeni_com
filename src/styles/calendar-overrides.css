@@ -1,0 +1,140 @@
+/**
+ * Vizuální přestavba `react-big-calendar` (2026-07-22, UX zpětná vazba
+ * "vypadá to jako z roku 1999") — knihovna je záměrně nenastylovaná
+ * ("bring your own CSS"), tenhle soubor ji převléká na tokeny appky
+ * (`index.css`), inspirace Routine.co (měkké pastelové bloky, tenké
+ * linky, čistá typografie, červená "teď" linka). Vlastní `Toolbar`
+ * (`CalendarToolbar.tsx`, znovupoužívá `Button`/`SegmentedTabs`) nahrazuje
+ * defaultní `.rbc-toolbar` úplně — proto tenhle soubor `.rbc-toolbar`
+ * vůbec neřeší.
+ */
+
+.rbc-calendar {
+  font-family: inherit;
+  color: var(--text-primary);
+}
+
+/* Základní reset události — skutečný vzhled (barva/border/stín) dodává
+   `eventPropGetter` per-událost (barva zaměstnance), tady jen společný
+   tvar (radius/stín/typografie), ne barva. */
+.rbc-event {
+  border-radius: var(--radius-sm);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  padding: 3px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.rbc-event:hover,
+.rbc-event:focus {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+.rbc-event.rbc-selected {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.rbc-event-label {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+/* Mřížka — tenčí, méně agresivní linky než defaultní tmavě šedé. */
+.rbc-time-view,
+.rbc-time-header-content,
+.rbc-time-content,
+.rbc-time-header.rbc-overflowing,
+.rbc-month-view,
+.rbc-header,
+.rbc-day-bg + .rbc-day-bg,
+.rbc-timeslot-group,
+.rbc-time-content > * + * > *,
+.rbc-agenda-view table.rbc-agenda-table {
+  border-color: var(--border-subtle) !important;
+}
+.rbc-off-range-bg {
+  background: var(--bg-surface);
+}
+.rbc-off-range {
+  color: var(--text-tertiary);
+}
+
+/* "Dnes" — jemný přízvuk (--primary-soft), ne agresivní modrá. */
+.rbc-today {
+  background-color: var(--primary-soft);
+  opacity: 0.35;
+}
+.rbc-time-view .rbc-today,
+.rbc-time-column.rbc-today {
+  opacity: 1;
+  background-color: color-mix(in srgb, var(--primary-soft) 35%, transparent);
+}
+
+.rbc-header {
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.rbc-date-cell {
+  padding: 6px 8px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.rbc-date-cell.rbc-now {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.rbc-time-gutter .rbc-timeslot-group,
+.rbc-time-gutter {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+/* Červená "teď" linka (Routine.co inspirace) — knihovna dává jen tenký
+   div, přebarveno + přidaná tečka na levém okraji přes ::before. */
+.rbc-current-time-indicator {
+  height: 2px;
+  background-color: var(--danger-solid);
+  opacity: 1;
+}
+.rbc-time-content {
+  position: relative;
+}
+
+.rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.rbc-agenda-date-cell,
+.rbc-agenda-time-cell {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.rbc-show-more {
+  color: var(--accent);
+  font-weight: 500;
+  background: transparent;
+}
+
+.rbc-selected-cell,
+.rbc-slot-selection {
+  background-color: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.rbc-month-row + .rbc-month-row,
+.rbc-month-row {
+  border-color: var(--border-subtle);
+}

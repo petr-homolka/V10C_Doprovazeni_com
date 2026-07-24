@@ -17,6 +17,12 @@ export interface OrganizationDoc {
   createdByUid: string
   createdAt: string
   koCapacityThreshold?: number
+  /** Výchozí délka Dohody v měsících pro tuhle organizaci — prostřední
+   * úroveň kaskády (per-Dohoda ruční datum > tohle > platformní
+   * `platformDefaults.agreementDefaultDurationMonths`), viz
+   * src/lib/agreementDuration.ts. Nenastavené pole = "spadni na
+   * platformní výchozí", stejný vzor jako `koCapacityThreshold`. */
+  agreementDefaultDurationMonths?: number
   /** §5.8 — nikdy dosud postavené v kódu (M0-M5 ho jen předjímalo). `plan`
    * samotný zůstává SEAM (`tier`/`billingNote` bez UI — "byznysové
    * rozhodnutí padne později", potvrzeno v NOVE-ZADANI-M6-AZ-KONEC.md) —
