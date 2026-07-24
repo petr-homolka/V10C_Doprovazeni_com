@@ -49,19 +49,7 @@ const EMPTY_FORM = {
   occurrenceCount: 4,
 }
 
-/**
- * `/ukoly` — dřív mrtvý odkaz v `Sidebar.tsx`, poprvé zprovozněný (Petrovo
- * zadání 2026-07-23, bod 3: "jak to bude s Úkoly, které na čas vázané
- * nejsou nebo mají jen deadline v budoucnosti?"). Sdílený staff seznam,
- * stejná důvěra napříč rolemi jako Kalendář — kdokoli smí založit/upravit/
- * dokončit ČÍKOLIV úkol.
- *
- * Cesta B, čtvrtý průchod (2026-07-23) — nový/upravovaný úkol žije
- * v pravém `SidePanel`u (stejný vzor jako `CalendarPage.tsx`), ne
- * v centrovaném `Modal`u — jednotná "editace = panel vpravo" konvence
- * napříč appkou, na přímé přání Petra ("Události a Úkoly" ve stejném
- * schovávacím sidebaru).
- */
+/** `/ukoly` — sdílený staff seznam, kdokoli smí založit/upravit/dokončit čí­koliv úkol. */
 export default function TaskListPage() {
   const { userDoc } = useAuth()
   const organizationId = userDoc?.organizationId
@@ -230,8 +218,152 @@ export default function TaskListPage() {
     }
   }
 
+  const sidePanel = modal && (
+    <SidePanel
+      title={modal.mode === 'new' ? 'Nový úkol' : 'Upravit úkol'}
+      onClose={() => setModal(null)}
+      actions={
+        modal.mode === 'edit' ? (
+          <>
+            {modal.seriesId && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                loading={cancellingSeries}
+                onClick={handleCancelSeries}
+                className="text-danger"
+                title="Zruší tenhle i všechny budoucí výskyty stejné opakující se řady."
+              >
+                <Ban size={14} /> Řada
+              </Button>
+            )}
+            <Button type="button" variant="ghost" size="sm" onClick={handleCancel} className="text-danger">
+              <Ban size={14} /> Zrušit
+            </Button>
+          </>
+        ) : undefined
+      }
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
+            <Input required autoFocus value={form.title} onChange={(e) => set('title', e.target.value)} />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Přiřazeno</span>
+            <Select value={form.assignedToUid} onChange={(e) => set('assignedToUid', e.target.value)}>
+              {staffList.map((s) => (
+                <option key={s.uid} value={s.uid}>
+                  {s.displayName}
+                </option>
+              ))}
+            </Select>
+          </label>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Termín</h3>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Termín (volitelné)</span>
+            <DatePicker value={form.dueDate} onChange={(v) => set('dueDate', v)} />
+          </label>
+
+          {modal.mode === 'new' && (
+            <div className="flex flex-col gap-2 border-t border-border-subtle pt-3">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Opakovat</span>
+                <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" />
+              </div>
+              {form.recurrenceEnabled && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-text-secondary">Každých</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={form.recurrenceInterval}
+                    onChange={(e) => set('recurrenceInterval', Math.max(1, Number(e.target.value) || 1))}
+                    className="w-16"
+                  />
+                  <Select
+                    value={form.recurrenceUnit}
+                    onChange={(e) => set('recurrenceUnit', e.target.value as RecurrenceUnit)}
+                    className="w-28"
+                  >
+                    {(['day', 'week', 'month', 'year'] as RecurrenceUnit[]).map((u) => (
+                      <option key={u} value={u}>
+                        {czechPlural(form.recurrenceInterval, u)}
+                      </option>
+                    ))}
+                  </Select>
+                  <span className="text-sm text-text-secondary">celkem</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={104}
+                    value={form.occurrenceCount}
+                    onChange={(e) => set('occurrenceCount', Math.min(104, Math.max(1, Number(e.target.value) || 1)))}
+                    className="w-16"
+                  />
+                  <span className="text-sm text-text-secondary">krát</span>
+                </div>
+              )}
+              {form.recurrenceEnabled && (
+                <p className="text-xs text-text-tertiary">
+                  Založí se každý výskyt zvlášť (max. 104 výskytů/2 roky dopředu), termín každého výskytu se posune
+                  podle prvního zadaného data.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Vazba (rodina / dítě / pěstoun)</span>
+            <SubjectRefsPicker
+              value={form.subjectRefs}
+              onChange={(refs) => set('subjectRefs', refs)}
+              families={families}
+              children={children}
+              fosterPersons={fosterPersons}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Poznámka</span>
+            <textarea
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
+              rows={2}
+              className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
+            />
+          </label>
+        </div>
+
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+
+        <div className="flex gap-2 border-t border-border-default pt-4">
+          <Button type="submit" loading={saving}>
+            {modal.mode === 'new' ? 'Založit' : 'Uložit změny'}
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setModal(null)} disabled={saving}>
+            Zrušit okno
+          </Button>
+        </div>
+      </form>
+    </SidePanel>
+  )
+
   return (
-    <AppShell breadcrumb={[{ label: 'Úkoly' }]} fullBleed>
+    <AppShell breadcrumb={[{ label: 'Úkoly' }]} fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
@@ -291,150 +423,6 @@ export default function TaskListPage() {
             )}
           </div>
         </div>
-
-        {modal && (
-          <SidePanel
-            title={modal.mode === 'new' ? 'Nový úkol' : 'Upravit úkol'}
-            onClose={() => setModal(null)}
-            actions={
-              modal.mode === 'edit' ? (
-                <>
-                  {modal.seriesId && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      loading={cancellingSeries}
-                      onClick={handleCancelSeries}
-                      className="text-danger"
-                      title="Zruší tenhle i všechny budoucí výskyty stejné opakující se řady."
-                    >
-                      <Ban size={14} /> Řada
-                    </Button>
-                  )}
-                  <Button type="button" variant="ghost" size="sm" onClick={handleCancel} className="text-danger">
-                    <Ban size={14} /> Zrušit
-                  </Button>
-                </>
-              ) : undefined
-            }
-          >
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-            <div className="flex flex-col gap-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
-                <Input required autoFocus value={form.title} onChange={(e) => set('title', e.target.value)} />
-              </label>
-
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Přiřazeno</span>
-                <Select value={form.assignedToUid} onChange={(e) => set('assignedToUid', e.target.value)}>
-                  {staffList.map((s) => (
-                    <option key={s.uid} value={s.uid}>
-                      {s.displayName}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-border-subtle pt-4">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Termín</h3>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Termín (volitelné)</span>
-                <DatePicker value={form.dueDate} onChange={(v) => set('dueDate', v)} />
-              </label>
-
-            {modal.mode === 'new' && (
-              <div className="flex flex-col gap-2 rounded-sm border border-transparent bg-field px-3 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-medium leading-relaxed text-text-primary">Opakovat</span>
-                  <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" />
-                </div>
-                {form.recurrenceEnabled && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-text-secondary">Každých</span>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={99}
-                      value={form.recurrenceInterval}
-                      onChange={(e) => set('recurrenceInterval', Math.max(1, Number(e.target.value) || 1))}
-                      className="w-16"
-                    />
-                    <Select
-                      value={form.recurrenceUnit}
-                      onChange={(e) => set('recurrenceUnit', e.target.value as RecurrenceUnit)}
-                      className="w-28"
-                    >
-                      {(['day', 'week', 'month', 'year'] as RecurrenceUnit[]).map((u) => (
-                        <option key={u} value={u}>
-                          {czechPlural(form.recurrenceInterval, u)}
-                        </option>
-                      ))}
-                    </Select>
-                    <span className="text-sm text-text-secondary">celkem</span>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={104}
-                      value={form.occurrenceCount}
-                      onChange={(e) => set('occurrenceCount', Math.min(104, Math.max(1, Number(e.target.value) || 1)))}
-                      className="w-16"
-                    />
-                    <span className="text-sm text-text-secondary">krát</span>
-                  </div>
-                )}
-                {form.recurrenceEnabled && (
-                  <p className="text-xs text-text-tertiary">
-                    Založí se každý výskyt zvlášť (max. 104 výskytů/2 roky dopředu), termín každého výskytu se posune podle
-                    prvního zadaného data — bez termínu se opakování počítá od dnešního dne.
-                  </p>
-                )}
-              </div>
-            )}
-            </div>
-
-            <div className="flex flex-col gap-4 border-t border-border-subtle pt-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Vazba (rodina / dítě / pěstoun)</span>
-                <SubjectRefsPicker
-                  value={form.subjectRefs}
-                  onChange={(refs) => set('subjectRefs', refs)}
-                  families={families}
-                  children={children}
-                  fosterPersons={fosterPersons}
-                />
-              </label>
-
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Poznámka</span>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => set('notes', e.target.value)}
-                  rows={2}
-                  className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
-                />
-              </label>
-            </div>
-
-            {error && (
-              <p className="text-sm text-danger" role="alert">
-                {error}
-              </p>
-            )}
-
-            <div className="flex gap-2 border-t border-border-default pt-4">
-              <Button type="submit" loading={saving}>
-                {modal.mode === 'new' ? 'Založit' : 'Uložit změny'}
-              </Button>
-              <Button type="button" variant="ghost" onClick={() => setModal(null)} disabled={saving}>
-                Zrušit okno
-              </Button>
-            </div>
-          </form>
-          </SidePanel>
-        )}
       </div>
     </AppShell>
   )

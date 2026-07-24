@@ -222,6 +222,14 @@ select {
   font-size: 16px;
 }
 
+/* SidePanel formuláře (desktop only, žádné mobilní focus-zoom riziko) —
+   menší písmo v polích na přání uživatele. */
+.side-panel-fields input,
+.side-panel-fields textarea,
+.side-panel-fields select {
+  font-size: 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

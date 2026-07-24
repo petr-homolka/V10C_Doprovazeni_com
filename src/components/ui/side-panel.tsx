@@ -3,15 +3,15 @@ import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 /**
- * Pravý SCHOVÁVACÍ sidebar (2026-07-23, na přímé přání Petra pro Kalendář:
- * "různá nastavování a napojování... chci skrýt do pravého schovávacího
- * sidebaru, kde by se mohli editovat i Události a Úkoly"). Na rozdíl od
- * `Drawer` (fixed overlay přes celou obrazovku, tlumené pozadí, BLOKUJE
- * zbytek appky) je tenhle primitiv SOUČÁST normálního flex řádku vedle
- * sebe — žádný overlay/backdrop, žádné `position: fixed`. Otevření/zavření
- * jen zmenší/zvětší šířku sousedního obsahu (typicky kalendářová mřížka),
- * zbytek appky zůstává celou dobu interaktivní. Použij uvnitř vlastního
- * `<div className="flex h-full ...">` vedle hlavního obsahu, ne samostatně.
+ * Right-hand panel for "+ Add…" actions app-wide. Non-overlay (unlike
+ * `Drawer`/`Modal`) — rendered via `AppShell`'s `sidePanel` prop as a
+ * sibling of the sidebar/main column, so it spans the full viewport
+ * height and edge instead of just the area below the TopBar. The rest
+ * of the app stays interactive; only the main column's width shrinks.
+ *
+ * Field text size inside is scoped down via `.side-panel-fields` (see
+ * index.css) rather than changing the shared `Input`/`Select` default,
+ * which stays larger elsewhere to avoid iOS Safari's auto-zoom-on-focus.
  */
 export function SidePanel({
   title,
@@ -29,11 +29,11 @@ export function SidePanel({
   return (
     <div
       className={cn(
-        'flex h-full w-[380px] shrink-0 flex-col overflow-hidden border-l border-border-default bg-surface-soft',
+        'flex h-full w-[380px] shrink-0 flex-col overflow-hidden bg-surface-soft shadow-overlay',
         className,
       )}
     >
-      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border-default px-4">
+      <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border-subtle px-4">
         <h2 className="truncate text-[15px] font-semibold text-text-primary">{title}</h2>
         <div className="flex shrink-0 items-center gap-1">
           {actions}
@@ -48,7 +48,7 @@ export function SidePanel({
           </button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+      <div className="side-panel-fields min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
     </div>
   )
 }

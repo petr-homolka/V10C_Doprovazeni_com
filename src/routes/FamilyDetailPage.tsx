@@ -76,16 +76,14 @@ const SECTIONS: TabItem[] = [
 ]
 
 /**
- * /rodiny/:familyUid — HUB (UX zpětná vazba 2026-07-20 přestavěla tuhle
- * stránku ze "všechno na jedné dlouhé stránce" na hub odkazující na
- * samostatné profily Dohody/pěstouna/dítěte, viz `AgreementDetailPage`/
- * `FosterPersonDetailPage`/`ChildDetailPage`). `familyUid` v URL je vždy
- * human-facing `uid` (§4.3 pozn. 1), viz getFamilyByUid.
+ * /rodiny/:familyUid — hub odkazující na samostatné profily Dohody/
+ * pěstouna/dítěte (`AgreementDetailPage`/`FosterPersonDetailPage`/
+ * `ChildDetailPage`). `familyUid` v URL je vždy human-facing `uid`, viz
+ * `getFamilyByUid`.
  *
- * Respit/asistovaný kontakt/předání dítěte (`FamilyCareEventsSection`)
- * ZŮSTÁVÁ tady, ne na profilu dítěte — respit typicky pokrývá víc dětí
- * najednou, nedá se čistě rozdělit na jedno dítě (vědomá volba, dá se
- * přehodnotit, pokud by to tak Petrovi nevyhovovalo).
+ * Respit/asistovaný kontakt (`FamilyCareEventsSection`) zůstává tady, ne
+ * na profilu dítěte — respit typicky pokrývá víc dětí najednou, nedá se
+ * čistě rozdělit na jedno dítě.
  */
 export default function FamilyDetailPage() {
   const { familyUid } = useParams<{ familyUid: string }>()
@@ -112,12 +110,9 @@ export default function FamilyDetailPage() {
   const [nameDraft, setNameDraft] = useState('')
   const { loading: savingName, success: savingNameSuccess, run: runSaveName } = useAsyncSubmit()
 
-  /** Cesta D, třetí kolo (2026-07-24, Petrovo přání "Cokoli se zadává do
-   * systému... v pravém schovávacím sidebaru podobně jako 'Nová událost'
-   * v kalendáři") — JEDEN sdílený pravý panel pro všechny "+ Přidat…" akce
-   * na týhle stránce (pěstoun/dítě/respit/série), místo čtyř nezávislých
-   * inline formulářů. Respit/série žijou uvnitř `FamilyCareEventsSection`
-   * (jiná datová doména) — jejich formulář se do `panelSlotEl` renderuje
+  /** Jeden sdílený pravý panel pro všechny "+ Přidat…" akce na týhle
+   * stránce. Respit/série žijou uvnitř `FamilyCareEventsSection` (jiná
+   * datová doména) — jejich formulář se do `panelSlotEl` renderuje
    * portálem (`FamilyCarePanelHost`), pěstoun/dítě se renderují přímo tady. */
   const [panelMode, setPanelMode] = useState<'foster' | 'child' | 'respit' | 'series' | null>(null)
   const [panelSlotEl, setPanelSlotEl] = useState<HTMLDivElement | null>(null)
@@ -428,8 +423,108 @@ export default function FamilyDetailPage() {
     )
   }
 
+  const sidePanel =
+    panelMode === 'foster' ? (
+      <SidePanel title="Přidat pěstouna" onClose={() => setPanelMode(null)}>
+        <form onSubmit={handleAddFoster} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
+              <Input required autoFocus value={fosterFirstName} onChange={(e) => setFosterFirstName(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení</span>
+              <Input required value={fosterLastName} onChange={(e) => setFosterLastName(e.target.value)} />
+            </label>
+          </div>
+          <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Telefon</span>
+              <Input
+                value={fosterPhone}
+                onChange={(e) => { setFosterPhone(e.target.value); setFosterPhoneError(null) }}
+                onBlur={() => {
+                  const result = checkPhone(fosterPhone)
+                  setFosterPhone(result.value)
+                  setFosterPhoneError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {fosterPhoneError && <span className="text-xs text-danger">{fosterPhoneError}</span>}
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
+              <Input
+                type="email"
+                value={fosterEmail}
+                onChange={(e) => { setFosterEmail(e.target.value); setFosterEmailError(null) }}
+                onBlur={() => {
+                  const result = checkEmail(fosterEmail)
+                  setFosterEmail(result.value)
+                  setFosterEmailError(result.ok ? null : (result.message ?? null))
+                }}
+              />
+              {fosterEmailError && <span className="text-xs text-danger">{fosterEmailError}</span>}
+            </label>
+          </div>
+
+          {error && (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-2 border-t border-border-default pt-4">
+            <Button type="submit" loading={addingFoster} success={addingFosterSuccess}>
+              Přidat
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setPanelMode(null)} disabled={addingFoster}>
+              Zrušit
+            </Button>
+          </div>
+        </form>
+      </SidePanel>
+    ) : panelMode === 'child' ? (
+      <SidePanel title="Přidat dítě" onClose={() => setPanelMode(null)}>
+        <form onSubmit={handleAddChild} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
+              <Input required autoFocus value={childFirstName} onChange={(e) => setChildFirstName(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení</span>
+              <Input required value={childLastName} onChange={(e) => setChildLastName(e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Rodné číslo</span>
+              <Input required value={childBirthNumber} onChange={(e) => setChildBirthNumber(e.target.value)} />
+            </label>
+          </div>
+
+          {error && (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-2 border-t border-border-default pt-4">
+            <Button type="submit" loading={addingChild} success={addingChildSuccess}>
+              Přidat
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setPanelMode(null)} disabled={addingChild}>
+              Zrušit
+            </Button>
+          </div>
+        </form>
+      </SidePanel>
+    ) : panelMode === 'respit' || panelMode === 'series' ? (
+      <SidePanel title={panelMode === 'respit' ? 'Zaznamenat respit' : 'Založit sérii'} onClose={() => setPanelMode(null)}>
+        <div ref={setPanelSlotEl} />
+      </SidePanel>
+    ) : undefined
+
   return (
-    <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: displayName }]} fullBleed>
+    <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: displayName }]} fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
@@ -831,106 +926,6 @@ export default function FamilyDetailPage() {
       </div>
           </div>
         </div>
-
-        {panelMode === 'foster' && (
-          <SidePanel title="Přidat pěstouna" onClose={() => setPanelMode(null)}>
-            <form onSubmit={handleAddFoster} className="flex flex-col gap-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
-                <Input required autoFocus value={fosterFirstName} onChange={(e) => setFosterFirstName(e.target.value)} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení</span>
-                <Input required value={fosterLastName} onChange={(e) => setFosterLastName(e.target.value)} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Telefon</span>
-                <Input
-                  value={fosterPhone}
-                  onChange={(e) => { setFosterPhone(e.target.value); setFosterPhoneError(null) }}
-                  onBlur={() => {
-                    const result = checkPhone(fosterPhone)
-                    setFosterPhone(result.value)
-                    setFosterPhoneError(result.ok ? null : (result.message ?? null))
-                  }}
-                />
-                {fosterPhoneError && <span className="text-xs text-danger">{fosterPhoneError}</span>}
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
-                <Input
-                  type="email"
-                  value={fosterEmail}
-                  onChange={(e) => { setFosterEmail(e.target.value); setFosterEmailError(null) }}
-                  onBlur={() => {
-                    const result = checkEmail(fosterEmail)
-                    setFosterEmail(result.value)
-                    setFosterEmailError(result.ok ? null : (result.message ?? null))
-                  }}
-                />
-                {fosterEmailError && <span className="text-xs text-danger">{fosterEmailError}</span>}
-              </label>
-
-              {error && (
-                <p className="text-sm text-danger" role="alert">
-                  {error}
-                </p>
-              )}
-
-              <div className="flex gap-2 border-t border-border-default pt-4">
-                <Button type="submit" loading={addingFoster} success={addingFosterSuccess}>
-                  Přidat
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setPanelMode(null)} disabled={addingFoster}>
-                  Zrušit
-                </Button>
-              </div>
-            </form>
-          </SidePanel>
-        )}
-
-        {panelMode === 'child' && (
-          <SidePanel title="Přidat dítě" onClose={() => setPanelMode(null)}>
-            <form onSubmit={handleAddChild} className="flex flex-col gap-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
-                <Input required autoFocus value={childFirstName} onChange={(e) => setChildFirstName(e.target.value)} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení</span>
-                <Input required value={childLastName} onChange={(e) => setChildLastName(e.target.value)} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Rodné číslo</span>
-                <Input required value={childBirthNumber} onChange={(e) => setChildBirthNumber(e.target.value)} />
-              </label>
-
-              {error && (
-                <p className="text-sm text-danger" role="alert">
-                  {error}
-                </p>
-              )}
-
-              <div className="flex gap-2 border-t border-border-default pt-4">
-                <Button type="submit" loading={addingChild} success={addingChildSuccess}>
-                  Přidat
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setPanelMode(null)} disabled={addingChild}>
-                  Zrušit
-                </Button>
-              </div>
-            </form>
-          </SidePanel>
-        )}
-
-        {(panelMode === 'respit' || panelMode === 'series') && (
-          <SidePanel
-            title={panelMode === 'respit' ? 'Zaznamenat respit' : 'Založit sérii'}
-            onClose={() => setPanelMode(null)}
-          >
-            <div ref={setPanelSlotEl} />
-          </SidePanel>
-        )}
       </div>
 
       {recorder && docId && organizationId && userDoc && (

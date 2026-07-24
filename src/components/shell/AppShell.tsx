@@ -5,36 +5,22 @@ import { ActiveVisitBanner } from './ActiveVisitBanner'
 import type { BreadcrumbItem } from '@/components/ui/breadcrumb'
 
 /**
- * Cesta B (2026-07-24) — STRUKTURÁLNÍ odklon od Cesty A, ne jen retint.
- * Cesta A: sidebar a hlavní panel "plavou" jako dva zaoblené panely na
- * tmavší ploše s mezerou mezi nimi (macOS/iOS System Settings vzor).
- * Cesta B: klasický FULL-BLEED enterprise layout (Vaadin/Retool/admin
- * dashboard vzor) — sidebar přisedlý VLEVO na celou výšku, TopBar
- * přisedlý NAHOŘE na celou šířku s `border-b`, žádné zaoblené rohy/mezery
- * mezi chrome bloky. Sedí lépe k datově hutnému case-management nástroji
- * než ke konzumní "widget" estetice — a je to přesně ten typ "i změna
- * platformy je budiž" tahu, na který se Petr ptal.
- *
- * `secondaryPanel` (druhá úroveň menu, Nastavení/…) — stejný koncept jako
- * Cesta A (samostatný levý sloupec vedle obsahu), jen bez zaoblení/mezery
- * — `border-r` odděluje sloupce místo `bg-void` mezery.
- *
- * `fullBleed` (2026-07-23, přidáno pro Kalendář) — vypne padding/max-width
- * obalu úplně, obsah dostane celou výšku i šířku panelu beze zbytku (žádné
- * `overflow-y-auto` na obalu — o vlastní scrollování/layout se stará obsah
- * sám, typicky vlastní flex řádek s kalendářovou mřížkou + volitelným
- * pravým panelem vedle sebe).
+ * `sidePanel` renders as a sibling of the sidebar/main column, not nested
+ * inside `main` — that's what gives it full viewport height (spanning
+ * past the TopBar row) instead of starting below the header.
  */
 export function AppShell({
   children,
   breadcrumb,
   secondaryPanel,
   fullBleed,
+  sidePanel,
 }: {
   children: ReactNode
   breadcrumb?: BreadcrumbItem[]
   secondaryPanel?: ReactNode
   fullBleed?: boolean
+  sidePanel?: ReactNode
 }) {
   return (
     <div className="flex h-screen bg-app">
@@ -57,6 +43,7 @@ export function AppShell({
           </div>
         )}
       </main>
+      {sidePanel}
     </div>
   )
 }

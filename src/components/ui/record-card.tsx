@@ -2,21 +2,15 @@ import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
- * RecordCard — Cesta D, round 2. Nahrazuje `<Table>`/`<TableRow>` na
- * seznamových stránkách (Rodiny, Zaměstnanci, Pěstouni, Děti, Úkoly…) —
- * Woorkroom reference (SPEC.md "Avatar + role-subtitle list row",
- * "Card") nezobrazuje záznamy jako řádky tabulky se sloupci, ale jako
- * samostatné bílé zaoblené KARTY, jedna pod druhou, s avatarem/ikonou
- * vlevo, jménem+podtextem uprostřed a volitelnou metadata/akce sekcí
- * vpravo. Tohle je TA strukturální změna, kterou round 1 vynechal (jen
- * přebarvil `Table`) — Petrem právem odmítnuto jako povrchní.
+ * RecordCard — seznamový řádek jako samostatná bílá zaoblená karta
+ * (avatar/ikona vlevo, jméno+podtext uprostřed, volitelná metadata/akce
+ * vpravo), místo `<Table>`/`<TableRow>` řádků se sloupci.
  *
  * `leading` = avatar/ikona/checkbox shluk vlevo (fixní šířka, viz
  * volající kód pro přesné složení). `meta` = pravá strana (badge/datum/
- * počty) — na širších obrazovkách vedle sebe, `trailing` = akce, co se
- * objeví až při hoveru (mikrofon, hvězdička…) — volitelné, viditelné
- * jinak jen na mobilu/dotykových zařízeních natrvalo (`group-hover`
- * princip řeší volající).
+ * počty). `trailing` = akce, co se objeví až při hoveru (mikrofon,
+ * hvězdička…) — volitelné, viditelné jinak jen na mobilu/dotykových
+ * zařízeních natrvalo (`group-hover` princip řeší volající).
  */
 export function RecordCard({
   leading,

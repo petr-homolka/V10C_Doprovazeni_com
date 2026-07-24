@@ -31,17 +31,9 @@ type PanelState =
   | null
 
 /**
- * /zamestnanci — M1, §5.7 "Nastavení ≠ Správa entit": vlastní stránka
- * appky (seznam, ne záložka v Nastavení). Všichni zaměstnanci vidí
- * týmový seznam (read-only), jen `org_admin` vidí formulář na založení
- * a může měnit stav (aktivní/zablokován) — přesně dle firestore.rules.
- *
- * Cesta D, třetí kolo (2026-07-24, přímé přání Petra "Cokoli se zadává
- * do systému... v pravém schovávacím sidebaru") — Table nahrazena
- * RecordCardList, všechny tři formuláře (založení/kapacita/moduly) teď
- * žijou v JEDNOM sdíleném pravém `SidePanel`u (stejný vzor jako
- * "Nová událost" v Kalendáři), místo tří nezávislých inline formulářů
- * pod hlavičkou.
+ * /zamestnanci — všichni zaměstnanci vidí týmový seznam (read-only), jen
+ * `org_admin` vidí formulář na založení a může měnit stav (aktivní/
+ * zablokován) — přesně dle firestore.rules.
  */
 export default function StaffPage() {
   const { userDoc } = useAuth()
@@ -187,8 +179,135 @@ export default function StaffPage() {
     )
   }
 
+  const sidePanel =
+    panel?.mode === 'create' ? (
+      <SidePanel title="Přidat zaměstnance" onClose={() => setPanel(null)}>
+        <form onSubmit={handleCreate} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
+            <Input required autoFocus value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Role</span>
+            <Select value={role} onChange={(e) => setRole(e.target.value as StaffRole)}>
+              {ASSIGNABLE_ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {STAFF_ROLE_LABELS[r]}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
+            <Input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(null) }}
+              onBlur={() => {
+                const result = checkEmail(email)
+                setEmail(result.value)
+                setEmailError(result.ok ? null : (result.message ?? null))
+              }}
+            />
+            {emailError && <span className="text-xs text-danger">{emailError}</span>}
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Dočasné heslo</span>
+            <Input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+
+          {error && (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-2 border-t border-border-default pt-4">
+            <Button type="submit" loading={creating} success={createSuccess}>
+              Založit účet
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={creating}>
+              Zrušit
+            </Button>
+          </div>
+        </form>
+      </SidePanel>
+    ) : panel?.mode === 'capacity' ? (
+      <SidePanel title={`Kapacita — ${panel.member.displayName}`} onClose={() => setPanel(null)}>
+        <form onSubmit={handleSaveCapacity} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Úvazek (FTE)</span>
+            <Input type="number" min={0.1} max={1} step={0.1} value={editFte} onChange={(e) => setEditFte(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Vlastní práh (nepovinné)</span>
+            <Input
+              type="number"
+              min={1}
+              placeholder={`výchozí: ${orgThreshold ?? platformThreshold}`}
+              value={editOverride}
+              onChange={(e) => setEditOverride(e.target.value)}
+            />
+          </label>
+
+          {error && (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-2 border-t border-border-default pt-4">
+            <Button type="submit" loading={savingCapacity} success={saveCapacitySuccess}>
+              Uložit
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={savingCapacity}>
+              Zrušit
+            </Button>
+          </div>
+        </form>
+      </SidePanel>
+    ) : panel?.mode === 'modules' ? (
+      <SidePanel title={`Moduly — ${panel.member.displayName}`} onClose={() => setPanel(null)}>
+        <form onSubmit={handleSaveModules} className="flex flex-col gap-4">
+          <p className="text-xs text-text-tertiary">
+            Co spolupracovník vidí/může u osob, co mu přiřadíte (Rodina → profil dítěte/pěstouna →
+            "Přiřadit spolupracovníkovi").
+          </p>
+          <div className="flex flex-col gap-2 rounded-lg bg-inset p-3">
+            {COLLABORATOR_MODULE_KEYS.map((key) => (
+              <label key={key} className="flex items-center gap-2 text-sm text-text-primary">
+                <input
+                  type="checkbox"
+                  checked={editModules[key] === true}
+                  onChange={(e) => setEditModules((m) => ({ ...m, [key]: e.target.checked }))}
+                  className="size-4 rounded-sm border-border-medium accent-primary"
+                />
+                {COLLABORATOR_MODULE_LABELS[key]}
+              </label>
+            ))}
+          </div>
+
+          {error && (
+            <p className="text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="flex gap-2 border-t border-border-default pt-4">
+            <Button type="submit" loading={savingModules} success={saveModulesSuccess}>
+              Uložit
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={savingModules}>
+              Zrušit
+            </Button>
+          </div>
+        </form>
+      </SidePanel>
+    ) : undefined
+
   return (
-    <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]} fullBleed>
+    <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]} fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
@@ -278,149 +397,6 @@ export default function StaffPage() {
             )}
           </div>
         </div>
-
-        {panel?.mode === 'create' && (
-          <SidePanel title="Přidat zaměstnance" onClose={() => setPanel(null)}>
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
-                <Input required autoFocus value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Role</span>
-                <Select value={role} onChange={(e) => setRole(e.target.value as StaffRole)}>
-                  {ASSIGNABLE_ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {STAFF_ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
-                <Input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setEmailError(null) }}
-                  onBlur={() => {
-                    const result = checkEmail(email)
-                    setEmail(result.value)
-                    setEmailError(result.ok ? null : (result.message ?? null))
-                  }}
-                />
-                {emailError && <span className="text-xs text-danger">{emailError}</span>}
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Dočasné heslo</span>
-                <Input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </label>
-
-              {error && (
-                <p className="text-sm text-danger" role="alert">
-                  {error}
-                </p>
-              )}
-
-              <div className="flex gap-2 border-t border-border-default pt-4">
-                <Button type="submit" loading={creating} success={createSuccess}>
-                  Založit účet
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={creating}>
-                  Zrušit
-                </Button>
-              </div>
-            </form>
-          </SidePanel>
-        )}
-
-        {panel?.mode === 'capacity' && (
-          <SidePanel title={`Kapacita — ${panel.member.displayName}`} onClose={() => setPanel(null)}>
-            <form onSubmit={handleSaveCapacity} className="flex flex-col gap-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Úvazek (FTE)</span>
-                <Input
-                  type="number"
-                  min={0.1}
-                  max={1}
-                  step={0.1}
-                  value={editFte}
-                  onChange={(e) => setEditFte(e.target.value)}
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Vlastní práh (nepovinné)</span>
-                <Input
-                  type="number"
-                  min={1}
-                  placeholder={`výchozí: ${orgThreshold ?? platformThreshold}`}
-                  value={editOverride}
-                  onChange={(e) => setEditOverride(e.target.value)}
-                />
-              </label>
-
-              {error && (
-                <p className="text-sm text-danger" role="alert">
-                  {error}
-                </p>
-              )}
-
-              <div className="flex gap-2 border-t border-border-default pt-4">
-                <Button type="submit" loading={savingCapacity} success={saveCapacitySuccess}>
-                  Uložit
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={savingCapacity}>
-                  Zrušit
-                </Button>
-              </div>
-            </form>
-          </SidePanel>
-        )}
-
-        {panel?.mode === 'modules' && (
-          <SidePanel title={`Moduly — ${panel.member.displayName}`} onClose={() => setPanel(null)}>
-            <form onSubmit={handleSaveModules} className="flex flex-col gap-4">
-              <p className="text-xs text-text-tertiary">
-                Co spolupracovník vidí/může u osob, co mu přiřadíte (Rodina → profil dítěte/pěstouna →
-                "Přiřadit spolupracovníkovi").
-              </p>
-              <div className="flex flex-col gap-2">
-                {COLLABORATOR_MODULE_KEYS.map((key) => (
-                  <label key={key} className="flex items-center gap-2 text-sm text-text-primary">
-                    <input
-                      type="checkbox"
-                      checked={editModules[key] === true}
-                      onChange={(e) => setEditModules((m) => ({ ...m, [key]: e.target.checked }))}
-                      className="size-4 rounded-sm border-border-medium accent-primary"
-                    />
-                    {COLLABORATOR_MODULE_LABELS[key]}
-                  </label>
-                ))}
-              </div>
-
-              {error && (
-                <p className="text-sm text-danger" role="alert">
-                  {error}
-                </p>
-              )}
-
-              <div className="flex gap-2 border-t border-border-default pt-4">
-                <Button type="submit" loading={savingModules} success={saveModulesSuccess}>
-                  Uložit
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={savingModules}>
-                  Zrušit
-                </Button>
-              </div>
-            </form>
-          </SidePanel>
-        )}
       </div>
     </AppShell>
   )

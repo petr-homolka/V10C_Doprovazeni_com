@@ -35,14 +35,12 @@ import type {
   AssistedContactSeriesDoc,
 } from '@/types/assistedContactSeries'
 
-/** Cesta D, třetí kolo (2026-07-24, Petrovo přání "Cokoli se zadává do
- * systému... v pravém schovávacím sidebaru") — "Zaznamenat respit"/
- * "Založit sérii" formuláře se teď renderují portálem (`createPortal`) do
- * jednoho sdíleného pravého panelu na `FamilyDetailPage` místo inline pod
- * nadpisem sekce. Panel samotný (otevřeno/zavřeno, DOM uzel) vlastní
- * `FamilyDetailPage` — sekce dostává jen "je otevřeno"/"otevři"/"zavři"
- * a cílový DOM uzel, o vnitřní stav formuláře (vybrané dítě, datum, …) se
- * pořád stará ona sama, beze změny. */
+/** "Zaznamenat respit"/"Založit sérii" formuláře se renderují portálem
+ * (`createPortal`) do jednoho sdíleného pravého panelu na
+ * `FamilyDetailPage` místo inline pod nadpisem sekce. Panel samotný
+ * (otevřeno/zavřeno, DOM uzel) vlastní `FamilyDetailPage` — sekce dostává
+ * jen "je otevřeno"/"otevři"/"zavři" a cílový DOM uzel, o vnitřní stav
+ * formuláře (vybrané dítě, datum, …) se pořád stará ona sama. */
 export interface FamilyCarePanelHost {
   isOpen: boolean
   onOpen: () => void

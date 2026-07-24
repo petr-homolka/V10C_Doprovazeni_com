@@ -60,13 +60,10 @@ interface FamilyRow {
 }
 
 /**
- * /rodiny — M1 základ, rozšířeno UX zpětnou vazbou 2026-07-21: název rodiny
- * (displayName → primární pěstoun → adresa, `resolveFamilyDisplayName`),
- * checkbox+hvězdička místo avataru (hromadné akce "+ Poznámka"/"Předat",
- * hvězdička je OSOBNÍ — `familyStarService.ts`), sloupec klíčové osoby
- * (schovaný, pokud je KO přihlášený uživatel sám — "ví, že je to její
- * skupina"), segmentace (Adresa/Poslední kontakt/Poslední návštěva) a
- * "hoří?" štítek (`familyAlertStatus.ts`).
+ * /rodiny — název rodiny je displayName → primární pěstoun → adresa
+ * (`resolveFamilyDisplayName`). Hvězdička je osobní (`familyStarService.ts`),
+ * checkbox slouží hromadným akcím. Sloupec klíčové osoby se schová, pokud
+ * je KO přihlášený uživatel sám. "Hoří?" štítek viz `familyAlertStatus.ts`.
  */
 export default function FamilyListPage() {
   const navigate = useNavigate()
@@ -316,8 +313,27 @@ export default function FamilyListPage() {
     )
   }
 
+  const sidePanel = showForm && (
+    <SidePanel title="Nová rodina" onClose={() => setShowForm(false)}>
+      <form onSubmit={handleCreate} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium leading-relaxed text-text-primary">Adresa (volitelné)</span>
+          <Input autoFocus value={address} onChange={(e) => setAddress(e.target.value)} />
+        </label>
+        <div className="flex gap-2 border-t border-border-default pt-4">
+          <Button type="submit" loading={submitting} success={success}>
+            Založit Spis
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
+            Zrušit
+          </Button>
+        </div>
+      </form>
+    </SidePanel>
+  )
+
   return (
-    <AppShell breadcrumb={[{ label: 'Rodiny' }]} fullBleed>
+    <AppShell breadcrumb={[{ label: 'Rodiny' }]} fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
@@ -446,25 +462,6 @@ export default function FamilyListPage() {
             )}
           </div>
         </div>
-
-        {showForm && (
-          <SidePanel title="Nová rodina" onClose={() => setShowForm(false)}>
-            <form onSubmit={handleCreate} className="flex flex-col gap-4">
-              <label className="flex flex-col gap-1.5">
-                <span className="text-sm font-medium leading-relaxed text-text-primary">Adresa (volitelné)</span>
-                <Input autoFocus value={address} onChange={(e) => setAddress(e.target.value)} />
-              </label>
-              <div className="flex gap-2 border-t border-border-default pt-4">
-                <Button type="submit" loading={submitting} success={success}>
-                  Založit Spis
-                </Button>
-                <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
-                  Zrušit
-                </Button>
-              </div>
-            </form>
-          </SidePanel>
-        )}
       </div>
 
       {noteModalOpen && (
