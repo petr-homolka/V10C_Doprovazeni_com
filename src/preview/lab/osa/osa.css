@@ -32,6 +32,7 @@
 
   /* Inkoust */
   --ink: #17181a;
+  --ink-slate: #2a3038;
   --ink-2: #63666c;
   --ink-3: #9a9da3;
 
@@ -227,10 +228,15 @@
   gap: 5px;
 }
 
+/* Primární akce je GRAFITOVÁ, ne červená — odečteno z jejich `base-button`.
+   Když je červené i tlačítko, přestane červená znamenat „hoří to": v jednom
+   pohledu pak soupeří „Nový úkol" s „+35 dní", a vyhrává to větší, ne to
+   důležitější. Akcent zůstává jen pro stav a „teď". */
 .osa__btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--ink-slate);
+  border-color: var(--ink-slate);
   color: #fff;
+  box-shadow: 0 1px 1px #00000026;
 }
 
 .osa__body {
@@ -726,6 +732,9 @@
 
 .osa__agendabody {
   min-width: 0;
+  /* `min-width:0` sám nestačí — bez `flex:1` je základ pruhu obsahová
+     šířka, takže dlouhá adresa řádek roztlačí místo aby se ustřihla. */
+  flex: 1;
 }
 
 .osa__agendatitle {
@@ -756,4 +765,178 @@
 .osa__statlabel {
   color: var(--ink-2);
   font-size: 12.5px;
+}
+
+/* ---------- Telefon ---------------------------------------------------- */
+
+/* Značka v horní liště je jen pro telefon — na desktopu ji nese postranní
+   navigace a dvakrát na jedné obrazovce nemá co dělat. */
+.osa__brandmark--top {
+  display: none;
+}
+
+/* Spodní lišta existuje jen na telefonu; na desktopu je navigace vlevo. */
+.osa__tabbar {
+  display: none;
+}
+
+/* Svislá agenda týdne je mobilní náhrada mřížky — na desktopu by dublovala
+   kalendář, který je vedle. */
+.osa__agendaweek {
+  display: none;
+}
+
+.osa__section--today {
+  color: var(--accent);
+}
+
+@media (max-width: 719px) {
+  .osa {
+    flex-direction: column;
+    /* 100dvh, ne 900px: na telefonu má bílá plocha končit tam, kde končí
+       obrazovka, ne v konstantě z desktopu. */
+    min-height: 100dvh;
+  }
+
+  /* Postranní navigaci nejde zúžit — 214px je z 390px víc než polovina.
+     Nahrazuje ji spodní lišta. */
+  .osa__nav {
+    display: none;
+  }
+
+  .osa__brandmark--top {
+    display: flex;
+    flex-shrink: 0;
+  }
+
+  .osa__top {
+    height: 52px;
+    padding: 0 12px;
+  }
+
+  /* Kontext se musí ustřihnout, ne zlomit — jinak roste lišta a rozhoupe
+     celou stránku. */
+  .osa__crumb {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Vejde se JEDNA akce. Ostatní patří do ⋯ v obsahu, ne do lišty; dvě
+     tlačítka na 390px vytlačila titulek ze stránky. */
+  .osa__topactions .osa__btn:not(.osa__btn--primary) {
+    display: none;
+  }
+
+  /* Spodní odsazení = výška spodní lišty + mezera. Bez toho lišta překryla
+     poslední řádek seznamu (odhaleno na mobilním screenshotu). */
+  .osa__body {
+    padding: 14px 12px 88px;
+  }
+
+  .osa__tabbar {
+    position: sticky;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    border-top: 1px solid var(--hair);
+    background: var(--paper);
+    padding-bottom: 6px;
+  }
+
+  .osa__tab2 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 0 4px;
+    color: var(--ink-3);
+    font-size: 10.5px;
+    font-weight: 550;
+  }
+
+  .osa__tab2--active {
+    color: var(--accent);
+  }
+
+  .osa__tab2icon {
+    position: relative;
+    width: 20px;
+    height: 20px;
+  }
+
+  .osa__tab2icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Tečka místo čísla: na 20px ikoně je „12" nečitelné, ale „něco tam je"
+     je celá informace, kterou spodní lišta má nést. */
+  .osa__tab2dot {
+    position: absolute;
+    top: -1px;
+    right: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 1.5px solid var(--paper);
+  }
+
+  /* Seznam rodin: pět sloupců se na telefon nevejde. Zůstává jméno a
+     zpoždění — kdo a jak moc hoří. Zbytek je až v profilu. */
+  .osa__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    height: auto;
+    padding: 9px 4px 9px 0;
+  }
+
+  .osa__row .osa__cell {
+    display: none;
+  }
+
+  .osa__more {
+    display: none;
+  }
+
+  .osa__bucket {
+    padding-left: 18px;
+  }
+
+  .osa__dot {
+    left: -18px;
+  }
+
+  /* Profil: pravý sloupec jde pod obsah, ne do 90px pruhu. */
+  .osa__profile,
+  .osa__today {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .osa__kv {
+    grid-template-columns: 104px minmax(0, 1fr);
+  }
+
+  /* Týdenní mřížka se na telefon nevejde ani teoreticky. Nahrazuje ji svislá
+     agenda (viz `ScreenCalendar`), takže mřížka na telefonu prostě není. */
+  .osa__cal {
+    display: none;
+  }
+
+  .osa__agendaweek {
+    display: block;
+    margin-top: 12px;
+  }
+
+  .osa__tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .osa__tab {
+    flex-shrink: 0;
+  }
 }

@@ -23,6 +23,7 @@ const FILTER = process.env.SHOT ?? ''
 const SCREENS = [
   // Designové návrhy (`src/preview/lab/`) — tři vizuální jazyky pro tutéž
   // obrazovku. `lab` obchází router, proto nemají `route`.
+  { name: 'routine-dnes', lab: 'rt-dnes' },
   { name: 'osa-1-dnes', lab: 'osa-dnes' },
   { name: 'osa-2-rodiny', lab: 'osa-rodiny' },
   { name: 'osa-3-rodina', lab: 'osa-rodina' },
@@ -63,7 +64,9 @@ const server = await createServer({
 await server.listen()
 const base = `http://localhost:5199/design-preview.html`
 
-await rm(OUT, { recursive: true, force: true })
+// Bez filtru se složka vymete celá; s filtrem NE — jinak `SHOT=osa` smaže
+// screenshoty, které jsem si nechal na porovnání (a stalo se to).
+if (!FILTER) await rm(OUT, { recursive: true, force: true })
 await mkdir(OUT, { recursive: true })
 
 // Prostředí má Chromium předinstalované (`PLAYWRIGHT_BROWSERS_PATH`), ale
@@ -87,6 +90,11 @@ for (const viewport of VIEWPORTS) {
     if (theme === 'dark' && viewport.name !== 'desktop') continue
     for (const screen of SCREENS) {
       if (FILTER && !screen.name.includes(FILTER)) continue
+      // Designové návrhy mají VLASTNÍ paletu (`lab/*.css`), ne tokeny appky —
+      // tmavý screenshot by byl bajt za bajt stejný jako světlý a tvářil se,
+      // že tmavý režim je hotový. Tmavá varianta vzniká až při převodu
+      // vybraného směru do tokenů.
+      if (screen.lab && theme === 'dark') continue
       const page = await context.newPage()
       page.on('pageerror', (e) => errors.push(`${screen.name}/${viewport.name}: ${e.message}`))
       page.on('console', (m) => {

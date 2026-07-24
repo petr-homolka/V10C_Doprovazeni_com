@@ -16,6 +16,7 @@ import '@fontsource/poppins/700.css'
 import '@/index.css'
 import './lab/lab.css'
 import './lab/osa/osa.css'
+import './lab/osa/routine.css'
 import { DirectionSpis } from './lab/DirectionSpis'
 import { DirectionFaces } from './lab/DirectionFaces'
 import { DirectionRail } from './lab/DirectionRail'
@@ -23,6 +24,7 @@ import { OsaFamilies } from './lab/osa/ScreenFamilies'
 import { OsaFamily } from './lab/osa/ScreenFamily'
 import { OsaCalendar } from './lab/osa/ScreenCalendar'
 import { OsaToday } from './lab/osa/ScreenToday'
+import { RoutineToday } from './lab/osa/ScreenRoutineToday'
 
 import { useIsMobile } from '@/hooks/useIsMobile'
 import FamilyListPage from '@/routes/FamilyListPage'
@@ -137,6 +139,8 @@ const LAB_DIRECTIONS: Record<string, () => ReactElement> = {
   'osa-rodiny': OsaFamilies,
   'osa-rodina': OsaFamily,
   'osa-kalendar': OsaCalendar,
+  // Varianta „co nejblíž Routine" — dvoupanel úkoly + den s časem.
+  'rt-dnes': RoutineToday,
 }
 
 function PreviewApp() {

@@ -108,7 +108,7 @@ export function OsaCalendar() {
                     .map((key) => SUBJECTS.get(key))
                     .filter((s): s is { label: string; avatarUrl?: string | null } => !!s)
                     .slice(0, 4)
-                  const hot = event.kind === 'navsteha-rodiny'
+                  const hot = event.kind === 'navsteva-rodiny'
                   return (
                     <div
                       key={docId}
@@ -138,6 +138,63 @@ export function OsaCalendar() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Na telefonu se týdenní mřížka NEZOBRAZUJE. Sedm sloupců na 390px je
+          buď nečitelné, nebo se posouvá vodorovně — a v obou případech není
+          vidět dnešek, což je jediné, na co se člověk v terénu dívá. Místo
+          toho svislá agenda: den je nadpis, čas je osa. */}
+      <div className="osa__agendaweek">
+        {WEEK.map(({ label, day, today }) => {
+          const dayEvents = calendarEvents
+            .filter(({ event }) => new Date(event.start).getDate() === day)
+            .sort((a, b) => a.event.start.localeCompare(b.event.start))
+          if (!dayEvents.length) return null
+          return (
+            <section key={day}>
+              <h2 className={`osa__section${today ? ' osa__section--today' : ''}`}>
+                {label} {day}. 7.{today && ' · dnes'}
+              </h2>
+              {dayEvents.map(({ docId, event }) => {
+                const start = new Date(event.start)
+                const end = new Date(event.end)
+                const subjects = (event.subjectKeys ?? [])
+                  .map((key) => SUBJECTS.get(key))
+                  .filter((s): s is { label: string; avatarUrl?: string | null } => !!s)
+                  .slice(0, 4)
+                return (
+                  <div key={docId} className="osa__agenda">
+                    <span className="osa__agendatime">
+                      {start.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
+                      <br />
+                      <span style={{ color: 'var(--ink-3)' }}>
+                        {end.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </span>
+                    <span className="osa__agendabody">
+                      <span className="osa__agendatitle" style={{ display: 'block' }}>
+                        {event.title}
+                      </span>
+                      {subjects.length > 0 && (
+                        <span className="osa__eventfaces">
+                          {subjects.map((s, i) =>
+                            s.avatarUrl ? (
+                              <img key={i} src={s.avatarUrl} alt="" title={s.label} />
+                            ) : (
+                              <span key={i} title={s.label}>
+                                {initials(s.label)}
+                              </span>
+                            ),
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )
+              })}
+            </section>
+          )
+        })}
       </div>
     </OsaShell>
   )
