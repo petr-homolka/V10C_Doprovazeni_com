@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getOrganization } from '@/services/organizationService'
 import {
+  addFosterPersonToFamily,
   createFamily,
   listChildrenForFamily,
   listFamiliesWithDocIds,
@@ -29,6 +30,7 @@ import { listStaff } from '@/services/staffService'
 import { listStarredFamilyIds, setFamilyStarred } from '@/services/familyStarService'
 import { createNoteTimelineEntry } from '@/services/timelineService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
+import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import {
   computeAgreementExpiryTier,
   computeVisitAlertTier,
@@ -77,6 +79,12 @@ export default function FamilyListPage() {
   const [showForm, setShowForm] = useState(false)
   const { loading: submitting, success, run } = useAsyncSubmit()
   const [address, setAddress] = useState('')
+  const [fosterFirstName, setFosterFirstName] = useState('')
+  const [fosterLastName, setFosterLastName] = useState('')
+  const [fosterPhone, setFosterPhone] = useState('')
+  const [fosterPhoneError, setFosterPhoneError] = useState<string | null>(null)
+  const [fosterEmail, setFosterEmail] = useState('')
+  const [fosterEmailError, setFosterEmailError] = useState<string | null>(null)
   const [recorderState, setRecorderState] = useState<{ docId: string; people: RecordablePerson[] } | null>(null)
   const [recorderLoadingDocId, setRecorderLoadingDocId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortBy>('adresa')
@@ -210,15 +218,32 @@ export default function FamilyListPage() {
   async function handleCreate(e: FormEvent) {
     e.preventDefault()
     if (!organizationId) return
+    const phoneCheck = checkPhone(fosterPhone)
+    const emailCheck = checkEmail(fosterEmail)
+    setFosterPhone(phoneCheck.value)
+    setFosterEmail(emailCheck.value)
+    setFosterPhoneError(phoneCheck.ok ? null : phoneCheck.message ?? null)
+    setFosterEmailError(emailCheck.ok ? null : emailCheck.message ?? null)
+    if (!phoneCheck.ok || !emailCheck.ok) return
     setError(null)
     try {
       await run(async () => {
         const org = await getOrganization(organizationId)
         if (!org) throw new Error('org not found')
-        await createFamily(organizationId, org.orgCode, address || undefined)
+        const { docId } = await createFamily(organizationId, org.orgCode, address || undefined)
+        await addFosterPersonToFamily(docId, organizationId, org.orgCode, {
+          firstName: fosterFirstName,
+          lastName: fosterLastName,
+          ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
+          ...(emailCheck.value ? { email: emailCheck.value } : {}),
+        })
         await reload()
       })
       setAddress('')
+      setFosterFirstName('')
+      setFosterLastName('')
+      setFosterPhone('')
+      setFosterEmail('')
       setShowForm(false)
     } catch {
       setError('Založení rodiny se nezdařilo.')
@@ -316,10 +341,56 @@ export default function FamilyListPage() {
   const sidePanel = showForm && (
     <SidePanel title="Nová rodina" onClose={() => setShowForm(false)}>
       <form onSubmit={handleCreate} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno pěstouna</span>
+            <Input required autoFocus value={fosterFirstName} onChange={(e) => setFosterFirstName(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení pěstouna</span>
+            <Input required value={fosterLastName} onChange={(e) => setFosterLastName(e.target.value)} />
+          </label>
+        </div>
+        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">Telefon</span>
+            <Input
+              value={fosterPhone}
+              onChange={(e) => { setFosterPhone(e.target.value); setFosterPhoneError(null) }}
+              onBlur={() => {
+                const result = checkPhone(fosterPhone)
+                setFosterPhone(result.value)
+                setFosterPhoneError(result.ok ? null : (result.message ?? null))
+              }}
+            />
+            {fosterPhoneError && <span className="text-xs text-danger">{fosterPhoneError}</span>}
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
+            <Input
+              type="email"
+              value={fosterEmail}
+              onChange={(e) => { setFosterEmail(e.target.value); setFosterEmailError(null) }}
+              onBlur={() => {
+                const result = checkEmail(fosterEmail)
+                setFosterEmail(result.value)
+                setFosterEmailError(result.ok ? null : (result.message ?? null))
+              }}
+            />
+            {fosterEmailError && <span className="text-xs text-danger">{fosterEmailError}</span>}
+          </label>
+        </div>
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium leading-relaxed text-text-primary">Adresa (volitelné)</span>
-          <Input autoFocus value={address} onChange={(e) => setAddress(e.target.value)} />
+          <Input value={address} onChange={(e) => setAddress(e.target.value)} />
         </label>
+
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+
         <div className="flex gap-2 border-t border-border-default pt-4">
           <Button type="submit" loading={submitting} success={success}>
             Založit Spis
