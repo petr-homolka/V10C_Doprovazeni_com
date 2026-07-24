@@ -1,21 +1,28 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarDays } from 'lucide-react'
-import { listCalendarEvents } from '@/services/calendarEventService'
+import { listCalendarEventsForStaff, listCalendarEventsForSubject } from '@/services/calendarEventService'
 import { listEnumOptions } from '@/services/enumOptionsService'
-import { listFamiliesWithDocIds, listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
+import { loadSubjectDirectory } from '@/services/subjectDirectoryService'
 import { CALENDAR_EVENT_KIND_LABELS } from '@/types/calendarEvent'
 import { EmptyState } from '@/components/ui/empty-state'
 import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
-import { buildSubjectDirectory, resolveItemSubjects, type SubjectDirectory } from '@/lib/eventSubjects'
+import { resolveItemSubjects, type SubjectDirectory } from '@/lib/eventSubjects'
 import type { CalendarEventDoc } from '@/types/calendarEvent'
 import type { SubjectRefKind } from '@/types/timelineEntry'
 
 /**
- * Kalendář konkrétní entity (rodina/pěstoun/dítě) v jeho profilu — ve
- * zmenšené podobě, výchozí (a jediný) pohled AGENDA: chronologický seznam
- * událostí, které se té entity týkají (`subjectRefs`), rozdělený na
+ * Kalendář konkrétní entity (rodina/pěstoun/dítě/zaměstnanec) v jeho
+ * profilu — ve zmenšené podobě, výchozí (a jediný) pohled AGENDA:
+ * chronologický seznam událostí, které se té entity týkají, rozdělený na
  * nadcházející a proběhlé. Petrovo zadání: "Každá entita má svůj kalendář…
  * v profilu se zobrazuje ve zmenšené podobě a jeho defaultní pohled je AGENDA."
+ *
+ * Načítá ZÚŽENĚ (2026-07-24): dotaz přes denormalizované `subjectKeys`
+ * (resp. `assignedToUid` u zaměstnance) vrátí jen události té entity, a
+ * jména/fotky se dotahují jen pro entity, které se v nich skutečně
+ * objevily. Dřív se stahovaly všechny události organizace plus celé
+ * seznamy rodin/pěstounů/dětí — u větší organizace tisíce dokumentů kvůli
+ * pár řádkům agendy.
  */
 export function EntityAgenda({
   organizationId,
@@ -34,16 +41,29 @@ export function EntityAgenda({
    * `enumOptionsService`) — bez tohohle by se u vlastního typu zobrazil
    * technický klíč („navsteva-rodiny") místo popisku. */
   const [kindLabels, setKindLabels] = useState<Record<string, string>>(CALENDAR_EVENT_KIND_LABELS)
-  /** Jména + fotky VŠECH subjektů organizace — událost se často týká víc
-   * lidí než jen té entity, v jejímž profilu jsme, a avatary se zobrazují
-   * vždy. Cenu (tři dotazy na celé kolekce) nese zatím i desktopový
-   * kalendář; společné řešení je denormalizace subjektů do události samotné. */
+  /** Jména + fotky subjektů načtených událostí — událost se často týká víc
+   * lidí než jen té entity, v jejímž profilu jsme, a avatary se zobrazují vždy. */
   const [directory, setDirectory] = useState<SubjectDirectory | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    listCalendarEvents(organizationId)
-      .then((all) => { if (!cancelled) setEvents(all) })
+    const load =
+      subjectKind === 'staff'
+        ? listCalendarEventsForStaff(organizationId, subjectId)
+        : listCalendarEventsForSubject(organizationId, subjectKind, subjectId)
+    load
+      .then(async (mine) => {
+        if (cancelled) return
+        setEvents(mine)
+        // Adresář se staví z toho, co v načtených událostech reálně je —
+        // ne z celé organizace.
+        const refs = mine.flatMap(({ event }) => [
+          ...(event.subjectRefs ?? []),
+          ...(event.familyDocId ? [{ kind: 'family', id: event.familyDocId }] : []),
+        ])
+        const dir = await loadSubjectDirectory(refs)
+        if (!cancelled) setDirectory(dir)
+      })
       .catch(() => { if (!cancelled) setEvents([]) })
     listEnumOptions(organizationId, 'calendarEventKind')
       .then((opts) => {
@@ -51,34 +71,21 @@ export function EntityAgenda({
         setKindLabels({ ...CALENDAR_EVENT_KIND_LABELS, ...Object.fromEntries(opts.map((o) => [o.key, o.label])) })
       })
       .catch(() => { /* vlastní typy se nenačetly — zabudované popisky pořád platí */ })
-    Promise.all([
-      listFamiliesWithDocIds(organizationId),
-      listFosterPersonsForOrg(organizationId),
-      listChildrenForOrg(organizationId),
-    ])
-      .then(([families, fosterPersons, children]) => {
-        if (!cancelled) setDirectory(buildSubjectDirectory({ families, fosterPersons, children }))
-      })
-      .catch(() => { /* bez adresáře se agenda vykreslí bez avatarů, ne prázdná */ })
     return () => { cancelled = true }
-  }, [organizationId])
+  }, [organizationId, subjectKind, subjectId])
 
   const { upcoming, past } = useMemo(() => {
     const now = Date.now()
+    // Filtr na entitu už proběhl v dotazu; tady zbývá jen odfiltrovat
+    // zrušené a rozdělit na nadcházející/proběhlé.
     const mine = (events ?? [])
       .filter(({ event }) => event.status === 'planovano')
-      .filter(({ event }) =>
-        subjectKind === 'staff'
-          ? event.assignedToUid === subjectId
-          : (event.subjectRefs ?? []).some((r) => r.kind === subjectKind && r.id === subjectId) ||
-            (subjectKind === 'family' && event.familyDocId === subjectId),
-      )
       .sort((a, b) => a.event.start.localeCompare(b.event.start))
     return {
       upcoming: mine.filter(({ event }) => new Date(event.end).getTime() >= now),
       past: mine.filter(({ event }) => new Date(event.end).getTime() < now).reverse(),
     }
-  }, [events, subjectKind, subjectId])
+  }, [events])
 
   if (events === null) return <p className="text-sm text-text-secondary">Načítám kalendář…</p>
   if (upcoming.length === 0 && past.length === 0) {

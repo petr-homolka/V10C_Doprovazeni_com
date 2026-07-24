@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSubjectDirectory, matchesAnySubject, resolveItemSubjects } from './eventSubjects'
+import { buildSubjectDirectory, buildSubjectKeys, matchesAnySubject, resolveItemSubjects } from './eventSubjects'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -92,5 +92,29 @@ describe('matchesAnySubject', () => {
   it('bez vybraných entit nesedí nikdy', () => {
     expect(matchesAnySubject({ familyDocId: 'fam1' }, [])).toBe(false)
     expect(matchesAnySubject(null, [{ kind: 'family', id: 'fam1' }])).toBe(false)
+  })
+})
+
+describe('buildSubjectKeys', () => {
+  it('vyrobí klíč pro každou vazbu', () => {
+    expect(
+      buildSubjectKeys({ subjectRefs: [{ kind: 'family', id: 'f1' }, { kind: 'child', id: 'k1' }] }),
+    ).toEqual(['family:f1', 'child:k1'])
+  })
+
+  // Starší události mají vazbu jen ve `familyDocId` — bez tohohle by se
+  // v kalendáři rodiny neobjevily, protože dotaz jde přes `subjectKeys`.
+  it('přidá rodinu z familyDocId, i když v subjectRefs není', () => {
+    expect(buildSubjectKeys({ familyDocId: 'f1' })).toEqual(['family:f1'])
+  })
+
+  it('nezdvojuje rodinu uvedenou v obou místech', () => {
+    expect(buildSubjectKeys({ subjectRefs: [{ kind: 'family', id: 'f1' }], familyDocId: 'f1' })).toEqual(['family:f1'])
+  })
+
+  it('přeskočí rozbité vazby a prázdný vstup', () => {
+    expect(buildSubjectKeys({ subjectRefs: [{ kind: '', id: '' }] })).toEqual([])
+    expect(buildSubjectKeys({})).toEqual([])
+    expect(buildSubjectKeys({ subjectRefs: null, familyDocId: null })).toEqual([])
   })
 })

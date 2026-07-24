@@ -1,4 +1,5 @@
 import { collection, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore'
+import { buildSubjectKeys, subjectKey } from '@/lib/eventSubjects'
 import { db } from '@/lib/firebase'
 import type { CalendarEventDoc, CalendarEventKind, EventRecurrence, RecurrenceUnit } from '@/types/calendarEvent'
 import type { SubjectRef } from '@/types/timelineEntry'
@@ -49,6 +50,7 @@ export async function createCalendarEvent(
     familyDocId: input.familyDocId ?? null,
     familyUid: input.familyUid ?? null,
     subjectRefs: input.subjectRefs ?? [],
+    subjectKeys: buildSubjectKeys({ subjectRefs: input.subjectRefs, familyDocId: input.familyDocId }),
     notes: input.notes ?? null,
     recurrence: input.recurrence ?? null,
     createdAt: now,
@@ -174,9 +176,41 @@ export async function updateCalendarEvent(input: UpdateCalendarEventInput): Prom
     familyDocId: input.familyDocId ?? null,
     familyUid: input.familyUid ?? null,
     subjectRefs: input.subjectRefs ?? [],
+    // Denormalizace se PŘEPOČÍTÁVÁ při každé úpravě vazeb — jinak by
+    // kalendář entity ukazoval událost, která už k ní nepatří.
+    subjectKeys: buildSubjectKeys({ subjectRefs: input.subjectRefs, familyDocId: input.familyDocId }),
     notes: input.notes ?? null,
     updatedAt: new Date().toISOString(),
   })
+}
+
+/**
+ * Události JEDNÉ entity (kalendář rodiny/pěstouna/dítěte v jejím profilu).
+ * Zúžený dotaz přes denormalizované `subjectKeys` — dřív se načítaly
+ * všechny události organizace a filtrovalo se v prohlížeči, což u větší
+ * organizace znamenalo stahovat tisíce dokumentů kvůli pár řádkům agendy.
+ *
+ * Bez `orderBy` záměrně: `array-contains` + `orderBy` by vyžadovalo
+ * složený index, a řazení pár desítek výsledků v prohlížeči je zdarma.
+ */
+export async function listCalendarEventsForSubject(
+  organizationId: string,
+  kind: string,
+  id: string,
+): Promise<Array<{ docId: string; event: CalendarEventDoc }>> {
+  const snap = await getDocs(
+    query(eventsCollection(organizationId), where('subjectKeys', 'array-contains', subjectKey(kind, id))),
+  )
+  return snap.docs.map((d) => ({ docId: d.id, event: d.data() as CalendarEventDoc }))
+}
+
+/** Události přiřazené konkrétnímu zaměstnanci — jeho vlastní kalendář. */
+export async function listCalendarEventsForStaff(
+  organizationId: string,
+  assignedToUid: string,
+): Promise<Array<{ docId: string; event: CalendarEventDoc }>> {
+  const snap = await getDocs(query(eventsCollection(organizationId), where('assignedToUid', '==', assignedToUid)))
+  return snap.docs.map((d) => ({ docId: d.id, event: d.data() as CalendarEventDoc }))
 }
 
 /** "Zrušit" — status, ne mazání (`delete: if false`, viz firestore.rules). */

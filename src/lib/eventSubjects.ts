@@ -40,6 +40,29 @@ export function buildSubjectDirectory({
   }
 }
 
+/** Klíč pro `subjectKeys` — jediné místo, kde se ten tvar rozhoduje. */
+export function subjectKey(kind: string, id: string): string {
+  return `${kind}:${id}`
+}
+
+/**
+ * Ploché klíče subjektů události pro Firestore `array-contains` dotaz.
+ * Rodina z `familyDocId` je zahrnutá i tehdy, když v `subjectRefs` není —
+ * starší události mají vazbu jen tam a v kalendáři rodiny se objevit musí.
+ * Deduplikováno, ať pole neroste u události s rodinou uvedenou dvakrát.
+ */
+export function buildSubjectKeys(input: {
+  subjectRefs?: Array<{ kind: string; id: string }> | null
+  familyDocId?: string | null
+}): string[] {
+  const keys = new Set<string>()
+  for (const ref of input.subjectRefs ?? []) {
+    if (ref?.kind && ref?.id) keys.add(subjectKey(ref.kind, ref.id))
+  }
+  if (input.familyDocId) keys.add(subjectKey('family', input.familyDocId))
+  return [...keys]
+}
+
 /**
  * Týká se ten záznam některé z vybraných entit? Používá filtr kalendáře
  * pro "kalendáře zapnuté na vyžádání" — u připomínek z Dohody (bez

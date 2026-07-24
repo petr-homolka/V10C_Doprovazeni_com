@@ -16,7 +16,8 @@
     "seed:demo": "node scripts/seed-demo-org.mjs",
     "seed:large": "node scripts/seed-large.mjs",
     "seed:rich": "node scripts/seed-rich-demo.mjs",
-    "backfill:avatars": "node scripts/backfill-avatars.mjs"
+    "backfill:avatars": "node scripts/backfill-avatars.mjs",
+    "backfill:subject-keys": "node scripts/backfill-subject-keys.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

@@ -83,6 +83,19 @@ export interface CalendarEventDoc {
    * zůstanou `null`.
    */
   subjectRefs?: import('./timelineEntry').SubjectRef[]
+  /**
+   * Denormalizace `subjectRefs` (+ `familyDocId`) do plochého polí klíčů
+   * `"kind:id"` — VÝHRADNĚ proto, aby šel Firestore dotaz zúžit
+   * (`array-contains`). Firestore neumí filtrovat podle pole uvnitř polí
+   * objektů, takže kalendář entity by jinak musel načíst VŠECHNY události
+   * organizace a filtrovat je v prohlížeči (což do 2026-07-24 dělal).
+   *
+   * Zdroj pravdy zůstává `subjectRefs`/`familyDocId` — tohle pole se z nich
+   * VŽDY dopočítává (`buildSubjectKeys`) při zápisu, nikdy se needituje
+   * samostatně. Starší události ho nemají; dopočítá je
+   * `scripts/backfill-subject-keys.mjs`.
+   */
+  subjectKeys?: string[]
   notes?: string | null
   recurrence?: EventRecurrence | null
   createdAt: string
