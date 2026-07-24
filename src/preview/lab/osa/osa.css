@@ -1,0 +1,759 @@
+/*
+ * SMĚR „OSA" v routine.co povrchu — plný vizuální jazyk, ne jedna obrazovka.
+ *
+ * Vzniklo spojením dvou věcí: teze návrhu C (práce je řízená ČASEM, ne
+ * abecedou) a povrchu, který si uživatel vybral podle routine.co.
+ *
+ * Co si z Routine bereme a proč:
+ *   - téměř bílá plocha, žádné stíny — hrany dělá VLASOVÁ LINKA (1 px).
+ *     Stín znamená „tohle pluje nad ostatním"; v hustém pracovním nástroji
+ *     nepluje nic, všechno leží na jednom listu.
+ *   - DROBNÁ typografie (základ 13 px). Nástroj, ve kterém se bydlí osm
+ *     hodin denně, nemá být plakát.
+ *   - JEDEN teplý červený akcent, a to skoupě: primární akce, aktivní
+ *     položka, zpoždění. Nikde jinde barva není, takže když se objeví,
+ *     znamená něco.
+ *   - klávesnice je vidět (⌘K v hledání) — nástroj se přiznává, že se v něm
+ *     dá pracovat rychle.
+ *
+ * Co si NEbereme: Routine je osobní nástroj jednoho člověka. My máme spis
+ * o rodině, sdílený tým a lhůty ze zákona — proto zůstává svislá osa lhůt,
+ * avatary lidí a vazby mezi entitami.
+ */
+
+.osa {
+  /* Plocha a linky */
+  --paper: #ffffff;
+  --rail: #fbfbfa;
+  --hair: #ebebe9;
+  --hair-strong: #dededb;
+  --hover: #f7f7f6;
+  --inset: #f6f6f5;
+
+  /* Inkoust */
+  --ink: #17181a;
+  --ink-2: #63666c;
+  --ink-3: #9a9da3;
+
+  /* Jediný akcent + dva stavové odstíny */
+  --accent: #e0503a;
+  --accent-soft: #fdeeeb;
+  --amber: #a4691a;
+  --amber-soft: #fbf1e2;
+  --good: #3f7355;
+
+  display: flex;
+  min-height: 900px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Navigace ---------------------------------------------------- */
+
+.osa__nav {
+  width: 214px;
+  flex-shrink: 0;
+  background: var(--rail);
+  border-right: 1px solid var(--hair);
+  padding: 14px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.osa__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px 16px;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.osa__brandmark {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hledání s viditelnou zkratkou — první věc, kterou člověk v týhle práci
+   dělá, je najít člověka. */
+.osa__search {
+  margin: 0 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+
+.osa__kbd {
+  margin-left: auto;
+  border: 1px solid var(--hair-strong);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+
+.osa__navgroup {
+  padding: 10px 14px 5px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.osa__navitem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 6px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.osa__navitem--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.osa__navdot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.osa__navcount {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+
+.osa__navitem--active .osa__navcount {
+  color: var(--accent);
+}
+
+.osa__me {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 2px;
+  border-top: 1px solid var(--hair);
+  color: var(--ink-2);
+  font-size: 12.5px;
+}
+
+.osa__meface {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--inset);
+}
+
+/* ---------- Rám stránky ------------------------------------------------ */
+
+.osa__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.osa__top {
+  height: 46px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--hair);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+}
+
+.osa__crumb {
+  color: var(--ink-3);
+  font-size: 12.5px;
+}
+
+.osa__crumb b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.osa__topactions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.osa__btn {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 7px;
+  border: 1px solid var(--hair-strong);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 550;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.osa__btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.osa__body {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 18px 28px;
+  overflow: hidden;
+}
+
+.osa__h1 {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+/* Podtitulek říká STAV, ne co je na stránce (teze návrhu C). */
+.osa__lede {
+  margin-top: 3px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.osa__lede b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- Osa lhůt --------------------------------------------------- */
+
+.osa__bucket {
+  position: relative;
+  padding-left: 22px;
+  margin-top: 18px;
+}
+
+.osa__bucket::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 22px;
+  bottom: 0;
+  width: 1px;
+  background: var(--hair-strong);
+}
+
+.osa__buckethead {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-bottom: 6px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.osa__buckethead--hot {
+  color: var(--accent);
+}
+
+.osa__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) 132px 150px 84px 28px;
+  align-items: center;
+  gap: 14px;
+  height: 46px;
+  border-bottom: 1px solid var(--hair);
+  padding-right: 4px;
+}
+
+.osa__row:hover {
+  background: var(--hover);
+}
+
+.osa__dot {
+  position: absolute;
+  left: -22px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--paper);
+  background: var(--hair-strong);
+}
+
+.osa__dot--hot {
+  background: var(--accent);
+}
+
+.osa__dot--warm {
+  background: var(--amber);
+}
+
+.osa__who {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.osa__face {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--inset);
+  color: var(--ink-2);
+  font-size: 9.5px;
+  font-weight: 650;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.osa__name {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.osa__sub {
+  color: var(--ink-3);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.osa__cell {
+  color: var(--ink-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Zpoždění je ČÍSLO, ne štítek — „+35 dní" nese víc než „po termínu". */
+.osa__delay {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--accent);
+}
+
+.osa__delay--warm {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.osa__delay--calm {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+.osa__more {
+  color: var(--ink-3);
+  text-align: center;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.osa__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 6px;
+  background: var(--inset);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.osa__chip--hot {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.osa__chip--warm {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+/* ---------- Profil ----------------------------------------------------- */
+
+.osa__profile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 296px;
+  gap: 22px;
+  align-items: start;
+}
+
+.osa__phead {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.osa__pface {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--inset);
+}
+
+.osa__ptitle {
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.osa__tabs {
+  display: flex;
+  gap: 2px;
+  margin: 12px 0 16px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.osa__tab {
+  padding: 7px 10px;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.osa__tab--active {
+  color: var(--ink);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+/* Nadpis sekce se odlišuje JINAK než velikostí, aby nesoutěžil se jménem
+   v řádku pod sebou (to byla obrácená hierarchie v dnešní appce). */
+.osa__section {
+  padding: 16px 0 6px;
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.osa__prow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.osa__prow:hover {
+  background: var(--hover);
+}
+
+/* Vlastnost se vypisuje jako řádek „popisek — hodnota", ne jako karta:
+   nastavení a záznam o člověku nesmí vypadat stejně. */
+.osa__kv {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--hair);
+  font-size: 12.5px;
+}
+
+.osa__kvlabel {
+  color: var(--ink-3);
+}
+
+.osa__panel {
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.osa__panelhead {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--hair);
+  background: var(--rail);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.osa__panelbody {
+  padding: 10px 12px;
+}
+
+.osa__tl {
+  display: flex;
+  gap: 9px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.osa__tl:last-child {
+  border-bottom: none;
+}
+
+.osa__tldate {
+  width: 54px;
+  flex-shrink: 0;
+  color: var(--ink-3);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+
+.osa__tlbody {
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.osa__tlbody b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ---------- Kalendář --------------------------------------------------- */
+
+.osa__cal {
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.osa__caldays {
+  display: grid;
+  grid-template-columns: 46px repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--hair);
+  background: var(--rail);
+}
+
+.osa__calday {
+  padding: 7px 8px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  border-left: 1px solid var(--hair);
+}
+
+.osa__calday b {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.osa__calday--today b {
+  color: var(--accent);
+}
+
+.osa__calgrid {
+  display: grid;
+  grid-template-columns: 46px repeat(7, minmax(0, 1fr));
+  position: relative;
+}
+
+.osa__calhours {
+  border-right: 1px solid var(--hair);
+}
+
+.osa__calhour {
+  height: 46px;
+  padding: 2px 7px 0 0;
+  text-align: right;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.osa__calcol {
+  border-left: 1px solid var(--hair);
+  position: relative;
+}
+
+.osa__calcol--today {
+  background: #fefaf9;
+}
+
+.osa__calslot {
+  height: 46px;
+  border-bottom: 1px solid var(--hair);
+}
+
+/* Událost: bílá karta s vlasovou linkou a barevným LEVÝM okrajem. Barevná
+   plocha přes celou událost by na týdenním pohledu udělala z kalendáře
+   patchwork; okraj stačí a název dostane celou šířku. */
+.osa__event {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  border: 1px solid var(--hair-strong);
+  border-left: 2.5px solid var(--ink-3);
+  border-radius: 6px;
+  background: var(--paper);
+  padding: 3px 5px;
+  overflow: hidden;
+}
+
+.osa__event--hot {
+  border-left-color: var(--accent);
+}
+
+.osa__event--warm {
+  border-left-color: var(--amber);
+}
+
+.osa__eventtime {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.osa__eventtitle {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Avatary účastníků POD názvem, ne před ním — před názvem sežraly na
+   150px sloupci půlku textu a z „Případová konference" zbylo „Příp…". */
+.osa__eventfaces {
+  display: flex;
+  margin-top: 3px;
+}
+
+.osa__eventfaces img,
+.osa__eventfaces span {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid var(--paper);
+  object-fit: cover;
+  background: var(--inset);
+  margin-left: -4px;
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.osa__eventfaces > :first-child {
+  margin-left: 0;
+}
+
+/* ---------- Dnes ------------------------------------------------------- */
+
+.osa__today {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.osa__agenda {
+  display: flex;
+  gap: 11px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--hair);
+  align-items: flex-start;
+}
+
+.osa__agendatime {
+  width: 74px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  padding-top: 1px;
+}
+
+.osa__agendabody {
+  min-width: 0;
+}
+
+.osa__agendatitle {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.osa__stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hair);
+}
+
+.osa__statnum {
+  font-size: 21px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  min-width: 30px;
+}
+
+.osa__statnum--hot {
+  color: var(--accent);
+}
+
+.osa__statlabel {
+  color: var(--ink-2);
+  font-size: 12.5px;
+}

@@ -15,9 +15,14 @@ import '@fontsource/poppins/600.css'
 import '@fontsource/poppins/700.css'
 import '@/index.css'
 import './lab/lab.css'
+import './lab/osa/osa.css'
 import { DirectionSpis } from './lab/DirectionSpis'
 import { DirectionFaces } from './lab/DirectionFaces'
 import { DirectionRail } from './lab/DirectionRail'
+import { OsaFamilies } from './lab/osa/ScreenFamilies'
+import { OsaFamily } from './lab/osa/ScreenFamily'
+import { OsaCalendar } from './lab/osa/ScreenCalendar'
+import { OsaToday } from './lab/osa/ScreenToday'
 
 import { useIsMobile } from '@/hooks/useIsMobile'
 import FamilyListPage from '@/routes/FamilyListPage'
@@ -126,6 +131,12 @@ const LAB_DIRECTIONS: Record<string, () => ReactElement> = {
   spis: DirectionSpis,
   faces: DirectionFaces,
   rail: DirectionRail,
+  // Vybraný směr („Osa" v routine.co povrchu) na čtyřech různých
+  // obrazovkách — vizuální jazyk se posuzuje na celku, ne na jedné stránce.
+  'osa-dnes': OsaToday,
+  'osa-rodiny': OsaFamilies,
+  'osa-rodina': OsaFamily,
+  'osa-kalendar': OsaCalendar,
 }
 
 function PreviewApp() {

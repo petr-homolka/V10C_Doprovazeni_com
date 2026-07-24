@@ -23,6 +23,10 @@ const FILTER = process.env.SHOT ?? ''
 const SCREENS = [
   // Designové návrhy (`src/preview/lab/`) — tři vizuální jazyky pro tutéž
   // obrazovku. `lab` obchází router, proto nemají `route`.
+  { name: 'osa-1-dnes', lab: 'osa-dnes' },
+  { name: 'osa-2-rodiny', lab: 'osa-rodiny' },
+  { name: 'osa-3-rodina', lab: 'osa-rodina' },
+  { name: 'osa-4-kalendar', lab: 'osa-kalendar' },
   { name: 'navrh-a-spis', lab: 'spis' },
   { name: 'navrh-b-tvare', lab: 'faces' },
   { name: 'navrh-c-osa', lab: 'rail' },
