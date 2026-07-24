@@ -1,4 +1,4 @@
-import { StrictMode, useEffect, useState } from 'react'
+import { StrictMode, useEffect, useState, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthContext, type AuthContextValue } from '@/contexts/auth-context'
@@ -111,7 +111,7 @@ function AutoInteract() {
  * uživatel nikdy nevidí, protože skutečná appka tam servíruje mobilní
  * stránku).
  */
-function Responsive({ mobile, desktop }: { mobile: JSX.Element; desktop: JSX.Element }) {
+function Responsive({ mobile, desktop }: { mobile: ReactElement; desktop: ReactElement }) {
   return useIsMobile() ? mobile : desktop
 }
 

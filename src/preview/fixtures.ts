@@ -94,9 +94,9 @@ export const tasks: Array<{ docId: string; task: TaskDoc }> = [
 ]
 
 export const timelineEntries: Array<{ docId: string; entry: TimelineEntryDoc }> = [
-  { docId: 'tl1', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-eva', type: 'visit', occurredAt: iso(-2, 10), body: 'Návštěva proběhla v klidné atmosféře. Adélka ukazovala vysvědčení, zlepšila se v matematice o stupeň. Domluvili jsme doučování na čtvrtky.', subjectRefs: [{ kind: 'child', id: 'c1' }], sharingLevel: 'partner', createdAt: iso(-2) } as TimelineEntryDoc },
-  { docId: 'tl2', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-tomas', type: 'voice_entry', occurredAt: iso(-9, 15, 20), body: 'Telefonát s paní Novotnou — Dominik měl konflikt ve škole, řeší třídní učitelka. Zavolám v pátek.', subjectRefs: [{ kind: 'child', id: 'c2' }, { kind: 'fosterPerson', id: 'fp1' }], sharingLevel: 'internal', createdAt: iso(-9) } as TimelineEntryDoc },
-  { docId: 'tl3', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-hana', type: 'note', occurredAt: iso(-25, 8), body: 'Připomínka: v září vyprší lékařská zpráva.', subjectRefs: [], sharingLevel: 'internal', createdAt: iso(-25) } as TimelineEntryDoc },
+  { docId: 'tl1', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-eva', type: 'visit', occurredAt: iso(-2, 10), body: 'Návštěva proběhla v klidné atmosféře. Adélka ukazovala vysvědčení, zlepšila se v matematice o stupeň. Domluvili jsme doučování na čtvrtky.', subjectRefs: [{ kind: 'child', id: 'c1' }], sharingLevel: 'partner', createdAt: iso(-2) } as unknown as TimelineEntryDoc },
+  { docId: 'tl2', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-tomas', type: 'voice_entry', occurredAt: iso(-9, 15, 20), body: 'Telefonát s paní Novotnou — Dominik měl konflikt ve škole, řeší třídní učitelka. Zavolám v pátek.', subjectRefs: [{ kind: 'child', id: 'c2' }, { kind: 'fosterPerson', id: 'fp1' }], sharingLevel: 'internal', createdAt: iso(-9) } as unknown as TimelineEntryDoc },
+  { docId: 'tl3', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-hana', type: 'note', occurredAt: iso(-25, 8), body: 'Připomínka: v září vyprší lékařská zpráva.', subjectRefs: [], sharingLevel: 'internal', createdAt: iso(-25) } as unknown as TimelineEntryDoc },
 ]
 
 export const starredFamilyIds = ['f1']
