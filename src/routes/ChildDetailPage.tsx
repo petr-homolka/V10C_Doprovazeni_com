@@ -16,7 +16,7 @@ import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import { birthDateFromBirthNumber } from '@/lib/birthNumber'
 import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
-import { Baby, UserSquare2 } from 'lucide-react'
+import { Baby, UserSquare2 } from '@/components/ui/icons'
 
 const SECTIONS: TabItem[] = [
   { key: 'prehled', label: 'Přehled' },
@@ -132,7 +132,7 @@ export default function ChildDetailPage() {
                   onUploaded={(url) => setChild((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
                 />
                 <div>
-                  <h1 className="text-[26px] font-bold leading-tight text-text-primary">
+                  <h1 className="text-xl font-bold leading-tight text-text-primary">
                     {child.firstName} {child.lastName}
                   </h1>
                   <p className="mt-1 font-mono text-sm text-text-secondary">{child.birthNumber}</p>

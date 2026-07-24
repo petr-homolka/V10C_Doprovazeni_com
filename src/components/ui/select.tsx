@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**
@@ -15,7 +15,7 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
       <select
         ref={ref}
         className={cn(
-          'h-9 w-full appearance-none rounded-sm border border-transparent bg-field px-3 pr-9 text-[16px]',
+          'h-9 w-full appearance-none rounded-sm border border-transparent bg-field px-3 pr-9 text-lg',
           'text-text-primary transition-shadow duration-150',
           'focus:border-accent focus:outline-none focus:shadow-focus disabled:opacity-50',
           className,

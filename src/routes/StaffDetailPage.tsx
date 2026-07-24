@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Mail, UserCog } from 'lucide-react'
+import { Mail, UserCog } from '@/components/ui/icons'
 import { AppShell } from '@/components/shell/AppShell'
 import { EditableAvatar } from '@/components/ui/editable-avatar'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
@@ -109,7 +109,7 @@ export default function StaffDetailPage() {
           )}
 
           <div className="min-w-0 flex-1">
-            <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">{member.displayName}</h1>
+            <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">{member.displayName}</h1>
             <p className="mt-1">
               <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
                 {STAFF_ROLE_LABELS[member.role as StaffRole] ?? member.role}
@@ -128,11 +128,11 @@ export default function StaffDetailPage() {
 
           {!isCollaborator && caseload !== null && (
             <div className="shrink-0 text-center">
-              <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Kapacita</p>
+              <p className="text-xs uppercase tracking-wide text-text-tertiary">Kapacita</p>
               <div className="mt-1 flex justify-center">
                 <CapacityRing value={caseload} max={threshold} />
               </div>
-              <Link to="/zamestnanci" className="mt-1 block text-[11px] text-primary hover:underline">
+              <Link to="/zamestnanci" className="mt-1 block text-xs text-primary hover:underline">
                 Nastavit
               </Link>
             </div>
@@ -144,7 +144,7 @@ export default function StaffDetailPage() {
          * má přiřazené. */}
         {organizationId && (
           <div>
-            <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Kalendář</h2>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Kalendář</h2>
             <EntityAgenda organizationId={organizationId} subjectKind="staff" subjectId={member.uid} />
           </div>
         )}
@@ -153,7 +153,7 @@ export default function StaffDetailPage() {
          * ne "co se ho týká jako klienta". */}
         {organizationId && (
           <div>
-            <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Úkoly</h2>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Úkoly</h2>
             <EntityTasks organizationId={organizationId} subjectKind="staff" subjectId={member.uid} />
           </div>
         )}

@@ -8,7 +8,7 @@ import { cs } from 'date-fns/locale'
 import 'react-big-calendar/lib/css/react-big-calendar.css'
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css'
 import '@/styles/calendar-overrides.css'
-import { Ban, Settings } from 'lucide-react'
+import { Ban, Settings } from '@/components/ui/icons'
 import { AppShell } from '@/components/shell/AppShell'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
@@ -500,7 +500,7 @@ export default function CalendarPage() {
       <SidePanel title="Nastavení kalendáře" onClose={closePanel}>
         <div className="flex flex-col gap-6">
           <div>
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
               Zobrazit zaměstnance
             </h3>
             <div className="mt-2 flex flex-col gap-0.5">
@@ -528,7 +528,7 @@ export default function CalendarPage() {
            * přidají do kalendáře události té rodiny/pěstouna/dítěte i
            * tehdy, když je jejich řešitel ve filtru výš schovaný. */}
           <div className="flex flex-col gap-2 border-t border-border-subtle pt-4">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
               Kalendáře entit (na vyžádání)
             </h3>
             <SubjectRefsPicker
@@ -547,7 +547,7 @@ export default function CalendarPage() {
           </div>
 
           <div className="flex flex-col gap-2 border-t border-border-subtle pt-4">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Napojení</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Napojení</h3>
             <Link
               to="/nastaveni/kalendar"
               className="flex items-center gap-2 rounded-sm px-2 py-2 text-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
@@ -624,7 +624,7 @@ export default function CalendarPage() {
           </div>
 
           <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Termín</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Termín</h3>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Začátek</span>
               <div className="flex gap-2">

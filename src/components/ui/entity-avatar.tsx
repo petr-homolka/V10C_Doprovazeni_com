@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
-import type { LucideIcon } from 'lucide-react'
-import { Mic, Pencil } from 'lucide-react'
+import type { IconComponent } from '@/components/ui/icons'
+import { Mic, Pencil } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 function computeInitials(label: string): string {
@@ -47,7 +47,7 @@ export function EntityAvatar({
   photoURL?: string | null
   label: string
   size?: 'sm' | 'lg'
-  fallbackIcon?: LucideIcon
+  fallbackIcon?: IconComponent
   onQuickRecord?: () => void
   quickRecordDisabledReason?: string
   onChangePhoto?: () => void
@@ -81,7 +81,7 @@ export function EntityAvatar({
         className={cn(
           'flex h-full w-full items-center justify-center overflow-hidden rounded-full border bg-surface-soft text-text-secondary',
           ring ? 'border-2 border-primary' : 'border-border-strong',
-          size === 'lg' ? 'text-xl font-semibold' : 'text-[11px] font-semibold',
+          size === 'lg' ? 'text-xl font-semibold' : 'text-xs font-semibold',
         )}
       >
         {photoURL ? (

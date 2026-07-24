@@ -50,7 +50,7 @@ export function AccountMenu() {
         aria-expanded={open}
         title={displayName}
         onClick={() => setOpen((v) => !v)}
-        className="ml-1 flex size-8 items-center justify-center rounded-full bg-primary-soft text-[11px] font-semibold text-primary"
+        className="ml-1 flex size-8 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary"
       >
         {initials || '?'}
       </button>
@@ -73,7 +73,7 @@ export function AccountMenu() {
           {canPreviewRoles && (
             <>
               <div className="my-1.5 border-t border-border-subtle" />
-              <p className="px-2 py-1 text-[10px] leading-none text-text-secondary">
+              <p className="px-2 py-1 text-2xs leading-none text-text-secondary">
                 Náhled role (jen pro tebe)
               </p>
               <div className="flex flex-col gap-0.5">

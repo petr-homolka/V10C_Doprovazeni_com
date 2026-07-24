@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronRight, Mic, Phone } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Mic, Phone } from '@/components/ui/icons'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { VoiceCaptureSheet } from '@/components/mobile/VoiceCaptureSheet'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
@@ -55,12 +55,12 @@ export default function MobileFamilyDetailPage() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-5 px-5 pb-24 pt-6">
-        <button type="button" onClick={() => navigate('/rodiny')} className="flex items-center gap-1.5 text-[15px] text-text-secondary active:opacity-60">
+        <button type="button" onClick={() => navigate('/rodiny')} className="flex items-center gap-1.5 text-base text-text-secondary active:opacity-60">
           <ArrowLeft size={16} /> Zpět na Rodiny
         </button>
 
         <div>
-          <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">{displayName}</h1>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary">{displayName}</h1>
           {family?.address && (
             <p className="mt-1 text-base">
               <AddressLink address={family.address} />
@@ -70,7 +70,7 @@ export default function MobileFamilyDetailPage() {
 
         {fosterPersons.length > 0 && (
           <div className="flex flex-col gap-2">
-            <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Pěstouni</h2>
+            <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Pěstouni</h2>
             <GroupedList>
               {fosterPersons.map(({ docId, fosterPerson }) => (
                 <GroupedListRow
@@ -78,7 +78,7 @@ export default function MobileFamilyDetailPage() {
                   as="div"
                   onClick={() => navigate(`/rodiny/${familyUid}/pestoun/${docId}`)}
                 >
-                  <span className="min-w-0 flex-1 truncate text-[16px] text-text-primary">
+                  <span className="min-w-0 flex-1 truncate text-lg text-text-primary">
                     {fosterPerson.firstName} {fosterPerson.lastName}
                   </span>
                   {fosterPerson.phone && (
@@ -100,11 +100,11 @@ export default function MobileFamilyDetailPage() {
 
         {children.length > 0 && (
           <div className="flex flex-col gap-2">
-            <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Děti</h2>
+            <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Děti</h2>
             <GroupedList>
               {children.map(({ docId, child }) => (
                 <GroupedListRow key={docId} onClick={() => navigate(`/rodiny/${familyUid}/dite/${docId}`)}>
-                  <span className="min-w-0 flex-1 truncate text-[16px] text-text-primary">
+                  <span className="min-w-0 flex-1 truncate text-lg text-text-primary">
                     {child.firstName} {child.lastName}
                   </span>
                   <ChevronRight size={18} className="shrink-0 text-text-tertiary" />
@@ -118,7 +118,7 @@ export default function MobileFamilyDetailPage() {
          * mobilu, ne jen v desktopovém profilu. */}
         {organizationId && familyDocId && (
           <div className="flex flex-col gap-2">
-            <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Kalendář</h2>
+            <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Kalendář</h2>
             <EntityAgenda organizationId={organizationId} subjectKind="family" subjectId={familyDocId} />
           </div>
         )}

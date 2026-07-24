@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { MoreVertical } from 'lucide-react'
+import { MoreVertical } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**

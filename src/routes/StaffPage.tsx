@@ -22,7 +22,7 @@ import { computeEffectiveCapacityThreshold } from '@/lib/capacityThreshold'
 import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
 import { checkEmail } from '@/lib/contactValidation'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
-import { Plus, UserCog } from 'lucide-react'
+import { Plus, UserCog } from '@/components/ui/icons'
 
 // Org_admin nepřiděluje `superadmin` (platformní role) — viz firestore.rules.
 const ASSIGNABLE_ROLES = STAFF_ROLES.filter((r) => r !== 'superadmin')
@@ -196,7 +196,7 @@ export default function StaffPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]}>
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Zaměstnanci</h1>
+        <h1 className="text-xl font-bold leading-tight text-text-primary">Zaměstnanci</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -337,7 +337,7 @@ export default function StaffPage() {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
             <div className="mb-5 flex items-center justify-between gap-4">
-              <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">Zaměstnanci</h1>
+              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">Zaměstnanci</h1>
               {isOrgAdmin && (
                 <Button size="sm" onClick={openCreate}>
                   <Plus size={16} /> Přidat zaměstnance
@@ -368,6 +368,9 @@ export default function StaffPage() {
             ) : (
               <RecordCardList
                 cellCount={2}
+                headers={['Role', 'Kapacita']}
+                lead={32}
+                trail={32}
                 columns={{
                   lg: 'minmax(220px,1fr) minmax(0,200px) minmax(0,110px)',
                   md: 'minmax(200px,1fr) minmax(0,180px)',

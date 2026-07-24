@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Calendar, Home, User, Users } from 'lucide-react'
+import { Calendar, Home, User, Users } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -35,7 +35,7 @@ export function MobileShell({ children }: { children: ReactNode }) {
             end={end}
             className={({ isActive }) =>
               cn(
-                'flex flex-col items-center gap-1 py-2.5 text-[11px] font-semibold text-text-tertiary transition-transform duration-150 active:scale-90',
+                'flex flex-col items-center gap-1 py-2.5 text-xs font-semibold text-text-tertiary transition-transform duration-150 active:scale-90',
                 isActive && 'text-primary',
               )
             }

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**
@@ -34,7 +34,7 @@ export function SidePanel({
       )}
     >
       <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border-subtle px-4">
-        <h2 className="truncate text-[15px] font-semibold text-text-primary">{title}</h2>
+        <h2 className="truncate text-base font-semibold text-text-primary">{title}</h2>
         <div className="flex shrink-0 items-center gap-1">
           {actions}
           <button

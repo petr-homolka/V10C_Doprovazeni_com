@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, Square, X } from 'lucide-react'
+import { Mic, Square, X } from '@/components/ui/icons'
 import { Drawer } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -233,7 +233,7 @@ export function VoiceRecorderPanel({
     <Drawer onClose={onClose}>
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
         <div>
-          <h2 className="text-[17px] font-semibold leading-snug text-text-primary">
+          <h2 className="text-lg font-semibold leading-snug text-text-primary">
             {visit ? 'Zápis z návštěvy' : 'Zápis'}
           </h2>
           {visit && (
@@ -316,7 +316,7 @@ export function VoiceRecorderPanel({
           placeholder="Text zápisu…"
           className={cn(
             'w-full flex-1 resize-none rounded-sm border border-transparent bg-field px-4 py-3',
-            'text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary',
+            'text-lg leading-relaxed text-text-primary placeholder:text-text-tertiary',
             'transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none',
           )}
         />

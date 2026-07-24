@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Baby, Clock, FileText, MessageCircle, Mic, Send, StickyNote } from 'lucide-react'
+import { Baby, Clock, FileText, MessageCircle, Mic, Send, StickyNote } from '@/components/ui/icons'
 import ReactMarkdown from 'react-markdown'
 import { MojeShell } from '@/components/moje/MojeShell'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
@@ -172,7 +172,7 @@ export default function MojeDashboardPage() {
 
   return (
     <MojeShell>
-      <h1 className="text-[26px] font-bold leading-tight text-text-primary">Vítejte, {userDoc?.displayName}</h1>
+      <h1 className="text-xl font-bold leading-tight text-text-primary">Vítejte, {userDoc?.displayName}</h1>
       {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
 
       {error && (
@@ -254,7 +254,7 @@ export default function MojeDashboardPage() {
                   >
                     <p className="whitespace-pre-wrap">{message.body}</p>
                   </div>
-                  <p className="mt-1 text-[11px] text-text-tertiary">
+                  <p className="mt-1 text-xs text-text-tertiary">
                     {isMine ? 'Vy' : 'Klíčová osoba'} · {new Date(message.createdAt).toLocaleString('cs-CZ')}
                   </p>
                 </div>

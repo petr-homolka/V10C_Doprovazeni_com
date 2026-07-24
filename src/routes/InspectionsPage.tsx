@@ -16,7 +16,7 @@ import {
   markCorrectiveActionCompleted,
 } from '@/services/inspectionService'
 import type { InspectionDoc, InspectionFinding, QualityStandardRef } from '@/types/inspection'
-import { ClipboardCheck, Plus } from 'lucide-react'
+import { ClipboardCheck, Plus } from '@/components/ui/icons'
 
 const STANDARD_REF_LABELS: Record<QualityStandardRef, string> = { priloha_2: 'Příloha 2', priloha_4: 'Příloha 4' }
 const SCORE_LABELS: Record<InspectionFinding['score'], string> = {

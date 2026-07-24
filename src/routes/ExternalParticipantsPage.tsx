@@ -31,7 +31,7 @@ import {
 } from '@/types/externalParticipant'
 import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
-import { Plus, UserSquare2 } from 'lucide-react'
+import { Plus, UserSquare2 } from '@/components/ui/icons'
 
 const PERMISSION_LABELS: Record<PermissionKey, string> = {
   viewDocuments: 'Zobrazit dokumenty',

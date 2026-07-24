@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Search, Users } from 'lucide-react'
+import { ChevronRight, Search, Users } from '@/components/ui/icons'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { MobileFamilyNavTabs } from '@/components/mobile/MobileFamilyNavTabs'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
@@ -56,7 +56,7 @@ export default function MobileFamiliesPage() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-4 px-5 pb-6 pt-6">
-        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Rodiny</h1>
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary">Rodiny</h1>
         <MobileFamilyNavTabs active="rodiny" />
         <div className="relative">
           <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
@@ -69,7 +69,7 @@ export default function MobileFamiliesPage() {
         </div>
 
         {filtered === null ? (
-          <p className="text-[15px] text-text-secondary">Načítám…</p>
+          <p className="text-base text-text-secondary">Načítám…</p>
         ) : filtered.length === 0 ? (
           <EmptyState icon={Users} text="Žádná rodina neodpovídá hledání." />
         ) : (
@@ -77,9 +77,9 @@ export default function MobileFamiliesPage() {
             {filtered.map(({ docId, family, label }) => (
               <GroupedListRow key={docId} onClick={() => navigate(`/mobil/rodiny/${family.uid}`)}>
                 <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-                  <span className="text-[16px] font-medium text-text-primary">{label}</span>
+                  <span className="text-lg font-medium text-text-primary">{label}</span>
                   {family.address && family.address !== label && (
-                    <span className="text-[14px] text-text-secondary">{family.address}</span>
+                    <span className="text-base text-text-secondary">{family.address}</span>
                   )}
                 </span>
                 <ChevronRight size={18} className="shrink-0 text-text-tertiary" />

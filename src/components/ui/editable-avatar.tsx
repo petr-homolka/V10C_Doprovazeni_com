@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { LucideIcon } from 'lucide-react'
+import type { IconComponent } from '@/components/ui/icons'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { uploadEntityAvatar, uploadUserAvatar } from '@/services/avatarService'
 import type { SubjectRefKind } from '@/types/timelineEntry'
@@ -27,7 +27,7 @@ export function EditableAvatar({
   familyId?: string
   photoURL?: string | null
   label: string
-  fallbackIcon?: LucideIcon
+  fallbackIcon?: IconComponent
   onUploaded: (url: string) => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)

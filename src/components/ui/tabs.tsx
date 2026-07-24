@@ -35,7 +35,7 @@ export function Tabs({
             aria-selected={selected}
             onClick={() => onSelect(item.key)}
             className={cn(
-              '-mb-px flex h-10 items-center border-b-2 text-[14px] transition-colors duration-150',
+              '-mb-px flex h-10 items-center border-b-2 text-base transition-colors duration-150',
               selected
                 ? 'border-primary font-semibold text-primary'
                 : 'border-transparent font-medium text-text-secondary hover:border-border-medium hover:text-text-primary',

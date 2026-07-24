@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { GraduationCap, Plus } from 'lucide-react'
+import { GraduationCap, Plus } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -55,7 +55,7 @@ const COURSE_TYPE_LABELS: Record<CourseDoc['type'], string> = {
 }
 
 const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
+  'w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-lg leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
 
 type Enrollment = { docId: string; enrollment: CourseEnrollmentDoc }
 

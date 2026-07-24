@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle } from '@/components/ui/icons'
 import { Button } from './button'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 

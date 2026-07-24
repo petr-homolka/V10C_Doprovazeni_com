@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, ListTodo } from 'lucide-react'
+import { CheckCircle2, ListTodo } from '@/components/ui/icons'
 import { listTasksForStaff, listTasksForSubject, setTaskStatus } from '@/services/taskService'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PersonLink } from '@/components/ui/person-link'
@@ -130,7 +130,7 @@ export function EntityTasks({
 
       {done.length > 0 && (
         <details className="rounded-lg bg-inset p-3">
-          <summary className="cursor-pointer text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-text-tertiary">
             Hotovo ({done.length})
           </summary>
           <div className="mt-2 flex flex-col gap-1.5">

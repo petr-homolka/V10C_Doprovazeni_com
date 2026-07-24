@@ -1,220 +1,34 @@
+/* Tokeny první: `@import` musí předcházet ostatním pravidlům, jinak si
+   postcss-import stěžuje. Jsou ve vlastním souboru, protože jich je hodně
+   a jsou ODEČTENÉ z konkrétního zdroje — komentář u nich říká z čeho. */
+@import './tokens.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/*
-  Design tokeny — CESTA D, round 2 (2026-07-23). Round 1 byl Petrem
-  právem odmítnut jako povrchní přebarvení Cesty B kostry ("jen jsi to
-  obarvil" znovu). Tenhle round je genuinní strukturální přestavba podle
-  Woorkroom Community reference (SPEC.md ve scratchpadu) — seznamy jsou
-  KARTY (RecordCard), ne tabulky, Dashboard je skládačka widgetů, ne tři
-  seznamy. Tokeny samotné (paleta/radius/stín) zůstávají z round 1 — na
-  těch Petr výhrady neměl, problém byla STRUKTURA komponent nad nimi.
-
-  KLÍČOVÝ ARCHITEKTONICKÝ TAH (stejný trik jako ostatní cesty): STEJNÁ
-  SADA proměnných — jen nové hodnoty. `tailwind.config.js` na ně mapuje
-  stejné utility třídy, takže barvy/radius/stín se šíří napříč appkou
-  automaticky — ale komponenty samotné (`RecordCard` místo `Table`,
-  Dashboard widgety, Messenger) jsou tenhle round PŘEPSANÉ, ne jen
-  přebarvené.
-*/
-:root {
-  /* Pozadí a plochy — bledě periwinkle appka, čistě bílé karty. */
-  --bg-app: #EAF0FB;
-  --bg-surface: #F2F6FC;
-  --bg-surface-soft: #FFFFFF;
-  --bg-inset: #F5F8FC;
-  --bg-void: #DCE6F7;
-  --overlay-active: rgba(62, 123, 250, .09);
-  --field-bg: rgba(138, 148, 166, .10);
-  --toggle-off: #D7DCE5;
-  --accent: #3E7BFA;
-  --toggle-thumb: #FFFFFF;
-
-  /* Text */
-  --text-primary: #171A2B;
-  --text-secondary: #8A94A6;
-  --text-tertiary: #B7BFCC;
-  --text-inverse: #FFFFFF;
-
-  /* Čáry — velmi jemné, appka spoléhá na kartu + stín, ne na obrys. */
-  --border-subtle: #F1F4F9;
-  --border-default: #E3E8F0;
-  --border-medium: #D7DCE5;
-  --border-strong: #C3CBDA;
-
-  /* Primární akcent — periwinkle modrá z reference. */
-  --primary: #3E7BFA;
-  --primary-hover: #2F5FD6;
-  --primary-foreground: #FFFFFF;
-  --primary-soft: #E3ECFF;
-  --primary-soft-hover: #D2E1FF;
-  --ring: #3E7BFA;
-
-  /* Sémantika subjektů/stavů. */
-  --subject-foster: #17C68C;
-  --subject-foster-bg: #D3F6E7;
-  --subject-ospod: #3E7BFA;
-  --subject-ospod-bg: #E3ECFF;
-  --subject-court: #8A94A6;
-  --subject-court-bg: #EDF0F5;
-  --subject-bio: #FFA53D;
-  --subject-bio-bg: #FFF1E0;
-  --crisis: #F35B5B;
-  --crisis-bg: #FDE7E7;
-
-  --success: #1BC47D;
-  --success-bg: #D3F6E7;
-  --warning: #FFA53D;
-  --warning-bg: #FFF1E0;
-  --danger: #F35B5B;
-  --danger-bg: #FDE7E7;
-  --danger-solid: #E14B4B;
-
-  --tier-accent: #B84FE0;
-  --tier-accent-bg: #F4E3FD;
-
-  /* Presence/online stav (Messenger). */
-  --online: #3ED598;
-
-  /* Radiusy — VELKORYSÉ, "měkký" konzumní SaaS vzhled: karty nápadně
-     kulatější než tlačítka/pole. */
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 22px;
-  --radius-full: 9999px;
-
-  /* Stíny — velmi měkké, nízko-kontrastní, velký rozostření. */
-  --shadow-xs: 0 1px 2px rgba(23, 26, 43, .05);
-  --shadow-raised: 0 2px 6px rgba(23, 26, 43, .04), 0 4px 14px rgba(23, 26, 43, .05);
-  --shadow-md: 0 4px 12px rgba(23, 26, 43, .05), 0 10px 28px rgba(23, 26, 43, .07);
-  --shadow-overlay: 0 12px 32px rgba(23, 26, 43, .12), 0 4px 12px rgba(23, 26, 43, .06);
-  --shadow-xl: 0 24px 64px rgba(23, 26, 43, .16);
-  --focus-ring: 0 0 0 3px rgba(62, 123, 250, .22);
-
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --bg-void: #0B1220;
-    /* Karta musí být ZŘETELNĚ světlejší než plocha (DESIGN_RULES.md §7) —
-       ve tmavém režimu stín nefunguje, hranu dělá jen barva. Původní
-       #10182C/#182140 byl rozdíl tak malý, že sidebar i karty splývaly
-       s plochou (odhaleno na screenshotu, ne v kódu). */
-    --bg-app: #0C1223;
-    --bg-surface-soft: #1B2646;
-    --bg-surface: #212E56;
-    --bg-inset: rgba(255, 255, 255, .04);
-    --overlay-active: rgba(120, 160, 255, .14);
-    --field-bg: rgba(120, 160, 255, .09);
-    --toggle-off: rgba(203, 213, 235, .18);
-    --accent: #6B9BFF;
-
-    --text-primary: #EEF2FC;
-    --text-secondary: #A6B2D6;
-    --text-tertiary: #7987B0;
-    --text-inverse: #0B1220;
-
-    --border-subtle: rgba(180, 200, 250, .08);
-    --border-default: rgba(180, 200, 250, .13);
-    --border-medium: rgba(180, 200, 250, .18);
-    --border-strong: rgba(180, 200, 250, .26);
-
-    --primary: #6B9BFF;
-    --primary-hover: #8FB2FF;
-    --primary-foreground: #0B1220;
-    --primary-soft: #223561;
-    --primary-soft-hover: #2B4278;
-    --ring: #6B9BFF;
-
-    --subject-foster-bg: #103526;
-    --subject-ospod-bg: #182B4E;
-    --subject-court-bg: #26304E;
-    --subject-bio-bg: #402E10;
-    --crisis-bg: #401A1A;
-
-    --success-bg: #103526;
-    --warning-bg: #402E10;
-    --danger-bg: #401A1A;
-    --tier-accent-bg: #351A45;
-
-    --online: #3ED598;
-
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, .4);
-    --shadow-raised: 0 2px 8px rgba(0, 0, 0, .35), 0 4px 16px rgba(0, 0, 0, .3);
-    --shadow-md: 0 4px 14px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .35);
-    --shadow-overlay: 0 14px 36px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .35);
-    --shadow-xl: 0 26px 64px rgba(0, 0, 0, .55);
-    --focus-ring: 0 0 0 3px rgba(107, 155, 255, .3);
-
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg-void: #070C18;
-  /* Viz komentář u stejných tokenů v `prefers-color-scheme` bloku výš. */
-  --bg-app: #0C1223;
-  --bg-surface-soft: #1B2646;
-  --bg-surface: #212E56;
-  --bg-inset: rgba(255, 255, 255, .04);
-  --overlay-active: rgba(120, 160, 255, .14);
-  --field-bg: rgba(120, 160, 255, .09);
-  --toggle-off: rgba(203, 213, 235, .18);
-  --accent: #6B9BFF;
-
-  --text-primary: #EEF2FC;
-  --text-secondary: #A6B2D6;
-  --text-tertiary: #7987B0;
-  --text-inverse: #0B1220;
-
-  --border-subtle: rgba(180, 200, 250, .08);
-  --border-default: rgba(180, 200, 250, .13);
-  --border-medium: rgba(180, 200, 250, .18);
-  --border-strong: rgba(180, 200, 250, .26);
-
-  --primary: #6B9BFF;
-  --primary-hover: #8FB2FF;
-  --primary-foreground: #0B1220;
-  --primary-soft: #223561;
-  --primary-soft-hover: #2B4278;
-  --ring: #6B9BFF;
-
-  --subject-foster-bg: #103526;
-  --subject-ospod-bg: #182B4E;
-  --subject-court-bg: #26304E;
-  --subject-bio-bg: #402E10;
-  --crisis-bg: #401A1A;
-
-  --success-bg: #103526;
-  --warning-bg: #402E10;
-  --danger-bg: #401A1A;
-  --tier-accent-bg: #351A45;
-
-  --online: #3ED598;
-
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, .4);
-  --shadow-raised: 0 2px 8px rgba(0, 0, 0, .35), 0 4px 16px rgba(0, 0, 0, .3);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, .4), 0 10px 28px rgba(0, 0, 0, .35);
-  --shadow-overlay: 0 14px 36px rgba(0, 0, 0, .5), 0 4px 12px rgba(0, 0, 0, .35);
-  --shadow-xl: 0 26px 64px rgba(0, 0, 0, .55);
-  --focus-ring: 0 0 0 3px rgba(107, 155, 255, .3);
-
-  color-scheme: dark;
-}
 
 html {
   background: var(--bg-void);
 }
 
+/*
+ * Základ je 13px/19px — odečteno z Routine, kde je to nejčastější kombinace
+ * (font-size 13px 122×, line-height 19px 115×). Předtím tu bylo 15px/1.55.
+ *
+ * Zmenšit základní písmo zní jako krok proti vzdušnosti, ale je to naopak:
+ * vzdušnost dělá PRÁZDNÉ MÍSTO mezi věcmi, ne velké litery. Při 15px se do
+ * řádku seznamu nevejde jméno i adresa, takže se ubírá padding — a hustý
+ * layout s velkým písmem je to nejtěsnější, co může být.
+ */
 body {
   margin: 0;
   background: var(--bg-void);
   color: var(--text-primary);
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 15px;
-  line-height: 1.55;
+  font-family: 'Inter', -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  font-size: 13px;
+  line-height: 19px;
+  letter-spacing: -0.1px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'cv11', 'ss01', 'tnum';
@@ -255,6 +69,35 @@ select {
   container-type: inline-size;
 }
 
+/*
+  ŘÁDEK JE ŘÁDEK, NE KARTA.
+
+  Do 2026-07-24 byl každý záznam bílá karta se stínem na šedé ploše, mezi
+  nimi 8px mezera. Dvanáct rodin tedy bylo dvanáct plovoucích destiček —
+  a plovoucí destičky se nedají skenovat očima svisle, protože každá má
+  vlastní hranu. Routine to řeší tak, že celý seznam je JEDEN list a řádky
+  dělí vlasová linka; oko pak jede po sloupci, ne po dlaždicích.
+
+  Zvýraznění pod kurzorem je jen podbarvení, ne zvednutí stínem — nic se
+  nemá odlepovat od plochy.
+*/
+.record-item {
+  border-bottom: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.record-item:last-child {
+  border-bottom: none;
+}
+
+.record-item:hover {
+  background: var(--overlay-active);
+}
+
+.record-head {
+  border-bottom: 1px solid var(--border-default);
+}
+
 .record-row {
   display: grid;
   grid-template-columns: var(--record-cols-lg);
@@ -262,12 +105,15 @@ select {
   gap: 16px;
 }
 
-/* Dva sloupce metadat. */
+/* Dva sloupce metadat.
+
+   `-n + 2`, ne `-n + 1`: poslední dítě mřížky je sloupec AKCÍ (`.record-trail`),
+   ne buňka metadat, takže se počítání zprava posouvá o jedno. */
 @container (max-width: 859px) {
   .record-row {
     grid-template-columns: var(--record-cols-md, var(--record-cols-lg));
   }
-  .record-row > .record-cell:nth-last-child(-n + 1) {
+  .record-row > .record-cell:nth-last-child(-n + 2) {
     display: none;
   }
 }
@@ -278,16 +124,16 @@ select {
   .record-row {
     grid-template-columns: var(--record-cols-sm, var(--record-cols-md, var(--record-cols-lg)));
   }
-  .record-row > .record-cell:nth-last-child(-n + 2) {
+  .record-row > .record-cell:nth-last-child(-n + 3) {
     display: none;
   }
 }
 
-/* Jen jméno. Mobil má vlastní stránky, tohle je pojistka pro úzké okno
+/* Jen jméno a akce. Mobil má vlastní stránky, tohle je pojistka pro úzké okno
    nebo otevřený panel na malém displeji. Jméno zůstává vždy (§4). */
 @container (max-width: 439px) {
   .record-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: auto minmax(0, 1fr) auto;
   }
   .record-row > .record-cell {
     display: none;

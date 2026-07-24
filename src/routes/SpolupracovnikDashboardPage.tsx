@@ -11,7 +11,7 @@ import {
   listCollaboratorEntries,
 } from '@/services/collaboratorService'
 import type { CollaboratorAssignmentDoc, CollaboratorEntryDoc } from '@/types/collaborator'
-import { UserSquare2 } from 'lucide-react'
+import { UserSquare2 } from '@/components/ui/icons'
 
 /**
  * /spolupracovnik — M9, UX zpětná vazba 2026-07-21. Vlastní, VÝRAZNĚ
@@ -141,7 +141,7 @@ export default function SpolupracovnikDashboardPage() {
                             value={entryText}
                             onChange={(e) => setEntryText(e.target.value)}
                             placeholder="Co jste dnes dělali (pro výkaz práce)…"
-                            className="w-full rounded-sm border border-transparent bg-field px-3 py-2 text-[15px] text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
+                            className="w-full rounded-sm border border-transparent bg-field px-3 py-2 text-base text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                           />
                           <Button type="submit" size="sm" loading={savingEntry} success={saveEntrySuccess} className="w-fit">
                             Uložit zápis

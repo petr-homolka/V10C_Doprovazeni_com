@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, CalendarCheck, Cake, NotebookPen, PartyPopper } from 'lucide-react'
+import { AlertTriangle, CalendarCheck, Cake, NotebookPen, PartyPopper } from '@/components/ui/icons'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FamilyCard } from '@/components/FamilyCard'
 import { useAuth } from '@/hooks/useAuth'

@@ -17,7 +17,7 @@ import {
 } from '@/services/fosterProspectService'
 import type { FosterProspectDoc, FosterProspectExistingStatus, FosterProspectNoteDoc, FosterProspectStatus } from '@/types/fosterProspect'
 import { checkEmail, checkPhone } from '@/lib/contactValidation'
-import { Plus, UserPlus } from 'lucide-react'
+import { Plus, UserPlus } from '@/components/ui/icons'
 
 const STATUS_LABELS: Record<FosterProspectStatus, string> = {
   v_jednani: 'V jednání',

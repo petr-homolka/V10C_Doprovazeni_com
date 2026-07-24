@@ -19,7 +19,7 @@ import {
   runManualBackup,
 } from '@/services/backupService'
 import type { BackupConfigDoc, BackupDestinationType, BackupJobDoc, BackupJobStatus } from '@/types/backup'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from '@/components/ui/icons'
 
 const DEFAULT_CONFIG: BackupConfigDoc = {
   schedule: { enabled: false, dayOfWeek: 'ne', time: '02:00' },

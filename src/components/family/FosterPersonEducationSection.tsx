@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Check, GraduationCap, Minus, Plus } from 'lucide-react'
+import { Check, GraduationCap, Minus, Plus } from '@/components/ui/icons'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

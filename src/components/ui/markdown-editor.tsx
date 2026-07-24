@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { Bold, Italic, Heading, List, ListOrdered, Link2 } from 'lucide-react'
+import { Bold, Italic, Heading, List, ListOrdered, Link2 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**
@@ -84,7 +84,7 @@ export function MarkdownEditor({
             <Link2 size={15} strokeWidth={2} />
           </button>
         </div>
-        <div className="flex items-center gap-1 text-[13px]">
+        <div className="flex items-center gap-1 text-sm">
           <button
             type="button"
             onClick={() => setTab('write')}
@@ -109,7 +109,7 @@ export function MarkdownEditor({
           onChange={(e) => onChange(e.target.value)}
           rows={rows}
           placeholder={placeholder}
-          className="w-full resize-y bg-inset px-4 py-3 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary focus:outline-none"
+          className="w-full resize-y bg-inset px-4 py-3 text-lg leading-relaxed text-text-primary placeholder:text-text-tertiary focus:outline-none"
         />
       ) : (
         <div className="min-h-[8rem] px-4 py-3" style={{ minHeight: `${rows * 1.6}rem` }}>

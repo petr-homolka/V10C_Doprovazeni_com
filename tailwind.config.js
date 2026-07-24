@@ -85,9 +85,59 @@ export default {
         xl: 'var(--shadow-xl)',
         focus: 'var(--focus-ring)',
       },
+      /*
+        TYPOGRAFICKÁ STUPNICE — odečtená z Routine, ne z výchozího Tailwindu.
+
+        Výchozí Tailwind má text-sm 14/20, text-base 16/24, text-lg 18/28.
+        Routine má 13/19, 14/20, 16/120 %. Přemapováním stupnice se posune
+        CELÁ appka (text-sm je v ní 515×, text-xs 127×) bez zásahu do
+        komponent — a to je jediný způsob, jak takovou změnu udělat
+        konzistentně a ne po kouskách.
+      */
+      fontSize: {
+        '2xs': ['10px', '15px'],
+        xs: ['11px', '17px'],
+        sm: ['13px', '19px'],
+        base: ['14px', '20px'],
+        lg: ['16px', '1.2'],
+        xl: ['20px', '28px'],
+        '2xl': ['24px', '32px'],
+        '3xl': ['32px', '40px'],
+      },
+
+      /*
+        TUČNOST — tohle je ta nejdůležitější jediná změna.
+
+        V jejich CSS je `font-weight:500` 329×, `400` 311×, ale `600` jen
+        26× a `700` čtyřikrát. Hierarchii tam nedělá tučnost, dělá ji
+        velikost a barva textu. Appka měla 53× `font-semibold` a 35×
+        `font-bold`, takže všechno křičelo.
+
+        Místo přepisování 88 míst přemapujeme význam tříd: `font-semibold`
+        kreslí 500 a `font-bold` kreslí 600. Tučnější řez v appce prostě
+        neexistuje — a nedá se omylem použít.
+      */
+      fontWeight: {
+        light: '300',
+        normal: '400',
+        medium: '500',
+        semibold: '500',
+        bold: '600',
+        extrabold: '600',
+      },
+
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        heading: ['Poppins', 'Inter', 'system-ui', 'sans-serif'],
+        sans: [
+          'Inter', '-apple-system', 'system-ui', 'BlinkMacSystemFont',
+          'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif',
+        ],
+        // Routine používá JEDEN font na všechno. Druhý řez pro nadpisy dělal
+        // z každého titulku jiný hlas; `font-heading` teď kreslí Inter, takže
+        // 13 míst, kde se používá, se srovnalo se zbytkem.
+        heading: [
+          'Inter', '-apple-system', 'system-ui', 'BlinkMacSystemFont',
+          'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif',
+        ],
         mono: [
           'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas',
           '"Liberation Mono"', '"Courier New"', 'monospace',

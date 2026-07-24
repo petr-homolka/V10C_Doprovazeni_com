@@ -21,7 +21,7 @@ export function GlobalSearchModal({
   return (
     <Modal onClose={onClose} className="w-full max-w-[560px]">
       <div className="flex h-[min(70vh,560px)] flex-col p-4">
-        <h2 className="mb-3 shrink-0 text-[15px] font-semibold text-text-primary">Hledat</h2>
+        <h2 className="mb-3 shrink-0 text-base font-semibold text-text-primary">Hledat</h2>
         <EntitySearch organizationId={organizationId} onNavigated={onClose} />
       </div>
     </Modal>

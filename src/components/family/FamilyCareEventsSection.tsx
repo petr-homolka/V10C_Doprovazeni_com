@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { HeartHandshake, Plus } from 'lucide-react'
+import { HeartHandshake, Plus } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -78,7 +78,7 @@ const RECURRENCE_LABELS: Record<AssistedContactScheduleRecurrence['frequency'], 
 }
 
 const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-[16px] leading-relaxed ' +
+  'w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-lg leading-relaxed ' +
   'text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
 
 function StatusBadge({ label, tone = 'default' }: { label: string; tone?: 'default' | 'warning' }) {
@@ -208,7 +208,7 @@ function RespitSubsection({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h3 className="text-base font-medium text-text-primary">Respit</h3>
-          <p className="mt-0.5 text-[13px] text-text-tertiary">
+          <p className="mt-0.5 text-sm text-text-tertiary">
             Nárok pěstouna na odpočinek — min. 14 dní / rok (§47a ZSPOD)
           </p>
         </div>
@@ -231,7 +231,7 @@ function RespitSubsection({
                   <span className="text-sm text-text-primary">
                     {c.child.firstName} {c.child.lastName}
                   </span>
-                  <span className="text-[13px] tabular-nums text-text-secondary">
+                  <span className="text-sm tabular-nums text-text-secondary">
                     {used} / {RESPIT_ANNUAL_MIN} dní <span className="text-text-tertiary">· {currentYear}</span>
                   </span>
                 </div>
@@ -506,7 +506,7 @@ function AssistedContactSubsection({
       <div className="flex items-end justify-between gap-4">
         <div>
           <h3 className="text-base font-medium text-text-primary">Asistovaný kontakt</h3>
-          <p className="mt-0.5 text-[13px] text-text-tertiary">Opakovaný styk dítěte s biologickou rodinou</p>
+          <p className="mt-0.5 text-sm text-text-tertiary">Opakovaný styk dítěte s biologickou rodinou</p>
         </div>
         <Button variant="secondary" size="sm" onClick={seriesPanel.onOpen}>
           <Plus size={16} /> Založit sérii

@@ -22,7 +22,7 @@ import {
 } from '@/services/importService'
 import type { ImportJobDoc, ImportJobStatus } from '@/types/importJob'
 import type { StagingRecordDoc } from '@/types/stagingRecord'
-import { FileSpreadsheet } from 'lucide-react'
+import { FileSpreadsheet } from '@/components/ui/icons'
 
 const STATUS_LABELS: Record<ImportJobStatus, string> = {
   staging: 'Zpracovává se',

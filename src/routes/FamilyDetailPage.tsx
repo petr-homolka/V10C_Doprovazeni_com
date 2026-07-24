@@ -49,7 +49,7 @@ import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
-import { Baby, Clock, FileText, Handshake, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from 'lucide-react'
+import { Baby, Clock, FileText, Handshake, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from '@/components/ui/icons'
 
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
   note: 'Poznámka',
@@ -591,7 +591,7 @@ export default function FamilyDetailPage() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">{displayName}</h1>
+              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">{displayName}</h1>
               <button
                 type="button"
                 onClick={startEditName}
@@ -611,7 +611,7 @@ export default function FamilyDetailPage() {
           </div>
         </div>
         <div className="shrink-0 text-right">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">Spis</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-text-tertiary">Spis</p>
           <p className="font-mono text-sm text-text-secondary">{familyUid}</p>
         </div>
       </div>

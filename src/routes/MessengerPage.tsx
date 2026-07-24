@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { MessageCircle, Search, Send, Users } from 'lucide-react'
+import { MessageCircle, Search, Send, Users } from '@/components/ui/icons'
 import { AppShell } from '@/components/shell/AppShell'
 import { PageHeader } from '@/components/ui/page-header'
 import { Switch } from '@/components/ui/switch'
@@ -266,7 +266,7 @@ export default function MessengerPage() {
                           <div key={gi} className="flex flex-col gap-1">
                             {showDayPill && (
                               <div className="my-1 flex justify-center">
-                                <span className="rounded-full bg-field px-3 py-1 text-[11px] font-medium capitalize text-text-secondary">
+                                <span className="rounded-full bg-field px-3 py-1 text-xs font-medium capitalize text-text-secondary">
                                   {group.dayLabel}
                                 </span>
                               </div>
@@ -274,7 +274,7 @@ export default function MessengerPage() {
                             <div className={cn('flex flex-col', isStaffGroup ? 'items-end' : 'items-start')}>
                               <p
                                 className={cn(
-                                  'mb-1 flex items-center gap-1.5 text-[11px] text-text-tertiary',
+                                  'mb-1 flex items-center gap-1.5 text-xs text-text-tertiary',
                                   isStaffGroup && 'flex-row-reverse',
                                 )}
                               >
@@ -313,7 +313,7 @@ export default function MessengerPage() {
                                     >
                                       <p className="whitespace-pre-wrap">{message.body}</p>
                                       {isInternal && (
-                                        <span className="mt-1 inline-block rounded-full bg-warning-bg px-1.5 py-0.5 text-[10px] font-medium text-warning">
+                                        <span className="mt-1 inline-block rounded-full bg-warning-bg px-1.5 py-0.5 text-2xs font-medium text-warning">
                                           Jen tým
                                         </span>
                                       )}

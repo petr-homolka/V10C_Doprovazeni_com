@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react'
-import { MapPin } from 'lucide-react'
+import { MapPin } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**

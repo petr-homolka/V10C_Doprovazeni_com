@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Baby, Calendar, CheckSquare, ClipboardCheck, FileText, Home, MessageCircle, UserCog, UserPlus, UserRound, UserSquare2, Users } from 'lucide-react'
+import { Baby, Calendar, CheckSquare, ClipboardCheck, FileText, Home, MessageCircle, UserCog, UserPlus, UserRound, UserSquare2, Users } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/hooks/useAuth'
 import { isStaffRole } from '@/types/user'
@@ -61,11 +61,11 @@ export function Sidebar() {
             collapsed && 'justify-center px-0',
           )}
         >
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-[13px] font-bold text-primary-foreground">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-sm bg-primary text-sm font-bold text-primary-foreground">
             D
           </div>
           {!collapsed && (
-            <span className="truncate font-heading text-[15px] font-bold text-text-primary">
+            <span className="truncate font-heading text-base font-bold text-text-primary">
               Doprovázení
             </span>
           )}
@@ -80,7 +80,7 @@ export function Sidebar() {
             end={end}
             className={({ isActive }) =>
               cn(
-                'flex h-9 items-center gap-2.5 rounded-sm border-l-[3px] border-transparent px-2.5 text-[14px] font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-active hover:text-text-primary',
+                'flex h-9 items-center gap-2.5 rounded-sm border-l-[3px] border-transparent px-2.5 text-base font-medium text-text-secondary transition-colors duration-150 hover:bg-overlay-active hover:text-text-primary',
                 collapsed && 'justify-center px-0',
                 isActive && 'border-primary bg-primary-soft font-semibold text-primary hover:bg-primary-soft hover:text-primary',
               )

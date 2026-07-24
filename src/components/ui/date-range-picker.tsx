@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { daysInMonth, firstWeekdayOfMonth, formatDateValue, formatDisplay, parseDateValue } from '@/lib/dateGrid'
 
@@ -140,7 +140,7 @@ export function DateRangePicker({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          'flex h-9 w-full items-center justify-between rounded-sm border border-transparent bg-field px-3 text-[16px] transition-shadow duration-150',
+          'flex h-9 w-full items-center justify-between rounded-sm border border-transparent bg-field px-3 text-lg transition-shadow duration-150',
           from ? 'text-text-primary' : 'text-text-tertiary',
           'focus:border-accent focus:outline-none focus:shadow-focus disabled:opacity-50',
         )}

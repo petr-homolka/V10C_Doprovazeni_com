@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Cake, CalendarClock, Mic, PartyPopper } from 'lucide-react'
+import { Cake, CalendarClock, Mic, PartyPopper } from '@/components/ui/icons'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { VoiceCaptureSheet } from '@/components/mobile/VoiceCaptureSheet'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
@@ -72,7 +72,7 @@ export default function MobileHomePage() {
   return (
     <MobileShell>
       <div className="relative flex min-h-full flex-col px-5 pb-28 pt-8">
-        <p className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">
+        <p className="text-2xl font-bold leading-tight tracking-tight text-text-primary">
           {greeting}, {userDoc?.displayName?.split(' ')[0] ?? ''}
         </p>
 
@@ -84,23 +84,23 @@ export default function MobileHomePage() {
         >
           <Mic size={56} strokeWidth={1.75} />
         </button>
-        <p className="mt-4 text-center text-[15px] text-text-secondary">Ťukněte a nadiktujte zápis</p>
+        <p className="mt-4 text-center text-base text-text-secondary">Ťukněte a nadiktujte zápis</p>
 
         <div className="mt-10">
-          <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Dnes máte</h2>
+          <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Dnes máte</h2>
           <div className="mt-2">
             {todayEvents === null ? (
-              <p className="text-[15px] text-text-secondary">Načítám…</p>
+              <p className="text-base text-text-secondary">Načítám…</p>
             ) : todayEvents.length === 0 ? (
               <EmptyState icon={CalendarClock} text="Dnes nemáte v kalendáři žádnou vlastní událost." />
             ) : (
               <GroupedList>
                 {todayEvents.map(({ docId, event }) => (
                   <GroupedListRow key={docId} as="div">
-                    <span className="shrink-0 text-[15px] font-medium text-text-primary">
+                    <span className="shrink-0 text-base font-medium text-text-primary">
                       {new Date(event.start).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <span className="min-w-0 flex-1 truncate text-[15px] text-text-secondary">{event.title}</span>
+                    <span className="min-w-0 flex-1 truncate text-base text-text-secondary">{event.title}</span>
                   </GroupedListRow>
                 ))}
               </GroupedList>
@@ -113,7 +113,7 @@ export default function MobileHomePage() {
          * prázdná sekce navíc by tomu odporovala. */}
         {birthdayAlerts.length > 0 && (
           <div className="mt-6">
-            <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Narozeniny a svátky</h2>
+            <h2 className="px-1 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Narozeniny a svátky</h2>
             <GroupedList className="mt-2">
               {birthdayAlerts.map((alert, i) => (
                 <GroupedListRow key={`${alert.kind}-${i}`} as="div">
@@ -122,7 +122,7 @@ export default function MobileHomePage() {
                   ) : (
                     <PartyPopper size={18} className="shrink-0 text-primary" />
                   )}
-                  <span className="min-w-0 flex-1 text-[15px] text-text-primary">{alert.text}</span>
+                  <span className="min-w-0 flex-1 text-base text-text-primary">{alert.text}</span>
                 </GroupedListRow>
               ))}
             </GroupedList>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Baby, Handshake, Users, UserRound, X } from 'lucide-react'
+import { Baby, Handshake, Users, UserRound, X } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'

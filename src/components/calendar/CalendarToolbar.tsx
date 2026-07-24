@@ -1,4 +1,4 @@
-import { CalendarPlus, ChevronLeft, ChevronRight, PanelRight, Search } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, PanelRight, Search } from '@/components/ui/icons'
 import type { ToolbarProps } from 'react-big-calendar'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'

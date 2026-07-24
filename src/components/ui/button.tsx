@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { Check, Loader2 } from 'lucide-react'
+import { Check, Loader2 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**
@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
  * formuláře si výšku přebíjejí vlastním `className`, viz volající kód).
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-sm text-[14px] font-semibold ' +
+  'inline-flex items-center justify-center gap-2 rounded-sm text-base font-semibold ' +
     'transition-[background-color,box-shadow] duration-150 focus-visible:outline-none ' +
     'focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-50',
   {
@@ -32,7 +32,7 @@ const buttonVariants = cva(
       },
       size: {
         default: 'h-9 px-3.5',
-        sm: 'h-8 px-3 text-[13px]',
+        sm: 'h-8 px-3 text-sm',
         icon: 'h-9 w-9',
       },
     },

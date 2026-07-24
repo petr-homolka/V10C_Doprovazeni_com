@@ -1,6 +1,6 @@
 import { signOut } from 'firebase/auth'
 import { useNavigate } from 'react-router-dom'
-import { Baby, CheckSquare, ChevronRight, LogOut, UserRound } from 'lucide-react'
+import { Baby, CheckSquare, ChevronRight, LogOut, UserRound } from '@/components/ui/icons'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
 import { useAuth } from '@/hooks/useAuth'
@@ -29,19 +29,19 @@ export default function MobileAccountPage() {
   return (
     <MobileShell>
       <div className="flex flex-col gap-6 px-5 pb-6 pt-8">
-        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Účet</h1>
+        <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary">Účet</h1>
 
         <GroupedList>
           <GroupedListRow as="div">
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="truncate text-[16px] font-medium text-text-primary">{displayName}</span>
-              <span className="truncate text-[14px] text-text-secondary">{userDoc?.email ?? firebaseUser?.email}</span>
+              <span className="truncate text-lg font-medium text-text-primary">{displayName}</span>
+              <span className="truncate text-base text-text-secondary">{userDoc?.email ?? firebaseUser?.email}</span>
             </span>
           </GroupedListRow>
           {roleLabel && (
             <GroupedListRow as="div">
-              <span className="text-[14px] text-text-tertiary">Role</span>
-              <span className="ml-auto text-[16px] text-text-primary">{roleLabel}</span>
+              <span className="text-base text-text-tertiary">Role</span>
+              <span className="ml-auto text-lg text-text-primary">{roleLabel}</span>
             </GroupedListRow>
           )}
         </GroupedList>
@@ -54,7 +54,7 @@ export default function MobileAccountPage() {
           {SHORTCUTS.map(({ to, label, icon: Icon }) => (
             <GroupedListRow key={to} onClick={() => navigate(to)}>
               <Icon size={20} strokeWidth={1.75} className="shrink-0 text-text-secondary" />
-              <span className="min-w-0 flex-1 text-[16px] text-text-primary">{label}</span>
+              <span className="min-w-0 flex-1 text-lg text-text-primary">{label}</span>
               <ChevronRight size={18} className="shrink-0 text-text-tertiary" />
             </GroupedListRow>
           ))}
@@ -63,7 +63,7 @@ export default function MobileAccountPage() {
         <GroupedList>
           <GroupedListRow onClick={() => signOut(auth)} className="justify-center text-danger active:bg-danger-bg">
             <LogOut size={18} strokeWidth={1.75} />
-            <span className="text-[16px] font-medium">Odhlásit se</span>
+            <span className="text-lg font-medium">Odhlásit se</span>
           </GroupedListRow>
         </GroupedList>
       </div>

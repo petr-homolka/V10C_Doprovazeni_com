@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { ChevronDown, Loader2, Plus } from 'lucide-react'
+import { ChevronDown, Loader2, Plus } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 export interface ComboboxOption {
@@ -147,7 +147,7 @@ export function Combobox({
         aria-autocomplete="list"
         disabled={disabled}
         className={cn(
-          'h-9 w-full rounded-sm border border-transparent bg-field px-3 pr-9 text-[16px]',
+          'h-9 w-full rounded-sm border border-transparent bg-field px-3 pr-9 text-lg',
           'text-text-primary placeholder:text-text-tertiary transition-shadow duration-150',
           'focus:border-accent focus:outline-none focus:shadow-focus',
           'disabled:opacity-50',
@@ -177,7 +177,7 @@ export function Combobox({
                 key={option.value}
                 type="button"
                 className={cn(
-                  'block w-full px-3 py-2 text-left text-[15px] text-text-primary',
+                  'block w-full px-3 py-2 text-left text-base text-text-primary',
                   i === highlighted ? 'bg-overlay-active' : 'hover:bg-overlay-active',
                 )}
                 onMouseEnter={() => setHighlighted(i)}
@@ -218,14 +218,14 @@ export function Combobox({
                       }
                     }}
                     placeholder="Název nové položky…"
-                    className="h-8 min-w-0 flex-1 rounded-sm border border-transparent bg-field px-2 text-[14px] text-text-primary focus:border-accent focus:outline-none focus:shadow-focus"
+                    className="h-8 min-w-0 flex-1 rounded-sm border border-transparent bg-field px-2 text-base text-text-primary focus:border-accent focus:outline-none focus:shadow-focus"
                   />
                   <button
                     type="button"
                     disabled={!createDraft.trim() || createBusy}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={handleCreateSubmit}
-                    className="flex h-8 shrink-0 items-center gap-1 rounded-sm bg-primary px-2.5 text-[13px] font-semibold text-primary-foreground disabled:opacity-50"
+                    className="flex h-8 shrink-0 items-center gap-1 rounded-sm bg-primary px-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
                   >
                     {createBusy && <Loader2 size={13} className="animate-spin" />}
                     Uložit
@@ -234,7 +234,7 @@ export function Combobox({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setCreating(false)}
-                    className="flex h-8 shrink-0 items-center rounded-sm px-2 text-[13px] text-text-secondary hover:bg-overlay-active"
+                    className="flex h-8 shrink-0 items-center rounded-sm px-2 text-sm text-text-secondary hover:bg-overlay-active"
                   >
                     Zrušit
                   </button>
@@ -244,7 +244,7 @@ export function Combobox({
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={startCreating}
-                  className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-[14px] font-semibold text-primary hover:bg-primary-soft"
+                  className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-base font-semibold text-primary hover:bg-primary-soft"
                 >
                   <Plus size={16} strokeWidth={2.25} /> {createLabel}
                 </button>

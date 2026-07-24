@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { ArrowRight, Pencil, Plus, Repeat2 } from 'lucide-react'
+import { ArrowRight, Pencil, Plus, Repeat2 } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -14,7 +14,7 @@ import {
 } from '@/services/assistedContactService'
 import { createNoteTimelineEntry } from '@/services/timelineService'
 import type { ChildHandoverDoc } from '@/types/childHandover'
-import { HeartHandshake } from 'lucide-react'
+import { HeartHandshake } from '@/components/ui/icons'
 
 const TO_WHOM_LABELS: Record<ChildHandoverDoc['toWhom'], string> = {
   biologicka_rodina: 'Biologická rodina',
@@ -176,7 +176,7 @@ export function ChildHandoversSection({ familyDocId, childId, childName, organiz
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 className="text-lg font-normal leading-tight text-text-primary">Předání dítěte</h2>
-          <p className="mt-0.5 text-[13px] text-text-tertiary">
+          <p className="mt-0.5 text-sm text-text-tertiary">
             Předání do biologické či jiné náhradní rodiny (§B.10.2)
           </p>
         </div>
@@ -226,7 +226,7 @@ export function ChildHandoversSection({ familyDocId, childId, childName, organiz
                       <span className="text-text-secondary">({handover.toPersonRelation})</span>
                     )}
                   </div>
-                  <p className="mt-1 truncate text-[13px] text-text-secondary">{handover.reason}</p>
+                  <p className="mt-1 truncate text-sm text-text-secondary">{handover.reason}</p>
                 </div>
                 <Pencil
                   size={14}

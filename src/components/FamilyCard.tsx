@@ -44,9 +44,9 @@ export function FamilyCard({
         {initials}
       </div>
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-[15px] font-semibold text-text-primary">{name}</h3>
-        <p className="truncate text-[13px] text-text-secondary">{lastContactText}</p>
-        {secondaryWarning && <p className="truncate text-[13px] text-warning">{secondaryWarning}</p>}
+        <h3 className="truncate text-base font-semibold text-text-primary">{name}</h3>
+        <p className="truncate text-sm text-text-secondary">{lastContactText}</p>
+        {secondaryWarning && <p className="truncate text-sm text-warning">{secondaryWarning}</p>}
       </div>
       {visitStatus === 'crisis' && (
         <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-crisis-bg px-2.5 text-xs font-medium text-crisis">

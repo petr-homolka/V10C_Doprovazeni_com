@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { listOrganizationDocuments } from '@/services/documentService'
 import { listFamiliesWithDocIds } from '@/services/familyService'
 import type { FamilyDoc } from '@/types/family'
-import { FileText } from 'lucide-react'
+import { FileText } from '@/components/ui/icons'
 
 const TABLE_COLUMNS = '2fr 2fr 1fr 1fr'
 

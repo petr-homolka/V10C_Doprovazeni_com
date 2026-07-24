@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { Bell, Moon, Search, Settings, Sun } from 'lucide-react'
+import { Bell, Moon, Search, Settings, Sun } from '@/components/ui/icons'
 import { Link } from 'react-router-dom'
 import { useTheme } from '@/hooks/useTheme'
 import { useAuth } from '@/hooks/useAuth'

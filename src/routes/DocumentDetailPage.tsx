@@ -285,7 +285,7 @@ export default function DocumentDetailPage() {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[26px] font-bold leading-tight text-text-primary">{document.title}</h1>
+          <h1 className="text-xl font-bold leading-tight text-text-primary">{document.title}</h1>
           <p className="mt-1 text-sm text-text-secondary">
             {document.uid} · verze {document.currentVersion} · {DOCUMENT_STATUS_LABELS[status]}
           </p>
@@ -294,7 +294,7 @@ export default function DocumentDetailPage() {
         {qrDataUrl && (
           <div className="shrink-0 text-center">
             <img src={qrDataUrl} alt="QR ověřovací kód dokumentu" className="rounded-sm border border-border" />
-            <p className="mt-1 text-[10px] text-text-tertiary">hash {document.hash.slice(0, 12)}…</p>
+            <p className="mt-1 text-2xs text-text-tertiary">hash {document.hash.slice(0, 12)}…</p>
           </div>
         )}
       </div>

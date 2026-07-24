@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
-import { CheckSquare, Square, Ban, Plus } from 'lucide-react'
+import { CheckSquare, Square, Ban, Plus } from '@/components/ui/icons'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { BottomSheet } from '@/components/mobile/BottomSheet'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
@@ -217,10 +217,10 @@ export default function MobileTaskListPage() {
     <MobileShell>
       <div className="flex flex-col pb-24 pt-6">
         <div className="flex items-center justify-between px-5">
-          <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Úkoly</h1>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary">Úkoly</h1>
         </div>
         <div className="mt-3 flex items-center justify-between px-5">
-          <span className="text-[14px] text-text-secondary">Zobrazit i dokončené/zrušené</span>
+          <span className="text-base text-text-secondary">Zobrazit i dokončené/zrušené</span>
           <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
         </div>
 
@@ -232,7 +232,7 @@ export default function MobileTaskListPage() {
 
         <div className="mt-4 px-5">
           {visibleTasks === null ? (
-            <p className="text-[15px] text-text-secondary">Načítám…</p>
+            <p className="text-base text-text-secondary">Načítám…</p>
           ) : visibleTasks.length === 0 ? (
             <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
           ) : (
@@ -249,14 +249,14 @@ export default function MobileTaskListPage() {
                   </button>
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span
-                      className={`truncate text-[16px] font-medium ${
+                      className={`truncate text-lg font-medium ${
                         task.status === 'otevreny' ? 'text-text-primary' : 'text-text-tertiary line-through'
                       }`}
                     >
                       {task.title}
                     </span>
                     {task.dueDate && (
-                      <span className="text-[13px] text-text-secondary">{new Date(task.dueDate).toLocaleDateString('cs-CZ')}</span>
+                      <span className="text-sm text-text-secondary">{new Date(task.dueDate).toLocaleDateString('cs-CZ')}</span>
                     )}
                   </span>
                 </GroupedListRow>
@@ -279,7 +279,7 @@ export default function MobileTaskListPage() {
         <BottomSheet onClose={() => setSheet(null)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 pb-6 pt-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-[17px] font-semibold text-text-primary">{sheet.mode === 'new' ? 'Nový úkol' : 'Upravit úkol'}</h2>
+              <h2 className="text-lg font-semibold text-text-primary">{sheet.mode === 'new' ? 'Nový úkol' : 'Upravit úkol'}</h2>
               {sheet.mode === 'edit' && (
                 <Button type="button" variant="ghost" size="sm" onClick={handleCancel} className="text-danger">
                   <Ban size={16} /> Zrušit úkol

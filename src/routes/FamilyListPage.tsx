@@ -40,7 +40,7 @@ import type { FamilyDoc } from '@/types/family'
 import type { AgreementDoc } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { SubjectRef } from '@/types/timelineEntry'
-import { Mic, Plus, Star, Users } from 'lucide-react'
+import { Mic, Plus, Star, Users } from '@/components/ui/icons'
 
 const SORT_OPTIONS = [
   { value: 'adresa' as const, label: 'Adresa' },
@@ -304,7 +304,7 @@ export default function FamilyListPage() {
   if (!organizationId) {
     return (
       <AppShell breadcrumb={[{ label: 'Rodiny' }]}>
-        <h1 className="text-[26px] font-bold leading-tight text-text-primary">Rodiny</h1>
+        <h1 className="text-xl font-bold leading-tight text-text-primary">Rodiny</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -337,7 +337,7 @@ export default function FamilyListPage() {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
             <div className="mb-5 flex items-center justify-between gap-4">
-              <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">Rodiny</h1>
+              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">Rodiny</h1>
               <Button size="sm" onClick={() => setShowForm(true)}>
                 <Plus size={16} /> Nová rodina
               </Button>
@@ -384,6 +384,9 @@ export default function FamilyListPage() {
               <RecordCardList
                 className="mt-3"
                 cellCount={3}
+                headers={['Stav', 'Poslední kontakt', 'Klíčová osoba']}
+                lead={56}
+                trail={64}
                 columns={{
                   lg: 'minmax(220px,1fr) minmax(0,130px) minmax(0,150px) minmax(0,180px)',
                   md: 'minmax(200px,1fr) minmax(0,130px) minmax(0,150px)',
@@ -448,12 +451,12 @@ export default function FamilyListPage() {
                           toggleStar(docId)
                         }}
                         title={starredIds.has(docId) ? 'Odebrat hvězdičku' : 'Označit hvězdičkou'}
-                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-warning"
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
                       >
                         <Star
                           size={16}
                           strokeWidth={2}
-                          className={starredIds.has(docId) ? 'fill-warning text-warning' : ''}
+                          className={starredIds.has(docId) ? 'fill-current text-text-primary' : ''}
                         />
                       </button>
                       <button
@@ -494,7 +497,7 @@ export default function FamilyListPage() {
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Např. byla oznámena dovolená klíčové osoby…"
-                className="w-full rounded-sm border border-transparent bg-field px-3 py-2 text-[15px] text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
+                className="w-full rounded-sm border border-transparent bg-field px-3 py-2 text-base text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
             <p className="text-xs text-text-tertiary">

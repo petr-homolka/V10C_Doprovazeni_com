@@ -29,7 +29,7 @@ export function MobileFamilyNavTabs({ active }: { active: 'rodiny' | 'pestouni' 
             key={tab.to}
             to={tab.to}
             className={cn(
-              'flex-1 rounded-full py-2 text-center text-[14px] font-semibold transition-colors duration-150',
+              'flex-1 rounded-full py-2 text-center text-base font-semibold transition-colors duration-150',
               isActive ? 'bg-primary text-primary-foreground' : 'text-text-secondary',
             )}
           >

@@ -1,4 +1,4 @@
-import { AlertTriangle, Clock } from 'lucide-react'
+import { AlertTriangle, Clock } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 import { ALERT_TIER_LABELS, type AlertTier } from '@/lib/familyAlertStatus'
 
@@ -18,7 +18,7 @@ export function AlertTag({ tier, title }: { tier: Exclude<AlertTier, 'ok'>; titl
     <span
       title={title}
       className={cn(
-        'inline-flex w-fit items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-medium',
+        'inline-flex w-fit items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium',
         tier === 'waiting' ? 'bg-warning-bg text-warning' : 'bg-crisis-bg text-crisis',
         tier === 'warning' && 'animate-pulse-alert',
       )}

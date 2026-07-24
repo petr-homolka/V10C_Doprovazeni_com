@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays } from '@/components/ui/icons'
 import { listCalendarEventsForStaff, listCalendarEventsForSubject } from '@/services/calendarEventService'
 import { listEnumOptions } from '@/services/enumOptionsService'
 import { loadSubjectDirectory } from '@/services/subjectDirectoryService'
@@ -119,7 +119,7 @@ function AgendaGroup({
 }) {
   return (
     <div>
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">{title}</h3>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary">{title}</h3>
       <div className="flex flex-col gap-2">
         {rows.map(({ docId, event }) => {
           const start = new Date(event.start)
@@ -131,7 +131,7 @@ function AgendaGroup({
               className={`flex items-center gap-3 rounded-lg bg-surface-soft p-3 shadow-raised ${muted ? 'opacity-70' : ''}`}
             >
               <div className="flex w-14 shrink-0 flex-col items-center rounded-md bg-inset px-2 py-1 text-center">
-                <span className="text-[10px] uppercase text-text-tertiary">
+                <span className="text-2xs uppercase text-text-tertiary">
                   {start.toLocaleDateString('cs-CZ', { month: 'short' })}
                 </span>
                 <span className="text-base font-semibold leading-tight text-text-primary">{start.getDate()}</span>

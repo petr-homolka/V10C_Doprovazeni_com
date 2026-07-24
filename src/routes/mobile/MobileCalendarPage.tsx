@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type TouchEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarClock, ChevronLeft, ChevronRight, Plus, Search, Settings, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronLeft, ChevronRight, Plus, Search, Settings, Trash2 } from '@/components/ui/icons'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { BottomSheet } from '@/components/mobile/BottomSheet'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
@@ -446,7 +446,7 @@ export default function MobileCalendarPage() {
     <MobileShell>
       <div className="flex flex-col pb-24 pt-6">
         <div className="flex items-center justify-between px-5">
-          <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Kalendář</h1>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight text-text-primary">Kalendář</h1>
           <div className="flex shrink-0 items-center gap-1">
             {/* Lupa = hledání mezi entitami. Na mobilu se otevře jako
              * vytažený spodní sheet, na desktopu jako pravý panel. */}
@@ -504,7 +504,7 @@ export default function MobileCalendarPage() {
                   selected ? 'bg-primary text-primary-foreground' : 'text-text-primary'
                 }`}
               >
-                <span className={`text-[11px] uppercase ${selected ? 'text-primary-foreground/70' : 'text-text-tertiary'}`}>
+                <span className={`text-xs uppercase ${selected ? 'text-primary-foreground/70' : 'text-text-tertiary'}`}>
                   {d.toLocaleDateString('cs-CZ', { weekday: 'short' })}
                 </span>
                 <span className={`text-base font-medium ${!selected && isToday ? 'text-accent' : ''}`}>{d.getDate()}</span>
@@ -517,7 +517,7 @@ export default function MobileCalendarPage() {
           <button type="button" onClick={() => goToDay(-1)} className="p-1 transition-transform active:scale-90">
             <ChevronLeft size={20} className="text-text-secondary" />
           </button>
-          <p className="text-[15px] font-semibold text-text-primary">
+          <p className="text-base font-semibold text-text-primary">
             {selectedDate.toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
           <button type="button" onClick={() => goToDay(1)} className="p-1 transition-transform active:scale-90">
@@ -553,13 +553,13 @@ export default function MobileCalendarPage() {
                 const subjects = resolveItemSubjects(subjectDirectory, item)
                 return (
                   <GroupedListRow key={item.id} onClick={() => openEdit(item)} className="border-l-4" style={{ borderLeftColor: color }}>
-                    <span className="w-14 shrink-0 text-[14px] font-medium text-text-primary">
+                    <span className="w-14 shrink-0 text-base font-medium text-text-primary">
                       {item.allDay ? 'Celý den' : item.start.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                     {/* Avatary o něco větší než na desktopu — prst není myš
                      * a v mobilní agendě je na ně místo. */}
                     {subjects.length > 0 && <EventAvatarStack subjects={subjects} size={22} />}
-                    <span className="min-w-0 flex-1 truncate text-[15px] text-text-secondary">{item.title}</span>
+                    <span className="min-w-0 flex-1 truncate text-base text-text-secondary">{item.title}</span>
                   </GroupedListRow>
                 )
               })}
@@ -581,7 +581,7 @@ export default function MobileCalendarPage() {
         <BottomSheet onClose={() => setSheet(null)}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 pb-6 pt-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-[17px] font-semibold text-text-primary">
+              <h2 className="text-lg font-semibold text-text-primary">
                 {sheet.mode === 'new' ? 'Nová událost' : 'Upravit událost'}
               </h2>
               {sheet.mode === 'edit' && (
@@ -652,7 +652,7 @@ export default function MobileCalendarPage() {
                 <button
                   type="button"
                   onClick={() => setNewKindLabel('')}
-                  className="w-fit text-[13px] font-medium text-primary active:opacity-60"
+                  className="w-fit text-sm font-medium text-primary active:opacity-60"
                 >
                   + Nový typ
                 </button>
@@ -838,7 +838,7 @@ export default function MobileCalendarPage() {
       {searchOpen && (
         <BottomSheet onClose={() => setSearchOpen(false)}>
           <div className="flex h-[70vh] flex-col px-5 pb-6 pt-4">
-            <h2 className="mb-3 shrink-0 text-[17px] font-semibold text-text-primary">Hledat</h2>
+            <h2 className="mb-3 shrink-0 text-lg font-semibold text-text-primary">Hledat</h2>
             <EntitySearch
               data={{ families, fosterPersons, children, staff: staffList }}
               onNavigated={() => setSearchOpen(false)}
@@ -850,13 +850,13 @@ export default function MobileCalendarPage() {
       {settingsOpen && (
         <BottomSheet onClose={() => setSettingsOpen(false)}>
           <div className="flex flex-col gap-4 px-5 pb-6 pt-4">
-            <h2 className="text-[17px] font-semibold text-text-primary">Nastavení kalendáře</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Nastavení kalendáře</h2>
             <div className="flex items-center justify-between gap-4">
-              <span className="text-[15px] text-text-primary">Narozeninová upozornění</span>
+              <span className="text-base text-text-primary">Narozeninová upozornění</span>
               <Switch checked={notifyBirthdays} onChange={handleNotifyBirthdaysToggle} label="Narozeninová upozornění" />
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="text-[15px] text-text-primary">Jmeninová upozornění</span>
+              <span className="text-base text-text-primary">Jmeninová upozornění</span>
               <Switch checked={notifyNameDays} onChange={handleNotifyNameDaysToggle} label="Jmeninová upozornění" />
             </div>
           </div>

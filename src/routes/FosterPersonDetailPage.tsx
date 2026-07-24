@@ -23,7 +23,7 @@ import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
-import { UserRound, UserSquare2 } from 'lucide-react'
+import { UserRound, UserSquare2 } from '@/components/ui/icons'
 
 const SECTIONS: TabItem[] = [
   { key: 'prehled', label: 'Přehled' },
@@ -161,7 +161,7 @@ export default function FosterPersonDetailPage() {
                   onUploaded={(url) => setFosterPerson((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
                 />
                 <div>
-                  <h1 className="text-[26px] font-bold leading-tight text-text-primary">
+                  <h1 className="text-xl font-bold leading-tight text-text-primary">
                     {fosterPerson.firstName} {fosterPerson.lastName}
                   </h1>
                   <p className="mt-1 text-sm text-text-secondary">{fosterPerson.phone || '—'}</p>

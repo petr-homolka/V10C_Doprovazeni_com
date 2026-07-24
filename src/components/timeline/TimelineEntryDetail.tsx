@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { X } from '@/components/ui/icons'
 import { Drawer } from '@/components/ui/drawer'
 import { SegmentedTabs } from '@/components/ui/segmented-tabs'
 import { SHARING_LEVEL_LABELS } from '@/types/sharing'
@@ -37,7 +37,7 @@ export function TimelineEntryDetail({
   return (
     <Drawer onClose={onClose}>
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <h2 className="text-[17px] font-semibold leading-snug text-text-primary">Detail zápisu</h2>
+        <h2 className="text-lg font-semibold leading-snug text-text-primary">Detail zápisu</h2>
         <button
           type="button"
           onClick={onClose}

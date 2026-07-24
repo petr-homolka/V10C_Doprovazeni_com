@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { MessageCircle, Send } from 'lucide-react'
+import { MessageCircle, Send } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -93,7 +93,7 @@ export function FamilyChatSection({ familyDocId, organizationId, currentUid, sta
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 className="text-lg font-normal leading-tight text-text-primary">Chat s pěstounem</h2>
-          <p className="mt-0.5 text-[13px] text-text-tertiary">
+          <p className="mt-0.5 text-sm text-text-tertiary">
             Zprávy vidí i pěstoun na svém portálu — interní poznámku vidí jen tým.
           </p>
         </div>
@@ -131,7 +131,7 @@ export function FamilyChatSection({ familyDocId, organizationId, currentUid, sta
                 >
                   <p className="whitespace-pre-wrap">{message.body}</p>
                 </div>
-                <p className="mt-1 flex items-center gap-1.5 text-[11px] text-text-tertiary">
+                <p className="mt-1 flex items-center gap-1.5 text-xs text-text-tertiary">
                   {isFosterAuthor ? (
                     'Pěstoun'
                   ) : (

@@ -43,7 +43,7 @@ export function EventAvatarStack({
           key={i}
           title={s.label}
           style={{ width: size, height: size, marginLeft: i === 0 ? 0 : -overlap }}
-          className="inline-flex items-center justify-center overflow-hidden rounded-full border border-surface-soft bg-inset text-[9px] font-semibold leading-none text-text-secondary"
+          className="inline-flex items-center justify-center overflow-hidden rounded-full border border-surface-soft bg-inset text-2xs font-semibold leading-none text-text-secondary"
         >
           {s.avatarUrl ? (
             <img src={s.avatarUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -55,7 +55,7 @@ export function EventAvatarStack({
       {overflow > 0 && (
         <span
           style={{ width: size, height: size, marginLeft: -overlap }}
-          className="inline-flex items-center justify-center rounded-full border border-surface-soft bg-primary-soft text-[9px] font-semibold leading-none text-primary"
+          className="inline-flex items-center justify-center rounded-full border border-surface-soft bg-primary-soft text-2xs font-semibold leading-none text-primary"
         >
           +{overflow}
         </span>

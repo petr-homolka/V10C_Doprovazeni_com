@@ -29,7 +29,7 @@ export function TableHeaderRow({ columns, labels }: { columns: string; labels: s
        * bez nadpisu, '' se objevilo dvakrát → React "duplicate key"
        * varování v konzoli na každé stránce s touhle tabulkou). */}
       {labels.map((label, i) => (
-        <span key={i} className="text-[13px] font-semibold text-text-secondary">
+        <span key={i} className="text-sm font-semibold text-text-secondary">
           {label}
         </span>
       ))}

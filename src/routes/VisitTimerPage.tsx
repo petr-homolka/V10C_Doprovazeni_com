@@ -210,7 +210,7 @@ export default function VisitTimerPage() {
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6">
         <div className="relative flex size-64 items-center justify-center rounded-full bg-primary-soft">
           <span className="motion-safe:animate-pulse absolute inset-0 rounded-full border-2 border-primary" />
-          <span className="font-mono text-[56px] font-normal tabular-nums leading-none text-text-primary">
+          <span className="font-mono text-3xl font-normal tabular-nums leading-none text-text-primary">
             {formatElapsedClock(elapsedSeconds)}
           </span>
         </div>

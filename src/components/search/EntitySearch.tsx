@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Baby, Search, UserCog, UserRound, UsersRound } from 'lucide-react'
+import { Baby, Search, UserCog, UserRound, UsersRound } from '@/components/ui/icons'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { searchEntities, type SearchResult, type SearchResultKind } from '@/lib/entitySearch'
 import { personProfilePath } from '@/components/ui/person-link'

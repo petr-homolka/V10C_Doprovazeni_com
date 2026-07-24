@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Mic, Send, Sparkles, Square } from 'lucide-react'
+import { Check, Mic, Send, Sparkles, Square } from '@/components/ui/icons'
 import { BottomSheet } from './BottomSheet'
 import { Button } from '@/components/ui/button'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
@@ -129,7 +129,7 @@ export function VoiceCaptureSheet({
   return (
     <BottomSheet onClose={onClose} className="min-h-[70vh]">
       <div className="flex min-h-0 flex-1 flex-col gap-4 px-5 pb-6 pt-4">
-        <h2 className="shrink-0 text-[17px] font-semibold text-text-primary">Zápis</h2>
+        <h2 className="shrink-0 text-lg font-semibold text-text-primary">Zápis</h2>
 
         {/* Kompaktní řádek: kruhové tlačítko mikrofonu + živý waveform
          * (nahráváno) / nápověda (klid) — nahrazuje dřívější "nahrávám"

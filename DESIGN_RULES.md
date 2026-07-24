@@ -19,27 +19,52 @@ priorita, která přebíjí estetiku: **hustota a zarovnání před vzdušností
 
 ## 1. Typografická stupnice
 
-Pět velikostí. Šestá neexistuje.
+**ODEČTENO Z ROUTINE** (uživatel poslal uloženou stránku své aplikace včetně
+CSS), ne vymyšleno. Zdroj měření: `main-*.css`, `useJournalEntry-*.css`.
 
-| Použití | Velikost / řez | Font |
-|---|---|---|
-| Titulek stránky | 26 px / 700 | Poppins |
-| Nadpis sekce | 15 px / 700, `uppercase`, `tracking-wide`, `text-text-tertiary` | Inter |
-| Jméno v řádku, hodnota v poli | 15 px / 600 | Inter |
-| Tělo textu, popisky | 14 px / 400 | Inter |
-| Metadata, štítky sloupců | 12 px / 500, `text-text-tertiary` | Inter |
+Jeden font: **Inter**. Druhý řez pro nadpisy neexistuje.
 
-**Pravidlo hierarchie:** nadpis sekce nesmí být slabší než obsah pod ním.
-Proto je nadpis sekce `uppercase` + tercierní barva — odliší se JINAK než
-velikostí, takže nesoutěží se jménem v řádku, ale ani nezmizí.
+| Použití | Velikost / prokládání | Řez | Třída |
+|---|---|---|---|
+| Titulek stránky | 20 / 28 | 500 | `text-xl font-medium` |
+| Nadpis sekce | 16 / 120 % | 500 | `text-lg font-medium` |
+| Jméno v řádku | 14 / 20 | 500 | `text-base font-medium` |
+| Tělo textu, hodnoty | 13 / 19 | 400 | `text-sm` |
+| Metadata, popisky sloupců | 11 / 17 | 400 | `text-xs` |
+
+**Nejdůležitější pravidlo v celém dokumentu: HIERARCHII DĚLÁ VELIKOST
+A BARVA, NE TUČNOST.**
+
+Měření, ze kterého to plyne: v CSS Routine je `font-weight:500` 329×,
+`400` 311×, ale `600` jen 26× a `700` čtyřikrát. Appka měla 53×
+`font-semibold` a 35× `font-bold`, takže všechno křičelo a nic nevystupovalo.
+
+Proto `tailwind.config.js` PŘEMAPOVAL význam tříd: `font-semibold` kreslí
+500 a `font-bold` kreslí 600. Tučnější řez v appce neexistuje a nedá se
+omylem použít. Řez 600 patří jen nadpisům v editoru zápisů.
+
+Čtyři stupně inkoustu, ne tři — čtvrtý (`text-text-faint`) je to, čím se
+odlišuje popisek od hodnoty místo tučnosti:
+`--text-primary` #2a3038 → `--text-secondary` #47505d →
+`--text-tertiary` #79818c → `--text-faint` #a9a9a9.
 
 ## 2. Odsazení
 
-Násobky 4. Používej jen: **4, 8, 12, 16, 24, 32, 48**.
-- vnitřek řádku seznamu: `12px` svisle, `16px` vodorovně
-- mezera mezi řádky seznamu: `8px`
-- mezera mezi sekcemi: `32px`
-- vnitřek karty/panelu: `16px` (`24px` jen u hlavičky profilu)
+**ODEČTENO:** `gap:8px` 132×, `4px` 79×, `12px` 77×, `6px` 29×, `16px` 15×.
+Používej jen: **2, 4, 6, 8, 12, 16, 24**. Nic mezi tím.
+
+- vnitřek řádku seznamu: `8px` svisle, `12px` vodorovně
+- mezera mezi řádky seznamu: **žádná** — řádky dělí vlasová linka (§4)
+- mezera mezi sekcemi: `24px`
+- vnitřek karty/panelu: `12px 16px`
+
+Radiusy (odečteno: 3px 182×, 7px 173×, 10px 44×):
+`--radius-sm` **3px** kompaktní (čip, řádek), `--radius-md` **7px** blok
+a tlačítko, `--radius-lg` **10px** kontejner a vyskakovací panel. Nic jiného.
+
+**Vzdušnost dělá prázdné místo, ne velké písmo.** Základ je 13 px právě proto,
+aby na padding zbylo místo. Tenhle vztah je snadné otočit špatným směrem:
+větší litery → menší mezery → nejtěsnější možný výsledek.
 
 ## 3. Šířka obsahu
 
@@ -52,23 +77,26 @@ Sekce, které patří k sobě, mají STEJNOU šířku. Rozdílná šířka je in
 
 ## 4. Hustota a mřížka seznamu
 
-Řádek seznamu je **CSS grid se sdílenou šablonou sloupců**, definovanou
-jednou na seznamu, ne skládanou v každém řádku zvlášť. Bez toho se sloupce
-mezi řádky nezarovnají, jakmile některá hodnota chybí — což byl nejhorší
-nalezený defekt (řádek bez klíčové osoby posunul všechny ostatní sloupce).
+**Řádek je řádek, ne karta.** Celý seznam je JEDEN list; řádky dělí vlasová
+linka `1px var(--border-subtle)`. Karta se stínem na řádek znamená dvanáct
+plovoucích destiček, a ty se nedají skenovat očima svisle, protože každá má
+vlastní hranu.
 
-- metadata jsou zarovnaná **VLEVO** ke svému sloupci; doprava se zarovnávají
-  jen čísla a datumy
-- prázdná hodnota se kreslí jako `—`, sloupec NIKDY nezmizí
-- štítek sloupce je nad hodnotou, `12px uppercase`, jen na prvním řádku by
-  se ztratil → je u každého řádku (to je vědomá redundance, protože seznam
-  se skenuje, ne čte odshora)
+**Mřížka drží celý řádek**, včetně avataru vlevo (`lead`) a akcí vpravo
+(`trail`). Šířky obou vyhlašuje seznam jednou. Bez toho má hlavička jiný
+zbytek místa než řádky a popisek stojí vedle svého sloupce — což se stalo
+a odhalil to až screenshot, ne kód.
 
-**Priorita při zužování** (co se obětuje první):
-1. jméno má vždycky nejmíň `220px` a NIKDY se neořezává jako první
-2. při ubývání šířky mizí sloupce v tomhle pořadí: kapacita/věk → narození
-   → telefon/e-mail → rodina → klíčová osoba
-3. datum posledního kontaktu a stav naléhavosti zůstávají do konce
+**Popisky sloupců jsou JEDNOU v hlavičce**, ne nad každou hodnotou. Dřív
+nesl každý řádek „STAV / POSLEDNÍ KONTAKT / KLÍČOVÁ OSOBA", takže seznam
+dvanácti rodin obsahoval popisky šestatřicetkrát a informace zabírala třetinu
+plochy.
+
+**Priorita sloupců:** jméno nikdy nezmizí a nejde pod 220 px. Buňky jsou
+seřazené od nejdůležitější a ubývají ZPRAVA. Nejvýš tři sloupce metadat.
+Zúžení řídí **container queries** (šířka, kterou má seznam SKUTEČNĚ
+k dispozici), ne `@media` — sidebar bere 240 px a otevřený pravý panel
+dalších 380 px.
 
 ## 5. Vyvýšení (stíny)
 

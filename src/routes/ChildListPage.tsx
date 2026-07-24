@@ -23,7 +23,7 @@ import {
   formatBirthDateCs,
   birthDateFromBirthNumber,
 } from '@/lib/birthNumber'
-import { Baby, Plus, Search } from 'lucide-react'
+import { Baby, Plus, Search } from '@/components/ui/icons'
 
 /**
  * /deti — plochý seznam VŠECH dětí organizace napříč rodinami. Řádek ve
@@ -146,7 +146,7 @@ export default function ChildListPage() {
     <SidePanel title="Nové dítě" onClose={() => setCreating(false)}>
       <form onSubmit={handleCreate} className="flex flex-col gap-4">
         <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Rodina</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Rodina</h3>
           <Combobox
             options={familyOptions}
             value={newFamilyDocId}
@@ -162,7 +162,7 @@ export default function ChildListPage() {
         </div>
 
         <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Dítě</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Dítě</h3>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-text-primary">Jméno</span>
             <Input required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
@@ -200,7 +200,7 @@ export default function ChildListPage() {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
             <div className="mb-5 flex items-center justify-between gap-4">
-              <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">
+              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">
                 Děti {filtered && <span className="text-text-tertiary">({filtered.length})</span>}
               </h1>
               <Button size="sm" onClick={openCreate}>
@@ -237,6 +237,9 @@ export default function ChildListPage() {
               ) : (
                 <RecordCardList
                   cellCount={3}
+                  headers={['Rodina', 'Narození', 'Věk']}
+                  lead={32}
+                  trail={32}
                   columns={{
                     lg: 'minmax(220px,1fr) minmax(0,200px) minmax(0,130px) minmax(0,90px)',
                     md: 'minmax(200px,1fr) minmax(0,180px) minmax(0,130px)',

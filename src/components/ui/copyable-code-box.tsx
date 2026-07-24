@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**
@@ -25,7 +25,7 @@ export function CopyableCodeBox({ value }: { value: string }) {
 
   return (
     <div className="flex h-10 items-center gap-2 rounded-sm border border-transparent bg-field pl-4 pr-1">
-      <code className="flex-1 truncate font-mono text-[14px] text-text-primary">{value}</code>
+      <code className="flex-1 truncate font-mono text-base text-text-primary">{value}</code>
       <button
         type="button"
         onClick={handleCopy}
