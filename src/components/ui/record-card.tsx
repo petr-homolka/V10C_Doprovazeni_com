@@ -58,3 +58,26 @@ export function RecordCard({
 export function RecordCardList({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn('flex flex-col gap-2.5', className)}>{children}</div>
 }
+
+/** Sloupec „malý šedý LABEL nad hodnotou" do `meta` části RecordCardu —
+ * Woorkroom reference (Gender/Birthday/Full age/Position…). Na úzkých
+ * obrazovkách se skryje (`hideBelow`), ať se řádek nerozsype. */
+export function MetaColumn({
+  label,
+  value,
+  width = 'w-28',
+  hideBelow = 'md',
+}: {
+  label: string
+  value: ReactNode
+  width?: string
+  hideBelow?: 'sm' | 'md' | 'lg'
+}) {
+  const show = hideBelow === 'sm' ? 'hidden sm:block' : hideBelow === 'lg' ? 'hidden lg:block' : 'hidden md:block'
+  return (
+    <div className={cn(show, width)}>
+      <p className="text-[11px] uppercase tracking-wide text-text-tertiary">{label}</p>
+      <div className="mt-0.5 truncate text-sm text-text-secondary">{value}</div>
+    </div>
+  )
+}

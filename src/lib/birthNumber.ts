@@ -46,3 +46,34 @@ export function birthDateFromBirthNumber(birthNumber: string): string | null {
 export function resolveChildBirthDate(child: { birthDate?: string | null; birthNumber: string }): string | null {
   return child.birthDate || birthDateFromBirthNumber(child.birthNumber)
 }
+
+/** Pohlaví z rodného čísla — u žen je měsíc +50 (u čísel vyčerpaných po
+ * roce 2004 +70). Vrací null u neobvyklých/cizineckých čísel. */
+export function genderFromBirthNumber(birthNumber: string): 'muž' | 'žena' | null {
+  const digits = birthNumber.replace(/\D/g, '')
+  if (digits.length !== 9 && digits.length !== 10) return null
+  const mm = Number(digits.slice(2, 4))
+  if (mm >= 51 && mm <= 62) return 'žena'
+  if (mm >= 71 && mm <= 82) return 'žena'
+  if ((mm >= 1 && mm <= 12) || (mm >= 21 && mm <= 32)) return 'muž'
+  return null
+}
+
+/** Věk v celých letech z data narození (YYYY-MM-DD), nebo null. */
+export function ageFromBirthDate(birthDate: string | null | undefined): number | null {
+  if (!birthDate) return null
+  const d = new Date(birthDate)
+  if (Number.isNaN(d.getTime())) return null
+  const now = new Date()
+  let age = now.getFullYear() - d.getFullYear()
+  const m = now.getMonth() - d.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--
+  return age >= 0 && age < 130 ? age : null
+}
+
+/** Datum narození ve formátu „12. 4. 1995" (cs), nebo pomlčka. */
+export function formatBirthDateCs(birthDate: string | null | undefined): string {
+  if (!birthDate) return '—'
+  const d = new Date(birthDate)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('cs-CZ')
+}

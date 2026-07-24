@@ -1,21 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
-import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
+import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
+import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { RowMenu } from '@/components/ui/row-menu'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import { listChildrenForOrg, listFamiliesWithDocIds } from '@/services/familyService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
+import { resolveChildBirthDate, genderFromBirthNumber, ageFromBirthDate, formatBirthDateCs } from '@/lib/birthNumber'
 import { Baby, Search } from 'lucide-react'
 
-const TABLE_COLUMNS = '1.3fr 1.3fr 1.2fr 1fr'
-
 /**
- * /deti — plochý seznam VŠECH dětí organizace napříč rodinami (na žádost
- * Petra, 2026-07-22 — dřív dostupné jen přes profil konkrétní rodiny).
- * Read-only přehled, stejné dělení jako `FosterPersonListPage`.
+ * /deti — plochý seznam VŠECH dětí organizace napříč rodinami. Řádek ve
+ * stylu Woorkroom reference: fotka + jméno, a sloupce „LABEL nad hodnotou"
+ * (Rodina / Pohlaví / Narození / Věk). Pohlaví, narození i věk se dopočtou
+ * z rodného čísla. Jméno i rodina jsou proklik na profil.
  */
 export default function ChildListPage() {
   const navigate = useNavigate()
@@ -51,7 +52,11 @@ export default function ChildListPage() {
 
   return (
     <AppShell breadcrumb={[{ label: 'Děti' }]}>
-      <PageHeader title="Děti" />
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">
+          Děti {filtered && <span className="text-text-tertiary">({filtered.length})</span>}
+        </h1>
+      </div>
 
       <div className="relative max-w-[320px]">
         <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
@@ -68,24 +73,57 @@ export default function ChildListPage() {
         {filtered === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : filtered.length === 0 ? (
-          <EmptyState icon={Baby} text="Žádné dítě neodpovídá hledání." />
+          <div className="rounded-lg bg-surface-soft p-8 shadow-raised">
+            <EmptyState icon={Baby} text="Žádné dítě neodpovídá hledání." />
+          </div>
         ) : (
-          <Table>
-            <TableHeaderRow columns={TABLE_COLUMNS} labels={['Jméno', 'Rodina', 'Rodné číslo', 'Datum narození']} />
+          <RecordCardList>
             {filtered.map(({ docId, child, name }) => {
               const fam = familiesByDocId[child.familyId]
+              const profileHref = fam ? `/rodiny/${fam.uid}/dite/${docId}` : undefined
+              const bd = resolveChildBirthDate(child)
+              const gender = genderFromBirthNumber(child.birthNumber)
+              const age = ageFromBirthDate(bd)
               return (
-                <div key={docId} onClick={() => fam && navigate(`/rodiny/${fam.uid}/dite/${docId}`)} className="contents cursor-pointer">
-                  <TableRow columns={TABLE_COLUMNS}>
-                    <span className="text-sm font-medium text-text-primary">{name}</span>
-                    <span className="truncate text-sm text-text-secondary">{fam?.label ?? '—'}</span>
-                    <span className="font-mono text-sm text-text-secondary">{child.birthNumber}</span>
-                    <span className="text-sm text-text-secondary">{child.birthDate ?? '—'}</span>
-                  </TableRow>
-                </div>
+                <RecordCard
+                  key={docId}
+                  onClick={profileHref ? () => navigate(profileHref) : undefined}
+                  leading={<EntityAvatar photoURL={child.avatarUrl} label={name} fallbackIcon={Baby} />}
+                  title={name}
+                  subtitle={<span className="font-mono">{child.birthNumber}</span>}
+                  meta={
+                    <>
+                      <MetaColumn
+                        label="Rodina"
+                        hideBelow="sm"
+                        value={
+                          fam ? (
+                            <Link
+                              to={`/rodiny/${fam.uid}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-text-secondary hover:text-primary hover:underline"
+                            >
+                              {fam.label}
+                            </Link>
+                          ) : (
+                            '—'
+                          )
+                        }
+                      />
+                      <MetaColumn label="Pohlaví" width="w-20" value={gender ?? '—'} />
+                      <MetaColumn label="Narození" value={formatBirthDateCs(bd)} />
+                      <MetaColumn label="Věk" width="w-16" value={age != null ? `${age} let` : '—'} />
+                    </>
+                  }
+                  trailing={
+                    profileHref ? (
+                      <RowMenu items={[{ label: 'Otevřít profil', onSelect: () => navigate(profileHref) }]} />
+                    ) : undefined
+                  }
+                />
               )
             })}
-          </Table>
+          </RecordCardList>
         )}
       </div>
     </AppShell>

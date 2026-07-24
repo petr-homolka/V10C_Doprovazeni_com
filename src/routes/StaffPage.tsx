@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SidePanel } from '@/components/ui/side-panel'
-import { RecordCard, RecordCardList } from '@/components/ui/record-card'
+import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
+import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -342,54 +343,55 @@ export default function StaffPage() {
                     orgThreshold,
                     platformThreshold,
                   )
+                  const isCollaborator = member.role === 'spolupracovnik'
+                  const menuItems: RowMenuItem[] = []
+                  if (isOrgAdmin && isCollaborator) menuItems.push({ label: 'Upravit moduly', onSelect: () => openModulesEdit(member) })
+                  if (isOrgAdmin && !isCollaborator) menuItems.push({ label: 'Upravit kapacitu', onSelect: () => openCapacityEdit(member) })
+                  if (isOrgAdmin && member.role !== 'org_admin') {
+                    menuItems.push({
+                      label: member.disabledAt ? 'Odblokovat' : 'Zablokovat',
+                      onSelect: () => handleToggleDisabled(member),
+                      danger: !member.disabledAt,
+                    })
+                  }
                   return (
                     <RecordCard
                       key={member.uid}
-                      leading={<EntityAvatar label={member.displayName} />}
+                      leading={<EntityAvatar label={member.displayName} fallbackIcon={UserCog} />}
                       title={member.displayName}
                       subtitle={member.email}
                       meta={
                         <>
-                          <div className="hidden text-right sm:block">
-                            <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Role</p>
-                            <p className="text-sm text-text-secondary">{STAFF_ROLE_LABELS[member.role as StaffRole]}</p>
-                          </div>
-                          <span
-                            className={
-                              member.disabledAt
-                                ? 'text-sm font-medium text-danger'
-                                : 'text-sm font-medium text-success'
+                          <MetaColumn
+                            label="Role"
+                            width="w-36"
+                            hideBelow="sm"
+                            value={
+                              <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
+                                {STAFF_ROLE_LABELS[member.role as StaffRole]}
+                              </span>
                             }
-                          >
-                            {member.disabledAt ? 'Zablokován' : 'Aktivní'}
-                          </span>
-                          {member.role === 'spolupracovnik' ? (
-                            isOrgAdmin && (
-                              <Button variant="ghost" size="sm" onClick={() => openModulesEdit(member)} className="w-fit">
-                                Moduly
-                              </Button>
-                            )
-                          ) : isOrgAdmin ? (
-                            <button
-                              type="button"
-                              onClick={() => openCapacityEdit(member)}
-                              title="Upravit kapacitu"
-                              className="w-fit"
-                            >
-                              <CapacityRing value={activeCaseload} max={threshold} />
-                            </button>
-                          ) : (
-                            <CapacityRing value={activeCaseload} max={threshold} />
+                          />
+                          <MetaColumn
+                            label="Stav"
+                            width="w-20"
+                            value={
+                              <span className={member.disabledAt ? 'font-medium text-danger' : 'font-medium text-success'}>
+                                {member.disabledAt ? 'Zablokován' : 'Aktivní'}
+                              </span>
+                            }
+                          />
+                          {!isCollaborator && (
+                            <div className="hidden w-16 md:block">
+                              <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Kapacita</p>
+                              <div className="mt-0.5">
+                                <CapacityRing value={activeCaseload} max={threshold} />
+                              </div>
+                            </div>
                           )}
                         </>
                       }
-                      trailing={
-                        isOrgAdmin && member.role !== 'org_admin' ? (
-                          <Button variant="ghost" size="sm" onClick={() => handleToggleDisabled(member)}>
-                            {member.disabledAt ? 'Odblokovat' : 'Zablokovat'}
-                          </Button>
-                        ) : undefined
-                      }
+                      trailing={<RowMenu items={menuItems} />}
                     />
                   )
                 })}
