@@ -53,6 +53,26 @@ export interface UploadAvatarInput {
   file: File
 }
 
+/**
+ * Fotka zaměstnance (`users/{uid}`) — vlastní model mimo čtyři "subjekt"
+ * entity (uživatel není SubjectRefKind). Cesta zrcadlí storage.rules
+ * `avatars/users/{uid}/avatar.jpg`, `photoURL` na users dokumentu je jen
+ * zobrazovací cache. Zapisovat smí sám uživatel nebo org_admin (rules).
+ */
+export async function uploadUserAvatar(uid: string, file: File): Promise<string> {
+  if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+    throw new Error('Vyberte prosím obrázek ve formátu JPG, PNG nebo WebP.')
+  }
+  if (file.size > MAX_AVATAR_BYTES) {
+    throw new Error('Obrázek je moc velký (limit 5 MB).')
+  }
+  const storageRef = ref(storage, `avatars/users/${uid}/avatar.jpg`)
+  await uploadBytes(storageRef, file, { contentType: file.type })
+  const photoURL = await getDownloadURL(storageRef)
+  await updateDoc(doc(db, 'users', uid), { photoURL })
+  return photoURL
+}
+
 export async function uploadEntityAvatar(input: UploadAvatarInput): Promise<string> {
   if (!ALLOWED_AVATAR_TYPES.includes(input.file.type)) {
     throw new Error('Vyberte prosím obrázek ve formátu JPG, PNG nebo WebP.')

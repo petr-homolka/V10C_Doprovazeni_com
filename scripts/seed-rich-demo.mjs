@@ -276,6 +276,14 @@ for (let t = 0; t < 9; t++) {
   }))
 }
 
+// staff photos (MERGE onto users/{uid})
+const staffPhotos = {
+  'demo-ko': adultPhoto(true, 30), 'demo-asistent': adultPhoto(true, 31),
+  'demo-teamleader': adultPhoto(false, 32), 'demo-vedouci': adultPhoto(true, 33),
+  'demo-zamestnanec': adultPhoto(false, 34),
+}
+for (const [uid, url] of Object.entries(staffPhotos)) writes.push(mergeDoc(`users/${uid}`, { photoURL: url }))
+
 // backfill avatars on pre-existing demo-org fosters/children (MERGE)
 const fpAvatars = { 'demo-foster-1a': adultPhoto(true, 21), 'demo-foster-1b': adultPhoto(false, 22), 'demo-foster-2a': adultPhoto(true, 23), 'demo-foster-3a': adultPhoto(true, 24), 'demo-foster-3b': adultPhoto(false, 25) }
 for (const [id, url] of Object.entries(fpAvatars)) writes.push(mergeDoc(`fosterPersons/${id}`, { avatarUrl: url }))

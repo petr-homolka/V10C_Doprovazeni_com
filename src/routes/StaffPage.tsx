@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SidePanel } from '@/components/ui/side-panel'
 import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { STAFF_ROLES, STAFF_ROLE_LABELS, type StaffRole, type UserDoc } from '@/types/user'
 import { COLLABORATOR_MODULE_KEYS, COLLABORATOR_MODULE_LABELS, type CollaboratorModuleKey } from '@/types/collaborator'
 import { createStaffMember, listStaff, setStaffMemberDisabled, updateStaffCapacitySettings } from '@/services/staffService'
+import { uploadUserAvatar } from '@/services/avatarService'
 import { setCollaboratorModules } from '@/services/collaboratorService'
 import { listActiveCaseloadByKo } from '@/services/agreementService'
 import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
@@ -60,6 +61,28 @@ export default function StaffPage() {
 
   const organizationId = userDoc?.organizationId
   const isOrgAdmin = userDoc?.role === 'org_admin'
+
+  const photoFileRef = useRef<HTMLInputElement>(null)
+  const photoForRef = useRef<string | null>(null)
+
+  function startPhotoUpload(uid: string) {
+    photoForRef.current = uid
+    photoFileRef.current?.click()
+  }
+
+  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    const uid = photoForRef.current
+    if (!file || !uid) return
+    setError(null)
+    try {
+      await uploadUserAvatar(uid, file)
+      await reload()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fotku se nepodařilo nahrát.')
+    }
+  }
 
   async function reload() {
     if (!organizationId) return
@@ -327,6 +350,14 @@ export default function StaffPage() {
               </p>
             )}
 
+            <input
+              ref={photoFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handlePhotoFile}
+            />
+
             {staff === null ? (
               <p className="text-sm text-text-secondary">Načítám…</p>
             ) : staff.length === 0 ? (
@@ -344,7 +375,9 @@ export default function StaffPage() {
                     platformThreshold,
                   )
                   const isCollaborator = member.role === 'spolupracovnik'
+                  const canEditPhoto = isOrgAdmin || member.uid === userDoc?.uid
                   const menuItems: RowMenuItem[] = []
+                  if (canEditPhoto) menuItems.push({ label: 'Nahrát fotku', onSelect: () => startPhotoUpload(member.uid) })
                   if (isOrgAdmin && isCollaborator) menuItems.push({ label: 'Upravit moduly', onSelect: () => openModulesEdit(member) })
                   if (isOrgAdmin && !isCollaborator) menuItems.push({ label: 'Upravit kapacitu', onSelect: () => openCapacityEdit(member) })
                   if (isOrgAdmin && member.role !== 'org_admin') {
@@ -357,7 +390,7 @@ export default function StaffPage() {
                   return (
                     <RecordCard
                       key={member.uid}
-                      leading={<EntityAvatar label={member.displayName} fallbackIcon={UserCog} />}
+                      leading={<EntityAvatar photoURL={member.photoURL} label={member.displayName} fallbackIcon={UserCog} />}
                       title={member.displayName}
                       subtitle={member.email}
                       meta={

@@ -75,6 +75,18 @@ service firebase.storage {
       );
     }
 
+    // Fotka zaměstnance: čte kdokoli přihlášený ze stejné organizace
+    // (jméno+fotka se ukazují napříč appkou); zapisuje buď sám uživatel,
+    // nebo org_admin téže organizace (viz users/{uid} update rule).
+    match /avatars/users/{uid}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isReasonableImage() && (
+        request.auth.uid == uid ||
+        (isStaff() && userDoc().role == 'org_admin' &&
+         userDoc().organizationId == firestore.get(/databases/(default)/documents/users/$(uid)).data.organizationId)
+      );
+    }
+
     match /avatars/families/{familyId}/{fileName} {
       allow read: if canAccessFamily(familyId);
       allow write: if canAccessFamily(familyId) && isReasonableImage();

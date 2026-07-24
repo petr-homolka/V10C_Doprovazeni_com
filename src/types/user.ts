@@ -97,4 +97,8 @@ export interface UserDoc {
   /** Jmeninová upozornění — viz `notifyBirthdays` výš pro plné zdůvodnění,
    * stejný princip, nezávislý přepínač. */
   notifyNameDays?: boolean
+  /** Profilová fotka zaměstnance (Cloud Storage download URL, cesta
+   * `avatars/users/{uid}/avatar.jpg`) — jen zobrazovací cache, zdroj pravdy
+   * je Storage objekt. Nahrává `avatarService.uploadUserAvatar`. */
+  photoURL?: string | null
 }
