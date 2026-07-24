@@ -30,3 +30,7 @@ emulator-data
 *.njsproj
 *.sln
 *.sw?
+
+# Designové screenshoty (lokální náhled, nepatří do gitu)
+design-shots/
+dist-preview/
