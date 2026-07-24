@@ -24,9 +24,9 @@ function computeInitials(label: string): string {
  *   subjekt. `quickRecordDisabledReason` (bez Dohody nejde zápis uložit)
  *   zobrazí jen tooltip, klik nic nespustí.
  * - `onChangePhoto` (profil, `size="lg"`): klik na celý avatar otevře
- *   výběr souboru. Zatím jen na Spisu (FamilyDetailPage) — pěstoun/dítě/
- *   Dohoda vlastní profilovou stránku ještě nemají (SEAM, viz
- *   CURRENT_STATE.md), takže pro ně zatím žádná cesta ke změně fotky není.
+ *   výběr souboru. Zapojeno na profilu rodiny, pěstouna, dítěte i
+ *   zaměstnance (přes `EditableAvatar`), a taky přímo v seznamech Dětí/
+ *   Pěstounů/Zaměstnanců přes ⋮ menu.
  *
  * `stopPropagation` na obou klicích je nutný — řádky v tabulkách (viz
  * FamilyListPage) bývají celé zabalené v `<Link>`, klik na avatar nesmí

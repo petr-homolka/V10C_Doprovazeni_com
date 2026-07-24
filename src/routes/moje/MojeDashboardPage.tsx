@@ -334,7 +334,10 @@ export default function MojeDashboardPage() {
         <TimelineEntryDetail
           entry={selectedEntry.entry}
           authorName="Klíčová osoba"
-          subjectLabels={resolveSubjectLabels(selectedEntry.entry.subjectRefs)}
+          // Pěstoun tady záměrně NEMÁ prokliky na profily — na staffová
+          // rozhraní nemá přístup (viz firestore.rules), odkaz by vedl do
+          // zdi. Jména zůstávají prostým textem.
+          subjectLabels={resolveSubjectLabels(selectedEntry.entry.subjectRefs).map((label) => ({ key: label, node: label }))}
           onClose={() => setSelectedEntry(null)}
         />
       )}

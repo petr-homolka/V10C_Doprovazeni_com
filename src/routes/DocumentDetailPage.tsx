@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { MarkdownEditor } from '@/components/ui/markdown-editor'
+import { PersonLink } from '@/components/ui/person-link'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -474,7 +475,14 @@ export default function DocumentDetailPage() {
           {versions.map(({ docId: vId, version }) => (
             <div key={vId} className="rounded-lg border border-border bg-surface p-3 text-sm">
               <p className="text-text-primary">
-                v{version.version} · {resolveStaffName(version.editedByUid)} ·{' '}
+                v{version.version} ·{' '}
+                <PersonLink
+                  kind="staff"
+                  id={staffList.some((s) => s.uid === version.editedByUid) ? version.editedByUid : null}
+                  name={resolveStaffName(version.editedByUid)}
+                  muted
+                />{' '}
+                ·{' '}
                 {new Date(version.createdAt).toLocaleString('cs-CZ')}
               </p>
               <p className="mt-0.5 text-xs text-text-tertiary">hash {version.hash.slice(0, 16)}…</p>

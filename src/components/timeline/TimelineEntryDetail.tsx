@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { Drawer } from '@/components/ui/drawer'
 import { SegmentedTabs } from '@/components/ui/segmented-tabs'
@@ -25,8 +25,11 @@ export function TimelineEntryDetail({
   onClose,
 }: {
   entry: TimelineEntryDoc
-  authorName: string
-  subjectLabels: string[]
+  /** `ReactNode`, ne `string` — volající sem posílá jméno autora jako
+   * proklik na profil (`PersonLink`), pokud toho autora zná. */
+  authorName: ReactNode
+  /** Totéž u subjektů zápisu — buď holá jména, nebo prokliky. */
+  subjectLabels: Array<{ key: string; node: ReactNode }>
   onClose: () => void
 }) {
   const [tab, setTab] = useState<'prehled' | 'historie'>('prehled')
@@ -66,12 +69,12 @@ export function TimelineEntryDetail({
 
             {subjectLabels.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {subjectLabels.map((label) => (
+                {subjectLabels.map(({ key, node }) => (
                   <span
-                    key={label}
+                    key={key}
                     className="inline-flex h-6 items-center rounded-full border border-border-strong px-2.5 text-xs font-medium text-text-secondary"
                   >
-                    {label}
+                    {node}
                   </span>
                 ))}
               </div>

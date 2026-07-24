@@ -3,6 +3,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { SidePanel } from '@/components/ui/side-panel'
 import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
 import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
+import { PersonLink } from '@/components/ui/person-link'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -391,7 +392,7 @@ export default function StaffPage() {
                     <RecordCard
                       key={member.uid}
                       leading={<EntityAvatar photoURL={member.avatarUrl} label={member.displayName} fallbackIcon={UserCog} />}
-                      title={member.displayName}
+                      title={<PersonLink kind="staff" id={member.uid} name={member.displayName} />}
                       subtitle={member.email}
                       meta={
                         <>

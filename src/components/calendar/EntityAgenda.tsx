@@ -23,7 +23,10 @@ export function EntityAgenda({
   subjectId,
 }: {
   organizationId: string
-  subjectKind: SubjectRefKind
+  /** `staff` = kalendář zaměstnance, tedy události PŘIŘAZENÉ jemu
+   * (`assignedToUid`) — zaměstnanec není `subjectRefs` subjekt, události se
+   * ho netýkají jako klienta, ale jako řešitele. */
+  subjectKind: SubjectRefKind | 'staff'
   subjectId: string
 }) {
   const [events, setEvents] = useState<Array<{ docId: string; event: CalendarEventDoc }> | null>(null)
@@ -65,8 +68,10 @@ export function EntityAgenda({
     const mine = (events ?? [])
       .filter(({ event }) => event.status === 'planovano')
       .filter(({ event }) =>
-        (event.subjectRefs ?? []).some((r) => r.kind === subjectKind && r.id === subjectId) ||
-        (subjectKind === 'family' && event.familyDocId === subjectId),
+        subjectKind === 'staff'
+          ? event.assignedToUid === subjectId
+          : (event.subjectRefs ?? []).some((r) => r.kind === subjectKind && r.id === subjectId) ||
+            (subjectKind === 'family' && event.familyDocId === subjectId),
       )
       .sort((a, b) => a.event.start.localeCompare(b.event.start))
     return {

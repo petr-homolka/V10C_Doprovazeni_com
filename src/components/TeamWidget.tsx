@@ -36,14 +36,17 @@ export function TeamWidget({ organizationId }: { organizationId: string }) {
               <div key={i} className="h-[132px] animate-pulse rounded-lg bg-surface-soft shadow-raised" />
             ))
           : staff.map((member) => (
-              <div
+              // Celá karta je proklik na profil — jméno v platformě vždycky
+              // někam vede, a tady je klikací plocha přirozeně celá karta.
+              <Link
                 key={member.uid}
-                className="flex flex-col items-center gap-1.5 rounded-lg bg-surface-soft p-4 text-center shadow-raised"
+                to={`/zamestnanci/${member.uid}`}
+                className="flex flex-col items-center gap-1.5 rounded-lg bg-surface-soft p-4 text-center shadow-raised transition-shadow hover:shadow-overlay"
               >
-                <EntityAvatar label={member.displayName} size="lg" ring className="size-12" />
-                <p className="mt-1 truncate text-sm font-semibold text-text-primary">{member.displayName}</p>
-                <p className="truncate text-xs text-text-secondary">{STAFF_ROLE_LABELS[member.role as keyof typeof STAFF_ROLE_LABELS] ?? member.role}</p>
-              </div>
+                <EntityAvatar photoURL={member.avatarUrl} label={member.displayName} size="lg" ring className="size-12" />
+                <p className="mt-1 w-full truncate text-sm font-semibold text-text-primary">{member.displayName}</p>
+                <p className="w-full truncate text-xs text-text-secondary">{STAFF_ROLE_LABELS[member.role as keyof typeof STAFF_ROLE_LABELS] ?? member.role}</p>
+              </Link>
             ))}
       </div>
     </section>

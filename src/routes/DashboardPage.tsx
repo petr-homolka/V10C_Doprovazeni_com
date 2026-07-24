@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/shell/AppShell'
 import { PageHeader } from '@/components/ui/page-header'
 import { TodaySections } from '@/components/TodaySections'
+import { PersonLink } from '@/components/ui/person-link'
 import { TeamWidget } from '@/components/TeamWidget'
 import { listOverCapacityKos, type OverCapacityKo } from '@/services/agreementService'
 import { isReadOnlyManagerRole } from '@/types/user'
@@ -49,7 +50,15 @@ export default function DashboardPage() {
               : `${overCapacity.length} klíčových osob má překročenou kapacitu`}
           </p>
           <p className="mt-1 text-sm text-text-secondary">
-            {overCapacity.map((k) => `${k.displayName} (${k.activeCaseload}/${k.threshold})`).join(', ')}
+            {/* Jména KO jsou prokliky na jejich profil — odtud se řeší,
+             * proč mají překročenou kapacitu. */}
+            {overCapacity.map((k, i) => (
+              <span key={k.uid}>
+                {i > 0 && ', '}
+                <PersonLink kind="staff" id={k.uid} name={k.displayName} muted />
+                {` (${k.activeCaseload}/${k.threshold})`}
+              </span>
+            ))}
           </p>
         </div>
       )}

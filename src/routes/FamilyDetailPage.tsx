@@ -14,6 +14,7 @@ import { Switch } from '@/components/ui/switch'
 import { Combobox } from '@/components/ui/combobox'
 import { Modal } from '@/components/ui/modal'
 import { AddressLink } from '@/components/ui/address-link'
+import { PersonLink } from '@/components/ui/person-link'
 import { MarkdownEditor } from '@/components/ui/markdown-editor'
 import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/components/timeline/VoiceRecorderPanel'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
@@ -317,18 +318,38 @@ export default function FamilyDetailPage() {
     return staffList.find((s) => s.uid === uid)?.displayName ?? 'Neznámý uživatel'
   }
 
-  function resolveSubjectLabels(subjectRefs: SubjectRef[]): string[] {
-    const labels: string[] = []
+  /** uid autora jen tehdy, když ho v týmu skutečně známe — jinak by odkaz
+   * vedl na profil, který neexistuje. */
+  function authorLinkId(uid: string): string | null {
+    return staffList.some((s) => s.uid === uid) ? uid : null
+  }
+
+  /** Pěstouni/děti, kterých se zápis týká — jako prokliky na profil,
+   * protože jméno v platformě nikdy není jen text. */
+  function renderSubjectLinks(subjectRefs: SubjectRef[]) {
+    const parts: Array<{ key: string; node: React.ReactNode }> = []
     for (const ref of subjectRefs) {
       if (ref.kind === 'fosterPerson') {
         const fp = fosterPersons.find((f) => f.docId === ref.id)?.fosterPerson
-        if (fp) labels.push(`${fp.firstName} ${fp.lastName}`)
+        if (fp) {
+          parts.push({
+            key: ref.id,
+            node: (
+              <PersonLink kind="fosterPerson" id={ref.id} familyUid={familyUid} name={`${fp.firstName} ${fp.lastName}`} muted />
+            ),
+          })
+        }
       } else if (ref.kind === 'child') {
         const c = children.find((ch) => ch.docId === ref.id)?.child
-        if (c) labels.push(`${c.firstName} ${c.lastName}`)
+        if (c) {
+          parts.push({
+            key: ref.id,
+            node: <PersonLink kind="child" id={ref.id} familyUid={familyUid} name={`${c.firstName} ${c.lastName}`} muted />,
+          })
+        }
       }
     }
-    return labels
+    return parts
   }
 
   async function handleAddChild(e: FormEvent) {
@@ -790,13 +811,23 @@ export default function FamilyDetailPage() {
               <div className="flex flex-col gap-2 max-w-[928px]">
                 {timelineEntries.map(({ docId: entryId, entry }) => {
                   const Icon = TIMELINE_TYPE_ICONS[entry.type]
-                  const subjectLabels = resolveSubjectLabels(entry.subjectRefs)
+                  const subjectLinks = renderSubjectLinks(entry.subjectRefs)
+                  // Řádek je `div role="button"`, ne `<button>` — jména
+                  // autora i subjektů jsou prokliky na profil a `<a>` uvnitř
+                  // `<button>` je nevalidní HTML.
                   return (
-                    <button
+                    <div
                       key={entryId}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedEntry({ docId: entryId, entry })}
-                      className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setSelectedEntry({ docId: entryId, entry })
+                        }
+                      }}
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
                     >
                       <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
                         <Icon className="size-4" />
@@ -809,12 +840,22 @@ export default function FamilyDetailPage() {
                           </p>
                         </div>
                         <p className="mt-0.5 truncate text-sm text-text-secondary">
-                          {resolveAuthorName(entry.createdByUid)}
-                          {subjectLabels.length > 0 && ` · ${subjectLabels.join(', ')}`}
+                          <PersonLink
+                            kind="staff"
+                            id={authorLinkId(entry.createdByUid)}
+                            name={resolveAuthorName(entry.createdByUid)}
+                            muted
+                          />
+                          {subjectLinks.map(({ key, node }) => (
+                            <span key={key}>
+                              {' · '}
+                              {node}
+                            </span>
+                          ))}
                         </p>
                         {entry.body && <p className="mt-1 line-clamp-2 text-sm text-text-secondary">{entry.body}</p>}
                       </div>
-                    </button>
+                    </div>
                   )
                 })}
               </div>
@@ -967,8 +1008,15 @@ export default function FamilyDetailPage() {
       {selectedEntry && (
         <TimelineEntryDetail
           entry={selectedEntry.entry}
-          authorName={resolveAuthorName(selectedEntry.entry.createdByUid)}
-          subjectLabels={resolveSubjectLabels(selectedEntry.entry.subjectRefs)}
+          authorName={
+            <PersonLink
+              kind="staff"
+              id={authorLinkId(selectedEntry.entry.createdByUid)}
+              name={resolveAuthorName(selectedEntry.entry.createdByUid)}
+              muted
+            />
+          }
+          subjectLabels={renderSubjectLinks(selectedEntry.entry.subjectRefs)}
           onClose={() => setSelectedEntry(null)}
         />
       )}

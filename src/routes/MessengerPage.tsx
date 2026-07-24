@@ -5,6 +5,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { PageHeader } from '@/components/ui/page-header'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PersonLink } from '@/components/ui/person-link'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { listFamiliesWithDocIds } from '@/services/familyService'
@@ -29,6 +30,8 @@ function conversationName(family: FamilyDoc): string {
 interface MessageGroup {
   authorRole: 'staff' | 'foster'
   authorLabel: string
+  /** uid autora — jméno nad skupinou je proklik na jeho profil. */
+  authorUid: string
   dayLabel: string
   items: Array<{ docId: string; message: MessageDoc }>
 }
@@ -50,7 +53,13 @@ function groupMessages(
     if (last && last.dayLabel === day && last.authorLabel === authorLabel && last.authorRole === item.message.authorRole) {
       last.items.push(item)
     } else {
-      groups.push({ authorRole: item.message.authorRole, authorLabel, dayLabel: day, items: [item] })
+      groups.push({
+        authorRole: item.message.authorRole,
+        authorLabel,
+        authorUid: item.message.createdByUid,
+        dayLabel: day,
+        items: [item],
+      })
     }
   }
   return groups
@@ -269,7 +278,19 @@ export default function MessengerPage() {
                                   isStaffGroup && 'flex-row-reverse',
                                 )}
                               >
-                                <span className="font-semibold text-text-secondary">{group.authorLabel}</span>
+                                {/* Jméno zaměstnance (i „Vy") je proklik na
+                                 * jeho profil; „Pěstoun" profil zaměstnance
+                                 * nemá, takže zůstává textem. */}
+                                <PersonLink
+                                  kind="staff"
+                                  id={
+                                    group.authorRole === 'staff' && staffList.some((s) => s.uid === group.authorUid)
+                                      ? group.authorUid
+                                      : null
+                                  }
+                                  name={group.authorLabel}
+                                  className="font-semibold text-text-secondary"
+                                />
                                 {new Date(group.items[0].message.createdAt).toLocaleTimeString('cs-CZ', {
                                   hour: '2-digit',
                                   minute: '2-digit',

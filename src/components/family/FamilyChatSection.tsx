@@ -3,6 +3,7 @@ import { MessageCircle, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PersonLink } from '@/components/ui/person-link'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { listMessages, sendStaffMessage } from '@/services/messageService'
 import type { MessageDoc } from '@/types/message'
@@ -54,6 +55,11 @@ export function FamilyChatSection({ familyDocId, organizationId, currentUid, sta
   useEffect(() => {
     listEndRef.current?.scrollIntoView({ block: 'end' })
   }, [messages])
+
+  /** uid autora jen pro známé zaměstnance — jinak odkaz vede do prázdna. */
+  function authorLinkId(uid: string): string | null {
+    return staffList.some((s) => s.uid === uid) ? uid : null
+  }
 
   function resolveAuthorName(uid: string): string {
     if (uid === currentUid) return 'Vy'
@@ -126,7 +132,16 @@ export function FamilyChatSection({ familyDocId, organizationId, currentUid, sta
                   <p className="whitespace-pre-wrap">{message.body}</p>
                 </div>
                 <p className="mt-1 flex items-center gap-1.5 text-[11px] text-text-tertiary">
-                  {isFosterAuthor ? 'Pěstoun' : resolveAuthorName(message.createdByUid)}
+                  {isFosterAuthor ? (
+                    'Pěstoun'
+                  ) : (
+                    <PersonLink
+                      kind="staff"
+                      id={authorLinkId(message.createdByUid)}
+                      name={resolveAuthorName(message.createdByUid)}
+                      muted
+                    />
+                  )}
                   {isInternal && (
                     <span className="rounded-full bg-warning-bg px-1.5 py-0.5 font-medium text-warning">Jen tým</span>
                   )}

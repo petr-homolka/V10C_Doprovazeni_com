@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
-import { uploadEntityAvatar } from '@/services/avatarService'
+import { uploadEntityAvatar, uploadUserAvatar } from '@/services/avatarService'
 import type { SubjectRefKind } from '@/types/timelineEntry'
 
 /**
@@ -20,7 +20,9 @@ export function EditableAvatar({
   fallbackIcon,
   onUploaded,
 }: {
-  kind: SubjectRefKind
+  /** `staff` má fotku na `users/{uid}` v jiné cestě Storage než klientské
+   * entity, jinak je chování stejné. */
+  kind: SubjectRefKind | 'staff'
   id: string
   familyId?: string
   photoURL?: string | null
@@ -39,7 +41,7 @@ export function EditableAvatar({
     setBusy(true)
     setError(null)
     try {
-      const url = await uploadEntityAvatar({ kind, id, familyId, file })
+      const url = kind === 'staff' ? await uploadUserAvatar(id, file) : await uploadEntityAvatar({ kind, id, familyId, file })
       onUploaded(url)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Fotku se nepodařilo nahrát.')

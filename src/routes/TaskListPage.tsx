@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Switch } from '@/components/ui/switch'
+import { PersonLink } from '@/components/ui/person-link'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
 import { useAuth } from '@/hooks/useAuth'
@@ -411,7 +412,18 @@ export default function TaskListPage() {
                         {task.status === 'zruseno' && <span className="ml-2 text-xs font-normal text-danger no-underline">(zrušeno)</span>}
                       </span>
                     }
-                    subtitle={staffLabel.get(task.assignedToUid) ?? '—'}
+                    subtitle={
+                      staffLabel.has(task.assignedToUid) ? (
+                        <PersonLink
+                          kind="staff"
+                          id={task.assignedToUid}
+                          name={staffLabel.get(task.assignedToUid)!}
+                          muted
+                        />
+                      ) : (
+                        '—'
+                      )
+                    }
                     meta={
                       <span className="text-sm text-text-secondary">
                         {task.dueDate ? new Date(task.dueDate).toLocaleDateString('cs-CZ') : '—'}
