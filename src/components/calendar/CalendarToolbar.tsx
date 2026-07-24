@@ -1,4 +1,4 @@
-import { CalendarPlus, ChevronLeft, ChevronRight, PanelRight } from 'lucide-react'
+import { CalendarPlus, ChevronLeft, ChevronRight, PanelRight, Search } from 'lucide-react'
 import type { ToolbarProps } from 'react-big-calendar'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -29,12 +29,16 @@ export function CalendarToolbar({
   onNavigate,
   onView,
   onOpenSettings,
+  onOpenSearch,
   onNewEvent,
   settingsActive,
+  searchActive,
 }: ToolbarProps<CalendarItem> & {
   onOpenSettings?: () => void
+  onOpenSearch?: () => void
   onNewEvent?: () => void
   settingsActive?: boolean
+  searchActive?: boolean
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -69,6 +73,23 @@ export function CalendarToolbar({
             <Button size="sm" onClick={onNewEvent}>
               <CalendarPlus size={16} /> Nová událost
             </Button>
+          )}
+          {onOpenSearch && (
+            <button
+              type="button"
+              onClick={onOpenSearch}
+              aria-label="Hledat mezi entitami"
+              aria-pressed={searchActive}
+              title="Hledat mezi entitami"
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-sm transition-colors duration-150',
+                searchActive
+                  ? 'bg-primary-soft text-primary'
+                  : 'text-text-secondary hover:bg-overlay-active hover:text-text-primary',
+              )}
+            >
+              <Search size={18} strokeWidth={1.75} />
+            </button>
           )}
           {onOpenSettings && (
             <button

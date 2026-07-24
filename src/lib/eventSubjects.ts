@@ -41,6 +41,25 @@ export function buildSubjectDirectory({
 }
 
 /**
+ * Týká se ten záznam některé z vybraných entit? Používá filtr kalendáře
+ * pro "kalendáře zapnuté na vyžádání" — u připomínek z Dohody (bez
+ * `event`) se bere rodina z `familyDocId`, ať se chovají stejně.
+ */
+export function matchesAnySubject(
+  item: { event?: CalendarEventDoc | null; familyDocId?: string | null } | null | undefined,
+  subjects: Array<{ kind: string; id: string }>,
+): boolean {
+  if (!item || subjects.length === 0) return false
+  const refs = item.event?.subjectRefs ?? []
+  const familyDocId = item.familyDocId ?? item.event?.familyDocId
+  return subjects.some(
+    (wanted) =>
+      refs.some((ref) => ref.kind === wanted.kind && ref.id === wanted.id) ||
+      (wanted.kind === 'family' && !!familyDocId && familyDocId === wanted.id),
+  )
+}
+
+/**
  * Osoby, kterých se záznam v kalendáři týká — pro překrývající se avatary.
  * Sdílené desktopem i mobilem: "VŽDY se zobrazují avatary" platí pro celou
  * platformu, a dvě kopie stejné logiky by se rozešly.

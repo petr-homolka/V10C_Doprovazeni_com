@@ -12,7 +12,8 @@ import { Ban, Settings } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
-import { buildSubjectDirectory, resolveItemSubjects } from '@/lib/eventSubjects'
+import { EntitySearch } from '@/components/calendar/EntitySearch'
+import { buildSubjectDirectory, matchesAnySubject, resolveItemSubjects } from '@/lib/eventSubjects'
 import { SidePanel } from '@/components/ui/side-panel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -209,13 +210,20 @@ export default function CalendarPage() {
     Record<string, import('@/types/agreement').AgreementDoc>
   >({})
   const [hiddenStaffUids, setHiddenStaffUids] = useState<Set<string>>(new Set())
+  /** Kalendáře konkrétních rodin/pěstounů/dětí zapnuté "na vyžádání"
+   * (Petrovo zadání: vedení vidí kalendáře podřízených klíčových osob a NA
+   * VYŽÁDÁNÍ i kalendáře jím podřízených rodin / pěstounů / dětí). Fungují
+   * PŘIČTENÍM: události zapnuté entity se zobrazí i tehdy, když je jejich
+   * řešitel ve filtru zaměstnanců schovaný — jinak by "zapnout kalendář
+   * rodiny" nešlo použít k tomu vidět JEN tu rodinu. */
+  const [extraSubjects, setExtraSubjects] = useState<SubjectRef[]>([])
   const [customKinds, setCustomKinds] = useState<EnumOption[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [view, setView] = useState<View>(Views.WEEK)
   const [date, setDate] = useState(new Date())
 
-  const [panelMode, setPanelMode] = useState<'none' | 'settings' | 'event'>('none')
+  const [panelMode, setPanelMode] = useState<'none' | 'settings' | 'event' | 'search'>('none')
   const [slotModal, setSlotModal] = useState<{ mode: 'new' | 'edit'; docId?: string; seriesId?: string | null; start?: string } | null>(
     null,
   )
@@ -300,8 +308,11 @@ export default function CalendarPage() {
     })
     return [...fromEvents, ...fromAgreements]
       .filter((item): item is CalendarItem => item !== null)
-      .filter((item) => !item.staffUid || !hiddenStaffUids.has(item.staffUid))
-  }, [events, agreementsByFamilyId, familyLabel, hiddenStaffUids])
+      .filter((item) => {
+        if (!item.staffUid || !hiddenStaffUids.has(item.staffUid)) return true
+        return matchesAnySubject(item, extraSubjects)
+      })
+  }, [events, agreementsByFamilyId, familyLabel, hiddenStaffUids, extraSubjects])
 
   function toggleStaff(uid: string) {
     setHiddenStaffUids((prev) => {
@@ -495,7 +506,17 @@ export default function CalendarPage() {
   }
 
   const sidePanel =
-    panelMode === 'settings' ? (
+    panelMode === 'search' ? (
+      <SidePanel title="Hledat" onClose={closePanel}>
+        <EntitySearch
+          families={families}
+          fosterPersons={fosterPersons}
+          children={children}
+          staff={staffList}
+          onNavigated={closePanel}
+        />
+      </SidePanel>
+    ) : panelMode === 'settings' ? (
       <SidePanel title="Nastavení kalendáře" onClose={closePanel}>
         <div className="flex flex-col gap-6">
           <div>
@@ -521,6 +542,28 @@ export default function CalendarPage() {
                 )
               })}
             </div>
+          </div>
+
+          {/* Kalendáře entit "na vyžádání" — vypnuté nic nemění, zapnuté
+           * přidají do kalendáře události té rodiny/pěstouna/dítěte i
+           * tehdy, když je jejich řešitel ve filtru výš schovaný. */}
+          <div className="flex flex-col gap-2 border-t border-border-subtle pt-4">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+              Kalendáře entit (na vyžádání)
+            </h3>
+            <SubjectRefsPicker
+              value={extraSubjects}
+              onChange={setExtraSubjects}
+              families={families}
+              children={children}
+              fosterPersons={fosterPersons}
+            />
+            {extraSubjects.length > 0 && hiddenStaffUids.size === 0 && (
+              <p className="text-xs text-text-tertiary">
+                Zobrazují se všichni zaměstnanci, takže tyhle kalendáře nic nepřidávají. Schovejte výš zaměstnance,
+                jejichž události vidět nechcete.
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2 border-t border-border-subtle pt-4">
@@ -749,7 +792,9 @@ export default function CalendarPage() {
                       {...toolbarProps}
                       onNewEvent={() => openNew()}
                       onOpenSettings={() => setPanelMode((p) => (p === 'settings' ? 'none' : 'settings'))}
+                      onOpenSearch={() => setPanelMode((p) => (p === 'search' ? 'none' : 'search'))}
                       settingsActive={panelMode === 'settings'}
+                      searchActive={panelMode === 'search'}
                     />
                   ),
                   event: ({ event }: { event: CalendarItem }) => {

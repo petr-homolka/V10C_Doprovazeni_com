@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSubjectDirectory, resolveItemSubjects } from './eventSubjects'
+import { buildSubjectDirectory, matchesAnySubject, resolveItemSubjects } from './eventSubjects'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -72,5 +72,25 @@ describe('resolveItemSubjects', () => {
       event: event({ subjectRefs: [{ kind: 'fosterPerson', id: 'fost1' }] }),
     })
     expect(subjects).toEqual([{ kind: 'fosterPerson', label: 'Jana Novotná', avatarUrl: 'jana.jpg' }])
+  })
+})
+
+describe('matchesAnySubject', () => {
+  it('sedí na událost, která má vybranou entitu v subjectRefs', () => {
+    const item = { event: event({ subjectRefs: [{ kind: 'child', id: 'kid1' }] }) }
+    expect(matchesAnySubject(item, [{ kind: 'child', id: 'kid1' }])).toBe(true)
+    expect(matchesAnySubject(item, [{ kind: 'child', id: 'kid9' }])).toBe(false)
+  })
+
+  // Připomínka návštěvy z Dohody nemá `event` ani `subjectRefs` — zapnutý
+  // kalendář rodiny ji přesto musí zobrazit.
+  it('sedí i na položku bez event, jen s familyDocId', () => {
+    expect(matchesAnySubject({ familyDocId: 'fam1' }, [{ kind: 'family', id: 'fam1' }])).toBe(true)
+    expect(matchesAnySubject({ familyDocId: 'fam1' }, [{ kind: 'child', id: 'fam1' }])).toBe(false)
+  })
+
+  it('bez vybraných entit nesedí nikdy', () => {
+    expect(matchesAnySubject({ familyDocId: 'fam1' }, [])).toBe(false)
+    expect(matchesAnySubject(null, [{ kind: 'family', id: 'fam1' }])).toBe(false)
   })
 })

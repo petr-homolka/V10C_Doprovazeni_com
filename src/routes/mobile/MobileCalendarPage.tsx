@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type TouchEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarClock, ChevronLeft, ChevronRight, Plus, Settings, Trash2 } from 'lucide-react'
+import { CalendarClock, ChevronLeft, ChevronRight, Plus, Search, Settings, Trash2 } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
 import { BottomSheet } from '@/components/mobile/BottomSheet'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
 import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
+import { EntitySearch } from '@/components/calendar/EntitySearch'
 import { buildSubjectDirectory, resolveItemSubjects } from '@/lib/eventSubjects'
 import { formatDateValue, parseDateValue } from '@/lib/dateGrid'
 import { useAuth } from '@/hooks/useAuth'
@@ -138,6 +139,7 @@ export default function MobileCalendarPage() {
   // stejný důvod, proč `MobileAccountPage` nikam do Nastavení neediruje,
   // viz její komentář).
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [notifyBirthdays, setNotifyBirthdays] = useState(true)
   const [notifyNameDays, setNotifyNameDays] = useState(true)
 
@@ -455,14 +457,26 @@ export default function MobileCalendarPage() {
       <div className="flex flex-col pb-24 pt-6">
         <div className="flex items-center justify-between px-5">
           <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Kalendář</h1>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Nastavení kalendáře"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-text-secondary transition-transform active:scale-90"
-          >
-            <Settings size={22} strokeWidth={1.75} />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {/* Lupa = hledání mezi entitami. Na mobilu se otevře jako
+             * vytažený spodní sheet, na desktopu jako pravý panel. */}
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Hledat mezi entitami"
+              className="flex size-9 items-center justify-center rounded-full text-text-secondary transition-transform active:scale-90"
+            >
+              <Search size={22} strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              aria-label="Nastavení kalendáře"
+              className="flex size-9 items-center justify-center rounded-full text-text-secondary transition-transform active:scale-90"
+            >
+              <Settings size={22} strokeWidth={1.75} />
+            </button>
+          </div>
         </div>
 
         {staffList.length > 1 && (
@@ -828,6 +842,21 @@ export default function MobileCalendarPage() {
               {sheet.mode === 'new' ? 'Založit' : 'Uložit změny'}
             </Button>
           </form>
+        </BottomSheet>
+      )}
+
+      {searchOpen && (
+        <BottomSheet onClose={() => setSearchOpen(false)}>
+          <div className="flex h-[70vh] flex-col px-5 pb-6 pt-4">
+            <h2 className="mb-3 shrink-0 text-[17px] font-semibold text-text-primary">Hledat</h2>
+            <EntitySearch
+              families={families}
+              fosterPersons={fosterPersons}
+              children={children}
+              staff={staffList}
+              onNavigated={() => setSearchOpen(false)}
+            />
+          </div>
         </BottomSheet>
       )}
 
