@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Search, Users } from 'lucide-react'
 import { MobileShell } from '@/components/mobile/MobileShell'
+import { MobileFamilyNavTabs } from '@/components/mobile/MobileFamilyNavTabs'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -56,6 +57,7 @@ export default function MobileFamiliesPage() {
     <MobileShell>
       <div className="flex flex-col gap-4 px-5 pb-6 pt-6">
         <h1 className="text-[32px] font-bold leading-tight tracking-tight text-text-primary">Rodiny</h1>
+        <MobileFamilyNavTabs active="rodiny" />
         <div className="relative">
           <Search size={18} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
           <Input

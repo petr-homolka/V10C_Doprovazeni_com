@@ -75,6 +75,18 @@ export function VoiceCaptureSheet({
     setStep('review')
   }
 
+  /** Petrem výslovně vyžádáno (2026-07-23 živý test): nahrávání se dřív
+   * spouštělo VŽDY automaticky bez možnosti přeskočit rovnou na psaní —
+   * "když píše, může se vracet, smazat, přepsat, může to prostě cokoliv",
+   * na rozdíl od mluvení. Přeskočí na `review` s PRÁZDNÝM textem (ne s
+   * dosavadním přepisem — jde o vědomou volbu psát místo diktování, ne o
+   * zkrácení nahrávky). */
+  function handleWriteInstead() {
+    recognizer.stop()
+    setBody('')
+    setStep('review')
+  }
+
   async function handleAiSummary() {
     if (!body.trim()) return
     setError(null)
@@ -83,7 +95,9 @@ export function VoiceCaptureSheet({
         const summary = await summarizeVoiceEntry(body)
         setBody(summary)
       })
-    } catch {
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('AI souhrn selhal:', e)
       setError('AI souhrn se nepodařilo vytvořit — text zůstává beze změny.')
     }
   }
@@ -125,10 +139,16 @@ export function VoiceCaptureSheet({
             </div>
             {/* Dlouhý přepis roste za běhu nahrávání — vlastní scrollovatelná
              * oblast (ne celá obrazovka), ať "Zastavit" zůstane VŽDY na
-             * dohled/klikatelné (živě nahlášeno Petrem 2026-07-22). Bublina
-             * zarovnaná doprava + text do bloku, na Petrovo přání. */}
+             * dohled/klikatelné (živě nahlášeno Petrem 2026-07-22).
+             * Zarovnání POUZE doleva, celá šířka (2026-07-23 zpět
+             * opraveno — dřív zarovnaná bublina napravo + `text-justify`
+             * živě Petrem popsáno jako "nesouměrné, víc místa na jedny
+             * straně" — navíc se ta asymetrie nesla i vizuálně nepříjemně
+             * do dalšího kroku "Zkontrolovat a odeslat", kde textarea žádné
+             * takové zarovnání nemá — sjednoceno na stejný plný, doleva
+             * zarovnaný blok v obou krocích). */}
             <div className="w-full min-h-0 flex-1 overflow-y-auto">
-              <p className="ml-auto max-w-[85%] text-justify text-base leading-relaxed text-text-primary">
+              <p className="text-left text-base leading-relaxed text-text-primary">
                 {recognizer.transcript || 'Nahrávám… mluvte.'}
               </p>
             </div>
@@ -138,15 +158,24 @@ export function VoiceCaptureSheet({
               </p>
             )}
             {recognizer.error && <p className="shrink-0 text-sm text-danger">{recognizer.error}</p>}
-            <Button
-              variant="destructive"
-              size="default"
-              onClick={handleStop}
-              className="h-14 w-full max-w-[280px] shrink-0 gap-2 text-base"
-            >
-              <Square size={18} strokeWidth={2} />
-              Zastavit
-            </Button>
+            <div className="flex w-full max-w-[280px] shrink-0 flex-col gap-2">
+              <Button
+                variant="destructive"
+                size="default"
+                onClick={handleStop}
+                className="h-14 w-full gap-2 text-base"
+              >
+                <Square size={18} strokeWidth={2} />
+                Zastavit
+              </Button>
+              <button
+                type="button"
+                onClick={handleWriteInstead}
+                className="text-sm font-medium text-text-secondary underline-offset-2 hover:underline"
+              >
+                Napsat text místo nahrávání
+              </button>
+            </div>
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-4">
