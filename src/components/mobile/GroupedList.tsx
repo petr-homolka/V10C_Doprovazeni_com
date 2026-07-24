@@ -42,7 +42,29 @@ export function GroupedListRow({
     onClick && 'active:bg-overlay-active',
     className,
   )
-  if (as === 'div') return <div className={shared} style={style}>{children}</div>
+  if (as === 'div') {
+    return (
+      <div
+        className={shared}
+        style={style}
+        onClick={onClick}
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={
+          onClick
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onClick()
+                }
+              }
+            : undefined
+        }
+      >
+        {children}
+      </div>
+    )
+  }
   return (
     <button type="button" onClick={onClick} className={shared} style={style}>
       {children}

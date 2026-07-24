@@ -111,6 +111,16 @@ export function VoiceRecorderPanel({
     setStopped(true)
   }
 
+  /** Petrem výslovně vyžádáno (2026-07-23 živý test): panel se dřív VŽDY
+   * spustil rovnou do nahrávání bez možnosti přeskočit na psaní — "když
+   * píše, může se vracet, smazat, přepsat". Přeskočí na textarea s
+   * PRÁZDNÝM textem (ne s dosavadním přepisem). */
+  function handleWriteInstead() {
+    recognizer.stop()
+    setBody('')
+    setStopped(true)
+  }
+
   function togglePerson(key: string) {
     setCheckedKeys((prev) => {
       const next = new Set(prev)
@@ -137,7 +147,9 @@ export function VoiceRecorderPanel({
       const summary = await summarizeVoiceEntry(body)
       setOriginalTranscript((prev) => prev ?? rawBefore)
       setBody(summary)
-    } catch {
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('AI souhrn selhal:', e)
       setError('AI souhrn se nepodařilo vytvořit — zkuste to znovu nebo pokračujte s textem ručně.')
     } finally {
       setSummarizing(false)
@@ -278,6 +290,13 @@ export function VoiceRecorderPanel({
               <Square size={14} strokeWidth={2} />
               Zastavit
             </Button>
+            <button
+              type="button"
+              onClick={handleWriteInstead}
+              className="text-sm font-medium text-text-secondary underline-offset-2 hover:underline"
+            >
+              Napsat text místo nahrávání
+            </button>
           </div>
         ) : (
           <>
