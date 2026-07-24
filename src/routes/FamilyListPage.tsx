@@ -5,7 +5,6 @@ import { SidePanel } from '@/components/ui/side-panel'
 import { ListToolbar } from '@/components/ui/list-toolbar'
 import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
-import { Fab } from '@/components/ui/fab'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -351,7 +350,12 @@ export default function FamilyListPage() {
             )}
 
             <ListToolbar>
-              <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
+              {/* Bez popisku to vypadalo jako záložky (tedy navigace), ne jako
+               * řazení — přitom se tím obsah nemění, jen pořadí. */}
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">Řadit podle</span>
+                <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
+              </div>
               {selected.size > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
@@ -374,14 +378,24 @@ export default function FamilyListPage() {
                 <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
               </div>
             ) : (
-              <RecordCardList className="mt-3">
+              // Sloupce definuje SEZNAM (DESIGN_RULES.md §4) — pořadí buněk je
+              // od nejdůležitější a na užších šířkách ubývají zprava:
+              // Stav → Poslední kontakt → Klíčová osoba. Jméno nikdy.
+              <RecordCardList
+                className="mt-3"
+                cellCount={3}
+                columns={{
+                  lg: 'minmax(220px,1fr) minmax(0,130px) minmax(0,150px) minmax(0,180px)',
+                  md: 'minmax(200px,1fr) minmax(0,130px) minmax(0,150px)',
+                  sm: 'minmax(160px,1fr) minmax(0,130px)',
+                }}
+              >
                 {sortedRows.map((row) => {
               const { docId, family, displayName, assignedToDisplay, alert } = row
               return (
                 <RecordCard
                   key={family.uid}
                   onClick={() => navigate(`/rodiny/${family.uid}`)}
-                  highlight={alert?.tier === 'crisis'}
                   leading={
                     <>
                       <input
@@ -394,34 +408,36 @@ export default function FamilyListPage() {
                         }}
                         className="size-4 shrink-0 rounded-sm border-border-medium accent-primary"
                       />
-                      <EntityAvatar label={displayName} fallbackIcon={Users} />
+                      <EntityAvatar photoURL={family.avatarUrl} label={displayName} fallbackIcon={Users} />
                     </>
                   }
                   title={displayName}
                   subtitle={
                     family.address ? (
-                      <AddressLink address={family.address} className="text-xs" />
+                      <AddressLink address={family.address} className="text-sm" />
                     ) : (
                       'Adresa neuvedena'
                     )
                   }
-                  meta={
-                    <>
-                      {assignedToDisplay && (
-                        <div className="hidden text-right sm:block">
-                          <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Klíčová osoba</p>
-                          <p className="text-sm text-text-secondary">{assignedToDisplay}</p>
-                        </div>
-                      )}
-                      <div className="hidden text-right md:block">
-                        <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Poslední kontakt</p>
-                        <p className="text-sm text-text-secondary">
-                          {family.lastTouchAt ? new Date(family.lastTouchAt).toLocaleDateString('cs-CZ') : 'Nikdy'}
-                        </p>
-                      </div>
-                      {alert && <AlertTag tier={alert.tier} title={`${alert.reason} — ${alert.action}`} />}
-                    </>
-                  }
+                  cells={[
+                    // Pořadí = důležitost, ubývá se ZPRAVA (DESIGN_RULES.md §4).
+                    // Stav je vedle jména schválně: seznam se skenuje kvůli
+                    // "komu hoří", ne kvůli tomu, kdo je klíčová osoba.
+                    {
+                      label: 'Stav',
+                      value: alert ? (
+                        <AlertTag tier={alert.tier} title={`${alert.reason} — ${alert.action}`} />
+                      ) : (
+                        // Klidný stav nesmí soutěžit se štítkem naléhavosti.
+                        <span className="text-text-tertiary">V pořádku</span>
+                      ),
+                    },
+                    {
+                      label: 'Poslední kontakt',
+                      value: family.lastTouchAt ? new Date(family.lastTouchAt).toLocaleDateString('cs-CZ') : 'Nikdy',
+                    },
+                    { label: 'Klíčová osoba', value: assignedToDisplay || '—' },
+                  ]}
                   trailing={
                     <>
                       <button
@@ -544,7 +560,6 @@ export default function FamilyListPage() {
         />
       )}
 
-      <Fab onClick={() => setShowForm(true)} aria-label="Nová rodina" title="Nová rodina" />
     </AppShell>
   )
 }

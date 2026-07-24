@@ -98,9 +98,13 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --bg-void: #0B1220;
-    --bg-app: #10182C;
-    --bg-surface-soft: #182140;
-    --bg-surface: #1E2A4E;
+    /* Karta musí být ZŘETELNĚ světlejší než plocha (DESIGN_RULES.md §7) —
+       ve tmavém režimu stín nefunguje, hranu dělá jen barva. Původní
+       #10182C/#182140 byl rozdíl tak malý, že sidebar i karty splývaly
+       s plochou (odhaleno na screenshotu, ne v kódu). */
+    --bg-app: #0C1223;
+    --bg-surface-soft: #1B2646;
+    --bg-surface: #212E56;
     --bg-inset: rgba(255, 255, 255, .04);
     --overlay-active: rgba(120, 160, 255, .14);
     --field-bg: rgba(120, 160, 255, .09);
@@ -149,10 +153,11 @@
 }
 
 :root[data-theme='dark'] {
-  --bg-void: #0B1220;
-  --bg-app: #10182C;
-  --bg-surface-soft: #182140;
-  --bg-surface: #1E2A4E;
+  --bg-void: #070C18;
+  /* Viz komentář u stejných tokenů v `prefers-color-scheme` bloku výš. */
+  --bg-app: #0C1223;
+  --bg-surface-soft: #1B2646;
+  --bg-surface: #212E56;
   --bg-inset: rgba(255, 255, 255, .04);
   --overlay-active: rgba(120, 160, 255, .14);
   --field-bg: rgba(120, 160, 255, .09);
@@ -228,6 +233,65 @@ select {
 .side-panel-fields textarea,
 .side-panel-fields select {
   font-size: 14px;
+}
+
+/* Mřížka seznamového řádku (DESIGN_RULES.md §4, `record-card.tsx`).
+
+   Sloupce definuje SEZNAM, ne řádek — jinak se při chybějící hodnotě
+   rozejdou mezi řádky a seznam nejde skenovat svisle. To byl nejhorší
+   nalezený vizuální defekt a nebyl to vkus, byla to konstrukce.
+
+   CONTAINER QUERIES, ne `@media`: rozhoduje šířka, kterou má seznam
+   SKUTEČNĚ k dispozici, ne šířka okna. Rozdíl je podstatný — sidebar bere
+   240 px a otevřený pravý panel dalších 380 px, takže na okně 1440 px může
+   mít seznam k dispozici 820 px. S `@media` by v takové chvíli zůstaly
+   všechny sloupce a ořezala by se jména (přesně tohle se stalo na 900 px
+   a odhalil to až screenshot).
+
+   Buňky jsou seřazené od nejdůležitější a ubývají ZPRAVA, takže
+   `nth-last-child` funguje bez ohledu na jejich počet. Šablona se musí
+   zkrátit spolu s nimi — skrytá buňka by jinak nechala prázdný sloupec. */
+.record-list {
+  container-type: inline-size;
+}
+
+.record-row {
+  display: grid;
+  grid-template-columns: var(--record-cols-lg);
+  align-items: center;
+  gap: 16px;
+}
+
+/* Dva sloupce metadat. */
+@container (max-width: 859px) {
+  .record-row {
+    grid-template-columns: var(--record-cols-md, var(--record-cols-lg));
+  }
+  .record-row > .record-cell:nth-last-child(-n + 1) {
+    display: none;
+  }
+}
+
+/* Jeden sloupec — na tolik místa se dva popisky („KLÍČOVÁ OSOBA",
+   „POSLEDNÍ KONTAKT") vedle sebe nevejdou, aniž by se ořezaly. */
+@container (max-width: 639px) {
+  .record-row {
+    grid-template-columns: var(--record-cols-sm, var(--record-cols-md, var(--record-cols-lg)));
+  }
+  .record-row > .record-cell:nth-last-child(-n + 2) {
+    display: none;
+  }
+}
+
+/* Jen jméno. Mobil má vlastní stránky, tohle je pojistka pro úzké okno
+   nebo otevřený panel na malém displeji. Jméno zůstává vždy (§4). */
+@container (max-width: 439px) {
+  .record-row {
+    grid-template-columns: 1fr;
+  }
+  .record-row > .record-cell {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

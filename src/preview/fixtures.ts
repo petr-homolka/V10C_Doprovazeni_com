@@ -111,3 +111,47 @@ export const enumOptions = [
   { key: 'navsteva-rodiny', label: 'Návštěva rodiny', createdByUid: 'u-hana', createdAt: iso(-40) },
   { key: 'pripadova-konference', label: 'Případová konference', createdByUid: 'u-hana', createdAt: iso(-40) },
 ]
+
+/** Doplňkové rodiny, ať seznam vypadá jako seznam, ne jako ukázka čtyř karet
+ * — hustota a rytmus se na čtyřech řádcích posoudit nedají. */
+const FILLER_NAMES = [
+  ['Rodina Horákových', 'Bezručova 8, Olomouc'],
+  ['Rodina Šimkova', 'Na Vyhlídce 214, Zlín'],
+  ['Rodina Marešových', 'U Stadionu 41, Pardubice'],
+  ['Rodina Beránkových-Dostálových', 'Nábřeží kapitána Jaroše 1002/4, Praha 7'],
+  ['Rodina Kolářova', 'Slunečná 19, Liberec'],
+  ['Rodina Urbanových', 'Tylova 55, Plzeň'],
+  ['Rodina Fialových', 'Zahradní 7, Hradec Králové'],
+  ['Rodina Sedláčkových', 'Komenského 320, Jihlava'],
+]
+
+for (const [index, [displayName, address]] of FILLER_NAMES.entries()) {
+  const docId = `f${5 + index}`
+  const uid = `99000100000${57 + index * 8}`
+  families.push({
+    docId,
+    family: {
+      uid,
+      orgAccessList: [ORG],
+      fosterPersonRefs: [],
+      displayName,
+      address,
+      // Každá druhá bez fotky — chybějící avatar je běžný stav.
+      ...(index % 2 === 0 ? { avatarUrl: avatar(docId) } : {}),
+      createdAt: iso(-200 + index * 5),
+      lastTouchAt: iso(-index * 11),
+    } as FamilyDoc,
+  })
+  agreementsByFamilyId[docId] = {
+    uid: `90000100000${20 + index}`,
+    organizationId: ORG,
+    familyId: docId,
+    status: 'active',
+    validFrom: iso(-200 + index * 5),
+    assignedTo: index % 3 === 0 ? 'u-marek' : 'u-eva',
+    visitIntervalDays: 60,
+    lastVisitAt: iso(-index * 11),
+    careType: 'zprostredkovana',
+    createdAt: iso(-200 + index * 5),
+  } as AgreementDoc
+}

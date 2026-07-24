@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SidePanel } from '@/components/ui/side-panel'
-import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
+import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
 import { PersonLink } from '@/components/ui/person-link'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
@@ -366,7 +366,14 @@ export default function StaffPage() {
                 <EmptyState icon={UserCog} text="Zatím tu nejsou žádní zaměstnanci." />
               </div>
             ) : (
-              <RecordCardList>
+              <RecordCardList
+                cellCount={2}
+                columns={{
+                  lg: 'minmax(220px,1fr) minmax(0,200px) minmax(0,110px)',
+                  md: 'minmax(200px,1fr) minmax(0,180px)',
+                  sm: 'minmax(180px,1fr) minmax(0,170px)',
+                }}
+              >
                 {staff.map((member) => {
                   const activeCaseload = caseloadByKo[member.uid] ?? 0
                   const threshold = computeEffectiveCapacityThreshold(
@@ -393,38 +400,29 @@ export default function StaffPage() {
                       key={member.uid}
                       leading={<EntityAvatar photoURL={member.avatarUrl} label={member.displayName} fallbackIcon={UserCog} />}
                       title={<PersonLink kind="staff" id={member.uid} name={member.displayName} />}
-                      subtitle={member.email}
-                      meta={
+                      subtitle={
                         <>
-                          <MetaColumn
-                            label="Role"
-                            width="w-36"
-                            hideBelow="sm"
-                            value={
-                              <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
-                                {STAFF_ROLE_LABELS[member.role as StaffRole]}
-                              </span>
-                            }
-                          />
-                          <MetaColumn
-                            label="Stav"
-                            width="w-20"
-                            value={
-                              <span className={member.disabledAt ? 'font-medium text-danger' : 'font-medium text-success'}>
-                                {member.disabledAt ? 'Zablokován' : 'Aktivní'}
-                              </span>
-                            }
-                          />
-                          {!isCollaborator && (
-                            <div className="hidden w-16 md:block">
-                              <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Kapacita</p>
-                              <div className="mt-0.5">
-                                <CapacityRing value={activeCaseload} max={threshold} />
-                              </div>
-                            </div>
-                          )}
+                          {member.email}
+                          {/* „Zablokován" je výjimka, ne sloupec — sloupec by
+                           * byl 95 % času prázdný a na užší šířce by zmizel
+                           * právě ta informace, na které záleží. */}
+                          {member.disabledAt && <span className="font-medium text-danger"> · Zablokován</span>}
                         </>
                       }
+                      cells={[
+                        {
+                          label: 'Role',
+                          value: (
+                            <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
+                              {STAFF_ROLE_LABELS[member.role as StaffRole]}
+                            </span>
+                          ),
+                        },
+                        {
+                          label: 'Kapacita',
+                          value: isCollaborator ? '—' : <CapacityRing value={activeCaseload} max={threshold} />,
+                        },
+                      ]}
                       trailing={<RowMenu items={menuItems} />}
                     />
                   )

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
+import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
 import { Input } from '@/components/ui/input'
@@ -268,7 +268,14 @@ export default function FosterPersonListPage() {
                   <EmptyState icon={UserRound} text="Žádný pěstoun neodpovídá hledání." />
                 </div>
               ) : (
-                <RecordCardList>
+                <RecordCardList
+                  cellCount={3}
+                  columns={{
+                    lg: 'minmax(220px,1fr) minmax(0,200px) minmax(0,150px) minmax(0,120px)',
+                    md: 'minmax(200px,1fr) minmax(0,180px) minmax(0,150px)',
+                    sm: 'minmax(160px,1fr) minmax(0,160px)',
+                  }}
+                >
                   {filtered.map(({ docId, fosterPerson: fp, name }) => {
                     const fam = familiesByDocId[fp.familyId]
                     const profileHref = fam ? `/rodiny/${fam.uid}/pestoun/${docId}` : undefined
@@ -291,42 +298,38 @@ export default function FosterPersonListPage() {
                         onClick={profileHref ? () => navigate(profileHref) : undefined}
                         leading={<EntityAvatar photoURL={fp.avatarUrl} label={name} fallbackIcon={UserRound} />}
                         title={<PersonLink kind="fosterPerson" id={docId} familyUid={fam?.uid} name={name} />}
-                        subtitle={fp.email ?? undefined}
-                        meta={
-                          <>
-                            <MetaColumn
-                              label="Rodina"
-                              hideBelow="sm"
-                              value={
-                                fam ? (
-                                  <Link
-                                    to={`/rodiny/${fam.uid}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="text-text-secondary hover:text-primary hover:underline"
-                                  >
-                                    {fam.label}
-                                  </Link>
-                                ) : (
-                                  '—'
-                                )
-                              }
-                            />
-                            <MetaColumn
-                              label="Telefon"
-                              value={
-                                fp.phone ? (
-                                  <a href={`tel:${fp.phone}`} onClick={(e) => e.stopPropagation()} className="hover:text-primary hover:underline">
-                                    {fp.phone}
-                                  </a>
-                                ) : (
-                                  '—'
-                                )
-                              }
-                            />
-                            <MetaColumn label="Narození" value={formatBirthDateCs(fp.birthDate)} />
-                            <MetaColumn label="Věk" width="w-16" value={age != null ? `${age} let` : '—'} />
-                          </>
+                        subtitle={
+                          // Věk se vejde k e-mailu — vlastní sloupec by byl
+                          // čtvrtý a na první užší šířce by zmizel (§4).
+                          [fp.email, age != null ? `${age} let` : null].filter(Boolean).join(' · ') || undefined
                         }
+                        cells={[
+                          {
+                            label: 'Rodina',
+                            value: fam ? (
+                              <Link
+                                to={`/rodiny/${fam.uid}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="hover:text-primary hover:underline"
+                              >
+                                {fam.label}
+                              </Link>
+                            ) : (
+                              '—'
+                            ),
+                          },
+                          {
+                            label: 'Telefon',
+                            value: fp.phone ? (
+                              <a href={`tel:${fp.phone}`} onClick={(e) => e.stopPropagation()} className="hover:text-primary hover:underline">
+                                {fp.phone}
+                              </a>
+                            ) : (
+                              '—'
+                            ),
+                          },
+                          { label: 'Narození', value: formatBirthDateCs(fp.birthDate), align: 'right' },
+                        ]}
                         trailing={<RowMenu items={menuItems} />}
                       />
                     )

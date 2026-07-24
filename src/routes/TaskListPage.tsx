@@ -391,7 +391,14 @@ export default function TaskListPage() {
                 <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
               </div>
             ) : (
-              <RecordCardList>
+              <RecordCardList
+                cellCount={1}
+                columns={{
+                  lg: 'minmax(220px,1fr) minmax(0,140px)',
+                  md: 'minmax(200px,1fr) minmax(0,140px)',
+                  sm: 'minmax(180px,1fr) minmax(0,140px)',
+                }}
+              >
                 {visibleTasks.map(({ docId, task }) => (
                   <RecordCard
                     key={docId}
@@ -424,11 +431,13 @@ export default function TaskListPage() {
                         '—'
                       )
                     }
-                    meta={
-                      <span className="text-sm text-text-secondary">
-                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString('cs-CZ') : '—'}
-                      </span>
-                    }
+                    cells={[
+                      {
+                        label: 'Termín',
+                        align: 'right',
+                        value: task.dueDate ? new Date(task.dueDate).toLocaleDateString('cs-CZ') : 'Bez termínu',
+                      },
+                    ]}
                   />
                 ))}
               </RecordCardList>

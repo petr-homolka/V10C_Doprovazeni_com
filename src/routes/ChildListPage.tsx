@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
+import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
 import { Input } from '@/components/ui/input'
@@ -235,7 +235,14 @@ export default function ChildListPage() {
                   <EmptyState icon={Baby} text="Žádné dítě neodpovídá hledání." />
                 </div>
               ) : (
-                <RecordCardList>
+                <RecordCardList
+                  cellCount={3}
+                  columns={{
+                    lg: 'minmax(220px,1fr) minmax(0,200px) minmax(0,130px) minmax(0,90px)',
+                    md: 'minmax(200px,1fr) minmax(0,180px) minmax(0,130px)',
+                    sm: 'minmax(160px,1fr) minmax(0,170px)',
+                  }}
+                >
                   {filtered.map(({ docId, child, name }) => {
                     const fam = familiesByDocId[child.familyId]
                     const profileHref = fam ? `/rodiny/${fam.uid}/dite/${docId}` : undefined
@@ -258,31 +265,32 @@ export default function ChildListPage() {
                         onClick={profileHref ? () => navigate(profileHref) : undefined}
                         leading={<EntityAvatar photoURL={child.avatarUrl} label={name} fallbackIcon={Baby} />}
                         title={<PersonLink kind="child" id={docId} familyUid={fam?.uid} name={name} />}
-                        subtitle={<span className="font-mono">{child.birthNumber}</span>}
-                        meta={
+                        subtitle={
                           <>
-                            <MetaColumn
-                              label="Rodina"
-                              hideBelow="sm"
-                              value={
-                                fam ? (
-                                  <Link
-                                    to={`/rodiny/${fam.uid}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="text-text-secondary hover:text-primary hover:underline"
-                                  >
-                                    {fam.label}
-                                  </Link>
-                                ) : (
-                                  '—'
-                                )
-                              }
-                            />
-                            <MetaColumn label="Pohlaví" width="w-20" value={gender ?? '—'} />
-                            <MetaColumn label="Narození" value={formatBirthDateCs(bd)} />
-                            <MetaColumn label="Věk" width="w-16" value={age != null ? `${age} let` : '—'} />
+                            <span className="font-mono">{child.birthNumber}</span>
+                            {gender && ` · ${gender}`}
                           </>
                         }
+                        cells={[
+                          {
+                            label: 'Rodina',
+                            value: fam ? (
+                              <Link
+                                to={`/rodiny/${fam.uid}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="hover:text-primary hover:underline"
+                              >
+                                {fam.label}
+                              </Link>
+                            ) : (
+                              '—'
+                            ),
+                          },
+                          { label: 'Narození', value: formatBirthDateCs(bd) },
+                          // Věk i pohlaví jsou dopočet z rodného čísla, které je
+                          // v podtextu — proto jsou až poslední a mizí první.
+                          { label: 'Věk', value: age != null ? `${age} let` : '—', align: 'right' },
+                        ]}
                         trailing={<RowMenu items={menuItems} />}
                       />
                     )
