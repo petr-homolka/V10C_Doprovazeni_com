@@ -14,6 +14,10 @@ import '@fontsource/inter/800.css'
 import '@fontsource/poppins/600.css'
 import '@fontsource/poppins/700.css'
 import '@/index.css'
+import './lab/lab.css'
+import { DirectionSpis } from './lab/DirectionSpis'
+import { DirectionFaces } from './lab/DirectionFaces'
+import { DirectionRail } from './lab/DirectionRail'
 
 import { useIsMobile } from '@/hooks/useIsMobile'
 import FamilyListPage from '@/routes/FamilyListPage'
@@ -115,7 +119,20 @@ function Responsive({ mobile, desktop }: { mobile: ReactElement; desktop: ReactE
   return useIsMobile() ? mobile : desktop
 }
 
+/** Designové návrhy (`?lab=spis|faces|rail`) — samostatné vizuální jazyky
+ * mimo appku, viz `lab/lab.css`. Nechodí přes router ani AuthContext,
+ * protože nic z appky nepoužívají; to je celý smysl. */
+const LAB_DIRECTIONS: Record<string, () => ReactElement> = {
+  spis: DirectionSpis,
+  faces: DirectionFaces,
+  rail: DirectionRail,
+}
+
 function PreviewApp() {
+  const lab = new URLSearchParams(window.location.search).get('lab')
+  const Direction = lab ? LAB_DIRECTIONS[lab] : undefined
+  if (Direction) return <Direction />
+
   const initial = new URLSearchParams(window.location.search).get('route') ?? '/rodiny'
 
   return (

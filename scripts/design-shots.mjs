@@ -21,6 +21,11 @@ const FILTER = process.env.SHOT ?? ''
 /** `click`/`tab` klikne po načtení na tlačítko s tímhle textem — jinak by
  * se stavy za kliknutím (pravý panel, záložka) nedaly vyfotit. */
 const SCREENS = [
+  // Designové návrhy (`src/preview/lab/`) — tři vizuální jazyky pro tutéž
+  // obrazovku. `lab` obchází router, proto nemají `route`.
+  { name: 'navrh-a-spis', lab: 'spis' },
+  { name: 'navrh-b-tvare', lab: 'faces' },
+  { name: 'navrh-c-osa', lab: 'rail' },
   { name: 'dnes', route: '/' },
   { name: 'rodiny', route: '/rodiny' },
   { name: 'rodiny-novy-panel', route: '/rodiny', click: 'Nová rodina' },
@@ -83,7 +88,9 @@ for (const viewport of VIEWPORTS) {
       page.on('console', (m) => {
         if (m.type() === 'error') errors.push(`${screen.name}/${viewport.name}: ${m.text()}`)
       })
-      const params = new URLSearchParams({ route: screen.route, theme })
+      const params = new URLSearchParams({ theme })
+      if (screen.route) params.set('route', screen.route)
+      if (screen.lab) params.set('lab', screen.lab)
       if (screen.click) params.set('click', screen.click)
       if (screen.tab) params.set('tab', screen.tab)
       await page.goto(`${base}?${params}`, { waitUntil: 'networkidle' })

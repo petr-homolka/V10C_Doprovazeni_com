@@ -1,0 +1,641 @@
+/*
+ * Designové návrhy (`src/preview/lab/`) — TŘI ÚPLNĚ ODDĚLENÉ vizuální
+ * jazyky pro stejnou obrazovku. Nejde o varianty odsazení, ale o tři různé
+ * názory na to, co ten produkt je.
+ *
+ * Vlastní CSS, ne appkové tokeny, PRÁVĚ PROTO, aby návrh nebyl zajatcem
+ * toho, co appka umí dnes. Do produkce se odsud nic nedostane; když si
+ * jeden směr vybereme, přeloží se do tokenů a komponent.
+ *
+ * Vše je scopované třídou `.lab-*` na obalu, takže se tři jazyky navzájem
+ * neruší a jdou fotit vedle sebe.
+ */
+
+/* ==========================================================================
+   A — SPIS
+   Teze: tohle není dashboard, je to pečlivě vedený spis o lidech.
+   Papír místo plovoucích karet, vlasové linky místo třiceti stínů,
+   serif pro jména (jméno je člověk, ne datový řádek), inkoust místo
+   modrého plastu. Hustota: 28 rodin má být vidět bez scrollování.
+   ========================================================================== */
+.lab-spis {
+  --paper: #faf8f3;
+  --sheet: #fffefb;
+  --rule: #e7e1d4;
+  --rule-strong: #d5cdba;
+  --ink: #1b1917;
+  --ink-soft: #6d6656;
+  --ink-faint: #98917f;
+  --green: #2f5d50;
+  --red: #a3271c;
+  --amber: #9a6b12;
+
+  display: flex;
+  min-height: 900px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+}
+
+.lab-spis__nav {
+  width: 208px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--rule);
+  padding: 26px 0;
+}
+
+.lab-spis__brand {
+  padding: 0 24px 26px;
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Textová navigace bez ikon: devět ikon vedle sebe je devět tvarů, které se
+   musí naučit — u textu se učit nemusí nic. */
+.lab-spis__navitem {
+  display: block;
+  padding: 7px 24px;
+  color: var(--ink-soft);
+  font-size: 14px;
+  border-left: 2px solid transparent;
+}
+
+.lab-spis__navitem--active {
+  color: var(--ink);
+  font-weight: 600;
+  border-left-color: var(--ink);
+  background: rgba(47, 93, 80, 0.05);
+}
+
+.lab-spis__main {
+  flex: 1;
+  min-width: 0;
+  padding: 26px 34px;
+}
+
+.lab-spis__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 18px;
+}
+
+.lab-spis__title {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.lab-spis__count {
+  color: var(--ink-faint);
+  font-family: Inter, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.lab-spis__btn {
+  border: 1px solid var(--green);
+  background: var(--green);
+  color: #fffefb;
+  border-radius: 5px;
+  padding: 7px 15px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.lab-spis__sheet {
+  background: var(--sheet);
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+}
+
+/* Hlavička sloupců JEDNOU nad celým výpisem, ne u každého řádku —
+   opakovaný popisek u třiceti řádků je třicetkrát stejná informace. */
+.lab-spis__cols,
+.lab-spis__row {
+  display: grid;
+  grid-template-columns: 3px 30px minmax(180px, 1fr) 132px 108px 152px 68px;
+  align-items: center;
+  gap: 0 14px;
+}
+
+.lab-spis__cols {
+  padding: 9px 16px 9px 0;
+  border-bottom: 1px solid var(--rule-strong);
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.lab-spis__row {
+  padding: 0 16px 0 0;
+  min-height: 52px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.lab-spis__row:last-child {
+  border-bottom: none;
+}
+
+.lab-spis__row:hover {
+  background: rgba(47, 93, 80, 0.035);
+}
+
+/* Stav nese LEVÝ OKRAJ řádku. Oko sjíždí výpis po levé hraně — tam stav
+   patří. Štítek pak jen doříká proč, nemusí křičet. */
+.lab-spis__edge {
+  align-self: stretch;
+  background: transparent;
+}
+
+.lab-spis__row--overdue .lab-spis__edge {
+  background: var(--red);
+}
+
+.lab-spis__row--soon .lab-spis__edge {
+  background: var(--amber);
+}
+
+.lab-spis__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ece6d8;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lab-spis__name {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 16.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lab-spis__sub {
+  color: var(--ink-faint);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lab-spis__cell {
+  color: var(--ink-soft);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Čísla tabulkově, ať se dají srovnat pod sebou. */
+.lab-spis__num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.lab-spis__state {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lab-spis__state--overdue {
+  color: var(--red);
+}
+
+.lab-spis__state--soon {
+  color: var(--amber);
+}
+
+.lab-spis__state--ok {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+/* ==========================================================================
+   B — TVÁŘE
+   Teze: klíčová osoba nemyslí v řádcích, myslí v lidech. Seznam je stěna
+   tváří; stav je prstenec kolem fotky. Vědomá cena: na obrazovku se vejde
+   méně rodin než do výpisu.
+   ========================================================================== */
+.lab-faces {
+  --bg: #f2f2f0;
+  --tile: #ffffff;
+  --line: #e2e1dd;
+  --ink: #17181a;
+  --ink-soft: #5f6166;
+  --ink-faint: #92959c;
+  --clay: #b8502f;
+  --moss: #4a6b4f;
+
+  display: flex;
+  min-height: 900px;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.lab-faces__nav {
+  width: 76px;
+  flex-shrink: 0;
+  background: var(--ink);
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.lab-faces__brandmark {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--clay);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+/* Úzká navigace jen s prvními písmeny sekcí — plné popisky se objeví
+   v tooltipu. Šetří 170 px šířky pro obsah, což je u stěny tváří to,
+   o co jde. */
+.lab-faces__navitem {
+  width: 44px;
+  height: 36px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.lab-faces__navitem--active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.lab-faces__main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 32px;
+}
+
+.lab-faces__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.lab-faces__title {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.lab-faces__subtitle {
+  margin-top: 4px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+}
+
+.lab-faces__btn {
+  background: var(--ink);
+  color: #fff;
+  border-radius: 9px;
+  padding: 10px 17px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.lab-faces__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+  gap: 14px;
+}
+
+.lab-faces__tile {
+  background: var(--tile);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Naléhavost = prstenec kolem fotky + jedno slovo. Barva na kartě ani
+   podbarvení, protože pak zčervená celá stěna a nic nevystoupí. */
+.lab-faces__ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  padding: 3px;
+  background: var(--line);
+}
+
+.lab-faces__ring--overdue {
+  background: var(--clay);
+}
+
+.lab-faces__ring--soon {
+  background: #c99a2e;
+}
+
+.lab-faces__face {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ebeae6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.lab-faces__name {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.lab-faces__addr {
+  margin-top: 3px;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  line-height: 1.35;
+}
+
+.lab-faces__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 11px;
+  font-size: 12.5px;
+}
+
+.lab-faces__state {
+  font-weight: 650;
+}
+
+.lab-faces__state--overdue {
+  color: var(--clay);
+}
+
+.lab-faces__state--soon {
+  color: #9a7418;
+}
+
+.lab-faces__state--ok {
+  color: var(--moss);
+}
+
+.lab-faces__ko {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-faint);
+}
+
+.lab-faces__koface {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ebeae6;
+}
+
+/* ==========================================================================
+   C — OSA
+   Teze: tahle práce je řízená časem, ne abecedou. Primární osa je „kdy",
+   výpis proto nemá řazení — má lhůty. Vlevo svislá osa, rodiny jsou
+   zastávky na ní.
+   ========================================================================== */
+.lab-rail {
+  --bg: #ffffff;
+  --ink: #101418;
+  --ink-soft: #545c66;
+  --ink-faint: #8b939d;
+  --line: #e6e9ed;
+  --teal: #0f6b6b;
+  --red: #b3261e;
+  --amber: #a9741a;
+
+  display: flex;
+  min-height: 900px;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.lab-rail__nav {
+  width: 216px;
+  flex-shrink: 0;
+  background: #f7f9fa;
+  border-right: 1px solid var(--line);
+  padding: 24px 0;
+}
+
+.lab-rail__brand {
+  padding: 0 22px 22px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lab-rail__navitem {
+  display: block;
+  padding: 8px 22px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.lab-rail__navitem--active {
+  color: var(--teal);
+  font-weight: 650;
+  box-shadow: inset 3px 0 0 var(--teal);
+}
+
+.lab-rail__main {
+  flex: 1;
+  min-width: 0;
+  padding: 26px 36px;
+}
+
+.lab-rail__head {
+  margin-bottom: 26px;
+}
+
+.lab-rail__title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Titulek říká STAV, ne jen jméno sekce — to je celý smysl tohohle směru. */
+.lab-rail__lede {
+  margin-top: 5px;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.lab-rail__lede b {
+  color: var(--red);
+  font-weight: 650;
+}
+
+.lab-rail__bucket {
+  position: relative;
+  padding-left: 26px;
+}
+
+/* Svislá osa prochází všemi skupinami — vizuálně drží „čas" jako jednu
+   spojitou věc, ne jako tři oddělené tabulky. */
+.lab-rail__bucket::before {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #d8dee4;
+}
+
+.lab-rail__bucket:last-child::before {
+  bottom: auto;
+  height: 34px;
+}
+
+.lab-rail__bucketlabel {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 16px 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.lab-rail__bucketlabel--overdue {
+  color: var(--red);
+}
+
+.lab-rail__dot {
+  position: absolute;
+  /* Osa je 26 px vlevo od obsahu (padding skupiny), tečka musí sedět NA ní —
+     s `left: 0` ležela na prvním písmenu jména. */
+  left: -26px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+  background: var(--line);
+}
+
+.lab-rail__dot--overdue {
+  background: var(--red);
+}
+
+.lab-rail__dot--soon {
+  background: var(--amber);
+}
+
+.lab-rail__stop {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 180px 96px;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.lab-rail__stop:hover {
+  background: #f7fbfb;
+}
+
+.lab-rail__name {
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lab-rail__meta {
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lab-rail__ko {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  min-width: 0;
+}
+
+.lab-rail__koface {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e9edf0;
+  flex-shrink: 0;
+}
+
+/* Zpoždění jako ČÍSLO, ne jako štítek — „+17 dní" nese víc informace než
+   slovo „po termínu" a dá se podle něj řadit očima. */
+.lab-rail__delay {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--red);
+}
+
+.lab-rail__delay--soon {
+  color: var(--amber);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.lab-rail__delay--ok {
+  color: var(--ink-faint);
+  font-weight: 400;
+  font-size: 13px;
+}
