@@ -11,11 +11,14 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
+import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
+import { buildSubjectDirectory, resolveItemSubjects } from '@/lib/eventSubjects'
 import { formatDateValue, parseDateValue } from '@/lib/dateGrid'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { listStaff, updateNotifyBirthdays, updateNotifyNameDays } from '@/services/staffService'
 import { listActiveAgreementsForOrg } from '@/services/agreementService'
+import { addEnumOption, listEnumOptions } from '@/services/enumOptionsService'
 import { listFamiliesWithDocIds, listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
 import {
   cancelCalendarEvent,
@@ -39,6 +42,7 @@ import type { ChildDoc } from '@/types/child'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { AgreementDoc } from '@/types/agreement'
 import type { SubjectRef } from '@/types/timelineEntry'
+import type { EnumOption } from '@/types/enumOptions'
 
 // Cesta B — stejná paleta jako desktopová `CalendarPage.tsx` (jeden zdroj
 // pravdy pro "jaké barvy má appka", i když je zatím duplikovaná napříč
@@ -106,6 +110,10 @@ export default function MobileCalendarPage() {
   const [fosterPersons, setFosterPersons] = useState<Array<{ docId: string; fosterPerson: FosterPersonDoc }>>([])
   const [events, setEvents] = useState<Array<{ docId: string; event: import('@/types/calendarEvent').CalendarEventDoc }>>([])
   const [agreementsByFamilyId, setAgreementsByFamilyId] = useState<Record<string, AgreementDoc>>({})
+  /** Vlastní typy událostí organizace — číselník je OTEVŘENÝ (viz
+   * `enumOptionsService`), takže mobil musí nabízet i je, ne jen zabudované. */
+  const [customKinds, setCustomKinds] = useState<EnumOption[]>([])
+  const [newKindLabel, setNewKindLabel] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
   const [hiddenStaffUids, setHiddenStaffUids] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
@@ -203,13 +211,14 @@ export default function MobileCalendarPage() {
     if (!organizationId) return
     setError(null)
     try {
-      const [staff, fams, kids, fosters, evts, agreements] = await Promise.all([
+      const [staff, fams, kids, fosters, evts, agreements, kinds] = await Promise.all([
         listStaff(organizationId),
         listFamiliesWithDocIds(organizationId),
         listChildrenForOrg(organizationId),
         listFosterPersonsForOrg(organizationId),
         listCalendarEvents(organizationId),
         listActiveAgreementsForOrg(organizationId),
+        listEnumOptions(organizationId, 'calendarEventKind'),
       ])
       setStaffList(staff)
       setFamilies(fams)
@@ -217,6 +226,7 @@ export default function MobileCalendarPage() {
       setFosterPersons(fosters)
       setEvents(evts)
       setAgreementsByFamilyId(agreements)
+      setCustomKinds(kinds)
     } catch {
       setError('Kalendář se nepodařilo načíst.')
     }
@@ -232,6 +242,35 @@ export default function MobileCalendarPage() {
     for (const { docId, family } of families) map.set(docId, { uid: family.uid, label: resolveFamilyDisplayName(family, null) })
     return map
   }, [families])
+
+  /** Jména + fotky subjektů pro avatary u událostí — stejný helper jako
+   * desktopová `CalendarPage` ("VŽDY se zobrazují avatary" platí i tady). */
+  const subjectDirectory = useMemo(
+    () => buildSubjectDirectory({ families, fosterPersons, children }),
+    [families, fosterPersons, children],
+  )
+
+  /** Zabudované typy + vlastní organizace, stejné pořadí jako na desktopu. */
+  const kindOptions = useMemo(
+    () => [
+      ...Object.entries(CALENDAR_EVENT_KIND_LABELS).map(([value, label]) => ({ value, label })),
+      ...customKinds.map((k) => ({ value: k.key, label: k.label })),
+    ],
+    [customKinds],
+  )
+
+  async function handleCreateKind() {
+    const label = (newKindLabel ?? '').trim()
+    if (!organizationId || !userDoc || !label) return
+    try {
+      const option = await addEnumOption(organizationId, 'calendarEventKind', label, userDoc.uid)
+      setCustomKinds((prev) => [...prev, option])
+      setForm((f) => ({ ...f, kind: option.key }))
+      setNewKindLabel(null)
+    } catch {
+      setError('Nový typ se nepodařilo přidat.')
+    }
+  }
 
   const allItems = useMemo<CalendarItem[]>(() => {
     const now = Date.now()
@@ -507,11 +546,15 @@ export default function MobileCalendarPage() {
             <GroupedList>
               {dayItems.map((item) => {
                 const color = item.source === 'agreementVisit' ? '#7587A8' : staffColor(item.staffUid ?? '')
+                const subjects = resolveItemSubjects(subjectDirectory, item)
                 return (
                   <GroupedListRow key={item.id} onClick={() => openEdit(item)} className="border-l-4" style={{ borderLeftColor: color }}>
                     <span className="w-14 shrink-0 text-[14px] font-medium text-text-primary">
                       {item.allDay ? 'Celý den' : item.start.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
                     </span>
+                    {/* Avatary o něco větší než na desktopu — prst není myš
+                     * a v mobilní agendě je na ně místo. */}
+                    {subjects.length > 0 && <EventAvatarStack subjects={subjects} size={22} />}
                     <span className="min-w-0 flex-1 truncate text-[15px] text-text-secondary">{item.title}</span>
                   </GroupedListRow>
                 )
@@ -584,6 +627,10 @@ export default function MobileCalendarPage() {
              * nahlášení stejného problému). Dva `<Select>` (hodina/minuta)
              * používají STEJNOU komponentu jako Typ/Rodina — garantovaně
              * stejné, bezpečné chování napříč prohlížeči. */}
+            {/* Typ = OTEVŘENÝ číselník: kromě zabudovaných hodnot nabízí
+             * i vlastní typy organizace a umí přidat nový, stejně jako
+             * desktopový `Combobox` (jen mobilním zápisem — `Select` +
+             * rozbalovací pole, ne našeptávač). */}
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-text-primary">Typ</span>
               <Select
@@ -591,12 +638,37 @@ export default function MobileCalendarPage() {
                 onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value as CalendarEventKind }))}
                 className="h-12 text-base"
               >
-                {Object.entries(CALENDAR_EVENT_KIND_LABELS).map(([value, label]) => (
+                {kindOptions.map(({ value, label }) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
               </Select>
+              {newKindLabel === null ? (
+                <button
+                  type="button"
+                  onClick={() => setNewKindLabel('')}
+                  className="w-fit text-[13px] font-medium text-primary active:opacity-60"
+                >
+                  + Nový typ
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Input
+                    autoFocus
+                    value={newKindLabel}
+                    onChange={(e) => setNewKindLabel(e.target.value)}
+                    placeholder="Např. Návštěva rodiny"
+                    className="h-12 flex-1 text-base"
+                  />
+                  <Button type="button" size="sm" onClick={handleCreateKind} disabled={!newKindLabel.trim()}>
+                    Přidat
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setNewKindLabel(null)}>
+                    Zrušit
+                  </Button>
+                </div>
+              )}
             </label>
             <div className="flex gap-3">
               <label className="flex flex-1 flex-col gap-1.5">

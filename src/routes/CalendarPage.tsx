@@ -11,7 +11,8 @@ import '@/styles/calendar-overrides.css'
 import { Ban, Settings } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
-import { EventAvatarStack, type AvatarSubject } from '@/components/calendar/EventAvatarStack'
+import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
+import { buildSubjectDirectory, resolveItemSubjects } from '@/lib/eventSubjects'
 import { SidePanel } from '@/components/ui/side-panel'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -263,33 +264,12 @@ export default function CalendarPage() {
     return map
   }, [families])
 
-  /** docId → jméno + fotka pro každý druh subjektu, ať jde k události
-   * vykreslit překrývající se avatary osob, kterých se týká. */
-  const subjectMaps = useMemo(() => {
-    const fam = new Map(families.map(({ docId, family }) => [docId, { label: resolveFamilyDisplayName(family, null), avatarUrl: family.avatarUrl }]))
-    const fost = new Map(fosterPersons.map(({ docId, fosterPerson: f }) => [docId, { label: `${f.firstName} ${f.lastName}`, avatarUrl: f.avatarUrl }]))
-    const kid = new Map(children.map(({ docId, child: c }) => [docId, { label: `${c.firstName} ${c.lastName}`, avatarUrl: c.avatarUrl }]))
-    return { fam, fost, kid }
-  }, [families, fosterPersons, children])
-
-  function resolveSubjects(item: CalendarItem): AvatarSubject[] {
-    const refs = item.event?.subjectRefs
-    if (refs && refs.length) {
-      const out: AvatarSubject[] = []
-      for (const r of refs) {
-        if (r.kind === 'family') { const f = subjectMaps.fam.get(r.id); if (f) out.push({ kind: 'family', label: f.label, avatarUrl: f.avatarUrl }) }
-        else if (r.kind === 'fosterPerson') { const f = subjectMaps.fost.get(r.id); if (f) out.push({ kind: 'fosterPerson', label: f.label, avatarUrl: f.avatarUrl }) }
-        else if (r.kind === 'child') { const c = subjectMaps.kid.get(r.id); if (c) out.push({ kind: 'child', label: c.label, avatarUrl: c.avatarUrl }) }
-      }
-      return out
-    }
-    // starší události bez subjectRefs / připomínky návštěv z Dohody — aspoň rodina
-    if (item.event?.familyDocId) {
-      const f = subjectMaps.fam.get(item.event.familyDocId)
-      if (f) return [{ kind: 'family', label: f.label, avatarUrl: f.avatarUrl }]
-    }
-    return []
-  }
+  /** Jména + fotky subjektů pro avatary u událostí — sdíleno s mobilní
+   * agendou (`lib/eventSubjects.ts`). */
+  const subjectDirectory = useMemo(
+    () => buildSubjectDirectory({ families, fosterPersons, children }),
+    [families, fosterPersons, children],
+  )
 
   /** Zabudované typy + vlastní organizace vedle sebe (viz `enumOptionsService.ts`
    * a Petrovo zadání "číselníky nesmí mít konečný počet variant") —
@@ -773,7 +753,7 @@ export default function CalendarPage() {
                     />
                   ),
                   event: ({ event }: { event: CalendarItem }) => {
-                    const subjects = resolveSubjects(event)
+                    const subjects = resolveItemSubjects(subjectDirectory, event)
                     return (
                       <span className="flex items-center gap-1 overflow-hidden">
                         {subjects.length > 0 && <EventAvatarStack subjects={subjects} />}

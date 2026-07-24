@@ -41,6 +41,9 @@ export interface CalendarItem {
   deepLink?: string
   docId?: string
   event?: CalendarEventDoc
+  /** Rodina, které se záznam týká — i u připomínek z Dohody, které žádný
+   * `event` nemají. Slouží k vykreslení avataru (`lib/eventSubjects.ts`). */
+  familyDocId?: string
 }
 
 /** Vrací `null` u neplatného `start`/`end` — stejný důvod jako
@@ -61,6 +64,7 @@ export function calendarEventToItem(docId: string, event: CalendarEventDoc): Cal
     draggable: true,
     docId,
     event,
+    familyDocId: event.familyDocId ?? undefined,
     deepLink: event.familyUid ? `/rodiny/${event.familyUid}` : undefined,
   }
 }
@@ -97,6 +101,7 @@ export function agreementToNextVisitItem(
     staffUid: agreement.assignedTo ?? null,
     draggable: false,
     tier,
+    familyDocId: familyId,
     deepLink: `/rodiny/${familyUid}`,
   }
 }

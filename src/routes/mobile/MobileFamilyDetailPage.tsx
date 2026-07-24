@@ -5,6 +5,7 @@ import { MobileShell } from '@/components/mobile/MobileShell'
 import { VoiceCaptureSheet } from '@/components/mobile/VoiceCaptureSheet'
 import { GroupedList, GroupedListRow } from '@/components/mobile/GroupedList'
 import { AddressLink } from '@/components/ui/address-link'
+import { EntityAgenda } from '@/components/calendar/EntityAgenda'
 import { useAuth } from '@/hooks/useAuth'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
@@ -110,6 +111,15 @@ export default function MobileFamilyDetailPage() {
                 </GroupedListRow>
               ))}
             </GroupedList>
+          </div>
+        )}
+        {/* Kalendář rodiny — "každá entita má svůj kalendář a v profilu se
+         * zobrazuje ve zmenšené podobě, defaultní pohled AGENDA". Platí i na
+         * mobilu, ne jen v desktopovém profilu. */}
+        {organizationId && familyDocId && (
+          <div className="flex flex-col gap-2">
+            <h2 className="px-1 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Kalendář</h2>
+            <EntityAgenda organizationId={organizationId} subjectKind="family" subjectId={familyDocId} />
           </div>
         )}
       </div>
