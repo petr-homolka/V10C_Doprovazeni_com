@@ -8,6 +8,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { FosterPersonEducationSection } from '@/components/family/FosterPersonEducationSection'
 import { FosterPersonCourseEnrollmentsSection } from '@/components/family/FosterPersonCourseEnrollmentsSection'
 import { EducationPlanSection } from '@/components/family/EducationPlanSection'
+import { EntityAgenda } from '@/components/calendar/EntityAgenda'
 import { useAuth } from '@/hooks/useAuth'
 import {
   getFamilyByUid,
@@ -28,6 +29,7 @@ const SECTIONS: TabItem[] = [
   { key: 'vzdelavani', label: 'Vzdělávání a dávky' },
   { key: 'prihlasky', label: 'Přihlášky na kurzy' },
   { key: 'plan', label: 'Plán vzdělávání' },
+  { key: 'kalendar', label: 'Kalendář' },
 ]
 
 /**
@@ -221,6 +223,11 @@ export default function FosterPersonDetailPage() {
               currentUid={userDoc.uid}
               children={children}
             />
+          )}
+          {activeSection === 'kalendar' && fosterPersonId && organizationId && (
+            <section className="mt-6">
+              <EntityAgenda organizationId={organizationId} subjectKind="fosterPerson" subjectId={fosterPersonId} />
+            </section>
           )}
         </>
       )}

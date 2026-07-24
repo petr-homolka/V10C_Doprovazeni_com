@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { SidePanel } from '@/components/ui/side-panel'
+import { EntityAgenda } from '@/components/calendar/EntityAgenda'
 import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -71,6 +72,7 @@ const CARE_TYPE_LABELS: Record<CareType, string> = {
 const SECTIONS: TabItem[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'casova-osa', label: 'Časová osa' },
+  { key: 'kalendar', label: 'Kalendář' },
   { key: 'dokumenty', label: 'Dokumenty' },
   { key: 'chat', label: 'Chat' },
 ]
@@ -911,6 +913,12 @@ export default function FamilyDetailPage() {
             </div>
           </section>
         </>
+      )}
+
+      {activeSection === 'kalendar' && docId && organizationId && (
+        <section className="mt-8">
+          <EntityAgenda organizationId={organizationId} subjectKind="family" subjectId={docId} />
+        </section>
       )}
 
       {activeSection === 'chat' && docId && organizationId && userDoc && (
