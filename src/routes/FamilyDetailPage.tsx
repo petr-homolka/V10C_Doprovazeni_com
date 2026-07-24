@@ -4,6 +4,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { SidePanel } from '@/components/ui/side-panel'
 import { EntityAgenda } from '@/components/calendar/EntityAgenda'
+import { EntityTasks } from '@/components/tasks/EntityTasks'
 import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -75,6 +76,7 @@ const SECTIONS: TabItem[] = [
   { key: 'prehled', label: 'Přehled' },
   { key: 'casova-osa', label: 'Časová osa' },
   { key: 'kalendar', label: 'Kalendář' },
+  { key: 'ukoly', label: 'Úkoly' },
   { key: 'dokumenty', label: 'Dokumenty' },
   { key: 'chat', label: 'Chat' },
 ]
@@ -323,6 +325,12 @@ export default function FamilyDetailPage() {
   function authorLinkId(uid: string): string | null {
     return staffList.some((s) => s.uid === uid) ? uid : null
   }
+
+  /** uid → jméno, pro proklik na řešitele úkolu. */
+  const staffNamesByUid = useMemo(
+    () => new Map(staffList.map((s) => [s.uid, s.displayName])),
+    [staffList],
+  )
 
   /** Pěstouni/děti, kterých se zápis týká — jako prokliky na profil,
    * protože jméno v platformě nikdy není jen text. */
@@ -972,6 +980,17 @@ export default function FamilyDetailPage() {
       {activeSection === 'kalendar' && docId && organizationId && (
         <section className="mt-8">
           <EntityAgenda organizationId={organizationId} subjectKind="family" subjectId={docId} />
+        </section>
+      )}
+
+      {activeSection === 'ukoly' && docId && organizationId && (
+        <section className="mt-8">
+          <EntityTasks
+            organizationId={organizationId}
+            subjectKind="family"
+            subjectId={docId}
+            staffNames={staffNamesByUid}
+          />
         </section>
       )}
 

@@ -12,7 +12,7 @@ import { Ban, Settings } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
 import { CalendarToolbar } from '@/components/calendar/CalendarToolbar'
 import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
-import { EntitySearch } from '@/components/calendar/EntitySearch'
+import { EntitySearch } from '@/components/search/EntitySearch'
 import { buildSubjectDirectory, matchesAnySubject, resolveItemSubjects } from '@/lib/eventSubjects'
 import { SidePanel } from '@/components/ui/side-panel'
 import { Button } from '@/components/ui/button'
@@ -48,6 +48,7 @@ import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { SubjectRef } from '@/types/timelineEntry'
+import { staffColor } from '@/lib/staffColor'
 import { cn } from '@/lib/utils'
 
 const locales = { 'cs-CZ': cs }
@@ -93,21 +94,6 @@ const withDragAndDrop = unwrapDefault<typeof import('react-big-calendar/lib/addo
   DragAndDropAddon,
 )
 const DnDCalendar = withDragAndDrop<CalendarItem>(BigCalendar)
-
-// Cesta B (2026-07-24) — kategorická paleta VĚDOMĚ vynechává modrou (teď
-// --primary, konfliktovalo by s barvou appky samotné) a čistě červenou
-// (--danger) — zbytek spektra, ať zaměstnanci zůstanou vzájemně
-// rozlišitelní i vedle nového sebevědomě modrého chrome.
-const STAFF_PALETTE = [
-  '#8B5CF6', '#DB2777', '#EA580C', '#0D9488',
-  '#65A30D', '#0891B2', '#D97706', '#9333EA',
-]
-
-function staffColor(uid: string): string {
-  let hash = 0
-  for (let i = 0; i < uid.length; i++) hash = (hash * 31 + uid.charCodeAt(i)) | 0
-  return STAFF_PALETTE[Math.abs(hash) % STAFF_PALETTE.length]
-}
 
 /** Routine.co inspirace (2026-07-22, "vypadá to jako z roku 1999") — místo
  * plné saturované barvy s bílým textem: PASTELOVÉ pozadí (stejný odstín,
@@ -508,13 +494,7 @@ export default function CalendarPage() {
   const sidePanel =
     panelMode === 'search' ? (
       <SidePanel title="Hledat" onClose={closePanel}>
-        <EntitySearch
-          families={families}
-          fosterPersons={fosterPersons}
-          children={children}
-          staff={staffList}
-          onNavigated={closePanel}
-        />
+        <EntitySearch data={{ families, fosterPersons, children, staff: staffList }} onNavigated={closePanel} />
       </SidePanel>
     ) : panelMode === 'settings' ? (
       <SidePanel title="Nastavení kalendáře" onClose={closePanel}>

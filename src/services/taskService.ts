@@ -1,5 +1,6 @@
 import { collection, doc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { buildSubjectKeys, subjectKey } from '@/lib/eventSubjects'
 import type { TaskDoc, TaskStatus } from '@/types/task'
 import type { EventRecurrence, RecurrenceUnit } from '@/types/calendarEvent'
 import type { SubjectRef } from '@/types/timelineEntry'
@@ -38,6 +39,7 @@ export async function createTask(input: CreateTaskInput): Promise<{ docId: strin
     dueDate: input.dueDate ?? null,
     status: 'otevreny',
     subjectRefs: input.subjectRefs ?? [],
+    subjectKeys: buildSubjectKeys({ subjectRefs: input.subjectRefs }),
     recurrence: input.recurrence ?? null,
     completedAt: null,
     createdAt: now,
@@ -131,8 +133,37 @@ export async function updateTask(input: UpdateTaskInput): Promise<void> {
     notes: input.notes ?? null,
     dueDate: input.dueDate ?? null,
     subjectRefs: input.subjectRefs ?? [],
+    // Přepočítat i při úpravě — jinak by úkol zůstal viset v profilu
+    // entity, ze které ho někdo odvázal.
+    subjectKeys: buildSubjectKeys({ subjectRefs: input.subjectRefs }),
     updatedAt: new Date().toISOString(),
   })
+}
+
+/**
+ * Úkoly vázané na JEDNU entitu — pro sekci "Úkoly" v jejím profilu.
+ * Zúžený dotaz přes denormalizované `subjectKeys` (stejný princip jako
+ * `listCalendarEventsForSubject`), bez `orderBy`, ať to nevyžaduje složený
+ * index; pár desítek řádků se seřadí v prohlížeči.
+ */
+export async function listTasksForSubject(
+  organizationId: string,
+  kind: string,
+  id: string,
+): Promise<Array<{ docId: string; task: TaskDoc }>> {
+  const snap = await getDocs(
+    query(tasksCollection(organizationId), where('subjectKeys', 'array-contains', subjectKey(kind, id))),
+  )
+  return snap.docs.map((d) => ({ docId: d.id, task: d.data() as TaskDoc }))
+}
+
+/** Úkoly přiřazené konkrétnímu zaměstnanci — pro jeho profil. */
+export async function listTasksForStaff(
+  organizationId: string,
+  assignedToUid: string,
+): Promise<Array<{ docId: string; task: TaskDoc }>> {
+  const snap = await getDocs(query(tasksCollection(organizationId), where('assignedToUid', '==', assignedToUid)))
+  return snap.docs.map((d) => ({ docId: d.id, task: d.data() as TaskDoc }))
 }
 
 export async function setTaskStatus(organizationId: string, docId: string, status: TaskStatus): Promise<void> {

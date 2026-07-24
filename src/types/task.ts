@@ -25,6 +25,13 @@ export interface TaskDoc {
   dueDate?: string | null
   status: TaskStatus
   subjectRefs?: SubjectRef[]
+  /**
+   * Denormalizace `subjectRefs` do plochých klíčů „kind:id" — stejný důvod
+   * i stejný tvar jako u `CalendarEventDoc.subjectKeys` (viz tam), aby šly
+   * úkoly jedné entity načíst zúženým dotazem místo stažení všech úkolů
+   * organizace. Zdroj pravdy zůstává `subjectRefs`.
+   */
+  subjectKeys?: string[]
   /** Stejný princip jako `CalendarEventDoc.recurrence` (viz tam komentář
    * pro plné zdůvodnění) — sdílený `EventRecurrence` typ, ne vlastní
    * duplikát. */

@@ -1,6 +1,9 @@
-import { Bell, Moon, Settings, Sun } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { Bell, Moon, Search, Settings, Sun } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useTheme } from '@/hooks/useTheme'
+import { useAuth } from '@/hooks/useAuth'
+import { GlobalSearchModal, useGlobalSearchShortcut } from '@/components/search/GlobalSearchModal'
 import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb'
 import { AccountMenu } from './AccountMenu'
 
@@ -38,8 +41,14 @@ import { AccountMenu } from './AccountMenu'
  */
 export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
   const { resolvedTheme, toggleTheme } = useTheme()
+  const { userDoc } = useAuth()
+  const [searchOpen, setSearchOpen] = useState(false)
   const themeLabel =
     resolvedTheme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'
+
+  // `useCallback`, aby zkratka nepřevazovala listener při každém překreslení.
+  const openSearch = useCallback(() => setSearchOpen(true), [])
+  useGlobalSearchShortcut(openSearch)
 
   return (
     <div className="shrink-0 bg-app px-4 pt-3">
@@ -47,6 +56,21 @@ export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
         <div className="min-w-0 flex-1">{breadcrumb && <Breadcrumb items={breadcrumb} />}</div>
 
         <div className="flex shrink-0 items-center gap-1">
+          {/* Hledání je první ikona zleva — nejčastější první krok práce
+           * (volá pěstoun, přijde e-mail) a dosud šlo hledat jen přes
+           * kalendář. Zkratka Ctrl/Cmd+K je v titulku, ať se ji lidé naučí. */}
+          {userDoc?.organizationId && (
+            <button
+              type="button"
+              onClick={openSearch}
+              aria-label="Hledat"
+              title="Hledat (Ctrl+K)"
+              className="flex size-9 items-center justify-center rounded-full text-text-primary transition-colors duration-150 hover:bg-overlay-active"
+            >
+              <Search size={18} strokeWidth={1.75} />
+            </button>
+          )}
+
           <button
             type="button"
             onClick={toggleTheme}
@@ -78,6 +102,10 @@ export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
           <AccountMenu />
         </div>
       </div>
+
+      {searchOpen && userDoc?.organizationId && (
+        <GlobalSearchModal organizationId={userDoc.organizationId} onClose={() => setSearchOpen(false)} />
+      )}
     </div>
   )
 }

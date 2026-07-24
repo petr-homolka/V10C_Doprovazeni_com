@@ -9,6 +9,7 @@ import { FosterPersonEducationSection } from '@/components/family/FosterPersonEd
 import { FosterPersonCourseEnrollmentsSection } from '@/components/family/FosterPersonCourseEnrollmentsSection'
 import { EducationPlanSection } from '@/components/family/EducationPlanSection'
 import { EntityAgenda } from '@/components/calendar/EntityAgenda'
+import { EntityTasks } from '@/components/tasks/EntityTasks'
 import { useAuth } from '@/hooks/useAuth'
 import {
   getFamilyByUid,
@@ -30,6 +31,7 @@ const SECTIONS: TabItem[] = [
   { key: 'prihlasky', label: 'Přihlášky na kurzy' },
   { key: 'plan', label: 'Plán vzdělávání' },
   { key: 'kalendar', label: 'Kalendář' },
+  { key: 'ukoly', label: 'Úkoly' },
 ]
 
 /**
@@ -229,6 +231,12 @@ export default function FosterPersonDetailPage() {
           {activeSection === 'kalendar' && fosterPersonId && organizationId && (
             <section className="mt-6">
               <EntityAgenda organizationId={organizationId} subjectKind="fosterPerson" subjectId={fosterPersonId} />
+            </section>
+          )}
+
+          {activeSection === 'ukoly' && fosterPersonId && organizationId && (
+            <section className="mt-6">
+              <EntityTasks organizationId={organizationId} subjectKind="fosterPerson" subjectId={fosterPersonId} />
             </section>
           )}
         </>

@@ -1,17 +1,29 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Combobox } from '@/components/ui/combobox'
+import { SidePanel } from '@/components/ui/side-panel'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PersonLink } from '@/components/ui/person-link'
 import { useAuth } from '@/hooks/useAuth'
-import { listChildrenForOrg, listFamiliesWithDocIds } from '@/services/familyService'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
+import { addChildToFamily, listChildrenForOrg, listFamiliesWithDocIds } from '@/services/familyService'
+import { getOrganization } from '@/services/organizationService'
 import { uploadEntityAvatar } from '@/services/avatarService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
-import { resolveChildBirthDate, genderFromBirthNumber, ageFromBirthDate, formatBirthDateCs } from '@/lib/birthNumber'
-import { Baby, Search } from 'lucide-react'
+import {
+  resolveChildBirthDate,
+  genderFromBirthNumber,
+  ageFromBirthDate,
+  formatBirthDateCs,
+  birthDateFromBirthNumber,
+} from '@/lib/birthNumber'
+import { Baby, Plus, Search } from 'lucide-react'
 
 /**
  * /deti — plochý seznam VŠECH dětí organizace napříč rodinami. Řádek ve
@@ -31,6 +43,16 @@ export default function ChildListPage() {
 
   const photoInputRef = useRef<HTMLInputElement>(null)
   const photoForRef = useRef<string | null>(null)
+
+  /** Zakládání dítěte PŘÍMO odsud (2026-07-24) — dřív jen z profilu rodiny.
+   * Rodina se vybírá v panelu, protože dítě bez rodiny nemá v datovém
+   * modelu kde být (`ChildDoc.familyId`). */
+  const [creating, setCreating] = useState(false)
+  const [newFamilyDocId, setNewFamilyDocId] = useState('')
+  const [newFirstName, setNewFirstName] = useState('')
+  const [newLastName, setNewLastName] = useState('')
+  const [newBirthNumber, setNewBirthNumber] = useState('')
+  const { loading: saving, run: runSave } = useAsyncSubmit()
 
   async function reload() {
     if (!organizationId) return
@@ -69,6 +91,48 @@ export default function ChildListPage() {
     }
   }
 
+  function openCreate() {
+    setNewFamilyDocId('')
+    setNewFirstName('')
+    setNewLastName('')
+    setNewBirthNumber('')
+    setError(null)
+    setCreating(true)
+  }
+
+  async function handleCreate(e: FormEvent) {
+    e.preventDefault()
+    if (!organizationId || !newFamilyDocId) return
+    setError(null)
+    try {
+      await runSave(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('Organizace nenalezena.')
+        await addChildToFamily(newFamilyDocId, organizationId, org.orgCode, {
+          firstName: newFirstName.trim(),
+          lastName: newLastName.trim(),
+          birthNumber: newBirthNumber.trim(),
+        })
+        await reload()
+      })
+      setCreating(false)
+    } catch {
+      setError('Dítě se nepodařilo založit.')
+    }
+  }
+
+  const familyOptions = useMemo(
+    () =>
+      Object.entries(familiesByDocId)
+        .map(([docId, fam]) => ({ value: docId, label: fam.label }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'cs')),
+    [familiesByDocId],
+  )
+
+  /** Náhled dopočteného data narození — okamžitá kontrola, že RČ je opsané
+   * správně, ještě před uložením. */
+  const newBirthDatePreview = useMemo(() => birthDateFromBirthNumber(newBirthNumber), [newBirthNumber])
+
   const filtered = useMemo(() => {
     if (!rows) return null
     const q = search.trim().toLowerCase()
@@ -78,8 +142,60 @@ export default function ChildListPage() {
       .sort((a, b) => a.name.localeCompare(b.name, 'cs'))
   }, [rows, search])
 
+  const sidePanel = creating ? (
+    <SidePanel title="Nové dítě" onClose={() => setCreating(false)}>
+      <form onSubmit={handleCreate} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Rodina</h3>
+          <Combobox
+            options={familyOptions}
+            value={newFamilyDocId}
+            onChange={setNewFamilyDocId}
+            placeholder="Vybrat rodinu…"
+            emptyText="Žádná rodina neodpovídá."
+          />
+          {familyOptions.length === 0 && (
+            <p className="text-xs text-text-tertiary">
+              Zatím není žádná rodina — nejdřív ji založte v sekci Rodiny.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Dítě</h3>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-text-primary">Jméno</span>
+            <Input required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-text-primary">Příjmení</span>
+            <Input required value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-text-primary">Rodné číslo</span>
+            <Input
+              required
+              value={newBirthNumber}
+              onChange={(e) => setNewBirthNumber(e.target.value)}
+              placeholder="150612/1234"
+            />
+            <span className="text-xs text-text-tertiary">
+              {newBirthDatePreview
+                ? `Datum narození: ${new Date(newBirthDatePreview).toLocaleDateString('cs-CZ')}`
+                : 'Datum narození i pohlaví se dopočítají z rodného čísla.'}
+            </span>
+          </label>
+        </div>
+
+        <Button type="submit" loading={saving} disabled={!newFamilyDocId}>
+          Založit dítě
+        </Button>
+      </form>
+    </SidePanel>
+  ) : undefined
+
   return (
-    <AppShell breadcrumb={[{ label: 'Děti' }]} fullBleed>
+    <AppShell breadcrumb={[{ label: 'Děti' }]} fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
@@ -87,6 +203,9 @@ export default function ChildListPage() {
               <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">
                 Děti {filtered && <span className="text-text-tertiary">({filtered.length})</span>}
               </h1>
+              <Button size="sm" onClick={openCreate}>
+                <Plus size={16} /> Nové dítě
+              </Button>
             </div>
 
             <div className="relative max-w-[320px]">
@@ -138,7 +257,7 @@ export default function ChildListPage() {
                         key={docId}
                         onClick={profileHref ? () => navigate(profileHref) : undefined}
                         leading={<EntityAvatar photoURL={child.avatarUrl} label={name} fallbackIcon={Baby} />}
-                        title={name}
+                        title={<PersonLink kind="child" id={docId} familyUid={fam?.uid} name={name} />}
                         subtitle={<span className="font-mono">{child.birthNumber}</span>}
                         meta={
                           <>

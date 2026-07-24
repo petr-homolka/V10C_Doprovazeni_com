@@ -1,5 +1,5 @@
 /**
- * Dopočítá `subjectKeys` u existujících kalendářních událostí.
+ * Dopočítá `subjectKeys` u existujících kalendářních událostí A ÚKOLŮ.
  *
  * `subjectKeys` je denormalizace `subjectRefs` + `familyDocId` do plochého
  * pole `"kind:id"`, bez které nejde kalendář entity načíst zúženým dotazem
@@ -38,39 +38,44 @@ function readSubjectRefs(fields) {
 
 const token = await getAccessToken()
 
-// `allDescendants` je nutné — `calendarEvents` je PODkolekce organizace,
-// dotaz z kořene bez něj nenajde nic.
-const events = await runQuery(token, {
-  from: [{ collectionId: 'calendarEvents', allDescendants: true }],
-})
-
-const writes = []
-let alreadyOk = 0
-for (const row of events) {
-  const doc = row.document
-  if (!doc) continue
-  // `runQuery` nad kolekcí bez parenta vrací i cizí organizace — filtrujeme
-  // podle cesty, ať skript nikdy nezasáhne data jiné organizace.
-  if (!doc.name.includes(`/organizations/${ORG}/calendarEvents/`)) continue
-  const fields = doc.fields ?? {}
-  const familyDocId = fields.familyDocId?.stringValue ?? null
-  const wanted = buildSubjectKeys(readSubjectRefs(fields), familyDocId)
-  const current = (fields.subjectKeys?.arrayValue?.values ?? []).map((v) => v.stringValue)
-  const same = wanted.length === current.length && wanted.every((k) => current.includes(k))
-  if (same) {
-    alreadyOk++
-    continue
+/** Vrátí zápisy potřebné k dorovnání `subjectKeys` v jedné kolekci. */
+async function collectWrites(collectionId) {
+  // `allDescendants` je nutné — jde o PODkolekce organizace, dotaz
+  // z kořene bez něj nenajde nic.
+  const rows = await runQuery(token, { from: [{ collectionId, allDescendants: true }] })
+  const writes = []
+  let alreadyOk = 0
+  for (const row of rows) {
+    const doc = row.document
+    if (!doc) continue
+    // `runQuery` z kořene vrací i cizí organizace — filtrujeme podle cesty,
+    // ať skript nikdy nezasáhne data jiné organizace.
+    if (!doc.name.includes(`/organizations/${ORG}/${collectionId}/`)) continue
+    const fields = doc.fields ?? {}
+    // `familyDocId` má jen událost; úkol vazbu na rodinu nese výhradně
+    // v `subjectRefs`, takže se prostě nenajde a nic nepřidá.
+    const familyDocId = fields.familyDocId?.stringValue ?? null
+    const wanted = buildSubjectKeys(readSubjectRefs(fields), familyDocId)
+    const current = (fields.subjectKeys?.arrayValue?.values ?? []).map((v) => v.stringValue)
+    const same = wanted.length === current.length && wanted.every((k) => current.includes(k))
+    if (same) {
+      alreadyOk++
+      continue
+    }
+    writes.push({
+      update: {
+        name: doc.name,
+        fields: { subjectKeys: { arrayValue: { values: wanted.map((k) => ({ stringValue: k })) } } },
+      },
+      updateMask: { fieldPaths: ['subjectKeys'] },
+    })
   }
-  writes.push({
-    update: {
-      name: doc.name,
-      fields: { subjectKeys: { arrayValue: { values: wanted.map((k) => ({ stringValue: k })) } } },
-    },
-    updateMask: { fieldPaths: ['subjectKeys'] },
-  })
+  console.log(`  ${collectionId}: v pořádku ${alreadyOk}, k doplnění ${writes.length}`)
+  return writes
 }
 
-console.log(`Události ${ORG}: v pořádku ${alreadyOk}, k doplnění ${writes.length}`)
+console.log(`Organizace ${ORG}:`)
+const writes = [...(await collectWrites('calendarEvents')), ...(await collectWrites('tasks'))]
 if (writes.length === 0) {
   console.log('Není co dělat.')
   process.exit(0)

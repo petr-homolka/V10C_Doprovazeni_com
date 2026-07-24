@@ -5,6 +5,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { EditableAvatar } from '@/components/ui/editable-avatar'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { EntityAgenda } from '@/components/calendar/EntityAgenda'
+import { EntityTasks } from '@/components/tasks/EntityTasks'
 import { CapacityRing } from '@/components/ui/capacity-ring'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -145,6 +146,15 @@ export default function StaffDetailPage() {
           <div>
             <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Kalendář</h2>
             <EntityAgenda organizationId={organizationId} subjectKind="staff" subjectId={member.uid} />
+          </div>
+        )}
+
+        {/* Úkoly, které má na sobě — u zaměstnance je to "co má rozdělané",
+         * ne "co se ho týká jako klienta". */}
+        {organizationId && (
+          <div>
+            <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wide text-text-tertiary">Úkoly</h2>
+            <EntityTasks organizationId={organizationId} subjectKind="staff" subjectId={member.uid} />
           </div>
         )}
       </div>

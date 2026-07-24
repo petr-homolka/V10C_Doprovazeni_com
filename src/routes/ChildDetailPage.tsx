@@ -8,6 +8,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { ChildSupportSection } from '@/components/family/ChildSupportSection'
 import { ChildHandoversSection } from '@/components/family/ChildHandoversSection'
 import { EntityAgenda } from '@/components/calendar/EntityAgenda'
+import { EntityTasks } from '@/components/tasks/EntityTasks'
 import { useAuth } from '@/hooks/useAuth'
 import { getChild, getFamilyByUid, listFosterPersonsByRefs, updateChildBirthDate } from '@/services/familyService'
 import { getChildRespitDaysForYear } from '@/services/respitEventService'
@@ -22,6 +23,7 @@ const SECTIONS: TabItem[] = [
   { key: 'podpora', label: 'Podpůrné aktivity a výdaje' },
   { key: 'predani', label: 'Předání dítěte' },
   { key: 'kalendar', label: 'Kalendář' },
+  { key: 'ukoly', label: 'Úkoly' },
 ]
 
 /**
@@ -187,6 +189,12 @@ export default function ChildDetailPage() {
           {activeSection === 'kalendar' && childId && organizationId && (
             <section className="mt-6">
               <EntityAgenda organizationId={organizationId} subjectKind="child" subjectId={childId} />
+            </section>
+          )}
+
+          {activeSection === 'ukoly' && childId && organizationId && (
+            <section className="mt-6">
+              <EntityTasks organizationId={organizationId} subjectKind="child" subjectId={childId} />
             </section>
           )}
         </>

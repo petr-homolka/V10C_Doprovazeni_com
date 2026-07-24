@@ -12,8 +12,9 @@ import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
 import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
-import { EntitySearch } from '@/components/calendar/EntitySearch'
+import { EntitySearch } from '@/components/search/EntitySearch'
 import { buildSubjectDirectory, resolveItemSubjects } from '@/lib/eventSubjects'
+import { AGREEMENT_VISIT_COLOR, staffColor } from '@/lib/staffColor'
 import { formatDateValue, parseDateValue } from '@/lib/dateGrid'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -44,17 +45,6 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { AgreementDoc } from '@/types/agreement'
 import type { SubjectRef } from '@/types/timelineEntry'
 import type { EnumOption } from '@/types/enumOptions'
-
-// Cesta B — stejná paleta jako desktopová `CalendarPage.tsx` (jeden zdroj
-// pravdy pro "jaké barvy má appka", i když je zatím duplikovaná napříč
-// dvěma soubory — sdílený `lib/staffColor.ts` je SEAM, mimo rozsah týhle
-// dávky).
-const STAFF_PALETTE = ['#8B5CF6', '#DB2777', '#EA580C', '#0D9488', '#65A30D', '#0891B2', '#D97706', '#9333EA']
-function staffColor(uid: string): string {
-  let hash = 0
-  for (let i = 0; i < uid.length; i++) hash = (hash * 31 + uid.charCodeAt(i)) | 0
-  return STAFF_PALETTE[Math.abs(hash) % STAFF_PALETTE.length]
-}
 
 function sameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
@@ -559,7 +549,7 @@ export default function MobileCalendarPage() {
           ) : (
             <GroupedList>
               {dayItems.map((item) => {
-                const color = item.source === 'agreementVisit' ? '#7587A8' : staffColor(item.staffUid ?? '')
+                const color = item.source === 'agreementVisit' ? AGREEMENT_VISIT_COLOR : staffColor(item.staffUid ?? '')
                 const subjects = resolveItemSubjects(subjectDirectory, item)
                 return (
                   <GroupedListRow key={item.id} onClick={() => openEdit(item)} className="border-l-4" style={{ borderLeftColor: color }}>
@@ -850,10 +840,7 @@ export default function MobileCalendarPage() {
           <div className="flex h-[70vh] flex-col px-5 pb-6 pt-4">
             <h2 className="mb-3 shrink-0 text-[17px] font-semibold text-text-primary">Hledat</h2>
             <EntitySearch
-              families={families}
-              fosterPersons={fosterPersons}
-              children={children}
-              staff={staffList}
+              data={{ families, fosterPersons, children, staff: staffList }}
               onNavigated={() => setSearchOpen(false)}
             />
           </div>

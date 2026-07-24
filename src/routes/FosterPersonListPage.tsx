@@ -1,17 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { RecordCard, RecordCardList, MetaColumn } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Combobox } from '@/components/ui/combobox'
+import { SidePanel } from '@/components/ui/side-panel'
+import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PersonLink } from '@/components/ui/person-link'
 import { useAuth } from '@/hooks/useAuth'
-import { listFamiliesWithDocIds, listFosterPersonsForOrg } from '@/services/familyService'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
+import { addFosterPersonToFamily, listFamiliesWithDocIds, listFosterPersonsForOrg } from '@/services/familyService'
+import { getOrganization } from '@/services/organizationService'
 import { uploadEntityAvatar } from '@/services/avatarService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
+import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import { ageFromBirthDate, formatBirthDateCs } from '@/lib/birthNumber'
-import { Search, UserRound } from 'lucide-react'
+import { Plus, Search, UserRound } from 'lucide-react'
 
 /**
  * /pestouni — plochý seznam VŠECH pěstounů organizace napříč rodinami.
@@ -30,6 +38,21 @@ export default function FosterPersonListPage() {
 
   const photoInputRef = useRef<HTMLInputElement>(null)
   const photoForRef = useRef<string | null>(null)
+
+  /** Zakládání pěstouna PŘÍMO odsud (2026-07-24) — dřív šlo jen z profilu
+   * rodiny, takže kdo měl pěstouna po ruce a rodinu už zavedenou, musel se
+   * k ní nejdřív proklikat. Rodina se vybírá v panelu, protože pěstoun bez
+   * rodiny nemá v datovém modelu kde být (`FosterPersonDoc.familyId`). */
+  const [creating, setCreating] = useState(false)
+  const [newFamilyDocId, setNewFamilyDocId] = useState('')
+  const [newFirstName, setNewFirstName] = useState('')
+  const [newLastName, setNewLastName] = useState('')
+  const [newPhone, setNewPhone] = useState('')
+  const [newPhoneError, setNewPhoneError] = useState<string | null>(null)
+  const [newEmail, setNewEmail] = useState('')
+  const [newEmailError, setNewEmailError] = useState<string | null>(null)
+  const [newBirthDate, setNewBirthDate] = useState('')
+  const { loading: saving, run: runSave } = useAsyncSubmit()
 
   async function reload() {
     if (!organizationId) return
@@ -68,6 +91,64 @@ export default function FosterPersonListPage() {
     }
   }
 
+  function openCreate() {
+    setNewFamilyDocId('')
+    setNewFirstName('')
+    setNewLastName('')
+    setNewPhone('')
+    setNewPhoneError(null)
+    setNewEmail('')
+    setNewEmailError(null)
+    setNewBirthDate('')
+    setError(null)
+    setCreating(true)
+  }
+
+  async function handleCreate(e: FormEvent) {
+    e.preventDefault()
+    if (!organizationId || !newFamilyDocId) return
+    const phone = newPhone.trim()
+    const email = newEmail.trim()
+    // Stejná validace jako na profilu rodiny — telefon/e-mail se nesmí
+    // rozejít podle toho, odkud se pěstoun zakládá.
+    const phoneCheck = phone ? checkPhone(phone) : null
+    if (phoneCheck && !phoneCheck.ok) {
+      setNewPhoneError(phoneCheck.message ?? 'Neplatné telefonní číslo.')
+      return
+    }
+    const emailCheck = email ? checkEmail(email) : null
+    if (emailCheck && !emailCheck.ok) {
+      setNewEmailError(emailCheck.message ?? 'Neplatný e-mail.')
+      return
+    }
+    setError(null)
+    try {
+      await runSave(async () => {
+        const org = await getOrganization(organizationId)
+        if (!org) throw new Error('Organizace nenalezena.')
+        await addFosterPersonToFamily(newFamilyDocId, organizationId, org.orgCode, {
+          firstName: newFirstName.trim(),
+          lastName: newLastName.trim(),
+          ...(phoneCheck?.ok ? { phone: phoneCheck.value } : {}),
+          ...(emailCheck?.ok ? { email: emailCheck.value } : {}),
+          ...(newBirthDate ? { birthDate: newBirthDate } : {}),
+        })
+        await reload()
+      })
+      setCreating(false)
+    } catch {
+      setError('Pěstouna se nepodařilo založit.')
+    }
+  }
+
+  const familyOptions = useMemo(
+    () =>
+      Object.entries(familiesByDocId)
+        .map(([docId, fam]) => ({ value: docId, label: fam.label }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'cs')),
+    [familiesByDocId],
+  )
+
   const filtered = useMemo(() => {
     if (!rows) return null
     const q = search.trim().toLowerCase()
@@ -77,8 +158,77 @@ export default function FosterPersonListPage() {
       .sort((a, b) => a.name.localeCompare(b.name, 'cs'))
   }, [rows, search])
 
+  const sidePanel = creating ? (
+    <SidePanel title="Nový pěstoun" onClose={() => setCreating(false)}>
+      <form onSubmit={handleCreate} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Rodina</h3>
+          <Combobox
+            options={familyOptions}
+            value={newFamilyDocId}
+            onChange={setNewFamilyDocId}
+            placeholder="Vybrat rodinu…"
+            emptyText="Žádná rodina neodpovídá."
+          />
+          {familyOptions.length === 0 && (
+            <p className="text-xs text-text-tertiary">
+              Zatím není žádná rodina — nejdřív ji založte v sekci Rodiny.
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Osoba</h3>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-text-primary">Jméno</span>
+            <Input required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-text-primary">Příjmení</span>
+            <Input required value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-text-primary">Datum narození</span>
+            <DatePicker value={newBirthDate} onChange={setNewBirthDate} />
+          </label>
+        </div>
+
+        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">Kontakt</h3>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-text-primary">Telefon</span>
+            <Input
+              value={newPhone}
+              onChange={(e) => {
+                setNewPhone(e.target.value)
+                setNewPhoneError(null)
+              }}
+            />
+            {newPhoneError && <span className="text-xs text-danger">{newPhoneError}</span>}
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium text-text-primary">E-mail</span>
+            <Input
+              type="email"
+              value={newEmail}
+              onChange={(e) => {
+                setNewEmail(e.target.value)
+                setNewEmailError(null)
+              }}
+            />
+            {newEmailError && <span className="text-xs text-danger">{newEmailError}</span>}
+          </label>
+        </div>
+
+        <Button type="submit" loading={saving} disabled={!newFamilyDocId}>
+          Založit pěstouna
+        </Button>
+      </form>
+    </SidePanel>
+  ) : undefined
+
   return (
-    <AppShell breadcrumb={[{ label: 'Pěstouni' }]} fullBleed>
+    <AppShell breadcrumb={[{ label: 'Pěstouni' }]} fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
@@ -86,6 +236,9 @@ export default function FosterPersonListPage() {
               <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">
                 Pěstouni {filtered && <span className="text-text-tertiary">({filtered.length})</span>}
               </h1>
+              <Button size="sm" onClick={openCreate}>
+                <Plus size={16} /> Nový pěstoun
+              </Button>
             </div>
 
             <div className="relative max-w-[320px]">
@@ -137,7 +290,7 @@ export default function FosterPersonListPage() {
                         key={docId}
                         onClick={profileHref ? () => navigate(profileHref) : undefined}
                         leading={<EntityAvatar photoURL={fp.avatarUrl} label={name} fallbackIcon={UserRound} />}
-                        title={name}
+                        title={<PersonLink kind="fosterPerson" id={docId} familyUid={fam?.uid} name={name} />}
                         subtitle={fp.email ?? undefined}
                         meta={
                           <>
