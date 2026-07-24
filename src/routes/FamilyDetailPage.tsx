@@ -531,7 +531,18 @@ export default function FamilyDetailPage() {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
       <div className="mb-5 flex items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-start gap-4">
+          {docId && family && (
+            <EditableAvatar
+              kind="family"
+              id={docId}
+              photoURL={family.avatarUrl}
+              label={displayName}
+              fallbackIcon={UserRound}
+              onUploaded={(url) => setFamily((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
+            />
+          )}
+          <div className="min-w-0">
           {editingName ? (
             <div className="flex items-center gap-2">
               <Input
@@ -567,6 +578,7 @@ export default function FamilyDetailPage() {
               <AddressLink address={family.address} />
             </p>
           )}
+          </div>
         </div>
         <div className="shrink-0 text-right">
           <p className="text-[11px] font-medium uppercase tracking-wide text-text-tertiary">Spis</p>

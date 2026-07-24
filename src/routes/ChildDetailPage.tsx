@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Tabs, type TabItem } from '@/components/ui/tabs'
-import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { EditableAvatar } from '@/components/ui/editable-avatar'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ChildSupportSection } from '@/components/family/ChildSupportSection'
@@ -121,11 +121,13 @@ export default function ChildDetailPage() {
           {activeSection === 'prehled' && (
             <div className="mt-2 flex max-w-[928px] items-start justify-between gap-4">
               <div className="flex items-start gap-4">
-                <EntityAvatar
+                <EditableAvatar
+                  kind="child"
+                  id={childId!}
                   photoURL={child.avatarUrl}
                   label={`${child.firstName} ${child.lastName}`}
                   fallbackIcon={Baby}
-                  size="lg"
+                  onUploaded={(url) => setChild((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
                 />
                 <div>
                   <h1 className="text-[26px] font-bold leading-tight text-text-primary">

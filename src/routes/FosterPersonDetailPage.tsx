@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { EntityAvatar } from '@/components/ui/entity-avatar'
+import { EditableAvatar } from '@/components/ui/editable-avatar'
 import { DatePicker } from '@/components/ui/date-picker'
 import { FosterPersonEducationSection } from '@/components/family/FosterPersonEducationSection'
 import { FosterPersonCourseEnrollmentsSection } from '@/components/family/FosterPersonCourseEnrollmentsSection'
@@ -150,11 +150,13 @@ export default function FosterPersonDetailPage() {
           {activeSection === 'prehled' && (
             <div className="mt-2 flex max-w-[928px] items-start justify-between gap-4">
               <div className="flex items-start gap-4">
-                <EntityAvatar
+                <EditableAvatar
+                  kind="fosterPerson"
+                  id={fosterPersonId!}
                   photoURL={fosterPerson.avatarUrl}
                   label={`${fosterPerson.firstName} ${fosterPerson.lastName}`}
                   fallbackIcon={UserRound}
-                  size="lg"
+                  onUploaded={(url) => setFosterPerson((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
                 />
                 <div>
                   <h1 className="text-[26px] font-bold leading-tight text-text-primary">
