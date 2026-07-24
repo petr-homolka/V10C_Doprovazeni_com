@@ -22,6 +22,7 @@ import { OsaFamily } from './lab/osa/ScreenFamily'
 import { OsaCalendar } from './lab/osa/ScreenCalendar'
 import { OsaToday } from './lab/osa/ScreenToday'
 import { RoutineToday } from './lab/osa/ScreenRoutineToday'
+import { LabEditor } from './lab/ScreenEditor'
 
 import { useIsMobile } from '@/hooks/useIsMobile'
 import FamilyListPage from '@/routes/FamilyListPage'
@@ -138,6 +139,8 @@ const LAB_DIRECTIONS: Record<string, () => ReactElement> = {
   'osa-kalendar': OsaCalendar,
   // Varianta „co nejblíž Routine" — dvoupanel úkoly + den s časem.
   'rt-dnes': RoutineToday,
+  // Editor zápisů — kvůli typografii, citaci, úkolům a osnově.
+  editor: LabEditor,
 }
 
 function PreviewApp() {

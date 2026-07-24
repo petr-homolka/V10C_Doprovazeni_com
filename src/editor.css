@@ -1,0 +1,432 @@
+/*
+ * EDITOR ZÁPISŮ A DOKUMENTŮ.
+ *
+ * Hodnoty jsou ODEČTENÉ z CSS Routine (`references-list-*.css` pro obsah,
+ * `Editor-*.css` pro slash menu), ne navržené od nuly:
+ *
+ *   .ProseMirror h1 { margin-top:32px; font-size:24px; line-height:32px }
+ *   .ProseMirror h2 { margin-top:24px; font-size:20px; line-height:28px }
+ *   .ProseMirror h3 { margin-top:16px; font-size:18px; line-height:24px }
+ *   .ProseMirror blockquote { padding:8px 12px 8px 32px; font-size:22px;
+ *                             line-height:30px; font-family:serif }
+ *   .ProseMirror code { padding:1px 4px; border:1px solid; border-radius:3px }
+ *   .ProseMirror a { border-bottom:.5px solid currentColor }
+ *   .suggestion-list { min-width:240px; max-height:328px; border-radius:10px }
+ *   .suggestion-list__item { border-radius:7px; padding:6px 8px 6px 12px }
+ *
+ * Odchylky, které jsou vědomé:
+ *   - jejich citace je v písmu Redaction; my ho nemáme, takže se použije
+ *     systémový serif. Podstatné je, že citace mluví JINÝM hlasem.
+ *   - nadpis má odstup NAD sebou, ne pod. Nadpis patří k tomu, co následuje.
+ */
+
+.rte {
+  position: relative;
+}
+
+.rte__frame {
+  position: relative;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  padding: 20px 0 28px;
+}
+
+.rte__frame:focus-within {
+  border-color: var(--border-strong);
+}
+
+/* Šířka textu 650 px na střed — jejich `.editor{max-width:650px;margin:0 auto}`.
+   Delší řádek se hůř čte, i když monitor místo má. */
+.rte__content {
+  max-width: 650px;
+  margin: 0 auto;
+  padding: 0 20px;
+  outline: none;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--text-primary);
+}
+
+.rte__content > * + * {
+  margin-top: 0;
+}
+
+.rte__content p {
+  padding: 4px 0;
+  margin: 0;
+}
+
+.rte__content h1,
+.rte__content h2,
+.rte__content h3 {
+  margin: 0;
+  padding: 6px 0;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  color: var(--text-primary);
+}
+
+.rte__content h1 {
+  margin-top: 32px;
+  font-size: 24px;
+  line-height: 32px;
+}
+
+.rte__content h2 {
+  margin-top: 24px;
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.rte__content h3 {
+  margin-top: 16px;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+/* První nadpis nemá nad sebou odstup — dokument nemá začínat mezerou. */
+.rte__content > :first-child {
+  margin-top: 0;
+}
+
+/* Odrážky kreslíme sami (`list-style:none` + `::before`), protože nativní
+   puntík se nedá posadit na účaří prvního řádku a u víceřádkové odrážky
+   plave. Routine to dělá stejně. */
+.rte__content ul,
+.rte__content ol {
+  margin: 0;
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.rte__content li {
+  position: relative;
+  padding-left: 22px;
+  border-radius: var(--radius-sm);
+}
+
+.rte__content ul:not([data-type='taskList']) > li::before {
+  content: '•';
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  color: var(--text-primary);
+}
+
+.rte__content ol {
+  counter-reset: rte-ol;
+}
+
+.rte__content ol > li {
+  counter-increment: rte-ol;
+}
+
+.rte__content ol > li::before {
+  content: counter(rte-ol) '.';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 18px;
+  text-align: right;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Úkoly: zaškrtávátko 14px, přesně jako jejich `.task-check`. */
+.rte__content ul[data-type='taskList'] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-left: 4px;
+}
+
+.rte__content ul[data-type='taskList'] > li > label {
+  flex-shrink: 0;
+  margin-top: 5px;
+  line-height: 1;
+}
+
+.rte__content ul[data-type='taskList'] input[type='checkbox'] {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  border: 1.5px solid var(--border-medium);
+  border-radius: 50%;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.rte__content ul[data-type='taskList'] input[type='checkbox']:checked {
+  border-color: var(--text-faint);
+  background: var(--text-faint);
+}
+
+.rte__content ul[data-type='taskList'] > li[data-checked='true'] > div {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+.rte__content ul[data-type='taskList'] > li > div {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Citace: jediné místo v appce s jiným písmem — citace JE jiný hlas. */
+.rte__content blockquote {
+  position: relative;
+  margin: 8px 0;
+  padding: 8px 12px 8px 32px;
+  font-family: ui-serif, Georgia, 'Times New Roman', serif;
+  font-size: 22px;
+  line-height: 30px;
+  color: var(--text-secondary);
+}
+
+.rte__content blockquote::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--border-strong);
+}
+
+.rte__content code {
+  padding: 1px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.rte__content pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--bg-inset);
+  overflow-x: auto;
+}
+
+.rte__content pre code {
+  padding: 0;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  line-height: 19px;
+}
+
+/* Odkaz nese PODTRŽENÍ, ne barvu. Barva je vyhrazená pro naléhavost, a
+   dokument plný modrých odkazů je dokument, ve kterém nic nevystupuje. */
+.rte__content a {
+  color: var(--text-tertiary);
+  text-decoration: none;
+  border-bottom: 0.5px solid var(--text-tertiary);
+  cursor: pointer;
+  transition: color 0.1s ease-out;
+}
+
+.rte__content a:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
+}
+
+.rte__content hr {
+  margin: 16px 0;
+  padding: 0;
+  border: none;
+  height: 1px;
+  background: var(--border-default);
+}
+
+/* Zástupný text jen v prázdném dokumentu (Tiptap Placeholder). */
+.rte__content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--text-faint);
+}
+
+.rte__hint {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--text-faint);
+}
+
+.rte__hint kbd {
+  padding: 0 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 10.5px;
+}
+
+/* ---------- Osnova (jejich `.table-of-contents`) ----------------------- */
+
+/* Sloupek čárek napravo od textu: délka čárky = úroveň nadpisu (20/14/8 px).
+   Na kurzoru se rozbalí na názvy. Ukazuje strukturu dlouhého dokumentu bez
+   toho, aby zabírala místo, dokud ji nikdo nechce. */
+.rte__toc {
+  position: absolute;
+  top: 20px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.rte__tocitem {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 2px 4px;
+  border-radius: var(--radius-md);
+  background: none;
+  border: none;
+  cursor: default;
+}
+
+.rte__tocitem:hover {
+  background: var(--overlay-active);
+}
+
+.rte__tocline {
+  flex-shrink: 0;
+  height: 2px;
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.rte__tocline--1 {
+  width: 20px;
+  background: var(--text-faint);
+}
+
+.rte__tocline--2 {
+  width: 14px;
+  background: var(--text-tertiary);
+}
+
+.rte__tocline--3 {
+  width: 8px;
+  background: var(--border-strong);
+}
+
+.rte__toctext {
+  display: none;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.rte__toc:hover {
+  box-shadow: var(--shadow-overlay);
+}
+
+.rte__toc:hover .rte__toctext {
+  display: block;
+}
+
+.rte__toc:hover .rte__tocline {
+  display: none;
+}
+
+/* Na užším okně by osnova ležela na textu. */
+@media (max-width: 1099px) {
+  .rte__toc {
+    display: none;
+  }
+}
+
+/* ---------- Slash menu ------------------------------------------------- */
+
+.rte__menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 240px;
+  max-height: 328px;
+  overflow-y: auto;
+  padding: 0 4px 4px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: 0 1px 14px rgba(0, 0, 0, 0.05);
+  animation: rte-menu-in 0.12s ease-out;
+}
+
+/* Jejich `dropdown-enter`: opacity 0 → 1 se `scale(.98) translateY(-4px)`. */
+@keyframes rte-menu-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.rte__menugroup {
+  padding: 6px 0 2px 4px;
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--text-faint);
+}
+
+.rte__menuitem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1px;
+  padding: 6px 8px 6px 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 19px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.1s ease-in, color 0.1s ease-in;
+}
+
+.rte__menuitem--on,
+.rte__menuitem:hover {
+  background: var(--overlay-active);
+  color: var(--text-primary);
+}
+
+.rte__menuicon {
+  display: flex;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.rte__menutitle {
+  flex: 1;
+}
+
+/* Zkratka v markdownu napravo — menu učí, jak ho příště nepotřebovat. */
+.rte__menuhint {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

@@ -2,6 +2,7 @@
    postcss-import stěžuje. Jsou ve vlastním souboru, protože jich je hodně
    a jsou ODEČTENÉ z konkrétního zdroje — komentář u nich říká z čeho. */
 @import './tokens.css';
+@import './editor.css';
 
 @tailwind base;
 @tailwind components;

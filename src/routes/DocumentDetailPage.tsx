@@ -6,7 +6,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { MarkdownEditor } from '@/components/ui/markdown-editor'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { PersonLink } from '@/components/ui/person-link'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
@@ -328,7 +328,7 @@ export default function DocumentDetailPage() {
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
-              <MarkdownEditor value={body} onChange={setBody} rows={18} placeholder="Začněte psát obsah dokumentu…" />
+              <RichTextEditor value={body} onChange={setBody} minHeight={396} placeholder="Začněte psát obsah dokumentu…" />
             </label>
             <div className="flex items-center gap-2">
               <Button

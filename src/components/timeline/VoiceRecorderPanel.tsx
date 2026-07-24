@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Mic, Square, X } from '@/components/ui/icons'
 import { Drawer } from '@/components/ui/drawer'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { MicWaveform } from '@/components/ui/mic-waveform'
 import { cn } from '@/lib/utils'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
@@ -104,11 +105,8 @@ export function VoiceRecorderPanel({
   const [shareBothPartners, setShareBothPartners] = useState(partnerSharingDefault)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-
-  useEffect(() => {
-    textareaRef.current?.focus()
-  }, [])
+  // Editor si kurzor bere sám (`autofocus` v ProseMirroru), takže ref na
+  // textarea zmizel spolu s ní.
 
   // Živý přepis proudí přímo do textového pole, dokud se nahrává.
   useEffect(() => {
@@ -309,17 +307,16 @@ export function VoiceRecorderPanel({
         </div>
         {recognizer.error && <p className="text-sm text-danger">{recognizer.error}</p>}
 
-        <textarea
-          ref={textareaRef}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Text zápisu…"
-          className={cn(
-            'w-full flex-1 resize-none rounded-sm border border-transparent bg-field px-4 py-3',
-            'text-lg leading-relaxed text-text-primary placeholder:text-text-tertiary',
-            'transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none',
-          )}
-        />
+        {/* Zápis se píše ve stejném editoru jako dokumenty — nadpisy, odrážky,
+            úkoly a citace se hodí právě tady (zápis z návštěvy má strukturu:
+            průběh, domluvené kroky, poznámky). Formátuje se psaním nebo
+            příkazem po „/", žádná lišta nad textem.
+
+            Diktování do editoru teče stejně jako dřív: `body` se při
+            nahrávání přepisuje zvenčí a editor si obsah přenastaví. Kurzor
+            přitom skočí na začátek, což při diktování nikomu nevadí — ruce
+            jsou od klávesnice. */}
+        <RichTextEditor value={body} onChange={setBody} minHeight={240} placeholder="Text zápisu…" />
 
         <div className="flex items-center justify-between gap-4">
           <span className="text-sm text-text-primary">Soukromá poznámka</span>

@@ -24,6 +24,11 @@ const SCREENS = [
   // Designové návrhy (`src/preview/lab/`) — tři vizuální jazyky pro tutéž
   // obrazovku. `lab` obchází router, proto nemají `route`.
   { name: 'routine-dnes', lab: 'rt-dnes' },
+  // Editor NENÍ vlastní paleta, kreslí se z tokenů appky — proto `dark: true`,
+  // tmavý screenshot tu má smysl.
+  { name: 'editor', lab: 'editor', dark: true },
+  // Se otevřeným slash menu — panel příkazů se jinak nedá vyfotit.
+  { name: 'editor-slash', lab: 'editor', type: '/' },
   { name: 'osa-1-dnes', lab: 'osa-dnes' },
   { name: 'osa-2-rodiny', lab: 'osa-rodiny' },
   { name: 'osa-3-rodina', lab: 'osa-rodina' },
@@ -94,7 +99,7 @@ for (const viewport of VIEWPORTS) {
       // tmavý screenshot by byl bajt za bajt stejný jako světlý a tvářil se,
       // že tmavý režim je hotový. Tmavá varianta vzniká až při převodu
       // vybraného směru do tokenů.
-      if (screen.lab && theme === 'dark') continue
+      if (screen.lab && !screen.dark && theme === 'dark') continue
       const page = await context.newPage()
       page.on('pageerror', (e) => errors.push(`${screen.name}/${viewport.name}: ${e.message}`))
       page.on('console', (m) => {
@@ -109,6 +114,18 @@ for (const viewport of VIEWPORTS) {
       // Stuby odpovídají okamžitě, ale `AutoInteract` klika po 400 ms a
       // panely mají vjezdovou animaci — 1200 ms je s rezervou po ní.
       await page.waitForTimeout(1200)
+      // `type` píše do editoru SKUTEČNÉ klávesy — slash menu reaguje na vstup
+      // ProseMirroru, takže nastavit stav zvenčí by ukázalo něco jiného, než
+      // co uživatel uvidí.
+      if (screen.type) {
+        // Klikneme na POSLEDNÍ odstavec a skočíme na jeho konec. `Control+End`
+        // ProseMirror nemá navázané, takže by „/" skončilo uprostřed textu.
+        await page.click('.rte__content > p:last-of-type')
+        await page.keyboard.press('End')
+        await page.keyboard.press('Enter')
+        await page.keyboard.type(screen.type, { delay: 30 })
+        await page.waitForTimeout(400)
+      }
       const suffix = theme === 'dark' ? '-dark' : ''
       await page.screenshot({
         path: path.join(OUT, `${viewport.name}-${screen.name}${suffix}.png`),

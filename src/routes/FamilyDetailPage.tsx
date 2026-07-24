@@ -16,7 +16,7 @@ import { Combobox } from '@/components/ui/combobox'
 import { Modal } from '@/components/ui/modal'
 import { AddressLink } from '@/components/ui/address-link'
 import { PersonLink } from '@/components/ui/person-link'
-import { MarkdownEditor } from '@/components/ui/markdown-editor'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/components/timeline/VoiceRecorderPanel'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { OspodReportSection } from '@/components/family/OspodReportSection'
@@ -916,7 +916,7 @@ export default function FamilyDetailPage() {
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
-                  <MarkdownEditor value={docBody} onChange={setDocBody} rows={10} placeholder="Začněte psát obsah dokumentu…" />
+                  <RichTextEditor value={docBody} onChange={setDocBody} minHeight={220} placeholder="Začněte psát obsah dokumentu…" />
                 </label>
                 {recordablePeople.length > 0 && (
                   <div>
