@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'r
 import { CheckSquare, Square, Ban, Plus } from 'lucide-react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SidePanel } from '@/components/ui/side-panel'
-import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
+import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -29,8 +29,6 @@ import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { SubjectRef } from '@/types/timelineEntry'
-
-const TABLE_COLUMNS = '32px 2fr 1fr 1fr'
 
 function czechPlural(n: number, unit: RecurrenceUnit): string {
   const labels = RECURRENCE_UNIT_LABELS[unit]
@@ -236,17 +234,17 @@ export default function TaskListPage() {
     <AppShell breadcrumb={[{ label: 'Úkoly' }]} fullBleed>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center justify-between gap-4 border-b border-border-default bg-surface-soft px-8 py-5">
-            <h1 className="text-[22px] font-bold leading-tight text-text-primary">Úkoly</h1>
-            <div className="flex shrink-0 items-center gap-3">
-              <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
-              <Button size="sm" onClick={openNew}>
-                <Plus size={16} /> Nový úkol
-              </Button>
-            </div>
-          </div>
-
           <div className="min-h-0 flex-1 overflow-y-auto p-8">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">Úkoly</h1>
+              <div className="flex shrink-0 items-center gap-3">
+                <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
+                <Button size="sm" onClick={openNew}>
+                  <Plus size={16} /> Nový úkol
+                </Button>
+              </div>
+            </div>
+
             {error && (
               <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
                 {error}
@@ -256,13 +254,16 @@ export default function TaskListPage() {
             {visibleTasks === null ? (
               <p className="text-sm text-text-secondary">Načítám…</p>
             ) : visibleTasks.length === 0 ? (
-              <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
+              <div className="rounded-lg bg-surface-soft p-8 shadow-raised">
+                <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
+              </div>
             ) : (
-              <Table>
-                <TableHeaderRow columns={TABLE_COLUMNS} labels={['', 'Název', 'Přiřazeno', 'Termín']} />
+              <RecordCardList>
                 {visibleTasks.map(({ docId, task }) => (
-                  <div key={docId} onClick={() => openEdit(docId, task)} className="contents cursor-pointer">
-                    <TableRow columns={TABLE_COLUMNS}>
+                  <RecordCard
+                    key={docId}
+                    onClick={() => openEdit(docId, task)}
+                    leading={
                       <button
                         type="button"
                         onClick={(e) => toggleStatus(docId, task, e)}
@@ -271,22 +272,22 @@ export default function TaskListPage() {
                       >
                         {task.status === 'hotovo' ? <CheckSquare size={18} className="text-primary" /> : <Square size={18} />}
                       </button>
-                      <span
-                        className={`truncate text-sm font-medium ${
-                          task.status === 'otevreny' ? 'text-text-primary' : 'text-text-tertiary line-through'
-                        }`}
-                      >
+                    }
+                    title={
+                      <span className={task.status === 'otevreny' ? '' : 'text-text-tertiary line-through'}>
                         {task.title}
-                        {task.status === 'zruseno' && <span className="ml-2 text-xs font-normal text-danger">(zrušeno)</span>}
+                        {task.status === 'zruseno' && <span className="ml-2 text-xs font-normal text-danger no-underline">(zrušeno)</span>}
                       </span>
-                      <span className="truncate text-sm text-text-secondary">{staffLabel.get(task.assignedToUid) ?? '—'}</span>
+                    }
+                    subtitle={staffLabel.get(task.assignedToUid) ?? '—'}
+                    meta={
                       <span className="text-sm text-text-secondary">
                         {task.dueDate ? new Date(task.dueDate).toLocaleDateString('cs-CZ') : '—'}
                       </span>
-                    </TableRow>
-                  </div>
+                    }
+                  />
                 ))}
-              </Table>
+              </RecordCardList>
             )}
           </div>
         </div>

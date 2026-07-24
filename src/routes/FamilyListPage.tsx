@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { SidePanel } from '@/components/ui/side-panel'
 import { ListToolbar } from '@/components/ui/list-toolbar'
 import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
@@ -317,72 +317,49 @@ export default function FamilyListPage() {
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Rodiny' }]}>
-      <PageHeader
-        title="Rodiny"
-        actions={
-          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? (
-              'Zrušit'
-            ) : (
-              <>
+    <AppShell breadcrumb={[{ label: 'Rodiny' }]} fullBleed>
+      <div className="flex h-full min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto p-8">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">Rodiny</h1>
+              <Button size="sm" onClick={() => setShowForm(true)}>
                 <Plus size={16} /> Nová rodina
-              </>
-            )}
-          </Button>
-        }
-      />
-
-      {error && (
-        <p className="mt-3 max-w-xl text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-
-      {showForm && (
-        <form
-          onSubmit={handleCreate}
-          className="mt-4 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border bg-surface p-5"
-        >
-          <label className="flex flex-col gap-1.5">
-            <span className="text-sm font-medium leading-relaxed text-text-primary">
-              Adresa (volitelné)
-            </span>
-            <Input value={address} onChange={(e) => setAddress(e.target.value)} />
-          </label>
-          <Button type="submit" loading={submitting} success={success} className="w-fit">
-            Založit Spis
-          </Button>
-        </form>
-      )}
-
-      <div className="mt-6">
-        <ListToolbar>
-          <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
-          {selected.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
-              <Button variant="secondary" size="sm" onClick={() => setNoteModalOpen(true)}>
-                + Poznámka
-              </Button>
-              <Button variant="secondary" size="sm" onClick={() => setReassignModalOpen(true)}>
-                Předat
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
-                Zrušit výběr
               </Button>
             </div>
-          )}
-        </ListToolbar>
-        {families === null ? (
-          <p className="mt-3 text-sm text-text-secondary">Načítám…</p>
-        ) : sortedRows.length === 0 ? (
-          <div className="mt-3 rounded-lg bg-surface-soft p-8 shadow-raised">
-            <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
-          </div>
-        ) : (
-          <RecordCardList className="mt-3">
-            {sortedRows.map((row) => {
+
+            {error && (
+              <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+
+            <ListToolbar>
+              <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
+              {selected.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
+                  <Button variant="secondary" size="sm" onClick={() => setNoteModalOpen(true)}>
+                    + Poznámka
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setReassignModalOpen(true)}>
+                    Předat
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
+                    Zrušit výběr
+                  </Button>
+                </div>
+              )}
+            </ListToolbar>
+            {families === null ? (
+              <p className="mt-3 text-sm text-text-secondary">Načítám…</p>
+            ) : sortedRows.length === 0 ? (
+              <div className="mt-3 rounded-lg bg-surface-soft p-8 shadow-raised">
+                <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
+              </div>
+            ) : (
+              <RecordCardList className="mt-3">
+                {sortedRows.map((row) => {
               const { docId, family, displayName, assignedToDisplay, alert } = row
               return (
                 <RecordCard
@@ -465,7 +442,28 @@ export default function FamilyListPage() {
                 />
               )
             })}
-          </RecordCardList>
+              </RecordCardList>
+            )}
+          </div>
+        </div>
+
+        {showForm && (
+          <SidePanel title="Nová rodina" onClose={() => setShowForm(false)}>
+            <form onSubmit={handleCreate} className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Adresa (volitelné)</span>
+                <Input autoFocus value={address} onChange={(e) => setAddress(e.target.value)} />
+              </label>
+              <div className="flex gap-2 border-t border-border-default pt-4">
+                <Button type="submit" loading={submitting} success={success}>
+                  Založit Spis
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
+                  Zrušit
+                </Button>
+              </div>
+            </form>
+          </SidePanel>
         )}
       </div>
 

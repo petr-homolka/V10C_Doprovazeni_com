@@ -495,7 +495,7 @@ export default function CalendarPage() {
             </p>
           )}
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border bg-surface-soft p-4 shadow-raised">
+          <div className="min-h-0 flex-1 overflow-hidden rounded-lg bg-surface-soft p-4 shadow-raised">
             {loaded && (
               <DnDCalendar
                 localizer={localizer}

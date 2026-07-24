@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { HeartHandshake, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -34,11 +35,28 @@ import type {
   AssistedContactSeriesDoc,
 } from '@/types/assistedContactSeries'
 
+/** Cesta D, třetí kolo (2026-07-24, Petrovo přání "Cokoli se zadává do
+ * systému... v pravém schovávacím sidebaru") — "Zaznamenat respit"/
+ * "Založit sérii" formuláře se teď renderují portálem (`createPortal`) do
+ * jednoho sdíleného pravého panelu na `FamilyDetailPage` místo inline pod
+ * nadpisem sekce. Panel samotný (otevřeno/zavřeno, DOM uzel) vlastní
+ * `FamilyDetailPage` — sekce dostává jen "je otevřeno"/"otevři"/"zavři"
+ * a cílový DOM uzel, o vnitřní stav formuláře (vybrané dítě, datum, …) se
+ * pořád stará ona sama, beze změny. */
+export interface FamilyCarePanelHost {
+  isOpen: boolean
+  onOpen: () => void
+  onClose: () => void
+  panelTarget: HTMLElement | null
+}
+
 export interface FamilyCareEventsSectionProps {
   familyDocId: string
   organizationId: string
   currentUid: string
   children: Array<{ docId: string; child: { firstName: string; lastName: string } }>
+  respitPanel: FamilyCarePanelHost
+  seriesPanel: FamilyCarePanelHost
 }
 
 const SERIES_STATUS_LABELS: Record<AssistedContactSeriesDoc['status'], string> = {
@@ -85,11 +103,16 @@ function childName(children: FamilyCareEventsSectionProps['children'], childRef:
 
 // ---- Respit (§4.4.B) ----------------------------------------------------
 
-function RespitSubsection({ familyDocId, organizationId, currentUid, children }: FamilyCareEventsSectionProps) {
+function RespitSubsection({
+  familyDocId,
+  organizationId,
+  currentUid,
+  children,
+  respitPanel,
+}: FamilyCareEventsSectionProps) {
   const currentYear = new Date().getFullYear()
   const [daysUsed, setDaysUsed] = useState<Record<string, number> | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
   const [kind, setKind] = useState<RespitEventKind>('celodenni_pece')
   const [selectedChildIds, setSelectedChildIds] = useState<Set<string>>(new Set())
   const [dateFrom, setDateFrom] = useState('')
@@ -166,7 +189,7 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
         })
         await reloadStats()
       })
-      setShowForm(false)
+      respitPanel.onClose()
       setKind('celodenni_pece')
       setSelectedChildIds(new Set())
       setDateFrom('')
@@ -191,8 +214,8 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
             Nárok pěstouna na odpočinek — min. 14 dní / rok (§47a ZSPOD)
           </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat respit</>)}
+        <Button variant="secondary" size="sm" onClick={respitPanel.onOpen}>
+          <Plus size={16} /> Zaznamenat respit
         </Button>
       </div>
 
@@ -221,8 +244,10 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
         )}
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+      {respitPanel.isOpen &&
+        respitPanel.panelTarget &&
+        createPortal(
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Druh
             <Select value={kind} onChange={(e) => setKind(e.target.value as RespitEventKind)}>
@@ -295,22 +320,17 @@ function RespitSubsection({ familyDocId, organizationId, currentUid, children }:
             </p>
           )}
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 border-t border-border-default pt-4">
             <Button type="submit" loading={submitting} success={success}>
               Uložit
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
+            <Button type="button" variant="ghost" onClick={respitPanel.onClose} disabled={submitting}>
               Zrušit
             </Button>
           </div>
-        </form>
-      )}
-
-      {error && !showForm && (
-        <p className="mt-2 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+          </form>,
+          respitPanel.panelTarget,
+        )}
     </div>
   )
 }
@@ -323,12 +343,17 @@ interface SeriesRow {
   occurrences: Array<{ docId: string; occurrence: AssistedContactOccurrenceDoc }> | null
 }
 
-function AssistedContactSubsection({ familyDocId, organizationId, currentUid, children }: FamilyCareEventsSectionProps) {
+function AssistedContactSubsection({
+  familyDocId,
+  organizationId,
+  currentUid,
+  children,
+  seriesPanel,
+}: FamilyCareEventsSectionProps) {
   const [rows, setRows] = useState<SeriesRow[] | null>(null)
   const [listError, setListError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
-  const [showForm, setShowForm] = useState(false)
   const [childRef, setChildRef] = useState('')
   const [purpose, setPurpose] = useState('')
   const [participants, setParticipants] = useState('')
@@ -393,7 +418,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
         })
         await reload()
       })
-      setShowForm(false)
+      seriesPanel.onClose()
       setChildRef('')
       setPurpose('')
       setParticipants('')
@@ -485,13 +510,15 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
           <h3 className="text-base font-medium text-text-primary">Asistovaný kontakt</h3>
           <p className="mt-0.5 text-[13px] text-text-tertiary">Opakovaný styk dítěte s biologickou rodinou</p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Zrušit' : (<><Plus size={16} /> Založit sérii</>)}
+        <Button variant="secondary" size="sm" onClick={seriesPanel.onOpen}>
+          <Plus size={16} /> Založit sérii
         </Button>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleCreateSeries} className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+      {seriesPanel.isOpen &&
+        seriesPanel.panelTarget &&
+        createPortal(
+          <form onSubmit={handleCreateSeries} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Dítě
             <Select value={childRef} onChange={(e) => setChildRef(e.target.value)}>
@@ -541,16 +568,17 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
               {formError}
             </p>
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 border-t border-border-default pt-4">
             <Button type="submit" loading={submitting} success={success}>
               Založit sérii
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
+            <Button type="button" variant="ghost" onClick={seriesPanel.onClose} disabled={submitting}>
               Zrušit
             </Button>
           </div>
-        </form>
-      )}
+          </form>,
+          seriesPanel.panelTarget,
+        )}
 
       <div className="mt-4">
         {listError ? (
@@ -564,7 +592,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
         ) : (
           <div className="flex max-w-[928px] flex-col gap-3">
             {rows.map(({ docId: seriesId, series, occurrences }) => (
-              <div key={seriesId} className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+              <div key={seriesId} className="flex flex-col gap-3 rounded-lg bg-surface-soft p-4 shadow-raised">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm text-text-primary">{childName(children, series.childRef)} — {series.purpose}</p>
@@ -598,7 +626,7 @@ function AssistedContactSubsection({ familyDocId, organizationId, currentUid, ch
                     const key = `${seriesId}/${occId}`
                     const needsEvaluation = occurrence.status === 'probehlo' && !occurrence.evaluation
                     return (
-                      <div key={occId} className="rounded-md border border-border-subtle bg-surface-soft p-3">
+                      <div key={occId} className="rounded-md bg-inset p-3">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm text-text-primary">{new Date(occurrence.plannedDate).toLocaleDateString('cs-CZ')}</p>
                           <StatusBadge

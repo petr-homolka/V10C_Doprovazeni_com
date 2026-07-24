@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Tabs, type TabItem } from '@/components/ui/tabs'
-import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
+import { SidePanel } from '@/components/ui/side-panel'
+import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -46,8 +47,6 @@ import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
 import { Baby, Clock, FileText, Handshake, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from 'lucide-react'
 
-const FOSTER_COLUMNS = '40px 1.4fr 1fr 32px 24px'
-const CHILD_COLUMNS = '40px 1fr 32px 24px'
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
   note: 'Poznámka',
   visit: 'Návštěva',
@@ -113,7 +112,15 @@ export default function FamilyDetailPage() {
   const [nameDraft, setNameDraft] = useState('')
   const { loading: savingName, success: savingNameSuccess, run: runSaveName } = useAsyncSubmit()
 
-  const [showFosterForm, setShowFosterForm] = useState(false)
+  /** Cesta D, třetí kolo (2026-07-24, Petrovo přání "Cokoli se zadává do
+   * systému... v pravém schovávacím sidebaru podobně jako 'Nová událost'
+   * v kalendáři") — JEDEN sdílený pravý panel pro všechny "+ Přidat…" akce
+   * na týhle stránce (pěstoun/dítě/respit/série), místo čtyř nezávislých
+   * inline formulářů. Respit/série žijou uvnitř `FamilyCareEventsSection`
+   * (jiná datová doména) — jejich formulář se do `panelSlotEl` renderuje
+   * portálem (`FamilyCarePanelHost`), pěstoun/dítě se renderují přímo tady. */
+  const [panelMode, setPanelMode] = useState<'foster' | 'child' | 'respit' | 'series' | null>(null)
+  const [panelSlotEl, setPanelSlotEl] = useState<HTMLDivElement | null>(null)
   const [fosterFirstName, setFosterFirstName] = useState('')
   const [fosterLastName, setFosterLastName] = useState('')
   const [fosterPhone, setFosterPhone] = useState('')
@@ -121,7 +128,6 @@ export default function FamilyDetailPage() {
   const [fosterEmail, setFosterEmail] = useState('')
   const [fosterEmailError, setFosterEmailError] = useState<string | null>(null)
 
-  const [showChildForm, setShowChildForm] = useState(false)
   const [childFirstName, setChildFirstName] = useState('')
   const [childLastName, setChildLastName] = useState('')
   const [childBirthNumber, setChildBirthNumber] = useState('')
@@ -303,7 +309,7 @@ export default function FamilyDetailPage() {
       setFosterLastName('')
       setFosterPhone('')
       setFosterEmail('')
-      setShowFosterForm(false)
+      setPanelMode(null)
     } catch {
       setError('Přidání pěstouna se nezdařilo.')
     }
@@ -345,7 +351,7 @@ export default function FamilyDetailPage() {
       setChildFirstName('')
       setChildLastName('')
       setChildBirthNumber('')
-      setShowChildForm(false)
+      setPanelMode(null)
     } catch {
       setError('Přidání dítěte se nezdařilo.')
     }
@@ -423,8 +429,11 @@ export default function FamilyDetailPage() {
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: displayName }]}>
-      <div className="-mx-8 -mt-6 mb-6 flex items-start justify-between gap-4 border-b border-border-default bg-surface-soft px-8 py-5">
+    <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: displayName }]} fullBleed>
+      <div className="flex h-full min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto p-8">
+      <div className="mb-5 flex items-start justify-between gap-4">
         <div className="min-w-0">
           {editingName ? (
             <div className="flex items-center gap-2">
@@ -444,7 +453,7 @@ export default function FamilyDetailPage() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <h1 className="text-[22px] font-bold leading-tight text-text-primary">{displayName}</h1>
+              <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">{displayName}</h1>
               <button
                 type="button"
                 onClick={startEditName}
@@ -483,7 +492,7 @@ export default function FamilyDetailPage() {
               <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
               <Link
                 to={`/rodiny/${familyUid}/dohoda`}
-                className="mt-3 flex items-center gap-3 max-w-[560px] rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-overlay-hover"
+                className="mt-3 flex items-center gap-3 max-w-[560px] rounded-lg bg-surface-soft p-5 shadow-raised transition-shadow duration-150 hover:shadow-md"
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
                   <Handshake size={18} strokeWidth={1.75} />
@@ -506,18 +515,12 @@ export default function FamilyDetailPage() {
           <section className="mt-8">
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-lg font-normal leading-tight text-text-primary">Pěstouni</h2>
-              <Button variant="secondary" size="sm" onClick={() => setShowFosterForm((v) => !v)}>
-                {showFosterForm ? (
-                  'Zrušit'
-                ) : (
-                  <>
-                    <Plus size={16} /> Přidat pěstouna
-                  </>
-                )}
+              <Button variant="secondary" size="sm" onClick={() => setPanelMode('foster')}>
+                <Plus size={16} /> Přidat pěstouna
               </Button>
             </div>
             {family && family.fosterPersonRefs.length >= 2 && (
-              <div className="mt-3 flex items-center justify-between gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-4">
+              <div className="mt-3 flex items-center justify-between gap-4 max-w-[560px] rounded-lg bg-surface-soft p-4 shadow-raised">
                 <span className="text-sm text-text-primary">Nové zápisy výchozí sdílet s oběma pěstouny</span>
                 <Switch
                   checked={family.partnerSharingDefault ?? true}
@@ -527,63 +530,16 @@ export default function FamilyDetailPage() {
               </div>
             )}
 
-            {showFosterForm && (
-              <form
-                onSubmit={handleAddFoster}
-                className="mt-4 flex flex-col gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-5"
-              >
-                <div className="grid grid-cols-2 gap-4">
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
-                    <Input required value={fosterFirstName} onChange={(e) => setFosterFirstName(e.target.value)} />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení</span>
-                    <Input required value={fosterLastName} onChange={(e) => setFosterLastName(e.target.value)} />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium leading-relaxed text-text-primary">Telefon</span>
-                    <Input
-                      value={fosterPhone}
-                      onChange={(e) => { setFosterPhone(e.target.value); setFosterPhoneError(null) }}
-                      onBlur={() => {
-                        const result = checkPhone(fosterPhone)
-                        setFosterPhone(result.value)
-                        setFosterPhoneError(result.ok ? null : (result.message ?? null))
-                      }}
-                    />
-                    {fosterPhoneError && <span className="text-xs text-danger">{fosterPhoneError}</span>}
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
-                    <Input
-                      type="email"
-                      value={fosterEmail}
-                      onChange={(e) => { setFosterEmail(e.target.value); setFosterEmailError(null) }}
-                      onBlur={() => {
-                        const result = checkEmail(fosterEmail)
-                        setFosterEmail(result.value)
-                        setFosterEmailError(result.ok ? null : (result.message ?? null))
-                      }}
-                    />
-                    {fosterEmailError && <span className="text-xs text-danger">{fosterEmailError}</span>}
-                  </label>
-                </div>
-                <Button type="submit" loading={addingFoster} success={addingFosterSuccess} className="w-fit">
-                  Přidat
-                </Button>
-              </form>
-            )}
-
             <div className="mt-4 max-w-[928px]">
               {fosterPersons.length === 0 ? (
                 <EmptyState icon={UserRound} text="Zatím žádní pěstouni." />
               ) : (
-                <Table>
-                  <TableHeaderRow columns={FOSTER_COLUMNS} labels={['', 'Jméno', 'Telefon', '', '']} />
+                <RecordCardList>
                   {fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => (
-                    <Link key={fpId} to={`/rodiny/${familyUid}/pestoun/${fpId}`} className="contents">
-                      <TableRow columns={FOSTER_COLUMNS}>
+                    <RecordCard
+                      key={fpId}
+                      onClick={() => navigate(`/rodiny/${familyUid}/pestoun/${fpId}`)}
+                      leading={
                         <EntityAvatar
                           photoURL={fp.avatarUrl}
                           label={`${fp.firstName} ${fp.lastName}`}
@@ -592,31 +548,33 @@ export default function FamilyDetailPage() {
                             !agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined
                           }
                         />
-                        <span className="text-sm text-text-primary">
-                          {fp.firstName} {fp.lastName}
-                        </span>
-                        <span className="text-sm text-text-secondary">{fp.phone || '—'}</span>
-                        <button
-                          type="button"
-                          title="Přiřadit spolupracovníkovi"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setAssigningEntity({
-                              entityType: 'fosterPerson',
-                              entityId: fpId,
-                              label: `${fp.firstName} ${fp.lastName}`,
-                            })
-                          }}
-                          className="flex size-6 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
-                        >
-                          <UserSquare2 size={14} strokeWidth={2} />
-                        </button>
-                        <span className="text-text-tertiary">›</span>
-                      </TableRow>
-                    </Link>
+                      }
+                      title={`${fp.firstName} ${fp.lastName}`}
+                      subtitle={fp.phone || undefined}
+                      trailing={
+                        <>
+                          <button
+                            type="button"
+                            title="Přiřadit spolupracovníkovi"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setAssigningEntity({
+                                entityType: 'fosterPerson',
+                                entityId: fpId,
+                                label: `${fp.firstName} ${fp.lastName}`,
+                              })
+                            }}
+                            className="flex size-8 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
+                          >
+                            <UserSquare2 size={14} strokeWidth={2} />
+                          </button>
+                          <span className="text-text-tertiary">›</span>
+                        </>
+                      }
+                    />
                   ))}
-                </Table>
+                </RecordCardList>
               )}
             </div>
           </section>
@@ -624,51 +582,21 @@ export default function FamilyDetailPage() {
           <section className="mt-8">
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-lg font-normal leading-tight text-text-primary">Svěřené děti</h2>
-              <Button variant="secondary" size="sm" onClick={() => setShowChildForm((v) => !v)}>
-                {showChildForm ? (
-                  'Zrušit'
-                ) : (
-                  <>
-                    <Plus size={16} /> Přidat dítě
-                  </>
-                )}
+              <Button variant="secondary" size="sm" onClick={() => setPanelMode('child')}>
+                <Plus size={16} /> Přidat dítě
               </Button>
             </div>
-
-            {showChildForm && (
-              <form
-                onSubmit={handleAddChild}
-                className="mt-4 flex flex-col gap-4 max-w-[560px] rounded-lg border border-border bg-surface p-5"
-              >
-                <div className="grid grid-cols-3 gap-4">
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
-                    <Input required value={childFirstName} onChange={(e) => setChildFirstName(e.target.value)} />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení</span>
-                    <Input required value={childLastName} onChange={(e) => setChildLastName(e.target.value)} />
-                  </label>
-                  <label className="flex flex-col gap-1.5">
-                    <span className="text-sm font-medium leading-relaxed text-text-primary">Rodné číslo</span>
-                    <Input required value={childBirthNumber} onChange={(e) => setChildBirthNumber(e.target.value)} />
-                  </label>
-                </div>
-                <Button type="submit" loading={addingChild} success={addingChildSuccess} className="w-fit">
-                  Přidat
-                </Button>
-              </form>
-            )}
 
             <div className="mt-4 max-w-[928px]">
               {children.length === 0 ? (
                 <EmptyState icon={Baby} text="Zatím žádné svěřené děti." />
               ) : (
-                <Table>
-                  <TableHeaderRow columns={CHILD_COLUMNS} labels={['', 'Jméno', '', '']} />
+                <RecordCardList>
                   {children.map(({ docId: childId, child }) => (
-                    <Link key={childId} to={`/rodiny/${familyUid}/dite/${childId}`} className="contents">
-                      <TableRow columns={CHILD_COLUMNS}>
+                    <RecordCard
+                      key={childId}
+                      onClick={() => navigate(`/rodiny/${familyUid}/dite/${childId}`)}
+                      leading={
                         <EntityAvatar
                           photoURL={child.avatarUrl}
                           label={`${child.firstName} ${child.lastName}`}
@@ -677,30 +605,32 @@ export default function FamilyDetailPage() {
                             !agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined
                           }
                         />
-                        <span className="text-sm text-text-primary">
-                          {child.firstName} {child.lastName}
-                        </span>
-                        <button
-                          type="button"
-                          title="Přiřadit spolupracovníkovi"
-                          onClick={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setAssigningEntity({
-                              entityType: 'child',
-                              entityId: childId,
-                              label: `${child.firstName} ${child.lastName}`,
-                            })
-                          }}
-                          className="flex size-6 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
-                        >
-                          <UserSquare2 size={14} strokeWidth={2} />
-                        </button>
-                        <span className="text-text-tertiary">›</span>
-                      </TableRow>
-                    </Link>
+                      }
+                      title={`${child.firstName} ${child.lastName}`}
+                      trailing={
+                        <>
+                          <button
+                            type="button"
+                            title="Přiřadit spolupracovníkovi"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setAssigningEntity({
+                                entityType: 'child',
+                                entityId: childId,
+                                label: `${child.firstName} ${child.lastName}`,
+                              })
+                            }}
+                            className="flex size-8 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
+                          >
+                            <UserSquare2 size={14} strokeWidth={2} />
+                          </button>
+                          <span className="text-text-tertiary">›</span>
+                        </>
+                      }
+                    />
                   ))}
-                </Table>
+                </RecordCardList>
               )}
             </div>
           </section>
@@ -711,6 +641,18 @@ export default function FamilyDetailPage() {
               organizationId={organizationId}
               currentUid={userDoc.uid}
               children={children}
+              respitPanel={{
+                isOpen: panelMode === 'respit',
+                onOpen: () => setPanelMode('respit'),
+                onClose: () => setPanelMode(null),
+                panelTarget: panelMode === 'respit' ? panelSlotEl : null,
+              }}
+              seriesPanel={{
+                isOpen: panelMode === 'series',
+                onOpen: () => setPanelMode('series'),
+                onClose: () => setPanelMode(null),
+                panelTarget: panelMode === 'series' ? panelSlotEl : null,
+              }}
             />
           )}
         </>
@@ -886,6 +828,109 @@ export default function FamilyDetailPage() {
           />
         </div>
       )}
+      </div>
+          </div>
+        </div>
+
+        {panelMode === 'foster' && (
+          <SidePanel title="Přidat pěstouna" onClose={() => setPanelMode(null)}>
+            <form onSubmit={handleAddFoster} className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
+                <Input required autoFocus value={fosterFirstName} onChange={(e) => setFosterFirstName(e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení</span>
+                <Input required value={fosterLastName} onChange={(e) => setFosterLastName(e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Telefon</span>
+                <Input
+                  value={fosterPhone}
+                  onChange={(e) => { setFosterPhone(e.target.value); setFosterPhoneError(null) }}
+                  onBlur={() => {
+                    const result = checkPhone(fosterPhone)
+                    setFosterPhone(result.value)
+                    setFosterPhoneError(result.ok ? null : (result.message ?? null))
+                  }}
+                />
+                {fosterPhoneError && <span className="text-xs text-danger">{fosterPhoneError}</span>}
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
+                <Input
+                  type="email"
+                  value={fosterEmail}
+                  onChange={(e) => { setFosterEmail(e.target.value); setFosterEmailError(null) }}
+                  onBlur={() => {
+                    const result = checkEmail(fosterEmail)
+                    setFosterEmail(result.value)
+                    setFosterEmailError(result.ok ? null : (result.message ?? null))
+                  }}
+                />
+                {fosterEmailError && <span className="text-xs text-danger">{fosterEmailError}</span>}
+              </label>
+
+              {error && (
+                <p className="text-sm text-danger" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex gap-2 border-t border-border-default pt-4">
+                <Button type="submit" loading={addingFoster} success={addingFosterSuccess}>
+                  Přidat
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setPanelMode(null)} disabled={addingFoster}>
+                  Zrušit
+                </Button>
+              </div>
+            </form>
+          </SidePanel>
+        )}
+
+        {panelMode === 'child' && (
+          <SidePanel title="Přidat dítě" onClose={() => setPanelMode(null)}>
+            <form onSubmit={handleAddChild} className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
+                <Input required autoFocus value={childFirstName} onChange={(e) => setChildFirstName(e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Příjmení</span>
+                <Input required value={childLastName} onChange={(e) => setChildLastName(e.target.value)} />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Rodné číslo</span>
+                <Input required value={childBirthNumber} onChange={(e) => setChildBirthNumber(e.target.value)} />
+              </label>
+
+              {error && (
+                <p className="text-sm text-danger" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex gap-2 border-t border-border-default pt-4">
+                <Button type="submit" loading={addingChild} success={addingChildSuccess}>
+                  Přidat
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setPanelMode(null)} disabled={addingChild}>
+                  Zrušit
+                </Button>
+              </div>
+            </form>
+          </SidePanel>
+        )}
+
+        {(panelMode === 'respit' || panelMode === 'series') && (
+          <SidePanel
+            title={panelMode === 'respit' ? 'Zaznamenat respit' : 'Založit sérii'}
+            onClose={() => setPanelMode(null)}
+          >
+            <div ref={setPanelSlotEl} />
+          </SidePanel>
+        )}
       </div>
 
       {recorder && docId && organizationId && userDoc && (

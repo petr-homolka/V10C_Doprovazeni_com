@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
-import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
+import { SidePanel } from '@/components/ui/side-panel'
+import { RecordCard, RecordCardList } from '@/components/ui/record-card'
+import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -23,13 +24,24 @@ import { Plus, UserCog } from 'lucide-react'
 // Org_admin nepřiděluje `superadmin` (platformní role) — viz firestore.rules.
 const ASSIGNABLE_ROLES = STAFF_ROLES.filter((r) => r !== 'superadmin')
 
-const TABLE_COLUMNS = '1.3fr 1.3fr 1.1fr 0.7fr 70px 100px'
+type PanelState =
+  | { mode: 'create' }
+  | { mode: 'capacity'; member: UserDoc }
+  | { mode: 'modules'; member: UserDoc }
+  | null
 
 /**
  * /zamestnanci — M1, §5.7 "Nastavení ≠ Správa entit": vlastní stránka
- * appky (tabulka, ne záložka v Nastavení). Všichni zaměstnanci vidí
+ * appky (seznam, ne záložka v Nastavení). Všichni zaměstnanci vidí
  * týmový seznam (read-only), jen `org_admin` vidí formulář na založení
  * a může měnit stav (aktivní/zablokován) — přesně dle firestore.rules.
+ *
+ * Cesta D, třetí kolo (2026-07-24, přímé přání Petra "Cokoli se zadává
+ * do systému... v pravém schovávacím sidebaru") — Table nahrazena
+ * RecordCardList, všechny tři formuláře (založení/kapacita/moduly) teď
+ * žijou v JEDNOM sdíleném pravém `SidePanel`u (stejný vzor jako
+ * "Nová událost" v Kalendáři), místo tří nezávislých inline formulářů
+ * pod hlavičkou.
  */
 export default function StaffPage() {
   const { userDoc } = useAuth()
@@ -38,7 +50,7 @@ export default function StaffPage() {
   const [orgThreshold, setOrgThreshold] = useState<number | null | undefined>(undefined)
   const [platformThreshold, setPlatformThreshold] = useState(DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
+  const [panel, setPanel] = useState<PanelState>(null)
   const { loading: creating, success: createSuccess, run: runCreate } = useAsyncSubmit()
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
@@ -46,12 +58,10 @@ export default function StaffPage() {
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<StaffRole>('zamestnanec')
 
-  const [editingMember, setEditingMember] = useState<UserDoc | null>(null)
   const [editFte, setEditFte] = useState('1')
   const [editOverride, setEditOverride] = useState('')
   const { loading: savingCapacity, success: saveCapacitySuccess, run: runSaveCapacity } = useAsyncSubmit()
 
-  const [editingModulesFor, setEditingModulesFor] = useState<UserDoc | null>(null)
   const [editModules, setEditModules] = useState<Partial<Record<CollaboratorModuleKey, boolean>>>({})
   const { loading: savingModules, success: saveModulesSuccess, run: runSaveModules } = useAsyncSubmit()
 
@@ -77,24 +87,38 @@ export default function StaffPage() {
     }
   }
 
+  function openCreate() {
+    setDisplayName('')
+    setEmail('')
+    setEmailError(null)
+    setPassword('')
+    setRole('zamestnanec')
+    setPanel({ mode: 'create' })
+  }
+
   function openCapacityEdit(member: UserDoc) {
-    setEditingMember(member)
     setEditFte(String(member.fte ?? 1))
     setEditOverride(member.capacityThresholdOverride != null ? String(member.capacityThresholdOverride) : '')
+    setPanel({ mode: 'capacity', member })
+  }
+
+  function openModulesEdit(member: UserDoc) {
+    setEditModules(member.collaboratorModules ?? {})
+    setPanel({ mode: 'modules', member })
   }
 
   async function handleSaveCapacity(e: FormEvent) {
     e.preventDefault()
-    if (!editingMember) return
+    if (panel?.mode !== 'capacity') return
     setError(null)
     try {
       await runSaveCapacity(async () => {
         const fte = Math.min(1, Math.max(0.1, Number(editFte) || 1))
         const override = editOverride.trim() === '' ? null : Number(editOverride)
-        await updateStaffCapacitySettings(editingMember.uid, fte, override)
+        await updateStaffCapacitySettings(panel.member.uid, fte, override)
         await reload()
       })
-      setEditingMember(null)
+      setPanel(null)
     } catch {
       setError('Nastavení kapacity se nepodařilo uložit.')
     }
@@ -105,21 +129,16 @@ export default function StaffPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [organizationId])
 
-  function openModulesEdit(member: UserDoc) {
-    setEditingModulesFor(member)
-    setEditModules(member.collaboratorModules ?? {})
-  }
-
   async function handleSaveModules(e: FormEvent) {
     e.preventDefault()
-    if (!editingModulesFor) return
+    if (panel?.mode !== 'modules') return
     setError(null)
     try {
       await runSaveModules(async () => {
-        await setCollaboratorModules(editingModulesFor.uid, editModules)
+        await setCollaboratorModules(panel.member.uid, editModules)
         await reload()
       })
-      setEditingModulesFor(null)
+      setPanel(null)
     } catch {
       setError('Moduly se nepodařilo uložit.')
     }
@@ -142,7 +161,7 @@ export default function StaffPage() {
       setEmail('')
       setPassword('')
       setRole('zamestnanec')
-      setShowForm(false)
+      setPanel(null)
     } catch {
       setError('Založení zaměstnance se nezdařilo. Zkontrolujte údaje.')
     }
@@ -169,216 +188,238 @@ export default function StaffPage() {
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]}>
-      <PageHeader
-        title="Zaměstnanci"
-        actions={
-          isOrgAdmin && (
-            <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-              {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zaměstnance</>)}
-            </Button>
-          )
-        }
-      />
+    <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]} fullBleed>
+      <div className="flex h-full min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto p-8">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h1 className="font-heading text-[26px] font-bold leading-tight text-text-primary">Zaměstnanci</h1>
+              {isOrgAdmin && (
+                <Button size="sm" onClick={openCreate}>
+                  <Plus size={16} /> Přidat zaměstnance
+                </Button>
+              )}
+            </div>
 
-      {error && (
-        <p className="mt-3 max-w-xl text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+            {error && (
+              <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
 
-      {showForm && isOrgAdmin && (
-        <form
-          onSubmit={handleCreate}
-          className="mt-4 flex flex-col max-w-[560px] gap-4 rounded-lg border border-border bg-surface p-5"
-        >
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
-              <Input required value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Role</span>
-              <Select
-                value={role}
-                onChange={(e) => setRole(e.target.value as StaffRole)}
-              >
-                {ASSIGNABLE_ROLES.map((r) => (
-                  <option key={r} value={r}>
-                    {STAFF_ROLE_LABELS[r]}
-                  </option>
-                ))}
-              </Select>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
-              <Input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setEmailError(null) }}
-                onBlur={() => {
-                  const result = checkEmail(email)
-                  setEmail(result.value)
-                  setEmailError(result.ok ? null : (result.message ?? null))
-                }}
-              />
-              {emailError && <span className="text-xs text-danger">{emailError}</span>}
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Dočasné heslo</span>
-              <Input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
+            {staff === null ? (
+              <p className="text-sm text-text-secondary">Načítám…</p>
+            ) : staff.length === 0 ? (
+              <div className="rounded-lg bg-surface-soft p-8 shadow-raised">
+                <EmptyState icon={UserCog} text="Zatím tu nejsou žádní zaměstnanci." />
+              </div>
+            ) : (
+              <RecordCardList>
+                {staff.map((member) => {
+                  const activeCaseload = caseloadByKo[member.uid] ?? 0
+                  const threshold = computeEffectiveCapacityThreshold(
+                    member.fte,
+                    member.capacityThresholdOverride,
+                    orgThreshold,
+                    platformThreshold,
+                  )
+                  return (
+                    <RecordCard
+                      key={member.uid}
+                      leading={<EntityAvatar label={member.displayName} />}
+                      title={member.displayName}
+                      subtitle={member.email}
+                      meta={
+                        <>
+                          <div className="hidden text-right sm:block">
+                            <p className="text-[11px] uppercase tracking-wide text-text-tertiary">Role</p>
+                            <p className="text-sm text-text-secondary">{STAFF_ROLE_LABELS[member.role as StaffRole]}</p>
+                          </div>
+                          <span
+                            className={
+                              member.disabledAt
+                                ? 'text-sm font-medium text-danger'
+                                : 'text-sm font-medium text-success'
+                            }
+                          >
+                            {member.disabledAt ? 'Zablokován' : 'Aktivní'}
+                          </span>
+                          {member.role === 'spolupracovnik' ? (
+                            isOrgAdmin && (
+                              <Button variant="ghost" size="sm" onClick={() => openModulesEdit(member)} className="w-fit">
+                                Moduly
+                              </Button>
+                            )
+                          ) : isOrgAdmin ? (
+                            <button
+                              type="button"
+                              onClick={() => openCapacityEdit(member)}
+                              title="Upravit kapacitu"
+                              className="w-fit"
+                            >
+                              <CapacityRing value={activeCaseload} max={threshold} />
+                            </button>
+                          ) : (
+                            <CapacityRing value={activeCaseload} max={threshold} />
+                          )}
+                        </>
+                      }
+                      trailing={
+                        isOrgAdmin && member.role !== 'org_admin' ? (
+                          <Button variant="ghost" size="sm" onClick={() => handleToggleDisabled(member)}>
+                            {member.disabledAt ? 'Odblokovat' : 'Zablokovat'}
+                          </Button>
+                        ) : undefined
+                      }
+                    />
+                  )
+                })}
+              </RecordCardList>
+            )}
           </div>
-          <Button type="submit" loading={creating} success={createSuccess} className="w-fit">
-            Založit účet
-          </Button>
-        </form>
-      )}
+        </div>
 
-      {editingMember && (
-        <form
-          onSubmit={handleSaveCapacity}
-          className="mt-4 flex flex-col max-w-[560px] gap-4 rounded-lg border border-border bg-surface p-5"
-        >
-          <p className="text-sm font-medium text-text-primary">
-            Kapacita — {editingMember.displayName}
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Úvazek (FTE)</span>
-              <Input
-                type="number"
-                min={0.1}
-                max={1}
-                step={0.1}
-                value={editFte}
-                onChange={(e) => setEditFte(e.target.value)}
-              />
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">
-                Vlastní práh (nepovinné)
-              </span>
-              <Input
-                type="number"
-                min={1}
-                placeholder={`výchozí: ${orgThreshold ?? platformThreshold}`}
-                value={editOverride}
-                onChange={(e) => setEditOverride(e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" loading={savingCapacity} success={saveCapacitySuccess} className="w-fit">
-              Uložit
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => setEditingMember(null)} className="w-fit">
-              Zrušit
-            </Button>
-          </div>
-        </form>
-      )}
-
-      {editingModulesFor && (
-        <form
-          onSubmit={handleSaveModules}
-          className="mt-4 flex flex-col max-w-[560px] gap-4 rounded-lg border border-border bg-surface p-5"
-        >
-          <p className="text-sm font-medium text-text-primary">
-            Moduly — {editingModulesFor.displayName}
-          </p>
-          <p className="text-xs text-text-tertiary">
-            Co spolupracovník vidí/může u osob, co mu přiřadíte (Rodina → profil dítěte/pěstouna → "Přiřadit spolupracovníkovi").
-          </p>
-          <div className="flex flex-col gap-2">
-            {COLLABORATOR_MODULE_KEYS.map((key) => (
-              <label key={key} className="flex items-center gap-2 text-sm text-text-primary">
-                <input
-                  type="checkbox"
-                  checked={editModules[key] === true}
-                  onChange={(e) => setEditModules((m) => ({ ...m, [key]: e.target.checked }))}
-                  className="size-4 rounded-sm border-border-medium accent-primary"
-                />
-                {COLLABORATOR_MODULE_LABELS[key]}
+        {panel?.mode === 'create' && (
+          <SidePanel title="Přidat zaměstnance" onClose={() => setPanel(null)}>
+            <form onSubmit={handleCreate} className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
+                <Input required autoFocus value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
               </label>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" loading={savingModules} success={saveModulesSuccess} className="w-fit">
-              Uložit
-            </Button>
-            <Button type="button" variant="secondary" onClick={() => setEditingModulesFor(null)} className="w-fit">
-              Zrušit
-            </Button>
-          </div>
-        </form>
-      )}
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Role</span>
+                <Select value={role} onChange={(e) => setRole(e.target.value as StaffRole)}>
+                  {ASSIGNABLE_ROLES.map((r) => (
+                    <option key={r} value={r}>
+                      {STAFF_ROLE_LABELS[r]}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">E-mail</span>
+                <Input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setEmailError(null) }}
+                  onBlur={() => {
+                    const result = checkEmail(email)
+                    setEmail(result.value)
+                    setEmailError(result.ok ? null : (result.message ?? null))
+                  }}
+                />
+                {emailError && <span className="text-xs text-danger">{emailError}</span>}
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Dočasné heslo</span>
+                <Input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </label>
 
-      <div className="mt-6">
-        {staff === null ? (
-          <p className="text-sm text-text-secondary">Načítám…</p>
-        ) : staff.length === 0 ? (
-          <EmptyState icon={UserCog} text="Zatím tu nejsou žádní zaměstnanci." />
-        ) : (
-          <Table>
-            <TableHeaderRow
-              columns={TABLE_COLUMNS}
-              labels={['Jméno', 'E-mail', 'Role', 'Stav', 'Kapacita', '']}
-            />
-            {staff.map((member) => {
-              const activeCaseload = caseloadByKo[member.uid] ?? 0
-              const threshold = computeEffectiveCapacityThreshold(
-                member.fte,
-                member.capacityThresholdOverride,
-                orgThreshold,
-                platformThreshold,
-              )
-              return (
-                <TableRow key={member.uid} columns={TABLE_COLUMNS}>
-                  <span className="text-sm font-medium text-text-primary">{member.displayName}</span>
-                  <span className="truncate text-sm text-text-secondary">{member.email}</span>
-                  <span className="text-sm text-text-primary">{STAFF_ROLE_LABELS[member.role as StaffRole]}</span>
-                  <span className={member.disabledAt ? 'text-sm text-danger' : 'text-sm text-success'}>
-                    {member.disabledAt ? 'Zablokován' : 'Aktivní'}
-                  </span>
-                  {member.role === 'spolupracovnik' ? (
-                    isOrgAdmin ? (
-                      <Button variant="ghost" size="sm" onClick={() => openModulesEdit(member)} className="w-fit">
-                        Moduly
-                      </Button>
-                    ) : (
-                      <span />
-                    )
-                  ) : isOrgAdmin ? (
-                    <button
-                      type="button"
-                      onClick={() => openCapacityEdit(member)}
-                      title="Upravit kapacitu"
-                      className="w-fit"
-                    >
-                      <CapacityRing value={activeCaseload} max={threshold} />
-                    </button>
-                  ) : (
-                    <CapacityRing value={activeCaseload} max={threshold} />
-                  )}
-                  {isOrgAdmin && member.role !== 'org_admin' ? (
-                    <Button variant="ghost" size="sm" onClick={() => handleToggleDisabled(member)}>
-                      {member.disabledAt ? 'Odblokovat' : 'Zablokovat'}
-                    </Button>
-                  ) : (
-                    <span />
-                  )}
-                </TableRow>
-              )
-            })}
-          </Table>
+              {error && (
+                <p className="text-sm text-danger" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex gap-2 border-t border-border-default pt-4">
+                <Button type="submit" loading={creating} success={createSuccess}>
+                  Založit účet
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={creating}>
+                  Zrušit
+                </Button>
+              </div>
+            </form>
+          </SidePanel>
+        )}
+
+        {panel?.mode === 'capacity' && (
+          <SidePanel title={`Kapacita — ${panel.member.displayName}`} onClose={() => setPanel(null)}>
+            <form onSubmit={handleSaveCapacity} className="flex flex-col gap-4">
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Úvazek (FTE)</span>
+                <Input
+                  type="number"
+                  min={0.1}
+                  max={1}
+                  step={0.1}
+                  value={editFte}
+                  onChange={(e) => setEditFte(e.target.value)}
+                />
+              </label>
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm font-medium leading-relaxed text-text-primary">Vlastní práh (nepovinné)</span>
+                <Input
+                  type="number"
+                  min={1}
+                  placeholder={`výchozí: ${orgThreshold ?? platformThreshold}`}
+                  value={editOverride}
+                  onChange={(e) => setEditOverride(e.target.value)}
+                />
+              </label>
+
+              {error && (
+                <p className="text-sm text-danger" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex gap-2 border-t border-border-default pt-4">
+                <Button type="submit" loading={savingCapacity} success={saveCapacitySuccess}>
+                  Uložit
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={savingCapacity}>
+                  Zrušit
+                </Button>
+              </div>
+            </form>
+          </SidePanel>
+        )}
+
+        {panel?.mode === 'modules' && (
+          <SidePanel title={`Moduly — ${panel.member.displayName}`} onClose={() => setPanel(null)}>
+            <form onSubmit={handleSaveModules} className="flex flex-col gap-4">
+              <p className="text-xs text-text-tertiary">
+                Co spolupracovník vidí/může u osob, co mu přiřadíte (Rodina → profil dítěte/pěstouna →
+                "Přiřadit spolupracovníkovi").
+              </p>
+              <div className="flex flex-col gap-2">
+                {COLLABORATOR_MODULE_KEYS.map((key) => (
+                  <label key={key} className="flex items-center gap-2 text-sm text-text-primary">
+                    <input
+                      type="checkbox"
+                      checked={editModules[key] === true}
+                      onChange={(e) => setEditModules((m) => ({ ...m, [key]: e.target.checked }))}
+                      className="size-4 rounded-sm border-border-medium accent-primary"
+                    />
+                    {COLLABORATOR_MODULE_LABELS[key]}
+                  </label>
+                ))}
+              </div>
+
+              {error && (
+                <p className="text-sm text-danger" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex gap-2 border-t border-border-default pt-4">
+                <Button type="submit" loading={savingModules} success={saveModulesSuccess}>
+                  Uložit
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => setPanel(null)} disabled={savingModules}>
+                  Zrušit
+                </Button>
+              </div>
+            </form>
+          </SidePanel>
         )}
       </div>
     </AppShell>

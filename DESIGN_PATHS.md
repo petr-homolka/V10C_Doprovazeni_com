@@ -21,7 +21,7 @@ neslučuje, dokud si to výslovně nevyžádáš.
 | A     | `claude/session-zhiye5` (→ `master` po sloučení PR) | `path-a`   | https://v10c-doprovazeni-com.web.app   | Současný produkční vzhled, beze změny. |
 | B     | `design-b`            | `design-b`               | https://v10c-design-b.web.app          | Lumo/Vaadin inspirovaná cesta — plná strukturální přestavba (taby, PageHeader, full-bleed Kalendář s pravým panelem, rozšiřitelné číselníky, ikonové čipy). Průběžně živá, Petr na ní dál dolaďuje. |
 | C     | `design-c`            | `design-c`               | https://v10c-design-c.web.app          | Snímek Cesty B ze dne 2026-07-23 (větev odbočená z tehdejšího `design-b`) — zachovaný bod, ke kterému se lze kdykoli vrátit a nezávisle v něm dál dělat úpravy, i když se Cesta B mezitím posune jinam. |
-| D     | `design-d`            | `design-d`               | https://v10c-design-d.web.app          | Založená 2026-07-23 (stejný výchozí bod jako C) — čeká na kompletní nové zadání design systému, zatím vizuálně identická s tehdejší Cestou B. |
+| D     | `design-d`            | `design-d`               | https://v10c-design-d.web.app          | Woorkroom/Community CRM inspirovaná cesta — pastelové periferní pozadí, bílé zaoblené karty (`RecordCard`), plovoucí titulky bez rámečků, sdílený pravý `SidePanel` pro všechny "+ Přidat…" akce (Rodiny/Zaměstnanci/Pěstoun/Dítě/Respit/Asistovaný kontakt). Průběžně živá, 3. kolo strukturálních úprav. |
 
 ## Jak založit další cestu (C, D, E, …)
 
