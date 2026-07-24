@@ -5,6 +5,84 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Revize + avatary, profil zaměstnance, hledání v kalendáři (2026-07-24, Cesta D)
+
+Petrovo zadání: "projdi co jsme s tvými kolegy udělali, a navrhni zlepšení
+kdekoli je najdeš" → "postupuj podle svého návrhu". Revize se dělala proti
+PRODUKČNÍM DATŮM (`scripts/audit-prod.mjs`), ne jen proti kódu, a to našlo
+čtyři skutečné chyby, které čtení kódu neodhalilo.
+
+### Opravy z revize
+- **Chybějící fotky v produkci** — zaměstnanci 7/7 a rodiny 13/14 žádnou
+  neměly, protože seed, který se reálně spustil, backfill fotek
+  neobsahoval. `scripts/backfill-avatars.mjs` (NOVÝ) je nedestruktivní:
+  dopisuje jen CHYBĚJÍCÍ `avatarUrl`. Rodina dědí fotku primárního
+  pěstouna (stejná logika, jakou už má `resolveFamilyDisplayName` u
+  jména); rodina bez pěstouna se vědomě přeskočí.
+- **`scripts/lib/firestore-rest.mjs`** (NOVÝ) — jedna autentizace pro
+  admin skripty: `GOOGLE_APPLICATION_CREDENTIALS` (service account), jinak
+  `gcloud auth print-access-token`. Dřív existovaly dvě rozcházející se
+  kopie seedu, což tu chybu s fotkami způsobilo.
+- **`UserDoc.photoURL` → `avatarUrl`** — sjednoceno s ostatními entitami
+  (v produkci pod starým názvem žádná data nebyla, takže bez migrace).
+  Pozor: `firestore.rules` allow-list se musel nasadit ZNOVU, jinak by
+  upload fotky zaměstnance selhal.
+- **Čtení fotky zaměstnance zúženo na stejnou organizaci** (`storage.rules`,
+  nový helper `targetUserOrg`) — dřív stačilo být kdokoli přihlášený a
+  znát uid.
+- **`EntityAgenda` u vlastních typů událostí** zobrazovala technický klíč
+  (`navsteva-rodiny`) — teď dotahuje otevřený číselník z
+  `enumOptionsService`.
+
+### Avatary a agenda i na mobilu
+`lib/eventSubjects.ts` (NOVÉ) je jediný zdroj pravdy pro "koho se událost
+týká" — používá ho desktopový kalendář, mobilní agenda i `EntityAgenda`.
+`CalendarItem` dostal `familyDocId`, takže avatar má i připomínka návštěvy
+z Dohody, která žádnou `calendarEvents` událost nemá. Mobilní formulář
+navíc nabízí vlastní typy událostí organizace a umí přidat nový (dřív jen
+zabudované).
+
+### Profil zaměstnance + "jméno je vždy proklik"
+Zadání "kdekoli se objeví jakékoli jméno, je toto jméno vždy proklikem na
+profil. VŽDY!" nešlo u zaměstnanců splnit — profil neexistoval. Nová
+`StaffDetailPage` (`/zamestnanci/:uid`): fotka (mění sám uživatel nebo
+org_admin téže organizace — zrcadlí rules), role, stav, e-mail, kapacita a
+vlastní kalendář (u zaměstnance = události PŘIŘAZENÉ jemu, ne
+`subjectRefs`). Nastavení kapacity/modulů/blokace zůstává na seznamu.
+
+`components/ui/person-link.tsx` (NOVÉ) je jediné místo, kde se rozhoduje,
+kam které jméno vede; když profil složit nejde (neznámý autor zápisu,
+pěstoun bez rodiny), vykreslí prostý text, ať odkaz nikdy nevede do
+prázdna. Zapojeno v seznamu zaměstnanců, widgetu Tým, banneru kapacity,
+u řešitele úkolu, autorů zápisů (seznam i detail), subjektů zápisu, autorů
+zpráv v Messengeru i chatu na Spisu a u autora verze dokumentu. Pěstoun
+v `/moje` prokliky ZÁMĚRNĚ nemá — na staffová rozhraní nemá přístup.
+
+Cestou opraveno: widget Tým vůbec nezobrazoval fotky zaměstnanců (chybějící
+`photoURL`), a řádek časové osy byl `<button>` — `<a>` uvnitř `<button>` je
+nevalidní HTML, řádek je teď `div role="button"` s obsluhou klávesnice.
+
+### Hledání v kalendáři + kalendáře entit na vyžádání
+Lupa otevře hledání (desktop pravý panel, mobil vytažený sheet), pole se
+při psaní roztáhne na výšku a vypíše výsledky napříč kontaktními údaji
+všech entit — jméno, telefon, e-mail, adresa, rodné číslo, UID. Každý
+výsledek = ikona svého druhu + jméno, proklik na profil. `lib/entitySearch.ts`
+ignoruje diakritiku v obou směrech („novotna" najde „Novotná") a u čísel
+formátování („777123" najde „+420 777 123 456"); hledá v datech, která
+kalendář už načtená má, takže nestojí ani jeden dotaz navíc.
+
+Nastavení kalendáře umí zapnout kalendáře konkrétních rodin/pěstounů/dětí.
+Fungují PŘIČTENÍM: události zapnuté entity se zobrazí i tehdy, když je
+jejich řešitel ve filtru zaměstnanců schovaný — jinak by "zapnout kalendář
+rodiny" nešlo použít k tomu vidět jen tu rodinu.
+
+**Co NEBYLO živě ověřeno (SEAM):** vizuální kontrola v prohlížeči — egress
+proxy v tomhle prostředí blokuje `web.app`, lokální emulátor byl nestabilní.
+Ověřeno tedy `tsc -b`, `vitest` (69 testů) a auditem produkčních dat, ne
+očima. **Známý dluh:** `EntityAgenda` načítá VŠECHNY události organizace a
+navíc celé seznamy rodin/pěstounů/dětí kvůli avatarům — správné řešení je
+denormalizace subjektů do události (`subjectKeys`), aby šel dotaz zúžit.
+
 ## Narozeniny dětí z rodného čísla + vlastní Nastavení/Kalendář (2026-07-24)
 
 Přímá Petrova zpětná vazba na dávku níž: "narozeniny a jmeniny pro děti
