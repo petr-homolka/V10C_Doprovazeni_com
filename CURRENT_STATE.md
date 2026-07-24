@@ -5,6 +5,76 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Druhý průchod revizí: zúžené dotazy, globální hledání, úkoly u entit (2026-07-24)
+
+Petrovo zadání: smazat prázdnou rodinu, opravit `EntityAgenda` "jak to má
+být", a projít každé workflow a navrhnout zlepšení („dopředu s tebou
+souhlasím").
+
+### Dotazy místo skenů: `subjectKeys`
+Firestore neumí filtrovat podle pole uvnitř polí objektů, takže
+`subjectRefs` se dotazovat nedaly — kalendář i úkoly entity se proto
+načítaly stažením VŠECH dokumentů organizace a filtrováním v prohlížeči.
+
+`CalendarEventDoc.subjectKeys` i `TaskDoc.subjectKeys` jsou denormalizace
+do plochých klíčů `"kind:id"` (`buildSubjectKeys` v `lib/eventSubjects.ts`).
+Zdroj pravdy zůstává `subjectRefs` — klíče se z nich VŽDY přepočítávají při
+zápisu, i při úpravě vazeb (jinak by v profilu zůstal viset záznam, ze
+kterého ho někdo odvázal). Rodina z `familyDocId` se do klíčů přidává i
+tehdy, když v `subjectRefs` není: starší události mají vazbu jen tam.
+
+Nové zúžené dotazy: `listCalendarEventsForSubject`/`ForStaff`,
+`listTasksForSubject`/`ForStaff`. Bez `orderBy` záměrně — `array-contains`
++ `orderBy` vyžaduje složený index a řazení pár desítek řádků v prohlížeči
+je zdarma. `subjectDirectoryService.loadSubjectDirectory` dotahuje jména a
+fotky JEN pro entity, které se v načtených záznamech objevily; velký
+kalendář si adresář dál staví z už načtených seznamů, protože je potřebuje
+na filtry i našeptávače.
+
+`scripts/backfill-subject-keys.mjs` (`npm run backfill:subject-keys`) je
+idempotentní a řeší obě kolekce. V produkci doplnil 22 událostí a 9 úkolů;
+ověřeno, že zúžený dotaz dává identický výsledek jako předchozí sken.
+
+### Globální hledání
+Hledání bylo zavřené v kalendáři, i když najít člověka je nejčastější první
+krok práce. Lupa je teď v hlavičce (`TopBar`) na každé stránce, zkratka
+Ctrl/Cmd+K — ta záměrně nereaguje, když se právě píše do pole, ať nekrade
+stisk uprostřed formuláře. Výsledky se ovládají klávesnicí (↑/↓, Enter).
+
+Jedna komponenta (`components/search/EntitySearch.tsx`) obsluhuje hlavičku
+i kalendář: kalendář jí předá `data` (má je stejně načtená), hlavička jen
+`organizationId` a komponenta si je dotáhne sama při otevření.
+
+### Úkoly u entity, ke které patří
+`TaskDoc.subjectRefs` existoval od začátku, ale úkoly šly vidět jen na
+`/ukoly` jako jeden seznam za celou organizaci. Nová záložka **Úkoly**
+v profilu rodiny, pěstouna i dítěte (`components/tasks/EntityTasks.tsx`) a
+sekce v profilu zaměstnance („co má rozdělané", tedy `assignedToUid`, ne
+`subjectRefs`). Odškrtnout jde rovnou tam; "hotovo" je stav, ne mazání.
+Řazení: podle termínu, bez termínu na konec, po termínu červeně.
+
+### Zakládání pěstouna/dítěte ze seznamu
+Šlo to JEN z profilu rodiny, přitom v seznamu Pěstouni/Děti člověk skončí
+právě tehdy, když je má po ruce. Nový panel s výběrem rodiny — datový model
+zůstává nedotčený (`familyId` je povinné, pěstoun i dítě rodinu vždy mají),
+jen se ke stejné operaci dá dojít i odsud. U dítěte panel hned ukazuje
+datum narození dopočtené z rodného čísla, takže se překlep pozná před
+uložením.
+
+### Ostatní
+- `lib/staffColor.ts` — paleta a hash byly zduplikované v obou kalendářích
+  a komentář to sám označoval za dluh. "Eva je zelená" si lidé pamatují,
+  rozejít se ty kopie mohly kdykoli.
+- Smazána prázdná rodina bez jména a bez Dohody (na výslovný pokyn). Před
+  smazáním ověřeno, že na ni neodkazuje žádné dítě, pěstoun, událost ani
+  úkol a nemá podkolekce.
+- Tři události, které dřív neměly avatary, je mají — vazbu nesly ve
+  `familyDocId` a fallback na rodinu teď platí i pro `subjectKeys`.
+
+**Co NEBYLO živě ověřeno (stejný SEAM jako dávka níž):** vizuální kontrola
+v prohlížeči. Ověřeno `tsc -b`, `vitest` (73 testů) a dotazy proti
+produkčním datům.
+
 ## Revize + avatary, profil zaměstnance, hledání v kalendáři (2026-07-24, Cesta D)
 
 Petrovo zadání: "projdi co jsme s tvými kolegy udělali, a navrhni zlepšení
