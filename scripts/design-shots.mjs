@@ -112,7 +112,11 @@ for (const viewport of VIEWPORTS) {
       if (screen.lab) params.set('lab', screen.lab)
       if (screen.click) params.set('click', screen.click)
       if (screen.tab) params.set('tab', screen.tab)
-      await page.goto(`${base}?${params}`, { waitUntil: 'networkidle' })
+      // `domcontentloaded`, ne `networkidle`: náhled má stovky modulů z Vite
+      // dev serveru a jeden zablokovaný požadavek (egress proxy) stačí, aby
+      // se síť nikdy „neutišila" — celý běh pak spadl na timeoutu.
+      await page.goto(`${base}?${params}`, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+      await page.waitForSelector('#root > *', { timeout: 30_000 })
       // Stuby odpovídají okamžitě, ale `AutoInteract` klika po 400 ms a
       // panely mají vjezdovou animaci — 1200 ms je s rezervou po ní.
       await page.waitForTimeout(1200)
