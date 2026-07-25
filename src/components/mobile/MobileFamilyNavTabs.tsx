@@ -20,7 +20,10 @@ const TABS = [
  */
 export function MobileFamilyNavTabs({ active }: { active: 'rodiny' | 'pestouni' | 'deti' }) {
   return (
-    <div className="flex gap-1 rounded-full bg-field p-1">
+    /* Stejný jazyk jako záložky na desktopu (`ui/tabs.tsx`): podtržení pod
+       popiskem, ne tmavá pilulka. Appka nesmí mít dva různé způsoby, jak
+       říct „tady jsi" — a pilulka byla prvek ze staré verze. */
+    <div className="flex items-center gap-5 border-b border-border-subtle">
       {TABS.map((tab) => {
         const key = tab.to.slice(1) as 'rodiny' | 'pestouni' | 'deti'
         const isActive = key === active
@@ -29,8 +32,10 @@ export function MobileFamilyNavTabs({ active }: { active: 'rodiny' | 'pestouni' 
             key={tab.to}
             to={tab.to}
             className={cn(
-              'flex-1 rounded-full py-2 text-center text-base font-semibold transition-colors duration-150',
-              isActive ? 'bg-primary text-primary-foreground' : 'text-text-secondary',
+              '-mb-px flex h-9 items-center border-b-2 text-base transition-colors duration-150',
+              isActive
+                ? 'border-text-primary font-medium text-text-primary'
+                : 'border-transparent text-text-tertiary',
             )}
           >
             {tab.label}

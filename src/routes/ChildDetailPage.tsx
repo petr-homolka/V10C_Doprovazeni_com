@@ -16,14 +16,14 @@ import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import { birthDateFromBirthNumber } from '@/lib/birthNumber'
 import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
-import { Baby, UserSquare2 } from '@/components/ui/icons'
+import { Baby, Calendar, CheckSquare, Handshake, Receipt, UserSquare2 } from '@/components/ui/icons'
 
 const SECTIONS: TabItem[] = [
-  { key: 'prehled', label: 'Přehled' },
-  { key: 'podpora', label: 'Podpůrné aktivity a výdaje' },
-  { key: 'predani', label: 'Předání dítěte' },
-  { key: 'kalendar', label: 'Kalendář' },
-  { key: 'ukoly', label: 'Úkoly' },
+  { key: 'prehled', label: 'Přehled', icon: UserSquare2 },
+  { key: 'podpora', label: 'Podpůrné aktivity a výdaje', icon: Receipt },
+  { key: 'predani', label: 'Předání dítěte', icon: Handshake },
+  { key: 'kalendar', label: 'Kalendář', icon: Calendar },
+  { key: 'ukoly', label: 'Úkoly', icon: CheckSquare },
 ]
 
 /**

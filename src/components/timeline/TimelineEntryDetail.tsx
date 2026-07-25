@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { X } from '@/components/ui/icons'
 import { Drawer } from '@/components/ui/drawer'
-import { SegmentedTabs } from '@/components/ui/segmented-tabs'
+import { Tabs } from '@/components/ui/tabs'
 import { SHARING_LEVEL_LABELS } from '@/types/sharing'
 import type { TimelineEntryDoc } from '@/types/timelineEntry'
 
@@ -49,12 +49,12 @@ export function TimelineEntryDetail({
       </div>
 
       <div className="border-b border-border px-5 py-3">
-        <SegmentedTabs
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'prehled', label: 'Přehled' },
-            { value: 'historie', label: 'Historie' },
+        <Tabs
+          active={tab}
+          onSelect={(key) => setTab(key as 'prehled' | 'historie')}
+          items={[
+            { key: 'prehled', label: 'Přehled' },
+            { key: 'historie', label: 'Historie' },
           ]}
         />
       </div>

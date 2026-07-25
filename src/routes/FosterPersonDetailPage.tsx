@@ -23,15 +23,15 @@ import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
-import { UserRound, UserSquare2 } from '@/components/ui/icons'
+import { Calendar, CheckSquare, ClipboardList, GraduationCap, ListTodo, UserRound, UserSquare2 } from '@/components/ui/icons'
 
 const SECTIONS: TabItem[] = [
-  { key: 'prehled', label: 'Přehled' },
-  { key: 'vzdelavani', label: 'Vzdělávání a dávky' },
-  { key: 'prihlasky', label: 'Přihlášky na kurzy' },
-  { key: 'plan', label: 'Plán vzdělávání' },
-  { key: 'kalendar', label: 'Kalendář' },
-  { key: 'ukoly', label: 'Úkoly' },
+  { key: 'prehled', label: 'Přehled', icon: UserSquare2 },
+  { key: 'vzdelavani', label: 'Vzdělávání a dávky', icon: GraduationCap },
+  { key: 'prihlasky', label: 'Přihlášky na kurzy', icon: ClipboardList },
+  { key: 'plan', label: 'Plán vzdělávání', icon: ListTodo },
+  { key: 'kalendar', label: 'Kalendář', icon: Calendar },
+  { key: 'ukoly', label: 'Úkoly', icon: CheckSquare },
 ]
 
 /**

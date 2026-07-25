@@ -1,22 +1,27 @@
-import { CalendarPlus, ChevronLeft, ChevronRight, PanelRight, Search } from '@/components/ui/icons'
+import {
+  CalendarPlus, ChevronLeft, ChevronRight, Clock, List, PanelRight, Search, ViewMonth, ViewWeek,
+} from '@/components/ui/icons'
 import type { ToolbarProps } from 'react-big-calendar'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { SegmentedTabs } from '@/components/ui/segmented-tabs'
+import { Tabs } from '@/components/ui/tabs'
 import type { CalendarItem } from '@/lib/calendarAggregation'
 
-const VIEW_OPTIONS = [
-  { value: 'month', label: 'Měsíc' },
-  { value: 'week', label: 'Týden' },
-  { value: 'day', label: 'Den' },
-  { value: 'agenda', label: 'Agenda' },
-] as const
+/* Přepínač pohledu = ZÁLOŽKY s ikonou, jako jejich `Board | List`. Dřív to
+   byly tmavé pilulky, které křičely stejně jako „Nová událost". */
+const VIEW_TABS = [
+  { key: 'month', label: 'Měsíc', icon: ViewMonth },
+  { key: 'week', label: 'Týden', icon: ViewWeek },
+  { key: 'day', label: 'Den', icon: Clock },
+  { key: 'agenda', label: 'Agenda', icon: List },
+]
 
 /**
  * Vlastní toolbar (nahrazuje defaultní `.rbc-toolbar` úplně, viz
- * `calendar-overrides.css` doc komentář) — znovupoužívá `Button`/
- * `SegmentedTabs`, ať kalendář vypadá jako SOUČÁST appky, ne jako
- * vložený cizí widget se svým vlastním stylem tlačítek.
+ * `calendar-overrides.css`) — znovupoužívá `Button` a `Tabs`, ať kalendář
+ * vypadá jako SOUČÁST appky, ne jako vložený cizí widget. Přepínač pohledu
+ * jsou od 2026-07-25 ZÁLOŽKY (jedna komponenta pro celou appku), ne tmavé
+ * pilulky: pilulka na „Týden" křičela stejně jako „Nová událost".
  *
  * `onOpenSettings`/`onNewEvent` (2026-07-23) — jediné dva ovládací prvky,
  * co teď kalendáři zbyly NAD mřížkou (zbytek — filtr zaměstnanců, odkaz
@@ -67,7 +72,7 @@ export function CalendarToolbar({
         <h2 className="text-lg font-normal capitalize leading-tight text-text-primary">{label}</h2>
       </div>
       <div className="flex items-center gap-3">
-        <SegmentedTabs options={[...VIEW_OPTIONS]} value={view} onChange={onView} />
+        <Tabs items={VIEW_TABS} active={view} onSelect={(key) => onView(key as typeof view)} className="border-b-0" />
         <div className="flex items-center gap-1 border-l border-border-subtle pl-3">
           {onNewEvent && (
             <Button size="sm" onClick={onNewEvent}>

@@ -30,7 +30,7 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
 import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
-import { FileText, Plus } from '@/components/ui/icons'
+import { Ban, FileText, Plus, UserSquare2 } from '@/components/ui/icons'
 
 const CARE_TYPE_LABELS: Record<CareType, string> = {
   zprostredkovana: 'Zprostředkovaná (24 h/12 měsíců)',
@@ -38,9 +38,9 @@ const CARE_TYPE_LABELS: Record<CareType, string> = {
 }
 
 const SECTIONS: TabItem[] = [
-  { key: 'prehled', label: 'Přehled' },
-  { key: 'ippd', label: 'IPPD' },
-  { key: 'ukonceni', label: 'Ukončení Dohody' },
+  { key: 'prehled', label: 'Přehled', icon: UserSquare2 },
+  { key: 'ippd', label: 'IPPD', icon: FileText },
+  { key: 'ukonceni', label: 'Ukončení Dohody', icon: Ban },
 ]
 
 function tomorrowIsoDate(): string {

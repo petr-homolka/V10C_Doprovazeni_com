@@ -7,7 +7,7 @@ import {
   UserMultiple02Icon, UserGroup02Icon, UserSquareIcon, UserSettings01Icon, UserAdd01Icon,
   Home01Icon, Mic01Icon, ArrowRight01Icon, ArrowLeft01Icon, ArrowDown01Icon,
   ArrowRight02Icon, ArrowLeft02Icon, Calendar03Icon, CalendarAdd01Icon, CalendarCheckIcon,
-  Calendar02Icon, Clock01Icon, RepeatIcon, Loading03Icon, File01Icon, Xls01Icon,
+  Calendar02Icon, Calendar04Icon, GridIcon, Clock01Icon, RepeatIcon, Loading03Icon, File01Icon, Xls01Icon,
   StickyNote01Icon, NoteEditIcon, InvoiceIcon, TaskDone01Icon, CheckListIcon,
   LeftToRightListBulletIcon, LeftToRightListNumberIcon, CheckmarkSquare01Icon, SquareIcon,
   CheckmarkCircle02Icon, Alert02Icon, Message01Icon, HandshakeIcon, Mortarboard01Icon,
@@ -144,6 +144,11 @@ export const CalendarDays = icon(Calendar03Icon, 'CalendarDays')
 export const CalendarPlus = icon(CalendarAdd01Icon, 'CalendarPlus')
 export const CalendarCheck = icon(CalendarCheckIcon, 'CalendarCheck')
 export const CalendarClock = icon(Calendar02Icon, 'CalendarClock')
+/* Přepínač pohledu kalendáře potřebuje TŘI ODLIŠNÉ ikony — dvě stejné
+   u „Měsíc" a „Týden" ikonu k ničemu nedělají. Měsíc = mřížka,
+   týden = kalendář se sloupci, den = hodiny. */
+export const ViewMonth = icon(GridIcon, 'ViewMonth')
+export const ViewWeek = icon(Calendar04Icon, 'ViewWeek')
 export const Clock = icon(Clock01Icon, 'Clock')
 export const Repeat2 = icon(RepeatIcon, 'Repeat2')
 export const Loader2 = icon(Loading03Icon, 'Loader2')

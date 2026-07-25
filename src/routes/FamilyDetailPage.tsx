@@ -51,7 +51,10 @@ import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
-import { Baby, Clock, FileText, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from '@/components/ui/icons'
+import {
+  Baby, Calendar, CheckSquare, Clock, FileText, MessageCircle, Mic, Pencil, Plus, StickyNote, UserRound,
+  UserSquare2,
+} from '@/components/ui/icons'
 
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
   note: 'Poznámka',
@@ -77,13 +80,16 @@ const CARE_TYPE_LABELS: Record<CareType, string> = {
   nezprostredkovana: 'Nezprostředkovaná — příbuzenská',
 }
 
+/* Ikony u záložek jsou z Routine (jejich `Board | List`): na šesti
+   záložkách vedle sebe se ikona přečte dřív než slovo, takže se v profilu
+   dá skákat bez čtení. */
 const SECTIONS: TabItem[] = [
-  { key: 'prehled', label: 'Přehled' },
-  { key: 'casova-osa', label: 'Časová osa' },
-  { key: 'kalendar', label: 'Kalendář' },
-  { key: 'ukoly', label: 'Úkoly' },
-  { key: 'dokumenty', label: 'Dokumenty' },
-  { key: 'chat', label: 'Chat' },
+  { key: 'prehled', label: 'Přehled', icon: UserSquare2 },
+  { key: 'casova-osa', label: 'Časová osa', icon: Clock },
+  { key: 'kalendar', label: 'Kalendář', icon: Calendar },
+  { key: 'ukoly', label: 'Úkoly', icon: CheckSquare },
+  { key: 'dokumenty', label: 'Dokumenty', icon: FileText },
+  { key: 'chat', label: 'Chat', icon: MessageCircle },
 ]
 
 /**

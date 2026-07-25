@@ -2,14 +2,13 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { SidePanel } from '@/components/ui/side-panel'
-import { ListToolbar } from '@/components/ui/list-toolbar'
+import { ViewMenu } from '@/components/ui/view-menu'
 import { RecordCard, RecordCardList, RecordGroup } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Combobox } from '@/components/ui/combobox'
-import { SegmentedTabs } from '@/components/ui/segmented-tabs'
 import { Modal } from '@/components/ui/modal'
 import { AlertTag } from '@/components/ui/alert-tag'
 import { AddressLink } from '@/components/ui/address-link'
@@ -574,21 +573,23 @@ export default function FamilyListPage() {
               </p>
             )}
 
-            <ListToolbar>
-              {/* Bez popisku to vypadalo jako záložky (tedy navigace), ne jako
-               * řazení — přitom se tím obsah nemění, jen pořadí. */}
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xs uppercase tracking-wide text-text-faint">Seskupit</span>
-                  <SegmentedTabs options={GROUP_OPTIONS} value={groupBy} onChange={setGroupBy} />
-                </div>
-                {/* Bez popisku to vypadalo jako záložky (tedy navigace), ne jako
-                 * řazení — přitom se tím obsah nemění, jen pořadí. */}
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xs uppercase tracking-wide text-text-faint">Řadit</span>
-                  <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
-                </div>
-              </div>
+            {/* Ohraničený pruh (`ListToolbar`, teď smazaný) tady byl proto, aby
+                srostl s TABULKOU pod ním. Tabulka je dávno pryč — seznam jsou
+                řádky na vlasové linkce — takže rámeček neměl co držet.
+                Volby zobrazení jsou v JEDNOM tlačítku, jako u nich: trvale je
+                vidět jen výsledek volby, ne všech šest možností. */}
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <ViewMenu
+                groups={[
+                  {
+                    label: 'Seskupit',
+                    value: groupBy,
+                    options: GROUP_OPTIONS,
+                    onChange: (v) => setGroupBy(v as GroupBy),
+                  },
+                  { label: 'Řadit', value: sortBy, options: SORT_OPTIONS, onChange: (v) => setSortBy(v as SortBy) },
+                ]}
+              />
               {selected.size > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
@@ -603,7 +604,7 @@ export default function FamilyListPage() {
                   </Button>
                 </div>
               )}
-            </ListToolbar>
+            </div>
             {families === null ? (
               <p className="mt-3 text-sm text-text-secondary">Načítám…</p>
             ) : sortedRows.length === 0 ? (
