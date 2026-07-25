@@ -182,7 +182,7 @@ export default function MojeDashboardPage() {
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Vaše děti</h2>
+        <h2 className="text-base font-medium text-text-primary">Vaše děti</h2>
         <div className="mt-3">
           {children.length === 0 ? (
             <EmptyState icon={Baby} text="Zatím tu nejsou žádné svěřené děti." />
@@ -202,7 +202,7 @@ export default function MojeDashboardPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Sdílené zápisy</h2>
+        <h2 className="text-base font-medium text-text-primary">Sdílené zápisy</h2>
         <div className="mt-3">
           {entries.length === 0 ? (
             <EmptyState icon={Clock} text="Zatím tu nejsou žádné sdílené zápisy." />
@@ -238,7 +238,7 @@ export default function MojeDashboardPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Chat s klíčovou osobou</h2>
+        <h2 className="text-base font-medium text-text-primary">Chat s klíčovou osobou</h2>
         <div className="mt-3 flex max-h-[420px] flex-col gap-2 overflow-y-auto rounded-lg border border-border bg-inset p-4">
           {messages.length === 0 ? (
             <EmptyState icon={MessageCircle} text="Zatím žádné zprávy — napište klíčové osobě jako první." />
@@ -278,7 +278,7 @@ export default function MojeDashboardPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Dokumenty</h2>
+        <h2 className="text-base font-medium text-text-primary">Dokumenty</h2>
         <div className="mt-3">
           {documents.length === 0 ? (
             <EmptyState icon={FileText} text="Zatím tu nejsou žádné dokumenty ke schválení." />

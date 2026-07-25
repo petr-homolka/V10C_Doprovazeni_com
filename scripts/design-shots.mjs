@@ -45,9 +45,11 @@ const SCREENS = [
   { name: 'rodiny', route: '/rodiny' },
   { name: 'rodiny-novy-panel', route: '/rodiny', click: 'Nová rodina' },
   { name: 'rodina-profil', route: '/rodiny/9900010000015' },
-  { name: 'rodina-casova-osa', route: '/rodiny/9900010000015', tab: 'Časová osa' },
-  { name: 'rodina-ukoly', route: '/rodiny/9900010000015', tab: 'Úkoly' },
-  { name: 'rodina-kalendar', route: '/rodiny/9900010000015', tab: 'Kalendář' },
+  // Profil je JEDNA dlouhá stránka (žádné záložky), takže se musí fotit i
+  // odrolovaný — lhůty, zápisy a líně připojené bloky jsou až za přehybem.
+  { name: 'rodina-profil-lhuty', route: '/rodiny/9900010000015', scroll: 900 },
+  { name: 'rodina-profil-zapisy', route: '/rodiny/9900010000015', scroll: 1700 },
+  { name: 'rodina-profil-bloky', route: '/rodiny/9900010000015', scroll: 2600 },
   { name: 'deti', route: '/deti' },
   { name: 'deti-nove', route: '/deti', click: 'Nové dítě' },
   { name: 'pestouni', route: '/pestouni' },
@@ -143,6 +145,21 @@ for (const viewport of VIEWPORTS) {
         await page.keyboard.type(screen.type, { delay: 30 })
         await page.waitForTimeout(400)
       }
+      // Odrolování produkční stránky: `?scroll=` si čte jen designový lab,
+      // skutečná stránka roluje vnitřní kontejner, takže mu to nastavíme
+      // zvenčí. Pauza je na líně připojované bloky (IntersectionObserver).
+      if (screen.scroll) {
+        // Třikrát: líně připojené bloky stránku po každém doskočení PRODLOUŽÍ,
+        // takže první `scrollTop` se zarazí na tehdejším konci dokumentu.
+        for (let i = 0; i < 3; i += 1) {
+          await page.evaluate((y) => {
+            const el = document.querySelector('.sp > div') ?? document.scrollingElement
+            if (el) el.scrollTop = y
+          }, screen.scroll)
+          await page.waitForTimeout(700)
+        }
+      }
+
       const suffix = theme === 'dark' ? '-dark' : ''
       await page.screenshot({
         path: path.join(OUT, `${viewport.name}-${screen.name}${suffix}.png`),

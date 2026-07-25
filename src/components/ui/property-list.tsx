@@ -16,9 +16,14 @@ import { cn } from '@/lib/utils'
  * vlastnosti, každá s vlastním popiskem — dají se skenovat očima svisle
  * a hlavně se dá u každé zvlášť poznat, že chybí.
  *
- * Sloupec popisků je pevný (128 px), takže hodnoty začínají na jedné svislici
- * napříč všemi sekcemi profilu. To je celý trik, kterým hierarchii drží
- * i bez rámečků.
+ * Sloupec popisků je pevný, takže hodnoty začínají na jedné svislici napříč
+ * všemi sekcemi profilu. To je celý trik, kterým hierarchii drží i bez
+ * rámečků.
+ *
+ * Sazba je v `styles/spis.css` (`.sp__prop`), ne tady v třídách, kvůli
+ * telefonu: na 720 px a méně se popisek zarovná na LEVOU hranu a hodnota na
+ * PRAVOU — „sazba jako zápis v App Storu" (Petr, 2026-07-25). Tím to platí
+ * pro všechny profily v appce, ne jen pro rodinu.
  */
 export function PropertyList({ children, className }: { children: ReactNode; className?: string }) {
   return <dl className={cn('m-0', className)}>{children}</dl>
@@ -35,11 +40,9 @@ export function PropertyRow({
   align?: 'left' | 'right'
 }) {
   return (
-    <div className="flex items-center gap-4 border-b border-border-subtle py-2 last:border-b-0">
-      <dt className="w-32 shrink-0 text-sm text-text-tertiary">{label}</dt>
-      <dd className={cn('m-0 min-w-0 flex-1 text-sm text-text-primary', align === 'right' && 'flex justify-end')}>
-        {children}
-      </dd>
+    <div className="sp__prop border-b border-border-subtle last:border-b-0">
+      <dt className="sp__proplabel">{label}</dt>
+      <dd className={cn('sp__propvalue m-0', align === 'right' && 'flex justify-end')}>{children}</dd>
     </div>
   )
 }

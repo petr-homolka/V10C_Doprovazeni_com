@@ -119,27 +119,30 @@ function AgendaGroup({
 }) {
   return (
     <div>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-tertiary">{title}</h3>
-      <div className="flex flex-col gap-2">
+      {/* Skupina je popisek, ne rám — stejně jako v ostatních blocích spisu. */}
+      <h3 className="pb-1 text-xs text-text-faint">{title}</h3>
+      <div className="border-t border-border-subtle">
         {rows.map(({ docId, event }) => {
           const start = new Date(event.start)
           const end = new Date(event.end)
           const subjects = directory ? resolveItemSubjects(directory, { event }) : []
           return (
-            <div
-              key={docId}
-              className={`flex items-center gap-3 rounded-lg bg-surface-soft p-3 shadow-raised ${muted ? 'opacity-70' : ''}`}
-            >
-              <div className="flex w-14 shrink-0 flex-col items-center rounded-md bg-inset px-2 py-1 text-center">
-                <span className="text-2xs uppercase text-text-tertiary">
-                  {start.toLocaleDateString('cs-CZ', { month: 'short' })}
+            /* ŘÁDEK, NE KARTA (2026-07-25). Karta se stínem a vlastním
+               pozadím na každé události byla ta „stará verze", kterou Petr
+               odmítl — a v profilu teď stojí vedle řádkových bloků, takže by
+               nesourodost byla vidět na první pohled. */
+            <div key={docId} className={`sp__row sp__row--blizi ${muted ? 'opacity-60' : ''}`}>
+              <div className="sp__col--when text-right">
+                <span className="block text-sm text-text-primary">
+                  {start.getDate()}. {start.getMonth() + 1}.
                 </span>
-                <span className="text-base font-semibold leading-tight text-text-primary">{start.getDate()}</span>
+                <span className="block text-2xs text-text-faint">
+                  {start.toLocaleDateString('cs-CZ', { weekday: 'short' })}
+                </span>
               </div>
-              {subjects.length > 0 && <EventAvatarStack subjects={subjects} size={24} />}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-text-primary">{event.title}</p>
-                <p className="text-xs text-text-secondary">
+              <div className="min-w-0">
+                <p className="truncate text-sm text-text-primary">{event.title}</p>
+                <p className="truncate text-xs text-text-tertiary">
                   {start.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
                   {'–'}
                   {end.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}
@@ -147,6 +150,10 @@ function AgendaGroup({
                   {kindLabels[event.kind] ?? event.kind}
                 </p>
               </div>
+              <div className="sp__col--subjects flex justify-start">
+                {subjects.length > 0 && <EventAvatarStack subjects={subjects} size={20} />}
+              </div>
+              <span />
             </div>
           )
         })}

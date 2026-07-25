@@ -1,8 +1,8 @@
 import { StrictMode, useEffect, useState, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { AuthContext, type AuthContextValue } from '@/contexts/auth-context'
-import { currentUser } from './fixtures'
+import { AuthContext } from '@/contexts/auth-context'
+import { previewAuth } from './previewAuth'
 // STEJNÉ importy fontů jako `src/main.tsx` — bez nich by náhled kreslil
 // systémovým fontem a jakýkoli soud o typografii by byl o něčem jiném, než
 // co uvidí uživatel.
@@ -14,7 +14,6 @@ import '@/index.css'
 import './lab/lab.css'
 import './lab/osa/osa.css'
 import './lab/osa/routine.css'
-import './lab/spis/spis.css'
 import { DirectionSpis } from './lab/DirectionSpis'
 import { DirectionFaces } from './lab/DirectionFaces'
 import { DirectionRail } from './lab/DirectionRail'
@@ -61,15 +60,6 @@ import MobileTaskListPage from '@/routes/mobile/MobileTaskListPage'
  * Do produkčního bundlu se nic z `src/preview/` nedostane — `src/main.tsx`
  * to neimportuje.
  */
-
-const auth: AuthContextValue = {
-  firebaseUser: { uid: currentUser.uid, email: currentUser.email } as never,
-  userDoc: currentUser,
-  loading: false,
-  canPreviewRoles: false,
-  previewRole: null,
-  setPreviewRole: () => {},
-}
 
 /**
  * Motiv podle `?theme=` v URL. Musí se zapsat do localStorage POD stejným
@@ -157,7 +147,7 @@ function PreviewApp() {
   const initial = new URLSearchParams(window.location.search).get('route') ?? '/rodiny'
 
   return (
-    <AuthContext.Provider value={auth}>
+    <AuthContext.Provider value={previewAuth}>
       <MemoryRouter initialEntries={[initial]}>
         <AutoInteract />
         <Routes>

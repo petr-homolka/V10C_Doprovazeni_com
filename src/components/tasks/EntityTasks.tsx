@@ -84,7 +84,7 @@ export function EntityTasks({
   const today = new Date().toISOString().slice(0, 10)
 
   return (
-    <div className="flex max-w-[720px] flex-col gap-3">
+    <div className="flex max-w-[720px] flex-col gap-1">
       {error && (
         <p className="text-sm text-danger" role="alert">
           {error}
@@ -93,7 +93,8 @@ export function EntityTasks({
       {open.map(({ docId, task }) => {
         const overdue = !!task.dueDate && task.dueDate < today
         return (
-          <div key={docId} className="flex items-start gap-3 rounded-lg bg-surface-soft p-3 shadow-raised">
+          /* Řádek s vlasovou linkou, ne karta se stínem — viz `styles/spis.css`. */
+          <div key={docId} className="flex items-start gap-3 border-b border-border-subtle py-2">
             <button
               type="button"
               disabled={busyId === docId}
@@ -105,7 +106,7 @@ export function EntityTasks({
               <CheckCircle2 size={14} />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-text-primary">{task.title}</p>
+              <p className="text-sm text-text-primary">{task.title}</p>
               <p className="mt-0.5 text-xs text-text-secondary">
                 {task.dueDate ? (
                   <span className={overdue ? 'font-medium text-danger' : undefined}>
@@ -129,8 +130,8 @@ export function EntityTasks({
       })}
 
       {done.length > 0 && (
-        <details className="rounded-lg bg-inset p-3">
-          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+        <details className="pt-2">
+          <summary className="cursor-pointer text-xs text-text-faint">
             Hotovo ({done.length})
           </summary>
           <div className="mt-2 flex flex-col gap-1.5">

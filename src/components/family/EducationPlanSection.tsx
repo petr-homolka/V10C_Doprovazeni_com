@@ -204,7 +204,7 @@ export function EducationPlanSection({
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Plán vzdělávání — {fosterPersonName}</h2>
+        <h2 className="text-base font-medium text-text-primary">Plán vzdělávání — {fosterPersonName}</h2>
         <Button
           variant="secondary"
           size="sm"

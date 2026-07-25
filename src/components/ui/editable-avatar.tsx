@@ -5,7 +5,7 @@ import { uploadEntityAvatar, uploadUserAvatar } from '@/services/avatarService'
 import type { SubjectRefKind } from '@/types/timelineEntry'
 
 /**
- * Velký avatar v hlavičce profilu, který jde kliknutím změnit — otevře
+ * Avatar v hlavičce profilu, který jde kliknutím změnit — otevře
  * výběr souboru, nahraje ho přes `avatarService.uploadEntityAvatar` (Cloud
  * Storage + `avatarUrl` na dokumentu) a zavolá `onUploaded(url)`. Upload
  * službu jsme měli od M3, ale nikde nebyla ve UI zapojená — tohle je ten
@@ -19,6 +19,7 @@ export function EditableAvatar({
   label,
   fallbackIcon,
   onUploaded,
+  size = 'lg',
 }: {
   /** `staff` má fotku na `users/{uid}` v jiné cestě Storage než klientské
    * entity, jinak je chování stejné. */
@@ -29,6 +30,13 @@ export function EditableAvatar({
   label: string
   fallbackIcon?: IconComponent
   onUploaded: (url: string) => void
+  /**
+   * `sm` (32 px) je pro stránky, kde je nadpis nesený TYPOGRAFIÍ, ne
+   * portrétem. Devadesátišestipixelový kruh vedle jména byl přesně ten
+   * „profil jako vizitka", který Petr 2026-07-25 odmítl — fotka rodiny
+   * nikomu neřekne, jak se rodině vede.
+   */
+  size?: 'sm' | 'lg'
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
@@ -53,7 +61,7 @@ export function EditableAvatar({
   return (
     <div className="flex flex-col items-center gap-1">
       <EntityAvatar
-        size="lg"
+        size={size}
         photoURL={photoURL}
         label={label}
         fallbackIcon={fallbackIcon}

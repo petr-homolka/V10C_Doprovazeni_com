@@ -599,7 +599,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
 export function ChildSupportSection(props: ChildSupportSectionProps) {
   return (
     <section className="mt-8">
-      <h2 className="text-lg font-normal leading-tight text-text-primary">Podpůrné aktivity a výdaje — {props.childName}</h2>
+      <h2 className="text-base font-medium text-text-primary">Podpůrné aktivity a výdaje — {props.childName}</h2>
       <ScheduledActivitiesSubsection {...props} />
       <SupportExpensesSubsection {...props} />
     </section>

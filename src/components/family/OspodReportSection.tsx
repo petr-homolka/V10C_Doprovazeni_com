@@ -76,7 +76,7 @@ export function OspodReportSection({
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Report pro OSPOD</h2>
+        <h2 className="text-base font-medium text-text-primary">Report pro OSPOD</h2>
         {!open && (
           <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
             <FileText size={16} /> Vyplnit report

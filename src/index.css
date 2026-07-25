@@ -3,6 +3,7 @@
    a jsou ODEČTENÉ z konkrétního zdroje — komentář u nich říká z čeho. */
 @import './tokens.css';
 @import './editor.css';
+@import './styles/spis.css';
 
 @tailwind base;
 @tailwind components;

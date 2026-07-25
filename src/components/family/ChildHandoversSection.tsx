@@ -175,7 +175,7 @@ export function ChildHandoversSection({ familyDocId, childId, childName, organiz
     <section className="max-w-[720px]">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-lg font-normal leading-tight text-text-primary">Předání dítěte</h2>
+          <h2 className="text-base font-medium text-text-primary">Předání dítěte</h2>
           <p className="mt-0.5 text-sm text-text-tertiary">
             Předání do biologické či jiné náhradní rodiny (§B.10.2)
           </p>

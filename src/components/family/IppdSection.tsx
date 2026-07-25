@@ -190,7 +190,7 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
   return (
     <section className="mt-8">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">IPPD — individuální plán ochrany dítěte</h2>
+        <h2 className="text-base font-medium text-text-primary">IPPD — individuální plán ochrany dítěte</h2>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? (
             'Zrušit'

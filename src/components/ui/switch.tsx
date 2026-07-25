@@ -5,7 +5,11 @@ import { cn } from '@/lib/utils'
  * (`size-4`) s 2px odsazením (`left-0.5 top-0.5`), transition transform
  * 150ms — přeměřeno 2026-07-19 přímo na živém přepínači (skutečné kliknutí
  * + čtení classList/computed style PŘED i PO, ne jen výchozí stav):
- * track OFF = --toggle-off, track ON = --accent (dřív jsme tu měli
+ * track OFF = --toggle-off, track ON = --primary — GRAFIT, ne červená.
+ * Červená (`--accent`) je v appce vyhrazená jedné věci: „tohle hoří / je po
+ * termínu". Zapnutý přepínač v nastavení nehoří, jen je zapnutý; když byl
+ * červený, byl na profilu tím nejsilnějším prvkem na obrazovce.
+ * Historie: track OFF = --toggle-off, track ON = --accent (dřív jsme tu měli
  * monochromní --primary, teď podle explicitního zadání použito přesně
  * naměřená barva #4F69F2), thumb --toggle-thumb (#FAFAFA, KONSTANTNÍ
  * v obou režimech, potvrzeno měřením v obou — drží se stínem
@@ -30,7 +34,7 @@ export function Switch({
       className={cn(
         'relative inline-flex h-5 w-10 shrink-0 items-center rounded-full transition-[background-color,box-shadow] duration-150',
         'focus-visible:outline-none focus-visible:shadow-focus',
-        checked ? 'bg-accent' : 'bg-toggle-off',
+        checked ? 'bg-primary' : 'bg-toggle-off',
       )}
     >
       <span

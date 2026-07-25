@@ -17,17 +17,23 @@ export function AppShell({
   secondaryPanel,
   fullBleed,
   sidePanel,
+  pageContext,
+  pageActions,
 }: {
   children: ReactNode
   secondaryPanel?: ReactNode
   fullBleed?: boolean
   sidePanel?: ReactNode
+  /** Kde jsem — drobečky/název, vedle šipek v hlavičce. */
+  pageContext?: ReactNode
+  /** Akce téhle stránky, vpravo v hlavičce. Jedna primární, zbytek tiše. */
+  pageActions?: ReactNode
 }) {
   return (
     <div className="flex h-screen bg-app">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <TopBar />
+        <TopBar context={pageContext} actions={pageActions} />
         <ActiveVisitBanner />
         {secondaryPanel ? (
           <div className="flex min-h-0 flex-1">

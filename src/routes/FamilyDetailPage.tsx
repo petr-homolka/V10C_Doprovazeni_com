@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { Tabs, type TabItem } from '@/components/ui/tabs'
+import { PageOutline, type OutlineSection } from '@/components/spis/PageOutline'
+import { SpisBlock, SpisGroupLabel } from '@/components/spis/SpisBlock'
+import { DataAddRow, DataLabels, DataRow, DataRowReveal } from '@/components/spis/DataRow'
+import { LimitRow } from '@/components/spis/LimitRow'
 import { SidePanel } from '@/components/ui/side-panel'
 import { EntityAgenda } from '@/components/calendar/EntityAgenda'
 import { EntityTasks } from '@/components/tasks/EntityTasks'
-import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { EmptyState } from '@/components/ui/empty-state'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { EditableAvatar } from '@/components/ui/editable-avatar'
 import { Switch } from '@/components/ui/switch'
@@ -42,6 +43,12 @@ import { assignEntityToCollaborator } from '@/services/collaboratorService'
 import { createDocument, listFamilyDocuments } from '@/services/documentService'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
+import {
+  ageYears, buildCareLimits, dayCount, daysAgo, educationHoursInLastYear, lastSeenInPerson, nextVisitDue,
+  shortDate,
+} from '@/lib/spisInsights'
+import { listCalendarEventsForSubject } from '@/services/calendarEventService'
+import type { CalendarEventDoc } from '@/types/calendarEvent'
 import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
@@ -52,8 +59,7 @@ import type { UserDoc } from '@/types/user'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
 import {
-  Baby, Calendar, CheckSquare, Clock, FileText, MessageCircle, Mic, Pencil, Plus, StickyNote, UserRound,
-  UserSquare2,
+  ChevronDown, ChevronRight, Clock, FileText, Mic, Pencil, StickyNote, UserRound, UserSquare2,
 } from '@/components/ui/icons'
 
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
@@ -80,16 +86,29 @@ const CARE_TYPE_LABELS: Record<CareType, string> = {
   nezprostredkovana: 'Nezprostředkovaná — příbuzenská',
 }
 
-/* Ikony u záložek jsou z Routine (jejich `Board | List`): na šesti
-   záložkách vedle sebe se ikona přečte dřív než slovo, takže se v profilu
-   dá skákat bez čtení. */
-const SECTIONS: TabItem[] = [
-  { key: 'prehled', label: 'Přehled', icon: UserSquare2 },
-  { key: 'casova-osa', label: 'Časová osa', icon: Clock },
-  { key: 'kalendar', label: 'Kalendář', icon: Calendar },
-  { key: 'ukoly', label: 'Úkoly', icon: CheckSquare },
-  { key: 'dokumenty', label: 'Dokumenty', icon: FileText },
-  { key: 'chat', label: 'Chat', icon: MessageCircle },
+/*
+  OSNOVA STRÁNKY — místo šesti záložek.
+
+  Do 2026-07-25 byla rodina rozřezaná na šest obrazovek (Přehled / Časová osa
+  / Kalendář / Úkoly / Dokumenty / Chat) a člověk se mezi nimi proklikával,
+  aby si dal dohromady, jak se rodině vede. Petr na to řekl: „bych rád jiné
+  řešení než co bylo, zahoď to". Je to teď JEDNA dlouhá stránka a orientaci
+  v ní drží osnova vlevo (`PageOutline`), která ví, kde člověk je.
+
+  Pořadí není podle entit, ale PODLE ČASU a podle toho, co se s rodinou
+  opravdu dělá: co musím (lhůty) → co bylo (zápisy) → co se plánuje
+  (kalendář, úkoly) → papíry (dokumenty) → řeč (chat).
+*/
+const OUTLINE: readonly OutlineSection[] = [
+  { id: 'prehled', label: 'Přehled' },
+  { id: 'lide', label: 'Lidé' },
+  { id: 'lhuty', label: 'Lhůty a limity' },
+  { id: 'zapisy', label: 'Zápisy' },
+  { id: 'kalendar', label: 'Kalendář' },
+  { id: 'ukoly', label: 'Úkoly' },
+  { id: 'pece', label: 'Respit a kontakt' },
+  { id: 'dokumenty', label: 'Dokumenty' },
+  { id: 'chat', label: 'Chat' },
 ]
 
 /**
@@ -121,7 +140,12 @@ export default function FamilyDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
 
-  const [activeSection, setActiveSection] = useState('prehled')
+  const [events, setEvents] = useState<Array<{ docId: string; event: CalendarEventDoc }>>([])
+  /** Vlastnosti Dohody: pět vidět, ostatní na požádání. Adresu ani spisovku
+   * nikdo nehledá pětkrát denně — nemají trvale brát nejlepší místo. */
+  const [allProps, setAllProps] = useState(false)
+  /** Rolovací kontejner stránky — osnova z něj čte, kde člověk je. */
+  const scroller = useRef<HTMLDivElement>(null)
 
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -187,13 +211,17 @@ export default function FamilyDetailPage() {
       }
       setDocId(found.docId)
       setFamily(found.family)
-      const [fosters, kids, activeAgreement, staff, entries, docs] = await Promise.all([
+      const [fosters, kids, activeAgreement, staff, entries, docs, familyEvents] = await Promise.all([
         listFosterPersonsByRefs(found.family.fosterPersonRefs),
         listChildrenForFamily(found.docId, organizationId),
         getActiveAgreement(found.docId, organizationId),
         listStaff(organizationId),
         listTimelineEntries(found.docId, organizationId, userDoc?.uid ?? ''),
         listFamilyDocuments(found.docId, organizationId),
+        // Události rodiny se čtou i tady (ne jen v kalendáři): z délky
+        // vzdělávacích událostí se počítá ZÁKONNÝ LIMIT hodin, který je
+        // v bloku „Lhůty a limity" hned na začátku stránky.
+        listCalendarEventsForSubject(organizationId, 'family', found.docId),
       ])
       setFosterPersons(fosters)
       setChildren(kids)
@@ -202,6 +230,7 @@ export default function FamilyDetailPage() {
       setKoOptions(staff.filter((s) => s.role === 'klicova_osoba'))
       setTimelineEntries(entries)
       setDocuments(docs)
+      setEvents(familyEvents)
       // `docId` je nastavené (setDocId výš) v samostatném, DŘÍVĚJŠÍM render
       // batchi než `fosterPersons`/`children` tady (React nebatchuje napříč
       // `await` hranicí) — efekt otevírající recorder po návratu z Giant
@@ -566,481 +595,656 @@ export default function FamilyDetailPage() {
       </SidePanel>
     ) : undefined
 
+  /* ---------- co se dá spočítat (viz `lib/spisInsights.ts`) ---------- */
+
+  const educationHours = useMemo(() => educationHoursInLastYear(events), [events])
+  const limits = useMemo(
+    () => buildCareLimits({ agreement, entries: timelineEntries, educationHours }),
+    [agreement, timelineEntries, educationHours],
+  )
+  const due = agreement ? nextVisitDue(agreement) : null
+  const noActiveAgreement = !agreement || agreement.status !== 'active'
+
+  /** Lidé ve spisu s datem „naposledy osobně". Tohle je jádro nového
+   * profilu: telefon se nemění a nikdo ho v profilu nehledá, ale „koho
+   * z nich jsem půl roku neviděl" se jinak nikde nedozví. */
+  const people = useMemo(
+    () =>
+      [
+        ...fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => ({
+          group: 'Pěstouni',
+          kind: 'fosterPerson' as const,
+          id: fpId,
+          name: `${fp.firstName} ${fp.lastName}`,
+          age: ageYears(fp.birthDate),
+          contact: fp.phone ?? fp.email ?? null,
+          avatarUrl: fp.avatarUrl ?? null,
+          href: `/rodiny/${familyUid}/pestoun/${fpId}`,
+          lastSeen: lastSeenInPerson(timelineEntries, { kind: 'fosterPerson', id: fpId }),
+        })),
+        ...children.map(({ docId: childId, child }) => ({
+          group: 'Děti v péči',
+          kind: 'child' as const,
+          id: childId,
+          name: `${child.firstName} ${child.lastName}`,
+          age: ageYears(child.birthDate),
+          contact: null,
+          avatarUrl: child.avatarUrl ?? null,
+          href: `/rodiny/${familyUid}/dite/${childId}`,
+          lastSeen: lastSeenInPerson(timelineEntries, { kind: 'child', id: childId }),
+        })),
+      ] as const,
+    [fosterPersons, children, timelineEntries, familyUid],
+  )
+
+  /** Kdo je nejdéle bez osobního kontaktu. Kdyby to na obrazovce nebylo,
+   * musel by si to člověk odvodit ze pěti řádků — a proto se to zapomíná. */
+  const longestUnseen = people.reduce<(typeof people)[number] | null>((worst, person) => {
+    if (!person.lastSeen) return person
+    if (!worst) return person
+    if (!worst.lastSeen) return worst
+    return person.lastSeen < worst.lastSeen ? person : worst
+  }, null)
+
+  /** Zápisy po měsících. Skupina se nekreslí jako rám, jen jako tichý
+   * popisek — dělí to čas, ne obsah. */
+  const entriesByMonth = useMemo(() => {
+    const map = new Map<string, typeof timelineEntries>()
+    for (const item of [...timelineEntries].sort((a, b) => b.entry.occurredAt.localeCompare(a.entry.occurredAt))) {
+      const key = new Date(item.entry.occurredAt).toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })
+      const list = map.get(key)
+      if (list) list.push(item)
+      else map.set(key, [item])
+    }
+    return [...map]
+  }, [timelineEntries])
+
+  const quietAction =
+    'flex h-7 items-center gap-1.5 rounded-md px-2 text-sm text-text-secondary transition-colors duration-150 hover:bg-overlay-active disabled:opacity-50'
+
   return (
-    <AppShell fullBleed sidePanel={sidePanel}>
-      <div className="flex h-full min-w-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto p-8">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-4">
-          {docId && family && (
-            <EditableAvatar
-              kind="family"
-              id={docId}
-              photoURL={family.avatarUrl}
-              label={displayName}
-              fallbackIcon={UserRound}
-              onUploaded={(url) => setFamily((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
-            />
-          )}
-          <div className="min-w-0">
-          {editingName ? (
-            <div className="flex items-center gap-2">
-              <Input
-                autoFocus
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                className="h-9 w-64"
-                placeholder={primaryFosterName ?? family?.address ?? ''}
-              />
-              <Button size="sm" onClick={handleSaveName} loading={savingName} success={savingNameSuccess}>
-                Uložit
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
-                Zrušit
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">{displayName}</h1>
-              <button
-                type="button"
-                onClick={startEditName}
-                aria-label="Upravit název rodiny"
-                title="Upravit název rodiny"
-                className="text-text-tertiary transition-colors duration-150 hover:text-text-primary"
-              >
-                <Pencil size={14} />
-              </button>
-            </div>
-          )}
-          {family?.address && (
-            <p className="mt-1 text-sm">
-              <AddressLink address={family.address} />
-            </p>
-          )}
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-xs font-medium uppercase tracking-wide text-text-tertiary">Spis</p>
-          <p className="font-mono text-sm text-text-secondary">{familyUid}</p>
-        </div>
-      </div>
-
-      <div className="max-w-[928px]">
-        <Tabs items={SECTIONS} active={activeSection} onSelect={setActiveSection} />
-
-        {error && (
-          <p className="mt-3 text-sm text-danger" role="alert">
-            {error}
-          </p>
-        )}
-
-        {activeSection === 'prehled' && (
-          <>
-            {/* DOHODA JAKO SEZNAM VLASTNOSTÍ, ne karta.
-                Dřív to byla béžová karta se dvěma slepenými větami
-                („Zprostředkovaná (24 h/12 měsíců)" / „Platí od … · klíčová
-                osoba: …"). Petr na tu plochu ukázal právem: nenese žádnou
-                informaci, ale bere pozornost. Jako vlastnosti je z toho pět
-                samostatných údajů, každý s popiskem — dají se skenovat svisle
-                a hlavně se u každého zvlášť pozná, že chybí.
-                Klíčová osoba je navíc PROKLIK na její profil; z karty se na ni
-                kliknout nedalo. */}
-            <section className="mt-8">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
-                <Link
-                  to={`/rodiny/${familyUid}/dohoda`}
-                  className="text-sm text-text-tertiary transition-colors duration-150 hover:text-text-primary"
-                >
-                  {agreement ? 'Otevřít Dohodu →' : 'Založit Dohodu →'}
-                </Link>
-              </div>
-              {agreement ? (
-                <PropertyList className="mt-2 max-w-[560px]">
-                  <PropertyRow label="Typ péče">{CARE_TYPE_LABELS[agreement.careType]}</PropertyRow>
-                  <PropertyRow label="Platí od">
-                    {new Date(agreement.validFrom).toLocaleDateString('cs-CZ')}
-                  </PropertyRow>
-                  <PropertyRow label="Klíčová osoba">
-                    {agreement.assignedTo ? (
-                      <PersonLink
-                        kind="staff"
-                        id={agreement.assignedTo}
-                        name={
-                          koOptions.find((k) => k.uid === agreement.assignedTo)?.displayName ?? agreement.assignedTo
-                        }
-                      />
-                    ) : (
-                      <PropertyEmpty />
-                    )}
-                  </PropertyRow>
-                  <PropertyRow label="Interval návštěv">{agreement.visitIntervalDays} dní</PropertyRow>
-                  {/* Cíl hodin je v Dohodě, ale u starších záznamů chybět
-                      může — pak se dopočítá z typu péče, protože ho určuje
-                      zákon (24 h zprostředkovaná, 18 h příbuzenská). */}
-                  <PropertyRow label="Vzdělávání">
-                    {agreement.educationHoursTarget ?? EDUCATION_HOURS_TARGET[agreement.careType]} h / 12 měsíců
-                  </PropertyRow>
-                  {family && family.fosterPersonRefs.length >= 2 && (
-                    <PropertyRow label="Sdílení zápisů" align="right">
-                      <Switch
-                        checked={family.partnerSharingDefault ?? true}
-                        onChange={handlePartnerSharingDefaultChange}
-                        label="Nové zápisy výchozí sdílet s oběma pěstouny"
-                      />
-                    </PropertyRow>
-                  )}
-                </PropertyList>
-              ) : (
-                <p className="mt-2 text-sm text-text-tertiary">Zatím žádná Dohoda s vaší organizací.</p>
-              )}
-            </section>
-
-          <section className="mt-8">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-normal leading-tight text-text-primary">Pěstouni</h2>
-              <Button variant="secondary" size="sm" onClick={() => setPanelMode('foster')}>
-                <Plus size={16} /> Přidat pěstouna
-              </Button>
-            </div>
-            <div className="mt-4 max-w-[928px]">
-              {fosterPersons.length === 0 ? (
-                <EmptyState icon={UserRound} text="Zatím žádní pěstouni." />
-              ) : (
-                <RecordCardList>
-                  {fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => (
-                    <RecordCard
-                      key={fpId}
-                      onClick={() => navigate(`/rodiny/${familyUid}/pestoun/${fpId}`)}
-                      leading={
-                        <EntityAvatar
-                          photoURL={fp.avatarUrl}
-                          label={`${fp.firstName} ${fp.lastName}`}
-                          onQuickRecord={() => openRecorderFor({ kind: 'fosterPerson', id: fpId })}
-                          quickRecordDisabledReason={
-                            !agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined
-                          }
-                        />
-                      }
-                      title={`${fp.firstName} ${fp.lastName}`}
-                      subtitle={fp.phone || undefined}
-                      trailing={
-                        <>
-                          <button
-                            type="button"
-                            title="Přiřadit spolupracovníkovi"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              setAssigningEntity({
-                                entityType: 'fosterPerson',
-                                entityId: fpId,
-                                label: `${fp.firstName} ${fp.lastName}`,
-                              })
-                            }}
-                            className="flex size-8 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
-                          >
-                            <UserSquare2 size={14} strokeWidth={2} />
-                          </button>
-                          <span className="text-text-tertiary">›</span>
-                        </>
-                      }
-                    />
-                  ))}
-                </RecordCardList>
-              )}
-            </div>
-          </section>
-
-          <section className="mt-8">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-normal leading-tight text-text-primary">Svěřené děti</h2>
-              <Button variant="secondary" size="sm" onClick={() => setPanelMode('child')}>
-                <Plus size={16} /> Přidat dítě
-              </Button>
-            </div>
-
-            <div className="mt-4 max-w-[928px]">
-              {children.length === 0 ? (
-                <EmptyState icon={Baby} text="Zatím žádné svěřené děti." />
-              ) : (
-                <RecordCardList>
-                  {children.map(({ docId: childId, child }) => (
-                    <RecordCard
-                      key={childId}
-                      onClick={() => navigate(`/rodiny/${familyUid}/dite/${childId}`)}
-                      leading={
-                        <EntityAvatar
-                          photoURL={child.avatarUrl}
-                          label={`${child.firstName} ${child.lastName}`}
-                          onQuickRecord={() => openRecorderFor({ kind: 'child', id: childId })}
-                          quickRecordDisabledReason={
-                            !agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined
-                          }
-                        />
-                      }
-                      title={`${child.firstName} ${child.lastName}`}
-                      trailing={
-                        <>
-                          <button
-                            type="button"
-                            title="Přiřadit spolupracovníkovi"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              setAssigningEntity({
-                                entityType: 'child',
-                                entityId: childId,
-                                label: `${child.firstName} ${child.lastName}`,
-                              })
-                            }}
-                            className="flex size-8 items-center justify-center rounded-full text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
-                          >
-                            <UserSquare2 size={14} strokeWidth={2} />
-                          </button>
-                          <span className="text-text-tertiary">›</span>
-                        </>
-                      }
-                    />
-                  ))}
-                </RecordCardList>
-              )}
-            </div>
-          </section>
-
-          {docId && organizationId && userDoc && (
-            <FamilyCareEventsSection
-              familyDocId={docId}
-              organizationId={organizationId}
-              currentUid={userDoc.uid}
-              children={children}
-              respitPanel={{
-                isOpen: panelMode === 'respit',
-                onOpen: () => setPanelMode('respit'),
-                onClose: () => setPanelMode(null),
-                panelTarget: panelMode === 'respit' ? panelSlotEl : null,
-              }}
-              seriesPanel={{
-                isOpen: panelMode === 'series',
-                onOpen: () => setPanelMode('series'),
-                onClose: () => setPanelMode(null),
-                panelTarget: panelMode === 'series' ? panelSlotEl : null,
-              }}
-            />
-          )}
+    <AppShell
+      fullBleed
+      sidePanel={sidePanel}
+      /* Kontext a akce jdou do hlavičky appky (`TopBar`), ne do vlastní
+         lišty pod ni — dvě vodorovné linky nad obsahem jsou 88 px chromu
+         a nic navíc neřeknou. */
+      pageContext={
+        <nav className="flex min-w-0 items-center gap-1.5 text-sm">
+          <Link to="/rodiny" className="shrink-0 text-text-tertiary transition-colors duration-150 hover:text-text-primary">
+            Rodiny
+          </Link>
+          <span className="text-text-faint">/</span>
+          <span className="truncate text-text-primary">{displayName}</span>
+        </nav>
+      }
+      pageActions={
+        <>
+          <button
+            type="button"
+            onClick={() => navigate(`/rodiny/${familyUid}/navsteva`)}
+            disabled={noActiveAgreement}
+            title={noActiveAgreement ? NO_ACTIVE_AGREEMENT_REASON : 'Spustit návštěvu'}
+            className={quietAction}
+          >
+            <Clock size={15} />
+            Návštěva
+          </button>
+          <button
+            type="button"
+            onClick={() => docId && openRecorderFor({ kind: 'family', id: docId })}
+            disabled={noActiveAgreement}
+            title={noActiveAgreement ? NO_ACTIVE_AGREEMENT_REASON : undefined}
+            className="ml-1 flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-sm text-primary-foreground transition-colors duration-150 hover:bg-primary-hover disabled:opacity-50"
+          >
+            <Mic size={15} />
+            Zapsat
+          </button>
         </>
-      )}
+      }
+    >
+      <div className="sp flex h-full min-w-0 flex-1">
+        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
+          <div className="sp__wrap">
+            <PageOutline sections={OUTLINE} scrollRef={scroller} />
 
-      {activeSection === 'casova-osa' && (
-        <section className="mt-8">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-normal leading-tight text-text-primary">Časová osa</h2>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => navigate(`/rodiny/${familyUid}/navsteva`)}
-              disabled={!agreement || agreement.status !== 'active'}
-              title={!agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined}
-            >
-              + Návštěva
-            </Button>
-          </div>
+            <div className="sp__canvas min-w-0">
+              {/* ---------- PŘEHLED ---------- */}
+              <div id="prehled" style={{ scrollMarginTop: 76 }}>
+                <div className="flex items-center gap-3">
+                  {docId && family && (
+                    <EditableAvatar
+                      kind="family"
+                      id={docId}
+                      photoURL={family.avatarUrl}
+                      label={displayName}
+                      fallbackIcon={UserRound}
+                      size="sm"
+                      onUploaded={(url) => setFamily((prev) => (prev ? { ...prev, avatarUrl: url } : prev))}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    {editingName ? (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          autoFocus
+                          value={nameDraft}
+                          onChange={(e) => setNameDraft(e.target.value)}
+                          className="h-9 w-64"
+                          placeholder={primaryFosterName ?? family?.address ?? ''}
+                        />
+                        <Button size="sm" onClick={handleSaveName} loading={savingName} success={savingNameSuccess}>
+                          Uložit
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingName(false)} disabled={savingName}>
+                          Zrušit
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <h1 className="min-w-0 truncate text-3xl text-text-primary">{displayName}</h1>
+                        <button
+                          type="button"
+                          onClick={startEditName}
+                          aria-label="Upravit název rodiny"
+                          title="Upravit název rodiny"
+                          className="shrink-0 text-text-faint transition-colors duration-150 hover:text-text-primary"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      </div>
+                    )}
+                    <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 text-sm text-text-tertiary">
+                      <span>Spis {familyUid}</span>
+                      {family?.address && (
+                        <>
+                          <span>·</span>
+                          <AddressLink address={family.address} />
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
 
-          <div className="mt-4">
-            {timelineEntries.length === 0 ? (
-              <EmptyState icon={Clock} text="Zatím žádné zápisy v časové ose." />
-            ) : (
-              <div className="flex flex-col gap-2 max-w-[928px]">
-                {timelineEntries.map(({ docId: entryId, entry }) => {
-                  const Icon = TIMELINE_TYPE_ICONS[entry.type]
-                  const subjectLinks = renderSubjectLinks(entry.subjectRefs)
-                  // Řádek je `div role="button"`, ne `<button>` — jména
-                  // autora i subjektů jsou prokliky na profil a `<a>` uvnitř
-                  // `<button>` je nevalidní HTML.
-                  return (
-                    <div
-                      key={entryId}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedEntry({ docId: entryId, entry })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault()
-                          setSelectedEntry({ docId: entryId, entry })
-                        }
-                      }}
-                      className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
+                {error && (
+                  <p className="mt-4 text-sm text-danger" role="alert">
+                    {error}
+                  </p>
+                )}
+
+                {/* JEDNA VĚTA, kvůli které se profil otevírá. Ne karta, ne
+                    rám — svislá linka a text. Barva (jediná na stránce) se
+                    objeví jen když se něco děje. */}
+                {noActiveAgreement ? (
+                  <div className="mt-6 border-l-2 border-border-strong pl-4">
+                    <p className="text-base text-text-primary">
+                      Rodina nemá s vaší organizací aktivní Dohodu.
+                    </p>
+                    <p className="mt-1 text-sm text-text-tertiary">
+                      Bez ní nejde uložit zápis ani spustit návštěvu — lhůty se taky nemají z čeho počítat.
+                    </p>
+                    <Link
+                      to={`/rodiny/${familyUid}/dohoda`}
+                      className="mt-3 inline-flex h-7 items-center rounded-md bg-primary px-2.5 text-sm text-primary-foreground hover:bg-primary-hover"
                     >
-                      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
-                        <Icon className="size-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-medium text-text-primary">{TIMELINE_TYPE_LABELS[entry.type]}</p>
-                          <p className="shrink-0 text-xs text-text-tertiary">
-                            {new Date(entry.occurredAt).toLocaleString('cs-CZ')}
-                          </p>
-                        </div>
-                        <p className="mt-0.5 truncate text-sm text-text-secondary">
-                          <PersonLink
-                            kind="staff"
-                            id={authorLinkId(entry.createdByUid)}
-                            name={resolveAuthorName(entry.createdByUid)}
-                            muted
-                          />
-                          {subjectLinks.map(({ key, node }) => (
-                            <span key={key}>
-                              {' · '}
-                              {node}
-                            </span>
-                          ))}
-                        </p>
-                        {entry.body && <p className="mt-1 line-clamp-2 text-sm text-text-secondary">{entry.body}</p>}
+                      {agreement ? 'Otevřít Dohodu' : 'Založit Dohodu'}
+                    </Link>
+                  </div>
+                ) : (
+                  due && (
+                    <div
+                      className={`mt-6 border-l-2 pl-4 ${due.overdue || due.daysLeft <= 14 ? 'border-accent' : 'border-border-strong'}`}
+                    >
+                      <p className="text-base text-text-primary">
+                        {due.overdue
+                          ? `Osobní návštěva je po termínu o ${dayCount(due.daysLeft)}.`
+                          : due.daysLeft === 0
+                            ? 'Termín osobní návštěvy je dnes.'
+                            : `Do termínu osobní návštěvy zbývá ${dayCount(due.daysLeft)}.`}
+                      </p>
+                      <p className="mt-1 text-sm text-text-tertiary">
+                        Naposledy jste v rodině byli {shortDate(agreement.lastVisitAt!)}, Dohoda říká každých{' '}
+                        {dayCount(agreement.visitIntervalDays)}.
+                        {longestUnseen && (
+                          <>
+                            {' '}
+                            Nejdéle bez osobního kontaktu: {longestUnseen.name}
+                            {' — '}
+                            {longestUnseen.lastSeen ? dayCount(daysAgo(longestUnseen.lastSeen)) : 'nikdy'}.
+                          </>
+                        )}
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => docId && openRecorderFor({ kind: 'family', id: docId })}
+                          className="flex h-7 items-center rounded-md bg-primary px-2.5 text-sm text-primary-foreground hover:bg-primary-hover"
+                        >
+                          Zapsat návštěvu
+                        </button>
+                        <button type="button" onClick={() => navigate('/kalendar')} className={quietAction}>
+                          Naplánovat na {shortDate(due.at)}
+                        </button>
                       </div>
                     </div>
                   )
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {activeSection === 'dokumenty' && (
-        <>
-          {docId && organizationId && userDoc && (
-            <OspodReportSection
-              familyDocId={docId}
-              familyUid={familyUid ?? ''}
-              organizationId={organizationId}
-              createdByUid={userDoc.uid}
-              childIds={children.map((c) => c.docId)}
-              fosterPersons={fosterPersons}
-            />
-          )}
-
-          <section className="mt-8">
-            <div className="flex items-center justify-between gap-4">
-              <h2 className="text-lg font-normal leading-tight text-text-primary">Dokumenty</h2>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setShowDocumentForm((v) => !v)}
-                disabled={!agreement || agreement.status !== 'active'}
-                title={!agreement || agreement.status !== 'active' ? NO_ACTIVE_AGREEMENT_REASON : undefined}
-              >
-                {showDocumentForm ? (
-                  'Zrušit'
-                ) : (
-                  <>
-                    <Plus size={16} /> Nový dokument
-                  </>
                 )}
-              </Button>
-            </div>
 
-            {showDocumentForm && (
-              <form
-                onSubmit={handleCreateDocument}
-                className="mt-4 flex flex-col gap-4 max-w-[928px] rounded-lg border border-border bg-surface p-5"
-              >
-                <label className="flex flex-col gap-1.5 max-w-[560px]">
-                  <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
-                  <Input required value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
-                </label>
-                <label className="flex flex-col gap-1.5">
-                  <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
-                  <RichTextEditor value={docBody} onChange={setDocBody} minHeight={220} placeholder="Začněte psát obsah dokumentu…" />
-                </label>
-                {recordablePeople.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium leading-none text-text-secondary">Zařadit k (volitelné)</p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {recordablePeople.map((p) => {
-                        const key = `${p.kind}:${p.id}`
-                        const checked = docSubjectKeys.has(key)
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => toggleDocSubject(key)}
-                            className={
-                              checked
-                                ? 'inline-flex h-7 items-center rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground'
-                                : 'inline-flex h-7 items-center rounded-full border border-border-strong px-3 text-xs font-medium text-text-secondary hover:bg-overlay-active'
-                            }
+                {/* Vlastnosti Dohody: pět vidět, ostatní na požádání. */}
+                {agreement && (
+                  <PropertyList className="mt-7 max-w-[640px] border-t border-border-subtle pt-1">
+                    <PropertyRow label="Klíčová osoba">
+                      {agreement.assignedTo ? (
+                        <PersonLink
+                          kind="staff"
+                          id={agreement.assignedTo}
+                          name={koOptions.find((k) => k.uid === agreement.assignedTo)?.displayName ?? agreement.assignedTo}
+                        />
+                      ) : (
+                        <PropertyEmpty />
+                      )}
+                    </PropertyRow>
+                    <PropertyRow label="Dohoda">
+                      Aktivní od {new Date(agreement.validFrom).toLocaleDateString('cs-CZ')}
+                    </PropertyRow>
+                    <PropertyRow label="Typ péče">{CARE_TYPE_LABELS[agreement.careType]}</PropertyRow>
+                    <PropertyRow label="Interval návštěv">{dayCount(agreement.visitIntervalDays)}</PropertyRow>
+                    {/* Cíl hodin je v Dohodě, ale u starších záznamů chybět
+                        může — pak se dopočítá z typu péče, protože ho určuje
+                        zákon (24 h zprostředkovaná, 18 h příbuzenská). */}
+                    <PropertyRow label="Vzdělávání">
+                      {agreement.educationHoursTarget ?? EDUCATION_HOURS_TARGET[agreement.careType]} h / 12 měsíců
+                    </PropertyRow>
+                    {family && family.fosterPersonRefs.length >= 2 && (
+                      <PropertyRow label="Sdílení zápisů" align="right">
+                        <Switch
+                          checked={family.partnerSharingDefault ?? true}
+                          onChange={handlePartnerSharingDefaultChange}
+                          label="Nové zápisy výchozí sdílet s oběma pěstouny"
+                        />
+                      </PropertyRow>
+                    )}
+                    {allProps && (
+                      <>
+                        <PropertyRow label="Poslední návštěva">
+                          {agreement.lastVisitAt ? (
+                            new Date(agreement.lastVisitAt).toLocaleDateString('cs-CZ')
+                          ) : (
+                            <PropertyEmpty />
+                          )}
+                        </PropertyRow>
+                        <PropertyRow label="Zápis z návštěvy">
+                          do {agreement.noteDeadlineHours || 72} h
+                        </PropertyRow>
+                        <PropertyRow label="Adresa">
+                          {family?.address ? <AddressLink address={family.address} /> : <PropertyEmpty />}
+                        </PropertyRow>
+                        <PropertyRow label="Dohoda otevřít">
+                          <Link
+                            to={`/rodiny/${familyUid}/dohoda`}
+                            className="text-text-secondary underline decoration-border-strong underline-offset-2 hover:text-text-primary"
                           >
-                            {p.label}
-                          </button>
+                            Celá Dohoda
+                          </Link>
+                        </PropertyRow>
+                      </>
+                    )}
+                  </PropertyList>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setAllProps((v) => !v)}
+                  className="mt-1 flex h-7 items-center gap-1.5 text-sm text-text-faint transition-colors duration-150 hover:text-text-secondary"
+                >
+                  <ChevronDown size={14} className={allProps ? 'rotate-180' : undefined} />
+                  {allProps ? 'Skrýt vlastnosti' : 'Zobrazit další vlastnosti'}
+                </button>
+              </div>
+
+              {/* ---------- LIDÉ ---------- */}
+              <SpisBlock id="lide" title="Lidé" count={people.length}>
+                <DataLabels variant="lide">
+                  <span>Jméno</span>
+                  <span className="sp__col--vek">Věk</span>
+                  <span className="sp__col--kontakt">Kontakt</span>
+                  <span className="text-right">Naposledy osobně</span>
+                  <span />
+                </DataLabels>
+
+                {(['Pěstouni', 'Děti v péči'] as const).map((group) => {
+                  const rows = people.filter((p) => p.group === group)
+                  return (
+                    <div key={group}>
+                      <SpisGroupLabel label={group} count={rows.length} />
+                      {rows.length === 0 ? (
+                        <p className="pb-2 text-sm text-text-faint">
+                          {group === 'Pěstouni' ? 'Zatím žádní pěstouni.' : 'Zatím žádné svěřené děti.'}
+                        </p>
+                      ) : (
+                        rows.map((person) => (
+                          <DataRow key={person.id} variant="lide" onOpen={() => navigate(person.href)}>
+                            <span className="flex min-w-0 items-center gap-2.5">
+                              <EntityAvatar
+                                photoURL={person.avatarUrl}
+                                label={person.name}
+                                size="sm"
+                                onQuickRecord={() => openRecorderFor({ kind: person.kind, id: person.id })}
+                                quickRecordDisabledReason={noActiveAgreement ? NO_ACTIVE_AGREEMENT_REASON : undefined}
+                              />
+                              <span className="truncate text-sm text-text-primary">{person.name}</span>
+                            </span>
+                            <span className="sp__col--vek text-sm text-text-tertiary">
+                              {person.age === null ? '—' : `${person.age} let`}
+                            </span>
+                            <span className="sp__col--kontakt truncate text-sm text-text-tertiary">
+                              {person.contact ?? '—'}
+                            </span>
+                            <span className="text-right text-sm">
+                              {person.lastSeen === null ? (
+                                <span className="text-accent">nikdy osobně</span>
+                              ) : (
+                                <>
+                                  <span className="text-text-primary">{shortDate(person.lastSeen)}</span>
+                                  <span className="ml-1.5 text-text-faint">{dayCount(daysAgo(person.lastSeen))}</span>
+                                </>
+                              )}
+                            </span>
+                            <span className="sp__reveal sp__col--rev flex items-center justify-end gap-0.5">
+                              <button
+                                type="button"
+                                title="Přiřadit spolupracovníkovi"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setAssigningEntity({
+                                    entityType: person.kind,
+                                    entityId: person.id,
+                                    label: person.name,
+                                  })
+                                }}
+                                className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-overlay-active hover:text-text-primary"
+                              >
+                                <UserSquare2 size={14} />
+                              </button>
+                              <ChevronRight size={15} className="text-text-tertiary" />
+                            </span>
+                          </DataRow>
+                        ))
+                      )}
+                    </div>
+                  )
+                })}
+
+                <DataAddRow label="Přidat pěstouna" onClick={() => setPanelMode('foster')} />
+                <DataAddRow label="Přidat dítě do péče" onClick={() => setPanelMode('child')} />
+              </SpisBlock>
+
+              {/* ---------- LHŮTY A LIMITY ---------- */}
+              <SpisBlock
+                id="lhuty"
+                title="Lhůty a limity"
+                actions={<span className="text-xs text-text-faint">počítá se z Dohody, zápisů a událostí</span>}
+              >
+                {limits.length === 0 ? (
+                  <p className="pt-4 text-sm text-text-faint">Bez aktivní Dohody se lhůty nemají z čeho počítat.</p>
+                ) : (
+                  <div className="mt-2 border-t border-border-subtle">
+                    {limits.map((limit) => (
+                      <LimitRow key={limit.id} limit={limit} />
+                    ))}
+                  </div>
+                )}
+              </SpisBlock>
+
+              {/* ---------- ZÁPISY (tělo stránky) ---------- */}
+              <SpisBlock id="zapisy" title="Zápisy" count={timelineEntries.length}>
+                {/* Psaní zápisu je nad rodinou nejčastější práce — patří NAD
+                    seznam, ne za tlačítko v hlavičce. */}
+                <button
+                  type="button"
+                  onClick={() => docId && openRecorderFor({ kind: 'family', id: docId })}
+                  disabled={noActiveAgreement}
+                  title={noActiveAgreement ? NO_ACTIVE_AGREEMENT_REASON : undefined}
+                  className="mt-3 flex h-9 w-full items-center gap-2 rounded-md border border-border-default px-2.5 text-left text-sm text-text-faint transition-colors duration-150 hover:border-border-strong disabled:opacity-50"
+                >
+                  <Mic size={15} className="shrink-0" />
+                  <span className="flex-1">Napsat nebo nadiktovat zápis…</span>
+                </button>
+
+                <DataLabels variant="zapis">
+                  <span className="sp__col--when text-right">Kdy</span>
+                  <span>Zápis</span>
+                  <span className="sp__col--subjects">Koho se týká</span>
+                  <span className="sp__col--author">Kdo</span>
+                  <span />
+                </DataLabels>
+
+                {timelineEntries.length === 0 ? (
+                  /* Tichý řádek, ne velký rám s ikonou: prázdný blok na dlouhé
+                     stránce nemá být největší prvek na obrazovce. */
+                  <p className="pt-4 text-sm text-text-faint">Zatím žádné zápisy.</p>
+                ) : (
+                  entriesByMonth.map(([month, items]) => (
+                    <div key={month}>
+                      <SpisGroupLabel label={month} count={items.length} />
+                      {items.map(({ docId: entryId, entry }) => {
+                        const Icon = TIMELINE_TYPE_ICONS[entry.type]
+                        const at = new Date(entry.occurredAt)
+                        const subjectLinks = renderSubjectLinks(entry.subjectRefs)
+                        return (
+                          <DataRow
+                            key={entryId}
+                            variant="zapis"
+                            onOpen={() => setSelectedEntry({ docId: entryId, entry })}
+                          >
+                            <span className="sp__col--when text-right">
+                              <span className="block text-sm text-text-primary">{shortDate(at)}</span>
+                              <span className="block text-2xs text-text-faint">
+                                {at.toLocaleDateString('cs-CZ', { weekday: 'short' })}
+                              </span>
+                            </span>
+                            <span className="flex min-w-0 items-start gap-2.5">
+                              <Icon size={15} className="mt-0.5 shrink-0 text-text-faint" />
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm text-text-primary">
+                                  {entry.body?.trim() || TIMELINE_TYPE_LABELS[entry.type]}
+                                </span>
+                                <span className="block truncate text-xs text-text-tertiary">
+                                  {TIMELINE_TYPE_LABELS[entry.type]}
+                                </span>
+                              </span>
+                            </span>
+                            <span className="sp__col--subjects flex min-w-0 items-center gap-1 text-xs">
+                              {subjectLinks.slice(0, 2).map(({ key, node }) => (
+                                <span key={key} className="truncate rounded-sm bg-overlay-active px-1.5 py-0.5">
+                                  {node}
+                                </span>
+                              ))}
+                              {subjectLinks.length > 2 && (
+                                <span className="text-text-faint">+{subjectLinks.length - 2}</span>
+                              )}
+                            </span>
+                            <span className="sp__col--author truncate text-xs text-text-tertiary">
+                              {resolveAuthorName(entry.createdByUid)
+                                .split(' ')
+                                .map((part) => part[0])
+                                .join('')}
+                            </span>
+                            <DataRowReveal />
+                          </DataRow>
                         )
                       })}
                     </div>
+                  ))
+                )}
+              </SpisBlock>
+
+              {/* ---------- KALENDÁŘ ---------- */}
+              <SpisBlock
+                id="kalendar"
+                title="Kalendář"
+                lazy
+                actions={
+                  <button type="button" onClick={() => navigate('/kalendar')} className={quietAction}>
+                    Otevřít celý kalendář
+                  </button>
+                }
+              >
+                {docId && organizationId && (
+                  <EntityAgenda organizationId={organizationId} subjectKind="family" subjectId={docId} />
+                )}
+              </SpisBlock>
+
+              {/* ---------- ÚKOLY ---------- */}
+              <SpisBlock id="ukoly" title="Úkoly" lazy>
+                {docId && organizationId && (
+                  <EntityTasks
+                    organizationId={organizationId}
+                    subjectKind="family"
+                    subjectId={docId}
+                    staffNames={staffNamesByUid}
+                  />
+                )}
+              </SpisBlock>
+
+              {/* ---------- RESPIT A ASISTOVANÝ KONTAKT ----------
+                  Zůstává na rodině, ne na dítěti: respit typicky pokrývá víc
+                  dětí najednou a nedá se čistě rozdělit. */}
+              {/* `bare`: obsah si nese vlastní nadpisy („Respit",
+                  „Asistovaný kontakt"), tak je nepřidáváme podruhé. */}
+              <SpisBlock id="pece" title="Respit a kontakt" lazy bare>
+                {docId && organizationId && userDoc && (
+                  <FamilyCareEventsSection
+                    familyDocId={docId}
+                    organizationId={organizationId}
+                    currentUid={userDoc.uid}
+                    children={children}
+                    respitPanel={{
+                      isOpen: panelMode === 'respit',
+                      onOpen: () => setPanelMode('respit'),
+                      onClose: () => setPanelMode(null),
+                      panelTarget: panelMode === 'respit' ? panelSlotEl : null,
+                    }}
+                    seriesPanel={{
+                      isOpen: panelMode === 'series',
+                      onOpen: () => setPanelMode('series'),
+                      onClose: () => setPanelMode(null),
+                      panelTarget: panelMode === 'series' ? panelSlotEl : null,
+                    }}
+                  />
+                )}
+              </SpisBlock>
+
+              {/* ---------- DOKUMENTY ---------- */}
+              <SpisBlock id="dokumenty" title="Dokumenty" count={documents.length} lazy>
+                {showDocumentForm && (
+                  <form
+                    onSubmit={handleCreateDocument}
+                    className="mt-4 flex max-w-[720px] flex-col gap-4 rounded-lg border border-border-default p-4"
+                  >
+                    <label className="flex max-w-[560px] flex-col gap-1.5">
+                      <span className="text-sm font-medium leading-relaxed text-text-primary">Název</span>
+                      <Input required value={docTitle} onChange={(e) => setDocTitle(e.target.value)} />
+                    </label>
+                    <label className="flex flex-col gap-1.5">
+                      <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
+                      <RichTextEditor
+                        value={docBody}
+                        onChange={setDocBody}
+                        minHeight={220}
+                        placeholder="Začněte psát obsah dokumentu…"
+                      />
+                    </label>
+                    {recordablePeople.length > 0 && (
+                      <div>
+                        <p className="text-xs text-text-tertiary">Zařadit k (volitelné)</p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {recordablePeople.map((p) => {
+                            const key = `${p.kind}:${p.id}`
+                            const checked = docSubjectKeys.has(key)
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                onClick={() => toggleDocSubject(key)}
+                                className={
+                                  checked
+                                    ? 'inline-flex h-7 items-center rounded-md bg-primary px-2.5 text-xs text-primary-foreground'
+                                    : 'inline-flex h-7 items-center rounded-md border border-border-default px-2.5 text-xs text-text-secondary hover:border-border-strong'
+                                }
+                              >
+                                {p.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button type="submit" loading={creatingDocument} success={creatingDocumentSuccess} className="w-fit">
+                        Založit koncept
+                      </Button>
+                      <Button type="button" variant="ghost" onClick={() => setShowDocumentForm(false)}>
+                        Zrušit
+                      </Button>
+                    </div>
+                  </form>
+                )}
+
+                {documents.length === 0 ? (
+                  <p className="pt-4 text-sm text-text-faint">Zatím žádné dokumenty.</p>
+                ) : (
+                  <div className="mt-2 border-t border-border-subtle">
+                    {documents.map(({ docId: fdId, document: fd }) => (
+                      <DataRow
+                        key={fdId}
+                        variant="blizi"
+                        onOpen={() => navigate(`/rodiny/${familyUid}/dokumenty/${fdId}`)}
+                      >
+                        <span className="sp__col--when text-right text-xs text-text-faint">v{fd.currentVersion}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm text-text-primary">{fd.title}</span>
+                          <span className="block truncate text-xs text-text-tertiary">{fd.uid}</span>
+                        </span>
+                        <span className="sp__col--subjects text-xs text-text-tertiary">
+                          {DOCUMENT_STATUS_LABELS[fd.status]}
+                        </span>
+                        <DataRowReveal />
+                      </DataRow>
+                    ))}
                   </div>
                 )}
-                <Button type="submit" loading={creatingDocument} success={creatingDocumentSuccess} className="w-fit">
-                  Založit koncept
-                </Button>
-              </form>
-            )}
 
-            <div className="mt-4">
-              {documents.length === 0 ? (
-                <EmptyState icon={FileText} text="Zatím žádné dokumenty." />
-              ) : (
-                <div className="flex flex-col gap-2 max-w-[928px]">
-                  {documents.map(({ docId: fdId, document: fd }) => (
-                    <button
-                      key={fdId}
-                      type="button"
-                      onClick={() => navigate(`/rodiny/${familyUid}/dokumenty/${fdId}`)}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-text-primary">{fd.title}</p>
-                        <p className="mt-0.5 text-xs text-text-tertiary">
-                          {fd.uid} · v{fd.currentVersion}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-xs text-text-secondary">{DOCUMENT_STATUS_LABELS[fd.status]}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
+                <DataAddRow
+                  label="Nový dokument"
+                  onClick={() => setShowDocumentForm((v) => !v)}
+                  disabled={noActiveAgreement}
+                  title={noActiveAgreement ? NO_ACTIVE_AGREEMENT_REASON : undefined}
+                />
+
+                {docId && organizationId && userDoc && (
+                  <OspodReportSection
+                    familyDocId={docId}
+                    familyUid={familyUid ?? ''}
+                    organizationId={organizationId}
+                    createdByUid={userDoc.uid}
+                    childIds={children.map((c) => c.docId)}
+                    fosterPersons={fosterPersons}
+                  />
+                )}
+              </SpisBlock>
+
+              {/* ---------- CHAT ---------- */}
+              <SpisBlock id="chat" title="Chat s pěstounem" lazy bare>
+                {docId && organizationId && userDoc && (
+                  <FamilyChatSection
+                    familyDocId={docId}
+                    organizationId={organizationId}
+                    currentUid={userDoc.uid}
+                    staffList={staffList}
+                  />
+                )}
+              </SpisBlock>
             </div>
-          </section>
-        </>
-      )}
-
-      {activeSection === 'kalendar' && docId && organizationId && (
-        <section className="mt-8">
-          <EntityAgenda organizationId={organizationId} subjectKind="family" subjectId={docId} />
-        </section>
-      )}
-
-      {activeSection === 'ukoly' && docId && organizationId && (
-        <section className="mt-8">
-          <EntityTasks
-            organizationId={organizationId}
-            subjectKind="family"
-            subjectId={docId}
-            staffNames={staffNamesByUid}
-          />
-        </section>
-      )}
-
-      {activeSection === 'chat' && docId && organizationId && userDoc && (
-        <div className="mt-8">
-          <FamilyChatSection
-            familyDocId={docId}
-            organizationId={organizationId}
-            currentUid={userDoc.uid}
-            staffList={staffList}
-          />
-        </div>
-      )}
-      </div>
           </div>
         </div>
       </div>

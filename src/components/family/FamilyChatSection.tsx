@@ -92,7 +92,7 @@ export function FamilyChatSection({ familyDocId, organizationId, currentUid, sta
     <section className="max-w-[720px]">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-lg font-normal leading-tight text-text-primary">Chat s pěstounem</h2>
+          <h2 className="text-base font-medium text-text-primary">Chat s pěstounem</h2>
           <p className="mt-0.5 text-sm text-text-tertiary">
             Zprávy vidí i pěstoun na svém portálu — interní poznámku vidí jen tým.
           </p>

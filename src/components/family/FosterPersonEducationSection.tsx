@@ -170,7 +170,7 @@ export function FosterPersonEducationSection({
 
   return (
     <section className="mt-8">
-      <h2 className="text-lg font-normal leading-tight text-text-primary">
+      <h2 className="text-base font-medium text-text-primary">
         Vzdělávání a dávky — {fosterPerson.firstName} {fosterPerson.lastName}
       </h2>
 

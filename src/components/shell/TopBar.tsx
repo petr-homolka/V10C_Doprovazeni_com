@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ChevronLeft, ChevronRight } from '@/components/ui/icons'
 import { useHistoryArrows } from '@/hooks/useHistoryArrows'
 import { cn } from '@/lib/utils'
@@ -25,8 +26,14 @@ import { cn } from '@/lib/utils'
  *
  * Kontext „kde jsem" nezmizel — nese ho zvýrazněná položka v levém panelu
  * a nadpis stránky, kde byl vždycky.
+ *
+ *   3. Detailní stránky (profil rodiny) dostaly slot: `context` vedle šipek
+ *      a `actions` vpravo. Je to tatáž lišta, ne druhá — kdyby si profil
+ *      kreslil vlastní lištu pod tuhle, byly by nad obsahem dvě vodorovné
+ *      linky a 88 px chromu. Slot je prázdný na všech stránkách, které nic
+ *      takového nemají, takže hlavička zůstává tichá.
  */
-export function TopBar() {
+export function TopBar({ context, actions }: { context?: ReactNode; actions?: ReactNode }) {
   const { canGoBack, canGoForward, goBack, goForward } = useHistoryArrows()
 
   const arrow = (enabled: boolean) =>
@@ -59,6 +66,9 @@ export function TopBar() {
       >
         <ChevronRight size={17} />
       </button>
+
+      {context && <div className="ml-1.5 flex min-w-0 items-center">{context}</div>}
+      {actions && <div className="ml-auto flex shrink-0 items-center gap-1">{actions}</div>}
     </div>
   )
 }

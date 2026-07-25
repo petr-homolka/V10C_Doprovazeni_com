@@ -465,7 +465,7 @@ export default function DocumentDetailPage() {
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Historie verzí</h2>
+        <h2 className="text-base font-medium text-text-primary">Historie verzí</h2>
         <div className="mt-3 flex max-w-[928px] flex-col gap-2">
           {versions.map(({ docId: vId, version }) => (
             <div key={vId} className="rounded-lg border border-border bg-surface p-3 text-sm">

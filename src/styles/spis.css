@@ -1,10 +1,11 @@
 /*
-  NOVÝ PROFIL RODINY — struktura, ne barvy.
+  PROFIL („spis") — struktura stránky, ne barvy.
 
-  Kreslí se TOKENY APPKY (`src/tokens.css`), ne vlastní paletou, takže tmavý
-  režim funguje sám a co se tady schválí, jde přímo do appky. Vlastní CSS je
-  tu jen na to, co Tailwind neumí bez ohýbání: lepivé prvky, mřížky řádků
-  „databáze", odhalování akcí při hover a přechod na telefon.
+  Kreslí se TOKENY APPKY (`src/tokens.css`), takže tmavý režim funguje sám.
+  Vlastní CSS je tu jen na to, co Tailwind neumí bez ohýbání: lepivé prvky,
+  mřížky řádků „databáze", odhalování akcí při hover a přechod na telefon.
+  Jeden soubor pro appku i pro designový náhled — kdyby byly dva, rozejdou
+  se do týdne.
 
   Rozvržení 176 + 32 + 912 = 1120 px není náhoda: 912 px je šířka, na které
   má řádek s pěti sloupci ještě rytmus a nadpis 32 px nevypadá ztraceně,
@@ -137,10 +138,12 @@
 }
 
 /* Řádek se štítky sloupců zůstává vidět při rolování dlouhého bloku —
-   jinak u dvacátého řádku nikdo neví, co je čtvrtý sloupec. */
+   jinak u dvacátého řádku nikdo neví, co je čtvrtý sloupec. `top: 0`,
+   protože hlavička appky je MIMO rolovací kontejner (nechal jsem tu chvíli
+   44 px a štítky se pak vznášely přes řádky nad sebou). */
 .sp__labels {
   position: sticky;
-  top: 44px;
+  top: 0;
   z-index: 10;
   background: var(--bg-app);
   border-bottom: 1px solid var(--border-subtle);
@@ -174,7 +177,10 @@
 }
 
 .sp__row--lide {
-  grid-template-columns: minmax(0, 1fr) 76px minmax(0, 168px) 132px 24px;
+  /* Poslední sloupec je 48 px, ne 24: vedle šipky se tam při hover ukáže
+     ještě „přiřadit spolupracovníkovi". Obojí je vidět jen na řádku, na
+     kterém člověk je. */
+  grid-template-columns: minmax(0, 1fr) 76px minmax(0, 168px) 132px 48px;
 }
 
 .sp__row--zapis {
@@ -200,7 +206,7 @@
 
 @container (max-width: 780px) {
   .sp__row--lide {
-    grid-template-columns: minmax(0, 1fr) 76px 132px 24px;
+    grid-template-columns: minmax(0, 1fr) 76px 132px 48px;
   }
   .sp__row--zapis {
     grid-template-columns: 62px minmax(0, 1fr) 24px 24px;
@@ -231,12 +237,35 @@
   }
 }
 
+/*
+  Lhůta má tři části a dvě sazby: na šířku „popisek + pruh vlevo, stav
+  vpravo", na telefonu „popisek vlevo / stav vpravo, pruh pod tím". Řeší to
+  pojmenované oblasti, ne dvě různá značkování — jinak by se to rozešlo.
+*/
 .sp__row--lhuta {
   grid-template-columns: minmax(0, 1fr) 150px;
+  grid-template-areas:
+    'label state'
+    'bar   bar';
   align-items: start;
   min-height: 52px;
   padding-top: 10px;
   padding-bottom: 10px;
+}
+
+.sp__lim-label {
+  grid-area: label;
+  min-width: 0;
+}
+
+.sp__lim-state {
+  grid-area: state;
+  text-align: right;
+}
+
+.sp__lim-bar {
+  grid-area: bar;
+  margin-top: 8px;
 }
 
 /* „Otevřít" se ukáže až na řádku, na kterém člověk je. Trvale viditelné
@@ -345,25 +374,85 @@
   }
 }
 
+/* ---------- vlastnosti („popisek → hodnota") ---------- */
+
+.sp__prop {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 30px;
+  padding: 4px 0;
+}
+
+.sp__proplabel {
+  width: 148px;
+  flex-shrink: 0;
+  padding-top: 1px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.sp__propvalue {
+  min-width: 0;
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
 /* ---------- telefon ---------- */
 
 /*
-  Na 390 px se pětisloupcový řádek nedá zúžit, dá se jen přeskládat: jméno
-  a datum vedle sebe, ostatní pod ně jako jeden tichý řádek. Sloupce, které
-  se nevejdou, se SKRÝVAJÍ (`.sp__col--drop`), ne mačkají.
+  SAZBA JAKO ZÁPIS V APP STORU (Petr, 2026-07-25): co je vlevo, je
+  zarovnané DOLEVA; co je vpravo, DOPRAVA. Na telefonu je tím z každého
+  řádku jeden čitelný pár „věc → hodnota" a obě hrany stránky jsou čisté —
+  oko sjíždí dva svislé sloupce, ne roztřepený střed.
+
+  Proto se tady NEDĚLÁ nic jiného než zarovnání: sloupce už ubral
+  `@container` výš (plátno je na 390 px úzké samo), lhůty se skládají na
+  dva řádky a mřížka řádků zůstává tatáž.
 */
 @media (max-width: 720px) {
   .sp__wrap {
     padding: 20px 16px 120px;
-  }
-  .sp__row--lhuta {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
   }
   .sp__block {
     margin-top: 36px;
   }
   .sp__labels {
     display: none;
+  }
+
+  /* Vlastnost: popisek na levou hranu, hodnota na pravou. */
+  .sp__prop {
+    gap: 16px;
+  }
+  .sp__proplabel {
+    width: auto;
+  }
+  .sp__propvalue {
+    text-align: right;
+  }
+  /* Hodnota bývá i řádek s avatarem nebo čipy — ty se zarovnají na konec,
+     jinak by text šel doprava a obrázek zůstal vlevo. */
+  .sp__propvalue > span,
+  .sp__propvalue > div {
+    justify-content: flex-end;
+  }
+
+  /* Lhůta: popisek vlevo, stav vpravo, pruh přes celou šířku pod nimi. */
+  .sp__row--lhuta {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  /* Zápis a budoucí položka: text vlevo, datum na pravou hranu (v mřížce se
+     dá pořadí obrátit `order`em, takže se nemusí měnit značkování). */
+  .sp__row--zapis,
+  .sp__row--blizi {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .sp__row--zapis > .sp__col--when,
+  .sp__row--blizi > .sp__col--when {
+    order: 2;
+    text-align: right;
   }
 }
