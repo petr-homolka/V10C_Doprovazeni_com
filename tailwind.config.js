@@ -92,23 +92,33 @@ export default {
         focus: 'var(--focus-ring)',
       },
       /*
-        TYPOGRAFICKÁ STUPNICE — odečtená z Routine, ne z výchozího Tailwindu.
+        TYPOGRAFICKÁ STUPNICE.
 
-        Výchozí Tailwind má text-sm 14/20, text-base 16/24, text-lg 18/28.
-        Routine má 13/19, 14/20, 16/120 %. Přemapováním stupnice se posune
-        CELÁ appka (text-sm je v ní 515×, text-xs 127×) bez zásahu do
-        komponent — a to je jediný způsob, jak takovou změnu udělat
-        konzistentně a ne po kouskách.
+        Historie a proč je teď taková: nejdřív byla odečtená z Routine
+        (13/19 základ), protože jsem chtěl jejich hustotu. Petr na to
+        2026-07-25 řekl „pěkné, ale titěrné (malé prvky, malá velikost
+        písma)" — a měl pravdu. Routine je nástroj pro osobní úkoly, kde
+        člověk kouká na dvacet řádků naráz; tahle appka je spis, ve kterém
+        se ČTE (zápisy, lhůty, jména) a ve kterém se rozhoduje. 13px je na
+        čtení malé, obzvlášť na velkém monitoru z metru.
+
+        Stupnice je proto o dva stupně výš (základ 15/23) a rozestupy s ní.
+        Vzdušnost tím netrpí — vzdušnost dělá prázdné místo mezi věcmi, a to
+        se zvětšilo taky (výška řádku 44 px, mezera mezi sekcemi 40 px).
+
+        Přemapování stupnice posune CELOU appku (`text-sm` je v ní 515×,
+        `text-xs` 127×) bez zásahu do komponent. Jinak by to byla změna na
+        pět set místech a rozešlo by se to do týdne.
       */
       fontSize: {
-        '2xs': ['10px', '15px'],
-        xs: ['11px', '17px'],
-        sm: ['13px', '19px'],
-        base: ['14px', '20px'],
-        lg: ['16px', '1.2'],
-        xl: ['20px', '28px'],
-        '2xl': ['24px', '32px'],
-        '3xl': ['32px', '40px'],
+        '2xs': ['11px', '16px'],
+        xs: ['12px', '18px'],
+        sm: ['14px', '21px'],
+        base: ['15px', '23px'],
+        lg: ['17px', '25px'],
+        xl: ['21px', '30px'],
+        '2xl': ['26px', '34px'],
+        '3xl': ['34px', '42px'],
       },
 
       /*

@@ -14,13 +14,14 @@ html {
 }
 
 /*
- * Základ je 13px/19px — odečteno z Routine, kde je to nejčastější kombinace
- * (font-size 13px 122×, line-height 19px 115×). Předtím tu bylo 15px/1.55.
+ * Základ je 15px/23px. Chvíli tu bylo 13px/19px odečtené z Routine, ale
+ * Petr to 2026-07-25 pojmenoval správně: „titěrné". Rozdíl mezi nástrojem
+ * na osobní úkoly (kde se skenuje dvacet řádků) a spisem (kde se ČTE zápis
+ * a hledá jméno) je právě tady.
  *
- * Zmenšit základní písmo zní jako krok proti vzdušnosti, ale je to naopak:
- * vzdušnost dělá PRÁZDNÉ MÍSTO mezi věcmi, ne velké litery. Při 15px se do
- * řádku seznamu nevejde jméno i adresa, takže se ubírá padding — a hustý
- * layout s velkým písmem je to nejtěsnější, co může být.
+ * Vzdušnost tím netrpí: prázdné místo mezi věcmi se zvětšilo se stupnicí.
+ * Co se do řádku nevejde, se dnes SKRÝVÁ podle šířky plátna (`@container`,
+ * viz `styles/spis.css`) — nemačká se, takže větší písmo nekrájí obsah.
  */
 body {
   margin: 0;
@@ -28,9 +29,11 @@ body {
   color: var(--text-primary);
   font-family: 'Inter', -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
-  font-size: 13px;
-  line-height: 19px;
-  letter-spacing: -0.1px;
+  font-size: 15px;
+  line-height: 23px;
+  /* Při 15px už stahovat proklad není potřeba — na 13px to text zpevňovalo,
+     tady by ho jen zúžilo. */
+  letter-spacing: -0.05px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'cv11', 'ss01', 'tnum';

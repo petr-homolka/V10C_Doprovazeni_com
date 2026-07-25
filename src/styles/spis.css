@@ -123,6 +123,99 @@
   }
 }
 
+/* ---------- SEKCE: popis vlevo, obsah v kartě vpravo ---------- */
+
+/*
+  Tohle je sazba z referenční stránky, kterou poslal Petr 2026-07-25 (výpis
+  o autě — a je to přesně profil jako u nás): STRANA JE ŠEDÁ, obsah jsou
+  BÍLÉ KARTY, a každá sekce má VLEVO V OKRAJI svůj název a jednu vysvětlující
+  větu. Předchozí verze měla všechno na bílé ploše pod sebou a Petr o ní
+  napsal, že je „nepřehledná" — právem: nadpisy sekcí splývaly s obsahem,
+  protože byly ze stejné plochy, stejné barvy a jen o dva pixely větší.
+
+  Proč to funguje: levý okraj se dá skenovat očima svisle („kde je Lhůty
+  a limity?") a karta jasně říká, kde sekce začíná a končí. Zároveň tím
+  vypadl nav rail — název sekce v okraji dělá jeho práci a nezabírá další
+  sloupec.
+
+  Popis vlevo je LEPIVÝ: u dlouhé sekce (dvacet zápisů) je pořád vidět,
+  co se to vlastně čte.
+*/
+.sp__page {
+  background: var(--bg-void);
+}
+
+.sp__sections {
+  display: grid;
+  gap: 40px;
+  max-width: calc(216px + 32px + 880px);
+  margin: 0 auto;
+  padding: 32px 24px 160px;
+}
+
+.sp__sec {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  gap: 32px;
+  scroll-margin-top: 24px;
+}
+
+.sp__seclabel {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  padding-top: 4px;
+}
+
+.sp__card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 8px 24px 16px;
+  /* Sloupce se ubírají podle šířky KARTY, ne okna — viz `@container` níž. */
+  container-type: inline-size;
+}
+
+/* Karta s běžným obsahem (ne seznamem řádků) potřebuje odsazení nahoře. */
+.sp__card--pad {
+  padding: 20px 24px;
+}
+
+/* Pod 1100 px se popis sekce nevejde do okraje — jde nad kartu. Nezmenšuje
+   se, protože zúžený sloupec s textem je horší než žádný. */
+@media (max-width: 1100px) {
+  .sp__sec {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .sp__seclabel {
+    position: static;
+    padding-top: 0;
+  }
+}
+
+/* ---------- souhrnný pás „stav spisu" ---------- */
+
+/*
+  Z reference: hned pod jménem je řada kontrolních bodů, každý s ikonou
+  a jednou hodnotou. Je to nejcennější prvek celé té stránky, protože
+  odpovídá na „je něco v nepořádku?" bez rolování — a u spisu rodiny je ta
+  otázka ještě důležitější než u auta.
+*/
+.sp__checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: 2px 28px;
+}
+
+.sp__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  min-width: 0;
+}
+
 /* ---------- blok („inline databáze") ---------- */
 
 .sp__block {
@@ -137,20 +230,19 @@
   min-height: 28px;
 }
 
-/* Řádek se štítky sloupců zůstává vidět při rolování dlouhého bloku —
-   jinak u dvacátého řádku nikdo neví, co je čtvrtý sloupec. `top: 0`,
-   protože hlavička appky je MIMO rolovací kontejner (nechal jsem tu chvíli
-   44 px a štítky se pak vznášely přes řádky nad sebou). */
+/*
+  Řádek se štítky sloupců. NENÍ lepivý: zkoušel jsem to a v sazbě s kartami
+  se štítky odlepily od karty a vznášely se přes obsah nad sebou. Karta má
+  hranu, takže je pořád vidět, ke které sekci sloupce patří — lepivý řádek
+  by řešil problém, který tady není.
+*/
 .sp__labels {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--bg-app);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 11px;
-  line-height: 17px;
+  font-size: 12px;
+  line-height: 18px;
   color: var(--text-faint);
-  padding: 6px 0;
+  padding: 8px 0;
 }
 
 /* ---------- řádky ---------- */
@@ -163,10 +255,12 @@
 .sp__row {
   display: grid;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
-  min-height: 34px;
-  padding: 5px 8px 5px 0;
+  /* 44 px je výška, na kterou se dá mířit prstem a která u 15px textu
+     nevypadá zmáčknutě. Dřív tu bylo 34 px, což byl ten „titěrný" dojem. */
+  min-height: 44px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border-subtle);
   text-align: left;
   transition: background-color 120ms ease;
@@ -180,15 +274,15 @@
   /* Poslední sloupec je 48 px, ne 24: vedle šipky se tam při hover ukáže
      ještě „přiřadit spolupracovníkovi". Obojí je vidět jen na řádku, na
      kterém člověk je. */
-  grid-template-columns: minmax(0, 1fr) 76px minmax(0, 168px) 132px 48px;
+  grid-template-columns: minmax(0, 1fr) 88px minmax(0, 176px) 168px 52px;
 }
 
 .sp__row--zapis {
-  grid-template-columns: 62px minmax(0, 1fr) minmax(0, 196px) 24px 24px;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 208px) 28px 28px;
 }
 
 .sp__row--blizi {
-  grid-template-columns: 62px minmax(0, 1fr) minmax(0, 150px) 24px;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 164px) 28px;
 }
 
 /*
@@ -204,17 +298,17 @@
   container-type: inline-size;
 }
 
-@container (max-width: 780px) {
+@container (max-width: 760px) {
   .sp__row--lide {
-    grid-template-columns: minmax(0, 1fr) 76px 132px 48px;
+    grid-template-columns: minmax(0, 1fr) 88px 168px 52px;
   }
   .sp__row--zapis {
-    grid-template-columns: 62px minmax(0, 1fr) 24px 24px;
+    grid-template-columns: 72px minmax(0, 1fr) 28px 28px;
   }
   /* Bez tohohle by po skrytí „koho se týká" zůstal v řádku prázdný sloupec
-     150 px a datum by odplulo doprostřed. */
+     a datum by odplulo doprostřed. */
   .sp__row--blizi {
-    grid-template-columns: 62px minmax(0, 1fr) 24px;
+    grid-template-columns: 72px minmax(0, 1fr) 28px;
   }
   .sp__col--kontakt,
   .sp__col--subjects {
@@ -222,13 +316,13 @@
   }
 }
 
-@container (max-width: 620px) {
+@container (max-width: 600px) {
   .sp__row--lide {
-    grid-template-columns: minmax(0, 1fr) 120px;
+    grid-template-columns: minmax(0, 1fr) 150px;
   }
   .sp__row--zapis,
   .sp__row--blizi {
-    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-columns: 60px minmax(0, 1fr);
   }
   .sp__col--vek,
   .sp__col--author,
@@ -243,14 +337,14 @@
   pojmenované oblasti, ne dvě různá značkování — jinak by se to rozešlo.
 */
 .sp__row--lhuta {
-  grid-template-columns: minmax(0, 1fr) 150px;
+  grid-template-columns: minmax(0, 1fr) 176px;
   grid-template-areas:
     'label state'
     'bar   bar';
   align-items: start;
-  min-height: 52px;
-  padding-top: 10px;
-  padding-bottom: 10px;
+  min-height: 64px;
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
 .sp__lim-label {
@@ -288,9 +382,8 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  height: 34px;
-  padding-right: 8px;
-  font-size: 13px;
+  height: 44px;
+  font-size: 14px;
   color: var(--text-faint);
   transition: color 120ms ease;
 }
@@ -303,7 +396,7 @@
 
 .sp__meter {
   position: relative;
-  height: 3px;
+  height: 4px;
   border-radius: 100px;
   background: var(--border-default);
   overflow: hidden;
@@ -337,7 +430,7 @@
   celou stránku, klikne na „Otevřít jako stránku".
 */
 .sp__peek {
-  width: 380px;
+  width: 420px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -379,23 +472,22 @@
 .sp__prop {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  min-height: 30px;
-  padding: 4px 0;
+  gap: 16px;
+  min-height: 44px;
+  padding: 10px 0;
 }
 
 .sp__proplabel {
-  width: 148px;
+  width: 176px;
   flex-shrink: 0;
-  padding-top: 1px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-tertiary);
 }
 
 .sp__propvalue {
   min-width: 0;
   flex: 1;
-  font-size: 13px;
+  font-size: 15px;
   color: var(--text-primary);
 }
 
@@ -414,6 +506,22 @@
 @media (max-width: 720px) {
   .sp__wrap {
     padding: 20px 16px 120px;
+  }
+  .sp__sections {
+    gap: 28px;
+    padding: 16px 12px 120px;
+  }
+  /* Karta se na telefonu drží u hran obrazovky — 24 px odsazení uvnitř
+     karty a 16 px venku dělalo z obsahu úzký kanál. */
+  .sp__card {
+    padding: 4px 14px 10px;
+    border-radius: 10px;
+  }
+  .sp__card--pad {
+    padding: 14px;
+  }
+  .sp__checks {
+    grid-template-columns: minmax(0, 1fr);
   }
   .sp__block {
     margin-top: 36px;

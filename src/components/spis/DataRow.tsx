@@ -93,3 +93,19 @@ export function DataAddRow({
     </button>
   )
 }
+
+/**
+ * Popisek skupiny uvnitř sekce („Pěstouni 2", „červenec 2026 3").
+ *
+ * Dělí obsah rolí nebo časem, ne rámem — proto je to jen tichý text. Kdyby
+ * měla skupina vlastní hlavičku tabulky, byla by na stránce hierarchie
+ * o dvě úrovně hlubší, než kolik ta informace unese.
+ */
+export function SpisGroupLabel({ label, count }: { label: string; count?: number }) {
+  return (
+    <p className="pb-1 pt-5 text-sm text-text-faint">
+      {label}
+      {count !== undefined && <span className="ml-2">{count}</span>}
+    </p>
+  )
+}
