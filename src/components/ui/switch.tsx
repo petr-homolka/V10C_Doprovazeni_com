@@ -15,16 +15,27 @@ import { cn } from '@/lib/utils'
  * v obou režimech, potvrzeno měřením v obou — drží se stínem
  * `shadow-raised`, ne kontrastem barvy vůči tracku).
  */
+/**
+ * `label` se od 2026-07-25 KRESLÍ, ne jen předává čtečkám.
+ *
+ * Přepínač bez viditelného popisku je hádanka: na stránce Úkoly stál sám na
+ * řádku a nikdo z obrázku nepoznal, co zapíná („Zobrazit i dokončené?").
+ * Text je součástí ovládacího prvku, takže se dá kliknout i na něj —
+ * a `showLabel={false}` zůstává pro místa, kde popisek nese okolní řádek
+ * (např. `PropertyRow` s vlastním názvem vlevo).
+ */
 export function Switch({
   checked,
   onChange,
   label,
+  showLabel = true,
 }: {
   checked: boolean
   onChange: (checked: boolean) => void
   label?: string
+  showLabel?: boolean
 }) {
-  return (
+  const control = (
     <button
       type="button"
       role="switch"
@@ -44,5 +55,14 @@ export function Switch({
         )}
       />
     </button>
+  )
+
+  if (!label || !showLabel) return control
+
+  return (
+    <label className="inline-flex cursor-pointer items-center gap-2.5 text-sm text-text-secondary">
+      {control}
+      <span onClick={() => onChange(!checked)}>{label}</span>
+    </label>
   )
 }

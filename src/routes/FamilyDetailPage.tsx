@@ -42,6 +42,7 @@ import { assignEntityToCollaborator } from '@/services/collaboratorService'
 import { createDocument, listFamilyDocuments } from '@/services/documentService'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
+import { useScrollTopOnRoute } from '@/hooks/useScrollTopOnRoute'
 import {
   ageYears, buildCareLimits, dayCount, daysAgo, educationHoursInLastYear, lastSeenInPerson, nextVisitDue,
   shortDate,
@@ -133,8 +134,10 @@ export default function FamilyDetailPage() {
   /** Vlastnosti Dohody: pět vidět, ostatní na požádání. Adresu ani spisovku
    * nikdo nehledá pětkrát denně — nemají trvale brát nejlepší místo. */
   const [allProps, setAllProps] = useState(false)
-  /** Rolovací kontejner stránky — osnova z něj čte, kde člověk je. */
-  const scroller = useRef<HTMLDivElement>(null)
+  /** Rolovací kontejner stránky. `useScrollTopOnRoute` ho při přechodu na
+   * jinou rodinu vrátí na začátek — stránka je `fullBleed`, takže si scroll
+   * řídí sama a `AppShell` na něj nedosáhne. */
+  const scroller = useScrollTopOnRoute<HTMLDivElement>(useRef<HTMLDivElement>(null))
 
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -935,6 +938,7 @@ export default function FamilyDetailPage() {
                         checked={family.partnerSharingDefault ?? true}
                         onChange={handlePartnerSharingDefaultChange}
                         label="Nové zápisy výchozí sdílet s oběma pěstouny"
+                        showLabel={false}
                       />
                     </PropertyRow>
                   )}

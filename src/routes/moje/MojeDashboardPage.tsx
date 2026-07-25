@@ -172,7 +172,7 @@ export default function MojeDashboardPage() {
 
   return (
     <MojeShell>
-      <h1 className="text-xl font-bold leading-tight text-text-primary">Vítejte, {userDoc?.displayName}</h1>
+      <h1 className="text-2xl text-text-primary">Vítejte, {userDoc?.displayName}</h1>
       {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
 
       {error && (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type MouseEvent } from 'react'
 import { CheckSquare, Square, Ban, Plus } from '@/components/ui/icons'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageBody, PageHead } from '@/components/spis/PageBody'
 import { SidePanel } from '@/components/ui/side-panel'
 import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { Button } from '@/components/ui/button'
@@ -365,24 +366,25 @@ export default function TaskListPage() {
 
   return (
     <AppShell fullBleed sidePanel={sidePanel}>
-      <div className="flex h-full min-w-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto p-8">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">Úkoly</h1>
-              <div className="flex shrink-0 items-center gap-3">
-                <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
-                <Button size="sm" onClick={openNew}>
-                  <Plus size={16} /> Nový úkol
-                </Button>
-              </div>
-            </div>
-
-            {error && (
-              <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
-                {error}
-              </p>
-            )}
+      <PageBody>
+        <PageHead
+          title="Úkoly"
+          count={visibleTasks?.length}
+          actions={
+            <Button onClick={openNew}>
+              <Plus size={17} /> Nový úkol
+            </Button>
+          }
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <Switch checked={showDone} onChange={setShowDone} label="Zobrazit i dokončené/zrušené" />
+          </div>
+          {error && (
+            <p className="mt-3 max-w-xl text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+        </PageHead>
 
             {visibleTasks === null ? (
               <p className="text-sm text-text-secondary">Načítám…</p>
@@ -445,9 +447,7 @@ export default function TaskListPage() {
                 ))}
               </RecordCardList>
             )}
-          </div>
-        </div>
-      </div>
+      </PageBody>
     </AppShell>
   )
 }

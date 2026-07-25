@@ -280,7 +280,7 @@ export default function DocumentDetailPage() {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold leading-tight text-text-primary">{document.title}</h1>
+          <h1 className="text-2xl text-text-primary">{document.title}</h1>
           <p className="mt-1 text-sm text-text-secondary">
             {document.uid} · verze {document.currentVersion} · {DOCUMENT_STATUS_LABELS[status]}
           </p>

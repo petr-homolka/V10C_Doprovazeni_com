@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageBody, PageHead } from '@/components/spis/PageBody'
 import { SidePanel } from '@/components/ui/side-panel'
 import { ViewMenu } from '@/components/ui/view-menu'
 import { RecordCard, RecordCardList, RecordGroup } from '@/components/ui/record-card'
@@ -426,7 +427,7 @@ export default function FamilyListPage() {
   if (!organizationId) {
     return (
       <AppShell>
-        <h1 className="text-xl font-bold leading-tight text-text-primary">Rodiny</h1>
+        <h1 className="text-2xl text-text-primary">Rodiny</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -566,28 +567,27 @@ export default function FamilyListPage() {
 
   return (
     <AppShell fullBleed sidePanel={sidePanel}>
-      <div className="flex h-full min-w-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto p-8">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">Rodiny</h1>
-              <Button size="sm" onClick={() => setShowForm(true)}>
-                <Plus size={16} /> Nová rodina
-              </Button>
-            </div>
-
+      <PageBody>
+        {/* Hlavička je TATÁŽ komponenta jako na profilu rodiny — název, akce
+            vpravo, pod linkou ovládání seznamu. */}
+        <PageHead
+          title="Rodiny"
+          count={sortedRows.length || undefined}
+          actions={
+            <Button onClick={() => setShowForm(true)}>
+              <Plus size={17} /> Nová rodina
+            </Button>
+          }
+        >
             {error && (
               <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
                 {error}
               </p>
             )}
 
-            {/* Ohraničený pruh (`ListToolbar`, teď smazaný) tady byl proto, aby
-                srostl s TABULKOU pod ním. Tabulka je dávno pryč — seznam jsou
-                řádky na vlasové linkce — takže rámeček neměl co držet.
-                Volby zobrazení jsou v JEDNOM tlačítku, jako u nich: trvale je
-                vidět jen výsledek volby, ne všech šest možností. */}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            {/* Volby zobrazení jsou v JEDNOM tlačítku: trvale je vidět jen
+                výsledek volby, ne všech šest možností. */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <ViewMenu
                 groups={[
                   {
@@ -614,10 +614,12 @@ export default function FamilyListPage() {
                 </div>
               )}
             </div>
+        </PageHead>
+
             {families === null ? (
-              <p className="mt-3 text-sm text-text-secondary">Načítám…</p>
+              <p className="text-sm text-text-tertiary">Načítám…</p>
             ) : sortedRows.length === 0 ? (
-              <div className="mt-3 rounded-lg bg-surface-soft p-8 shadow-raised">
+              <div className="sp__card sp__card--pad">
                 <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
               </div>
             ) : (
@@ -625,7 +627,6 @@ export default function FamilyListPage() {
               // od nejdůležitější a na užších šířkách ubývají zprava:
               // Stav → Poslední kontakt → Klíčová osoba. Jméno nikdy.
               <RecordCardList
-                className="mt-3"
                 cellCount={columnPlan.headers.length}
                 headers={columnPlan.headers}
                 lead={56}
@@ -645,9 +646,7 @@ export default function FamilyListPage() {
                 )}
               </RecordCardList>
             )}
-          </div>
-        </div>
-      </div>
+      </PageBody>
 
       {noteModalOpen && (
         <Modal onClose={() => setNoteModalOpen(false)}>

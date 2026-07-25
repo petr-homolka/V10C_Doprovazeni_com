@@ -107,7 +107,7 @@ export default function MojeLoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-app px-6">
       <div className="w-full max-w-[360px] rounded-lg border border-border bg-surface p-6 text-center">
-        <h1 className="text-xl font-bold leading-tight text-text-primary">Doprovázení.com</h1>
+        <h1 className="text-2xl text-text-primary">Doprovázení.com</h1>
 
         {needsEmailInput ? (
           <form onSubmit={handleEmailSubmit} className="mt-4 flex flex-col gap-3 text-left">

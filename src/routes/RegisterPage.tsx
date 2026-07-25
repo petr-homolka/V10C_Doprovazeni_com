@@ -73,7 +73,7 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="w-full max-w-[380px] rounded-lg border border-border bg-surface p-6 shadow-raised">
-        <h1 className="mb-1 text-xl font-bold leading-tight text-text-primary">
+        <h1 className="mb-1 text-2xl text-text-primary">
           Registrace organizace
         </h1>
         <p className="mb-6 text-sm text-text-secondary">

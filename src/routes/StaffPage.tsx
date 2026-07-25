@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageBody, PageHead } from '@/components/spis/PageBody'
 import { SidePanel } from '@/components/ui/side-panel'
 import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
@@ -196,7 +197,7 @@ export default function StaffPage() {
   if (!organizationId) {
     return (
       <AppShell>
-        <h1 className="text-xl font-bold leading-tight text-text-primary">Zaměstnanci</h1>
+        <h1 className="text-2xl text-text-primary">Zaměstnanci</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
         </p>
@@ -333,23 +334,24 @@ export default function StaffPage() {
 
   return (
     <AppShell fullBleed sidePanel={sidePanel}>
-      <div className="flex h-full min-w-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto p-8">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">Zaměstnanci</h1>
-              {isOrgAdmin && (
-                <Button size="sm" onClick={openCreate}>
-                  <Plus size={16} /> Přidat zaměstnance
-                </Button>
-              )}
-            </div>
-
-            {error && (
-              <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
-                {error}
-              </p>
-            )}
+      <PageBody>
+        <PageHead
+          title="Zaměstnanci"
+          count={staff?.length}
+          actions={
+            isOrgAdmin && (
+              <Button onClick={openCreate}>
+                <Plus size={17} /> Přidat zaměstnance
+              </Button>
+            )
+          }
+        >
+          {error && (
+            <p className="max-w-xl text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+        </PageHead>
 
             <input
               ref={photoFileRef}
@@ -432,9 +434,7 @@ export default function StaffPage() {
                 })}
               </RecordCardList>
             )}
-          </div>
-        </div>
-      </div>
+      </PageBody>
     </AppShell>
   )
 }

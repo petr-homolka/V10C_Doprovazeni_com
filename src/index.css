@@ -87,8 +87,11 @@ select {
   nemá odlepovat od plochy.
 */
 .record-item {
+  /* 44 px a odsazení stejné jako `.sp__row` — seznam a profil jsou jedna
+     appka, takže řádek musí mít jednu výšku. Zaoblení tu nemá co dělat:
+     řádek není karta (viz komentář výš), a v kartě by kreslilo rám v rámu. */
+  min-height: 44px;
   border-bottom: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
 }
 
 .record-item:last-child {

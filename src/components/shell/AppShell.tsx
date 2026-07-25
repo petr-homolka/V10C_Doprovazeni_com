@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useScrollTopOnRoute } from '@/hooks/useScrollTopOnRoute'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { ActiveVisitBanner } from './ActiveVisitBanner'
@@ -29,6 +30,8 @@ export function AppShell({
   /** Akce téhle stránky, vpravo v hlavičce. Jedna primární, zbytek tiše. */
   pageActions?: ReactNode
 }) {
+  const scrollRef = useScrollTopOnRoute<HTMLDivElement>()
+
   return (
     <div className="flex h-screen bg-app">
       <Sidebar />
@@ -40,12 +43,17 @@ export function AppShell({
             <nav className="w-56 shrink-0 overflow-y-auto border-r border-border-default bg-surface-soft p-4">
               {secondaryPanel}
             </nav>
-            <div className="min-w-0 flex-1 overflow-y-auto bg-surface-soft p-6">{children}</div>
+            <div ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto bg-surface-soft p-6">
+              {children}
+            </div>
           </div>
         ) : fullBleed ? (
+          /* `fullBleed` si rolovací kontejner drží stránka sama (profil má
+             vlastní `.sp`), takže scroll na začátek řeší `useScrollToTop`
+             uvnitř ní — tady není co rolovat. */
           <div className="flex min-h-0 flex-1 overflow-hidden">{children}</div>
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
             <div className="mx-auto max-w-[1440px] px-8 pb-8 pt-6">{children}</div>
           </div>
         )}

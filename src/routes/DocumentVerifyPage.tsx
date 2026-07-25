@@ -48,7 +48,7 @@ export default function DocumentVerifyPage() {
 
   return (
     <AppShell>
-      <h1 className="text-xl font-bold leading-tight text-text-primary">Ověření dokumentu {uid}</h1>
+      <h1 className="text-2xl text-text-primary">Ověření dokumentu {uid}</h1>
 
       {error && (
         <p className="mt-4 text-sm text-danger" role="alert">

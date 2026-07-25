@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { Mail, UserCog } from '@/components/ui/icons'
+import { UserCog } from '@/components/ui/icons'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageBody, PageHead } from '@/components/spis/PageBody'
+import { SpisSection } from '@/components/spis/SpisSection'
 import { EditableAvatar } from '@/components/ui/editable-avatar'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { EntityAgenda } from '@/components/calendar/EntityAgenda'
@@ -92,72 +94,88 @@ export default function StaffDetailPage() {
   )
 
   return (
-    <AppShell>
-      <div className="flex max-w-[860px] flex-col gap-6">
-        <div className="flex items-start gap-5 rounded-lg bg-surface-soft p-6 shadow-raised">
-          {canEditPhoto ? (
-            <EditableAvatar
-              kind="staff"
-              id={member.uid}
-              photoURL={member.avatarUrl}
-              label={member.displayName}
-              fallbackIcon={UserCog}
-              onUploaded={(url) => setMember((prev) => (prev && prev !== 'notFound' ? { ...prev, avatarUrl: url } : prev))}
-            />
-          ) : (
-            <EntityAvatar size="lg" photoURL={member.avatarUrl} label={member.displayName} fallbackIcon={UserCog} />
-          )}
-
-          <div className="min-w-0 flex-1">
-            <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">{member.displayName}</h1>
-            <p className="mt-1">
-              <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">
-                {STAFF_ROLE_LABELS[member.role as StaffRole] ?? member.role}
-              </span>
-              {member.disabledAt && <span className="ml-2 text-xs font-medium text-danger">Zablokován</span>}
-            </p>
-            <div className="mt-3 flex flex-col gap-1.5 text-sm">
-              {member.email && (
-                <a href={`mailto:${member.email}`} className="flex items-center gap-2 text-text-secondary hover:text-primary hover:underline">
-                  <Mail size={15} className="shrink-0 text-text-tertiary" />
-                  {member.email}
-                </a>
-              )}
-            </div>
-          </div>
-
-          {!isCollaborator && caseload !== null && (
-            <div className="shrink-0 text-center">
-              <p className="text-xs uppercase tracking-wide text-text-tertiary">Kapacita</p>
-              <div className="mt-1 flex justify-center">
+    <AppShell
+      fullBleed
+      pageContext={
+        <nav className="flex min-w-0 items-center gap-1.5 text-sm">
+          <Link to="/zamestnanci" className="shrink-0 text-text-tertiary transition-colors duration-150 hover:text-text-primary">
+            Zaměstnanci
+          </Link>
+          <span className="text-text-faint">/</span>
+          <span className="truncate text-text-primary">{member.displayName}</span>
+        </nav>
+      }
+    >
+      <PageBody>
+        <PageHead
+          title={member.displayName}
+          actions={
+            !isCollaborator && caseload !== null ? (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm text-text-tertiary">Kapacita</p>
+                  <Link to="/zamestnanci" className="text-sm text-text-secondary hover:text-text-primary hover:underline">
+                    Nastavit
+                  </Link>
+                </div>
                 <CapacityRing value={caseload} max={threshold} />
               </div>
-              <Link to="/zamestnanci" className="mt-1 block text-xs text-primary hover:underline">
-                Nastavit
-              </Link>
-            </div>
-          )}
-        </div>
+            ) : undefined
+          }
+        >
+          <div className="flex items-center gap-4">
+            {canEditPhoto ? (
+              <EditableAvatar
+                kind="staff"
+                id={member.uid}
+                photoURL={member.avatarUrl}
+                label={member.displayName}
+                fallbackIcon={UserCog}
+                size="sm"
+                onUploaded={(url) =>
+                  setMember((prev) => (prev && prev !== 'notFound' ? { ...prev, avatarUrl: url } : prev))
+                }
+              />
+            ) : (
+              <EntityAvatar photoURL={member.avatarUrl} label={member.displayName} fallbackIcon={UserCog} />
+            )}
+            <p className="flex flex-wrap items-center gap-x-2 text-sm text-text-tertiary">
+              <span>{STAFF_ROLE_LABELS[member.role as StaffRole] ?? member.role}</span>
+              {member.email && (
+                <>
+                  <span>·</span>
+                  <a href={`mailto:${member.email}`} className="hover:text-text-primary hover:underline">
+                    {member.email}
+                  </a>
+                </>
+              )}
+              {member.disabledAt && (
+                <>
+                  <span>·</span>
+                  <span className="text-accent">Zablokován</span>
+                </>
+              )}
+            </p>
+          </div>
+        </PageHead>
 
-        {/* Vlastní kalendář zaměstnance — "každá entita má svůj kalendář",
-         * defaultní pohled AGENDA. U zaměstnance to znamená události, které
-         * má přiřazené. */}
-        {organizationId && (
-          <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Kalendář</h2>
+        {/* Vlastní kalendář zaměstnance — „každá entita má svůj kalendář",
+            defaultní pohled AGENDA. U zaměstnance to znamená události, které
+            má přiřazené. */}
+        <SpisSection id="kalendar" title="Kalendář" description="Události, které má tenhle člověk na sobě." lazy>
+          {organizationId && (
             <EntityAgenda organizationId={organizationId} subjectKind="staff" subjectId={member.uid} />
-          </div>
-        )}
+          )}
+        </SpisSection>
 
-        {/* Úkoly, které má na sobě — u zaměstnance je to "co má rozdělané",
-         * ne "co se ho týká jako klienta". */}
-        {organizationId && (
-          <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-tertiary">Úkoly</h2>
+        {/* Úkoly, které má na sobě — u zaměstnance je to „co má rozdělané",
+            ne „co se ho týká jako klienta". */}
+        <SpisSection id="ukoly" title="Úkoly" description="Co má rozdělané." lazy padded>
+          {organizationId && (
             <EntityTasks organizationId={organizationId} subjectKind="staff" subjectId={member.uid} />
-          </div>
-        )}
-      </div>
+          )}
+        </SpisSection>
+      </PageBody>
     </AppShell>
   )
 }

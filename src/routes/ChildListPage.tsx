@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageBody, PageHead } from '@/components/spis/PageBody'
 import { RecordCard, RecordCardList } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { RowMenu, type RowMenuItem } from '@/components/ui/row-menu'
@@ -196,28 +197,26 @@ export default function ChildListPage() {
 
   return (
     <AppShell fullBleed sidePanel={sidePanel}>
-      <div className="flex h-full min-w-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto p-8">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">
-                Děti {filtered && <span className="text-text-tertiary">({filtered.length})</span>}
-              </h1>
-              <Button size="sm" onClick={openCreate}>
-                <Plus size={16} /> Nové dítě
-              </Button>
-            </div>
-
-            <div className="relative max-w-[320px]">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
-              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Hledat dítě…" className="pl-9" />
-            </div>
-
-            {error && (
-              <p className="mt-3 text-sm text-danger" role="alert">
-                {error}
-              </p>
-            )}
+      <PageBody>
+        <PageHead
+          title="Děti"
+          count={filtered?.length}
+          actions={
+            <Button onClick={openCreate}>
+              <Plus size={17} /> Nové dítě
+            </Button>
+          }
+        >
+          <div className="relative max-w-[320px]">
+            <Search size={17} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-tertiary" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Hledat dítě…" className="pl-10" />
+          </div>
+          {error && (
+            <p className="mt-3 text-sm text-danger" role="alert">
+              {error}
+            </p>
+          )}
+        </PageHead>
 
             <input
               ref={photoInputRef}
@@ -301,9 +300,7 @@ export default function ChildListPage() {
                 </RecordCardList>
               )}
             </div>
-          </div>
-        </div>
-      </div>
+      </PageBody>
     </AppShell>
   )
 }

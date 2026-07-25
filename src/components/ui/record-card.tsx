@@ -78,14 +78,14 @@ export function RecordCard({
     return (
       <div
         onClick={onClick}
-        className={cn('record-item group flex items-center gap-3 px-3 py-2', onClick && 'cursor-pointer', className)}
+        className={cn('record-item group flex items-center gap-3 py-2', onClick && 'cursor-pointer', className)}
       >
         {leading && <div className="flex shrink-0 items-center gap-2">{leading}</div>}
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <Title title={title} subtitle={subtitle} />
           {(cells ?? []).map((cell, i) => (
             <div key={i} className={cn('min-w-0', cell.align === 'right' && 'text-right')}>
-              <div className="truncate text-sm text-text-secondary">{cell.value ?? '—'}</div>
+              <div className="truncate text-sm text-text-tertiary">{cell.value ?? '—'}</div>
             </div>
           ))}
         </div>
@@ -104,7 +104,7 @@ export function RecordCard({
       <Title title={title} subtitle={subtitle} />
       {padCells(cells, grid.cellCount).map((cell, index) => (
         <div key={index} className={cn('record-cell min-w-0', cell?.align === 'right' && 'text-right')}>
-          {cell ? <div className="truncate text-sm text-text-secondary">{cell.value ?? '—'}</div> : null}
+          {cell ? <div className="truncate text-sm text-text-tertiary">{cell.value ?? '—'}</div> : null}
         </div>
       ))}
       <div className="record-trail flex items-center justify-end gap-1">{trailing}</div>
@@ -173,16 +173,21 @@ export function RecordCardList({
   const grid = columns && cellCount !== undefined ? { columns, cellCount, lead, trail } : null
   return (
     <RecordGridContext.Provider value={grid}>
-      {/* `record-list` = container pro dotazy na šířku (viz index.css) —
-       * sloupce se řídí místem, které seznam má, ne velikostí okna. */}
-      <div className={cn('record-list', className)}>
+      {/*
+        `sp__card` = tatáž bílá karta na šedé ploše jako sekce v profilu
+        (`styles/spis.css`). Je TADY, ne na dvaceti stránkách: kdo změní
+        vzhled karty, změní ho pro všechny seznamy v platformě najednou.
+        `record-list` je container pro dotazy na šířku — sloupce se řídí
+        místem, které seznam má, ne velikostí okna.
+      */}
+      <div className={cn('sp__card record-list', className)}>
         {headers && grid && (
           /* Popisky sloupců patří do hlavičky, ne nad každou hodnotu.
              Dřív nesl „STAV / POSLEDNÍ KONTAKT / KLÍČOVÁ OSOBA" KAŽDÝ řádek,
              takže seznam dvanácti rodin obsahoval popisky šestatřicetkrát.
              To je přesně ten šum, kvůli kterému appka nevypadala vzdušně:
              informace byla ve třetině plochy, zbytek byly nadpisy. */
-          <div className="record-head record-row px-3 pb-1.5" style={gridStyle(grid)}>
+          <div className="record-head record-row pb-2 pt-1" style={gridStyle(grid)}>
             <div />
             <div />
             {padCells(
@@ -191,7 +196,7 @@ export function RecordCardList({
             ).map((cell, index) => (
               <div
                 key={index}
-                className="record-cell truncate whitespace-nowrap text-xs uppercase tracking-wide text-text-faint"
+                className="record-cell truncate whitespace-nowrap text-xs text-text-faint"
               >
                 {cell?.label ?? ''}
               </div>
@@ -242,15 +247,15 @@ export function RecordGroup({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-overlay-active"
+        className="flex w-full items-center gap-1.5 rounded-md py-2 text-left transition-colors duration-150 hover:bg-overlay-active"
       >
         <span className="text-text-faint">
-          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
         </span>
-        <span className="text-xs uppercase tracking-wide text-text-tertiary">{title}</span>
+        <span className="text-sm text-text-faint">{title}</span>
         <span
           className={cn(
-            'rounded-md px-1.5 text-xs',
+            'rounded-md px-1.5 text-sm',
             tone === 'hot' && 'bg-danger-bg text-danger',
             tone === 'warm' && 'bg-warning-bg text-warning',
             tone === 'calm' && 'text-text-faint',

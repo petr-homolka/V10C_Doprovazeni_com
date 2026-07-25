@@ -4,36 +4,46 @@ import { Check, Loader2 } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**
- * Cesta B (2026-07-24) — Lumo-inspired: primární tlačítko je SKUTEČNÁ
- * sytá modrá (`--primary` == Lumo Primary), ne monochrom jako Cesta A.
- * Crisp radius (`rounded-sm` teď 6px, viz index.css), `font-semibold`
- * (o stupeň těžší než Cesty A `font-medium` — Lumo tlačítka jsou
- * vizuálně "hutnější"), a skutečný focus RING (`shadow-focus`
- * box-shadow glow) místo Cesty A `ring-primary/40` (na monochromní
- * appce ring splýval s tlačítkem samotným — na modré appce potřebuje
- * vlastní odstín, aby byl viditelný i na modrém pozadí primary tlačítka).
- * Výška o krok nižší (h-9/h-8 místo h-10/h-9) — hustší, "nástrojová"
- * škála namísto Cesty A dotykově velkorysé (mobilní BottomSheet
- * formuláře si výšku přebíjejí vlastním `className`, viz volající kód).
+ * TLAČÍTKO — JEDINÁ definice tlačítka v celé platformě.
+ *
+ * Petr 2026-07-25: „třídy stylů musí být napříč celou platformou stejné,
+ * abychom pak mohli dělat globální změny." Tohle je to místo: kdo chce
+ * změnit výšku, poloměr nebo barvu tlačítek, mění je TADY a změní se všude.
+ * Psát si vlastní `className` s `h-9 rounded-md bg-primary…` je porušení
+ * pravidla, i když to vypadá stejně — příště se to rozejde.
+ *
+ * ČTYŘI ÚROVNĚ HLASITOSTI, víc jich appka nemá:
+ *   `primary`     — grafitová plocha. JEDNA na obrazovku (to, co po člověku
+ *                   ta obrazovka chce).
+ *   `secondary`   — vlasový rám. Akce, která se nabízí, ale netlačí.
+ *   `ghost`       — jen text. „Zrušit", odkazy do stran, akce v řádku.
+ *   `destructive` — červená. Maže se, tak ať je to vidět.
+ *
+ * Výšky jdou s typografickou stupnicí (základ 15/23 od 2026-07-25):
+ * `default` 40 px na obyčejné akce a formuláře, `sm` 36 px do řádků a
+ * hlaviček bloků, `icon` čtverec na samotnou ikonu. Nižší už ne — na
+ * dotykovém displeji se pod 36 px nedá spolehlivě trefit.
  */
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-sm text-base font-semibold ' +
-    'transition-[background-color,box-shadow] duration-150 focus-visible:outline-none ' +
+  'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-base font-medium ' +
+    'transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-none ' +
     'focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         primary: 'bg-primary text-primary-foreground hover:bg-primary-hover',
         secondary:
-          'bg-primary-soft text-primary hover:bg-primary-soft-hover',
-        outline: 'border border-border-strong text-text-primary hover:bg-overlay-active',
-        ghost: 'text-text-secondary hover:bg-overlay-active',
+          'border border-border-default bg-surface text-text-primary hover:border-border-strong hover:bg-overlay-active',
+        /** Historické jméno pro `secondary` — ať se nemusí přepisovat volající. */
+        outline:
+          'border border-border-default bg-surface text-text-primary hover:border-border-strong hover:bg-overlay-active',
+        ghost: 'text-text-secondary hover:bg-overlay-active hover:text-text-primary',
         destructive: 'bg-danger-solid text-white hover:opacity-90',
       },
       size: {
-        default: 'h-9 px-3.5',
-        sm: 'h-8 px-3 text-sm',
-        icon: 'h-9 w-9',
+        default: 'h-10 px-4',
+        sm: 'h-9 px-3 text-sm',
+        icon: 'h-10 w-10',
       },
     },
     defaultVariants: {

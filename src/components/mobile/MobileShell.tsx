@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useScrollTopOnRoute } from '@/hooks/useScrollTopOnRoute'
 import { Calendar, Home, User, Users } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
@@ -21,9 +22,15 @@ const TABS = [
  * jasnější, sebevědomější signál "tady jsi".
  */
 export function MobileShell({ children }: { children: ReactNode }) {
+  // Na telefonu je to ještě citelnější než na desktopu — kdo se prokliká
+  // ze seznamu do profilu, musí začít u jména, ne uprostřed lhůt.
+  const scrollRef = useScrollTopOnRoute<HTMLDivElement>()
+
   return (
     <div className="flex h-[100dvh] flex-col bg-app">
-      <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+        {children}
+      </div>
       <MobileTabBar />
     </div>
   )
