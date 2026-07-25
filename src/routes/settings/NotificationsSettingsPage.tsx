@@ -31,6 +31,8 @@ export default function NotificationsSettingsPage() {
     >
       <PageHeader title="Oznámení" variant="settings" />
 
+      <section className="sp__card sp__card--pad">
+
       <div className="max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">E-mailová upozornění</p>
         <div className="mb-4 mt-3 flex items-center justify-between gap-5">
@@ -52,6 +54,7 @@ export default function NotificationsSettingsPage() {
           beze změny.
         </p>
       </div>
+      </section>
     </AppShell>
   )
 }

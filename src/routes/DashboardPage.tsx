@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
+import { SpisSection } from '@/components/spis/SpisSection'
 import { TodaySections } from '@/components/TodaySections'
 import { PersonLink } from '@/components/ui/person-link'
 import { TeamWidget } from '@/components/TeamWidget'
@@ -39,31 +40,34 @@ export default function DashboardPage() {
 
   return (
     <AppShell>
-      {firstName && <p className="-mt-1 mb-1 text-sm text-text-secondary">Vítejte zpět, {firstName}!</p>}
-      <PageHeader title="Dnes" />
-
-      {canSeeCapacityBanner && overCapacity.length > 0 && (
-        <div className="mb-2 max-w-[928px] rounded-lg border border-warning bg-warning-bg p-4">
-          <p className="text-sm font-medium text-text-primary">
+      <PageHead title="Dnes" description={firstName ? `Vítejte zpět, ${firstName}.` : undefined}>
+        {canSeeCapacityBanner && overCapacity.length > 0 && (
+          <div className="border-l-2 border-accent pl-4">
+            <p className="text-base text-text-primary">
             {overCapacity.length === 1
               ? '1 klíčová osoba má překročenou kapacitu'
               : `${overCapacity.length} klíčových osob má překročenou kapacitu`}
           </p>
-          <p className="mt-1 text-sm text-text-secondary">
-            {/* Jména KO jsou prokliky na jejich profil — odtud se řeší,
-             * proč mají překročenou kapacitu. */}
-            {overCapacity.map((k, i) => (
-              <span key={k.uid}>
-                {i > 0 && ', '}
-                <PersonLink kind="staff" id={k.uid} name={k.displayName} muted />
-                {` (${k.activeCaseload}/${k.threshold})`}
-              </span>
-            ))}
-          </p>
-        </div>
-      )}
+            <p className="mt-1 text-sm text-text-tertiary">
+              {/* Jména KO jsou prokliky na jejich profil — odtud se řeší,
+               * proč mají překročenou kapacitu. */}
+              {overCapacity.map((k, i) => (
+                <span key={k.uid}>
+                  {i > 0 && ', '}
+                  <PersonLink kind="staff" id={k.uid} name={k.displayName} muted />
+                  {` (${k.activeCaseload}/${k.threshold})`}
+                </span>
+              ))}
+            </p>
+          </div>
+        )}
+      </PageHead>
 
-      {userDoc?.organizationId && <TeamWidget organizationId={userDoc.organizationId} />}
+      {userDoc?.organizationId && (
+        <SpisSection id="tym" title="Tým" description="Kdo je v organizaci a co má na sobě." lazy padded>
+          <TeamWidget organizationId={userDoc.organizationId} />
+        </SpisSection>
+      )}
 
       <TodaySections />
     </AppShell>

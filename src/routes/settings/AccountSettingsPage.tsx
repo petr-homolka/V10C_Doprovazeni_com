@@ -23,6 +23,8 @@ export default function AccountSettingsPage() {
     >
       <PageHeader title="Účet" variant="settings" />
 
+      <section className="sp__card sp__card--pad">
+
       <div className="max-w-[560px] space-y-5">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
@@ -38,6 +40,7 @@ export default function AccountSettingsPage() {
           Uložit změny
         </Button>
       </div>
+      </section>
     </AppShell>
   )
 }

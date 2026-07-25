@@ -55,6 +55,8 @@ export default function CalendarSettingsPage() {
     >
       <PageHeader title="Kalendář" variant="settings" />
 
+      <section className="sp__card sp__card--pad">
+
       <div className="max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">Narozeniny</p>
         <div className="mt-3 flex items-center justify-between gap-5">
@@ -78,6 +80,7 @@ export default function CalendarSettingsPage() {
           </p>
         )}
       </div>
+      </section>
     </AppShell>
   )
 }

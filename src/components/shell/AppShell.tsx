@@ -38,13 +38,19 @@ export function AppShell({
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar context={pageContext} actions={pageActions} />
         <ActiveVisitBanner />
+        {/*
+          VŠECHNY TŘI VARIANTY MAJÍ TUTÉŽ PLOCHU: šedou stránku (`sp__page`)
+          se sloupcem obsahu (`sp__sections`). Dřív měla každá vlastní
+          odsazení a bílé pozadí, takže se stránky lišily podle toho, kterou
+          větev zrovna použily — a „globální změna" znamenala tři změny.
+        */}
         {secondaryPanel ? (
-          <div className="flex min-h-0 flex-1">
+          <div className="sp sp__page flex min-h-0 flex-1">
             <nav className="w-56 shrink-0 overflow-y-auto border-r border-border-default bg-surface-soft p-4">
               {secondaryPanel}
             </nav>
-            <div ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto bg-surface-soft p-6">
-              {children}
+            <div ref={scrollRef} className="min-w-0 flex-1 overflow-y-auto">
+              <div className="sp__sections">{children}</div>
             </div>
           </div>
         ) : fullBleed ? (
@@ -53,8 +59,8 @@ export function AppShell({
              uvnitř ní — tady není co rolovat. */
           <div className="flex min-h-0 flex-1 overflow-hidden">{children}</div>
         ) : (
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-[1440px] px-8 pb-8 pt-6">{children}</div>
+          <div ref={scrollRef} className="sp sp__page min-h-0 flex-1 overflow-y-auto">
+            <div className="sp__sections">{children}</div>
           </div>
         )}
       </main>

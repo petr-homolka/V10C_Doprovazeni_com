@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, CalendarCheck, Cake, NotebookPen, PartyPopper } from '@/components/ui/icons'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FamilyCard } from '@/components/FamilyCard'
+import { SpisSection } from '@/components/spis/SpisSection'
 import { useAuth } from '@/hooks/useAuth'
 import {
   listBirthdayAlerts,
@@ -67,8 +68,7 @@ export function TodaySections() {
 
   return (
     <>
-      <section className="mt-8">
-        <h2 className="font-heading text-lg font-bold leading-tight text-text-primary">Čeká na vás</h2>
+      <SpisSection id="ceka" title="Čeká na vás" description="Návštěvy, ke kterým ještě není zápis.">
         <div className="mt-3 flex flex-col gap-3">
           {error ? (
             <p className="text-sm text-danger" role="alert">
@@ -98,10 +98,9 @@ export function TodaySections() {
             ))
           )}
         </div>
-      </section>
+      </SpisSection>
 
-      <section className="mt-8">
-        <h2 className="font-heading text-lg font-bold leading-tight text-text-primary">Provozní upozornění</h2>
+      <SpisSection id="provoz" title="Provozní upozornění" description="Co si žádá pozornost napříč organizací.">
         <div className="mt-3 flex flex-col gap-2">
           {alertsError ? (
             <p className="text-sm text-danger" role="alert">
@@ -132,10 +131,9 @@ export function TodaySections() {
             })
           )}
         </div>
-      </section>
+      </SpisSection>
 
-      <section className="mt-8">
-        <h2 className="font-heading text-lg font-bold leading-tight text-text-primary">Poslední zápisy</h2>
+      <SpisSection id="zapisy" title="Poslední zápisy" description="Co se v organizaci naposledy zapsalo.">
         <div className="mt-3">
           <EmptyState
             icon={NotebookPen}
@@ -143,7 +141,7 @@ export function TodaySections() {
             actionLabel="Přidat záznam"
           />
         </div>
-      </section>
+      </SpisSection>
     </>
   )
 }
