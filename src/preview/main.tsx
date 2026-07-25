@@ -36,6 +36,12 @@ import CalendarPage from '@/routes/CalendarPage'
 import TaskListPage from '@/routes/TaskListPage'
 import DashboardPage from '@/routes/DashboardPage'
 import MessengerPage from '@/routes/MessengerPage'
+import AgreementDetailPage from '@/routes/AgreementDetailPage'
+import DocumentListPage from '@/routes/DocumentListPage'
+import ExternalParticipantsPage from '@/routes/ExternalParticipantsPage'
+import AppearanceSettingsPage from '@/routes/settings/AppearanceSettingsPage'
+import CalendarSettingsPage from '@/routes/settings/CalendarSettingsPage'
+import MojeDashboardPage from '@/routes/moje/MojeDashboardPage'
 import MobileHomePage from '@/routes/mobile/MobileHomePage'
 import MobileFamiliesPage from '@/routes/mobile/MobileFamiliesPage'
 import MobileFamilyDetailPage from '@/routes/mobile/MobileFamilyDetailPage'
@@ -167,6 +173,15 @@ function PreviewApp() {
           <Route path="/kalendar" element={<Responsive mobile={<MobileCalendarPage />} desktop={<CalendarPage />} />} />
           <Route path="/ukoly" element={<Responsive mobile={<MobileTaskListPage />} desktop={<TaskListPage />} />} />
           <Route path="/zpravy" element={<MessengerPage />} />
+          {/* Přidáno 2026-07-25: sjednocení designu se dotklo i Dohody,
+              Dokumentů a Nastavení — bez těchhle cest by se jejich sazba
+              kontrolovala jen očima nad kódem. */}
+          <Route path="/rodiny/:familyUid/dohoda" element={<AgreementDetailPage />} />
+          <Route path="/dokumenty" element={<DocumentListPage />} />
+          <Route path="/externiste" element={<ExternalParticipantsPage />} />
+          <Route path="/nastaveni/vzhled" element={<AppearanceSettingsPage />} />
+          <Route path="/nastaveni/kalendar" element={<CalendarSettingsPage />} />
+          <Route path="/moje" element={<MojeDashboardPage />} />
         </Routes>
       </MemoryRouter>
     </AuthContext.Provider>

@@ -63,6 +63,14 @@ const SCREENS = [
   { name: 'kalendar-mesic', route: '/kalendar', click: 'Měsíc' },
   { name: 'ukoly', route: '/ukoly' },
   { name: 'zpravy', route: '/zpravy' },
+  // Sjednocení designu 2026-07-25 se dotklo i těchhle stránek — bez
+  // fotky by se kontrolovaly jen očima nad kódem.
+  { name: 'dohoda', route: '/rodiny/9900010000015/dohoda' },
+  { name: 'dokumenty', route: '/dokumenty' },
+  { name: 'externiste', route: '/externiste' },
+  { name: 'nastaveni-vzhled', route: '/nastaveni/vzhled' },
+  { name: 'nastaveni-kalendar', route: '/nastaveni/kalendar' },
+  { name: 'moje-pestoun', route: '/moje' },
 ]
 
 const VIEWPORTS = [
