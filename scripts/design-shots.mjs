@@ -29,6 +29,11 @@ const SCREENS = [
   { name: 'editor', lab: 'editor', dark: true },
   // Se otevřeným slash menu — panel příkazů se jinak nedá vyfotit.
   { name: 'editor-slash', lab: 'editor', type: '/' },
+  // Nový profil rodiny — celá stránka, odjetý stav (lišta si vezme kontext),
+  // otevřený náhled záznamu. `dark: true`, protože kreslí tokeny appky.
+  { name: 'spis-novy', lab: 'spis-novy', dark: true },
+  { name: 'spis-novy-odjeto', lab: 'spis-novy', scroll: 900 },
+  { name: 'spis-novy-nahled', lab: 'spis-novy', peek: '0' },
   { name: 'osa-1-dnes', lab: 'osa-dnes' },
   { name: 'osa-2-rodiny', lab: 'osa-rodiny' },
   { name: 'osa-3-rodina', lab: 'osa-rodina' },
@@ -112,6 +117,12 @@ for (const viewport of VIEWPORTS) {
       if (screen.lab) params.set('lab', screen.lab)
       if (screen.click) params.set('click', screen.click)
       if (screen.tab) params.set('tab', screen.tab)
+      // Odjetý stav se musí umět vyfotit: lepivá lišta si teprve při
+      // rolování bere kontext stránky a osnova zvýrazňuje, kde člověk je.
+      if (screen.scroll) params.set('scroll', String(screen.scroll))
+      // Náhled záznamu otevírá obrazovka sama podle `?peek=` — `click` na
+      // návrhové obrazovky nedosáhne, ty si router obalují samy.
+      if (screen.peek) params.set('peek', screen.peek)
       // `domcontentloaded`, ne `networkidle`: náhled má stovky modulů z Vite
       // dev serveru a jeden zablokovaný požadavek (egress proxy) stačí, aby
       // se síť nikdy „neutišila" — celý běh pak spadl na timeoutu.

@@ -1,0 +1,369 @@
+/*
+  NOVÝ PROFIL RODINY — struktura, ne barvy.
+
+  Kreslí se TOKENY APPKY (`src/tokens.css`), ne vlastní paletou, takže tmavý
+  režim funguje sám a co se tady schválí, jde přímo do appky. Vlastní CSS je
+  tu jen na to, co Tailwind neumí bez ohýbání: lepivé prvky, mřížky řádků
+  „databáze", odhalování akcí při hover a přechod na telefon.
+
+  Rozvržení 176 + 32 + 912 = 1120 px není náhoda: 912 px je šířka, na které
+  má řádek s pěti sloupci ještě rytmus a nadpis 32 px nevypadá ztraceně,
+  a 176 px stačí na nejdelší jméno bloku („Lhůty a limity") na jeden řádek.
+*/
+
+.sp {
+  --sp-rail: 176px;
+  --sp-gap: 32px;
+  --sp-canvas: 912px;
+}
+
+/* ---------- lepivá lišta stránky ---------- */
+
+.sp__bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--bg-app) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 150ms ease;
+}
+
+/* Linka se objeví AŽ při odjezdu stránky. Dokud je člověk na začátku,
+   nemá lišta co oddělovat a linka by dělala z hlavičky rám. */
+.sp__bar--stuck {
+  border-bottom-color: var(--border-subtle);
+}
+
+/* Kontext, který v liště přiroste, když nadpis odjede z obrazovky. */
+.sp__grown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(3px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  pointer-events: none;
+}
+
+.sp__bar--stuck .sp__grown {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* ---------- osnova + plátno ---------- */
+
+.sp__wrap {
+  display: grid;
+  grid-template-columns: var(--sp-rail) minmax(0, var(--sp-canvas));
+  gap: var(--sp-gap);
+  justify-content: center;
+  padding: 40px 24px 160px;
+}
+
+.sp__rail {
+  position: sticky;
+  top: 84px;
+  align-self: start;
+  display: grid;
+  gap: 2px;
+}
+
+.sp__raillink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding-right: 8px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: left;
+  transition: color 150ms ease;
+}
+
+.sp__raillink::before {
+  content: '';
+  width: 10px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+  transition: width 150ms ease;
+}
+
+.sp__raillink:hover {
+  color: var(--text-secondary);
+}
+
+.sp__raillink--active {
+  color: var(--text-primary);
+}
+
+.sp__raillink--active::before {
+  width: 18px;
+  opacity: 1;
+}
+
+/* Osnova se pod 1120 px nezmenšuje, mizí — zúžená by brala místo obsahu
+   a nic by nepřidala. */
+@media (max-width: 1180px) {
+  .sp__wrap {
+    grid-template-columns: minmax(0, var(--sp-canvas));
+  }
+  .sp__rail {
+    display: none;
+  }
+}
+
+/* ---------- blok („inline databáze") ---------- */
+
+.sp__block {
+  margin-top: 52px;
+  scroll-margin-top: 76px;
+}
+
+.sp__blockhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+
+/* Řádek se štítky sloupců zůstává vidět při rolování dlouhého bloku —
+   jinak u dvacátého řádku nikdo neví, co je čtvrtý sloupec. */
+.sp__labels {
+  position: sticky;
+  top: 44px;
+  z-index: 10;
+  background: var(--bg-app);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--text-faint);
+  padding: 6px 0;
+}
+
+/* ---------- řádky ---------- */
+
+/*
+  Řádek NENÍ karta a NENÍ tlačítko. Je to řádek tabulky: jediná linka dole,
+  žádný rám, žádné vlastní pozadí. Akce se ukazují až při hover — dokud na
+  ně člověk nemíří, jsou to sloupce dat, ne rozhraní.
+*/
+.sp__row {
+  display: grid;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 8px 5px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.sp__row:hover {
+  background: var(--overlay-active);
+}
+
+.sp__row--lide {
+  grid-template-columns: minmax(0, 1fr) 76px minmax(0, 168px) 132px 24px;
+}
+
+.sp__row--zapis {
+  grid-template-columns: 62px minmax(0, 1fr) minmax(0, 196px) 24px 24px;
+}
+
+.sp__row--blizi {
+  grid-template-columns: 62px minmax(0, 1fr) minmax(0, 150px) 24px;
+}
+
+/*
+  SLOUPCE SE UBÍRAJÍ PODLE ŠÍŘKY PLÁTNA, NE PODLE ŠÍŘKY OKNA.
+
+  Otevřený náhled záznamu ubere z plátna 380 px — okno je pořád 1440, takže
+  na `@media` se to nepozná a jména by se začala krájet („Jana Novo…").
+  `@container` měří to, co je opravdu k dispozici, takže se sloupec radši
+  SKRYJE, než aby se obsah zmáčkl. Zmizí vždycky ten nejméně důležitý:
+  kontakt (je v profilu člověka) → věk → koho se týká → autor.
+*/
+.sp__canvas {
+  container-type: inline-size;
+}
+
+@container (max-width: 780px) {
+  .sp__row--lide {
+    grid-template-columns: minmax(0, 1fr) 76px 132px 24px;
+  }
+  .sp__row--zapis {
+    grid-template-columns: 62px minmax(0, 1fr) 24px 24px;
+  }
+  /* Bez tohohle by po skrytí „koho se týká" zůstal v řádku prázdný sloupec
+     150 px a datum by odplulo doprostřed. */
+  .sp__row--blizi {
+    grid-template-columns: 62px minmax(0, 1fr) 24px;
+  }
+  .sp__col--kontakt,
+  .sp__col--subjects {
+    display: none;
+  }
+}
+
+@container (max-width: 620px) {
+  .sp__row--lide {
+    grid-template-columns: minmax(0, 1fr) 120px;
+  }
+  .sp__row--zapis,
+  .sp__row--blizi {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+  .sp__col--vek,
+  .sp__col--author,
+  .sp__col--rev {
+    display: none;
+  }
+}
+
+.sp__row--lhuta {
+  grid-template-columns: minmax(0, 1fr) 150px;
+  align-items: start;
+  min-height: 52px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+/* „Otevřít" se ukáže až na řádku, na kterém člověk je. Trvale viditelné
+   tlačítko na každém řádku je přesně to, co dělalo ze staré verze rozcestník
+   plný tlačítek. */
+.sp__reveal {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.sp__row:hover .sp__reveal,
+.sp__row:focus-visible .sp__reveal {
+  opacity: 1;
+}
+
+/* Poslední řádek bloku: přidání. Celý šířkou, tiše — dokud na něj člověk
+   nenajede, je to jen popisek. */
+.sp__add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  padding-right: 8px;
+  font-size: 13px;
+  color: var(--text-faint);
+  transition: color 120ms ease;
+}
+
+.sp__add:hover {
+  color: var(--text-secondary);
+}
+
+/* ---------- pruh lhůty ---------- */
+
+.sp__meter {
+  position: relative;
+  height: 3px;
+  border-radius: 100px;
+  background: var(--border-default);
+  overflow: hidden;
+}
+
+.sp__meterfill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 100px;
+  background: var(--text-primary);
+}
+
+/* Tón, ne délka: splněné je světlé, blížící se tmavé, propadlé červené. */
+.sp__meterfill--ok {
+  background: var(--border-strong);
+}
+
+.sp__meterfill--blizko {
+  background: var(--text-primary);
+}
+
+.sp__meterfill--po {
+  background: var(--accent);
+}
+
+/* ---------- náhled záznamu (peek) ---------- */
+
+/*
+  Kliknutí na řádek NEODNAVIGUJE. Otevře náhled vedle seznamu, takže se dá
+  projít deset zápisů za sebou bez ztráty místa v seznamu — a kdo chce
+  celou stránku, klikne na „Otevřít jako stránku".
+*/
+.sp__peek {
+  width: 380px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  animation: sp-peek-in 160ms ease;
+}
+
+@keyframes sp-peek-in {
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .sp__peek {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: auto;
+    height: 84vh;
+    border-left: 0;
+    border-top: 1px solid var(--border-default);
+    border-radius: 12px 12px 0 0;
+    box-shadow: var(--shadow-xl);
+    animation: sp-sheet-in 200ms ease;
+    z-index: 60;
+  }
+  @keyframes sp-sheet-in {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+}
+
+/* ---------- telefon ---------- */
+
+/*
+  Na 390 px se pětisloupcový řádek nedá zúžit, dá se jen přeskládat: jméno
+  a datum vedle sebe, ostatní pod ně jako jeden tichý řádek. Sloupce, které
+  se nevejdou, se SKRÝVAJÍ (`.sp__col--drop`), ne mačkají.
+*/
+@media (max-width: 720px) {
+  .sp__wrap {
+    padding: 20px 16px 120px;
+  }
+  .sp__row--lhuta {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .sp__block {
+    margin-top: 36px;
+  }
+  .sp__labels {
+    display: none;
+  }
+}

@@ -36,14 +36,29 @@ export function Tabs({
   active,
   onSelect,
   className,
+  size = 'md',
+  underline = true,
 }: {
   items: TabItem[]
   active: string
   onSelect: (key: string) => void
   className?: string
+  /**
+   * `sm` je tentýž jazyk o číslo menší — pro přepínání pohledu VNITŘKU
+   * bloku (Notion: „Table / Board / Calendar" nad jednou databází), kde
+   * plná velikost přebila nadpis bloku. Že je to menší, ne jiné, je
+   * záměr: v appce má být JEDEN způsob, jak se přepíná pohled.
+   */
+  size?: 'md' | 'sm'
+  /** Vlasová linka pod celou řadou. Vypnout, když už ji kreslí obal. */
+  underline?: boolean
 }) {
+  const small = size === 'sm'
   return (
-    <div role="tablist" className={cn('flex items-center gap-5 border-b border-border-subtle', className)}>
+    <div
+      role="tablist"
+      className={cn('flex items-center', small ? 'gap-4' : 'gap-5', underline && 'border-b border-border-subtle', className)}
+    >
       {items.map((item) => {
         const selected = item.key === active
         const Icon = item.icon
@@ -57,13 +72,14 @@ export function Tabs({
             className={cn(
               // `-mb-px` posadí podtržení PŘESNĚ na vlasovou linku pod řadou,
               // takže se nekreslí dvě linky pod sebou.
-              '-mb-px flex h-9 shrink-0 items-center gap-1.5 border-b-2 text-base transition-colors duration-150',
+              '-mb-px flex shrink-0 items-center gap-1.5 border-b-2 transition-colors duration-150',
+              small ? 'h-7 text-sm' : 'h-9 text-base',
               selected
                 ? 'border-text-primary font-medium text-text-primary'
                 : 'border-transparent text-text-tertiary hover:text-text-primary',
             )}
           >
-            {Icon && <Icon size={15} className="shrink-0" />}
+            {Icon && <Icon size={small ? 14 : 15} className="shrink-0" />}
             {item.label}
             {item.count !== undefined && (
               <span className={cn('text-xs', selected ? 'text-text-tertiary' : 'text-text-faint')}>{item.count}</span>

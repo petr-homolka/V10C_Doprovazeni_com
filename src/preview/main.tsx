@@ -14,6 +14,7 @@ import '@/index.css'
 import './lab/lab.css'
 import './lab/osa/osa.css'
 import './lab/osa/routine.css'
+import './lab/spis/spis.css'
 import { DirectionSpis } from './lab/DirectionSpis'
 import { DirectionFaces } from './lab/DirectionFaces'
 import { DirectionRail } from './lab/DirectionRail'
@@ -23,6 +24,7 @@ import { OsaCalendar } from './lab/osa/ScreenCalendar'
 import { OsaToday } from './lab/osa/ScreenToday'
 import { RoutineToday } from './lab/osa/ScreenRoutineToday'
 import { LabEditor } from './lab/ScreenEditor'
+import { LabSpis } from './lab/spis/ScreenSpis'
 
 import { useIsMobile } from '@/hooks/useIsMobile'
 import FamilyListPage from '@/routes/FamilyListPage'
@@ -141,6 +143,10 @@ const LAB_DIRECTIONS: Record<string, () => ReactElement> = {
   'rt-dnes': RoutineToday,
   // Editor zápisů — kvůli typografii, citaci, úkolům a osnově.
   editor: LabEditor,
+  // Profil rodiny postavený znovu OD STRUKTURY (2026-07-25) — bez záložek,
+  // s osnovou, bloky a náhledem záznamu. Kreslí se tokeny appky, takže má
+  // smysl i tmavý screenshot.
+  'spis-novy': LabSpis,
 }
 
 function PreviewApp() {

@@ -24,6 +24,18 @@ export function MobileShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-[100dvh] flex-col bg-app">
       <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+      <MobileTabBar />
+    </div>
+  )
+}
+
+/**
+ * Spodní lišta zvlášť od shellu, aby ji mohla použít i stránka, která si
+ * rolování řídí sama (lepivá lišta + osnova podle pozice) — ta totiž
+ * nemůže obsah odevzdat cizímu rolovacímu kontejneru.
+ */
+export function MobileTabBar() {
+  return (
       <nav
         className="grid shrink-0 grid-cols-4 border-t border-border-default bg-surface-soft"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -56,6 +68,5 @@ export function MobileShell({ children }: { children: ReactNode }) {
           </NavLink>
         ))}
       </nav>
-    </div>
   )
 }

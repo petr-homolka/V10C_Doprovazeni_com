@@ -20,6 +20,12 @@ export default {
         'text-primary': 'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',
         'text-tertiary': 'var(--text-tertiary)',
+        /* `text-text-faint` se v appce používalo na 8 místech, ANIŽ BY TU
+           barva existovala — Tailwind takovou třídu vůbec nevygeneroval,
+           takže popisky, které měly být nejtišší (⌘K, jednotky, nadpisy
+           skupin ve „Zobrazení"), dědily barvu rodiče a byly stejně silné
+           jako obsah. Odhaleno 2026-07-25 při stavbě nového profilu. */
+        'text-faint': 'var(--text-faint)',
         'text-inverse': 'var(--text-inverse)',
 
         border: {

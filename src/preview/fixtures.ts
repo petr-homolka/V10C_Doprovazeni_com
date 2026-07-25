@@ -84,6 +84,12 @@ export const calendarEvents: Array<{ docId: string; event: CalendarEventDoc }> =
   { docId: 'e3', event: { organizationId: ORG, createdByUid: 'u-eva', assignedToUid: 'u-eva', title: 'Doprovod k lékaři — Šimon', kind: 'schuzka', status: 'planovano', start: iso(1, 8, 30), end: iso(1, 10), familyDocId: 'f4', familyUid: '9900010000049', subjectRefs: [{ kind: 'child', id: 'c4' }], subjectKeys: ['child:c4', 'family:f4'], createdAt: iso(-3), updatedAt: iso(-3) } as CalendarEventDoc },
   { docId: 'e4', event: { organizationId: ORG, createdByUid: 'u-tomas', assignedToUid: 'u-tomas', title: 'Případová konference OSPOD Brno-střed', kind: 'jine', status: 'planovano', start: iso(2, 9), end: iso(2, 11, 30), familyDocId: 'f1', familyUid: '9900010000015', subjectRefs: [{ kind: 'family', id: 'f1' }, { kind: 'fosterPerson', id: 'fp1' }, { kind: 'fosterPerson', id: 'fp2' }, { kind: 'child', id: 'c1' }, { kind: 'child', id: 'c2' }], subjectKeys: ['family:f1'], createdAt: iso(-1), updatedAt: iso(-1) } as CalendarEventDoc },
   { docId: 'e5', event: { organizationId: ORG, createdByUid: 'u-eva', assignedToUid: 'u-eva', title: 'Vzdělávání pěstounů — blok 2', kind: 'jine', status: 'planovano', start: iso(-4, 9), end: iso(-4, 15), subjectRefs: [{ kind: 'fosterPerson', id: 'fp3' }], subjectKeys: ['fosterPerson:fp3'], createdAt: iso(-20), updatedAt: iso(-20) } as CalendarEventDoc },
+  /* Vzdělávání rodiny f1 — kvůli ZÁKONNÉMU LIMITU (24 h / 12 měsíců, §3).
+     Bez těchhle dvou událostí se limit nedá spočítat z dat a musel by se
+     do návrhu napsat ručně; takhle ho počítá stejná funkce, jaká by ho
+     počítala v produkci. Délka je v `start`/`end`, ne v poli „hodiny". */
+  { docId: 'e6', event: { organizationId: ORG, createdByUid: 'u-eva', assignedToUid: 'u-eva', title: 'Vzdělávání — Vztahová vazba u dětí v pěstounské péči', kind: 'vzdelavani', status: 'planovano', start: iso(-120, 9), end: iso(-120, 17), familyDocId: 'f1', familyUid: '9900010000015', subjectRefs: [{ kind: 'fosterPerson', id: 'fp1' }, { kind: 'fosterPerson', id: 'fp2' }], subjectKeys: ['family:f1'], createdAt: iso(-140), updatedAt: iso(-120) } as CalendarEventDoc },
+  { docId: 'e7', event: { organizationId: ORG, createdByUid: 'u-eva', assignedToUid: 'u-eva', title: 'Vzdělávání — Komunikace s biologickou rodinou', kind: 'vzdelavani', status: 'planovano', start: iso(-47, 10), end: iso(-47, 16), familyDocId: 'f1', familyUid: '9900010000015', subjectRefs: [{ kind: 'fosterPerson', id: 'fp1' }], subjectKeys: ['family:f1'], createdAt: iso(-60), updatedAt: iso(-47) } as CalendarEventDoc },
 ]
 
 export const tasks: Array<{ docId: string; task: TaskDoc }> = [
@@ -97,6 +103,15 @@ export const timelineEntries: Array<{ docId: string; entry: TimelineEntryDoc }> 
   { docId: 'tl1', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-eva', type: 'visit', occurredAt: iso(-2, 10), body: 'Návštěva proběhla v klidné atmosféře. Adélka ukazovala vysvědčení, zlepšila se v matematice o stupeň. Domluvili jsme doučování na čtvrtky.', subjectRefs: [{ kind: 'child', id: 'c1' }], sharingLevel: 'partner', createdAt: iso(-2) } as unknown as TimelineEntryDoc },
   { docId: 'tl2', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-tomas', type: 'voice_entry', occurredAt: iso(-9, 15, 20), body: 'Telefonát s paní Novotnou — Dominik měl konflikt ve škole, řeší třídní učitelka. Zavolám v pátek.', subjectRefs: [{ kind: 'child', id: 'c2' }, { kind: 'fosterPerson', id: 'fp1' }], sharingLevel: 'internal', createdAt: iso(-9) } as unknown as TimelineEntryDoc },
   { docId: 'tl3', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-hana', type: 'note', occurredAt: iso(-25, 8), body: 'Připomínka: v září vyprší lékařská zpráva.', subjectRefs: [], sharingLevel: 'internal', createdAt: iso(-25) } as unknown as TimelineEntryDoc },
+  /* Spis jedné rodiny za rok je DESÍTKY záznamů, ne tři. Rytmus seznamu,
+     seskupení po měsících a to, jestli se v tom dá vůbec něco najít, se na
+     třech řádcích posoudit nedá — proto tady spis rodiny f1 pokrývá
+     půl roku. */
+  { docId: 'tl4', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-eva', type: 'note', occurredAt: iso(-16, 11, 40), body: 'Paní Novotná volala kvůli tábor u tety v srpnu — potřebuje souhlas OSPOD pro Dominika. Poslala jsem jí vzor žádosti.', subjectRefs: [{ kind: 'fosterPerson', id: 'fp1' }, { kind: 'child', id: 'c2' }], sharingLevel: 'foster', createdAt: iso(-16) } as unknown as TimelineEntryDoc },
+  { docId: 'tl5', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-tomas', type: 'note', occurredAt: iso(-31, 9, 10), body: 'Předáno vyúčtování jízd za květen, částka 1 240 Kč. Zaneseno do ekonomiky.', subjectRefs: [], sharingLevel: 'internal', createdAt: iso(-31) } as unknown as TimelineEntryDoc },
+  { docId: 'tl6', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-eva', type: 'visit', occurredAt: iso(-58, 10), body: 'Návštěva doma. Řešili jsme Dominikovo pozdní vstávání a to, že o víkendech nechce chodit ven. Pan Novotný má obavy z jeho nové partnerky ze školy. Domluveno, že si s ním promluvím sama při dalším setkání.', subjectRefs: [{ kind: 'fosterPerson', id: 'fp1' }, { kind: 'fosterPerson', id: 'fp2' }, { kind: 'child', id: 'c2' }], sharingLevel: 'internal', createdAt: iso(-58) } as unknown as TimelineEntryDoc },
+  { docId: 'tl7', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-hana', type: 'note', occurredAt: iso(-74, 14), body: 'Případová konference — OSPOD trvá na měsíčním kontaktu s biologickou matkou. Rodina s tím souhlasí, ale chce, aby setkání byla v našich prostorách.', subjectRefs: [{ kind: 'child', id: 'c1' }, { kind: 'child', id: 'c2' }], sharingLevel: 'internal', createdAt: iso(-74) } as unknown as TimelineEntryDoc },
+  { docId: 'tl8', entry: { organizationId: ORG, familyId: 'f1', createdByUid: 'u-eva', type: 'visit', occurredAt: iso(-121, 10, 30), body: 'Návštěva po vzdělávacím bloku. Adélka poprvé mluvila o mámě sama, bez ptaní. Pěstounka to zvládla dobře.', subjectRefs: [{ kind: 'child', id: 'c1' }, { kind: 'fosterPerson', id: 'fp1' }], sharingLevel: 'internal', createdAt: iso(-121) } as unknown as TimelineEntryDoc },
 ]
 
 export const starredFamilyIds = ['f1']
@@ -110,6 +125,7 @@ export const organization = {
 export const enumOptions = [
   { key: 'navsteva-rodiny', label: 'Návštěva rodiny', createdByUid: 'u-hana', createdAt: iso(-40) },
   { key: 'pripadova-konference', label: 'Případová konference', createdByUid: 'u-hana', createdAt: iso(-40) },
+  { key: 'vzdelavani', label: 'Vzdělávání', createdByUid: 'u-hana', createdAt: iso(-40) },
 ]
 
 /** Doplňkové rodiny, ať seznam vypadá jako seznam, ne jako ukázka čtyř karet
