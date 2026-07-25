@@ -23,7 +23,7 @@
  * Spustit: `npm run seed:rich`
  * (Petr se pak přihlásí jako petr@doprovazeni.com / heslo123).
  */
-import { getAccessToken, firestoreCommit, PROJECT_ID } from './lib/firestore-rest.mjs'
+import { getAccessToken, firestoreCommit, runQuery, PROJECT_ID } from './lib/firestore-rest.mjs'
 
 const ORG_ID = 'demo-org'
 const ORG_CODE = '0001'
@@ -109,6 +109,16 @@ const NOTE_BODIES = [
 ]
 const EVENT_TITLES = ['Návštěva rodiny', 'Supervize', 'Případová konference', 'Konzultace s OSPOD', 'Doprovod k lékaři', 'Setkání s biologickou rodinou', 'Vzdělávací seminář', 'Příprava IPOD']
 const KINDS = ['schuzka', 'supervize', 'jine']
+/* `vzdelavani` má vlastní seznam titulků, protože z DÉLKY těchhle událostí se
+   počítá zákonný limit 24 h / 12 měsíců (viz `lib/spisInsights.ts`). Dokud
+   je seed nezakládal, ukazoval profil u každé rodiny „0 / 24 h" a vypadalo
+   to jako chyba výpočtu — přitom prostě nebylo co sčítat. */
+const EDU_TITLES = [
+  'Vzdělávání — Vztahová vazba u dětí v pěstounské péči',
+  'Vzdělávání — Komunikace s biologickou rodinou',
+  'Vzdělávání — Trauma a jeho projevy ve škole',
+  'Vzdělávání — Kontakt s biologickými rodiči v praxi',
+]
 const TASK_TITLES = ['Doplnit dokumentaci k Dohodě', 'Objednat vzdělávací kurz', 'Zavolat na OSPOD', 'Připravit podklady pro supervizi', 'Ověřit stav respitu', 'Zpracovat zprávu o průběhu pěstounské péče']
 const STREETS = ['Nádražní', 'Hlavní', 'Zahradní', 'Polní', 'Lipová', 'Krátká', 'Školní', 'Nová']
 const CITIES = ['Praha', 'Brno', 'Ostrava', 'Plzeň', 'Olomouc', 'Liberec', 'Hradec Králové']
@@ -116,8 +126,60 @@ const CITIES = ['Praha', 'Brno', 'Ostrava', 'Plzeň', 'Olomouc', 'Liberec', 'Hra
 // ---- build writes --------------------------------------------------------
 const FAMILY_COUNT = 10
 const writes = []
-// continue sequences after existing demo-org maxima (family 4, foster 5, child 6, agreement 3)
-let famSeq = 4, fpSeq = 5, chSeq = 6, agrSeq = 3, photo = 3
+
+/*
+  ČÍSELNÉ SEKVENCE SE MUSÍ ČÍST Z DATABÁZE, NE HÁDAT.
+
+  Dřív tu stálo `let famSeq = 4, fpSeq = 5, chSeq = 6, agrSeq = 3` s komentářem
+  „continue sequences after existing demo-org maxima" — což platilo ten den,
+  kdy to někdo napsal. Mezitím do demo-org přitekly další rodiny (seq až 14)
+  a 2026-07-25 jsem skript pustil na produkci: vyrobil deset rodin s uid,
+  která už existovala. `getFamilyByUid` pak na jedno uid našlo dva spisy.
+
+  Countery `counters/{org}_{typ}` jsou zdroj pravdy pro appku samotnou, takže
+  se čtou i tady. `startSeq` bere MAXIMUM z counteru a ze skutečných dat —
+  counter může být pozadu (starší data nasypaná mimo appku), data zase
+  nemusí existovat. Kdo si vymyslí konstantu, vyrobí kolizi.
+*/
+const TYPE_CODE = { familyFile: '99', fosterPerson: '10', child: '20', agreement: '90' }
+
+async function startSeq(entityType, collectionId, orgField) {
+  const token = await getAccessToken()
+  const counterPath = `counters/${ORG_ID}_${TYPE_CODE[entityType]}`
+  let fromCounter = 0
+  try {
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${counterPath}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    )
+    if (res.ok) fromCounter = Number((await res.json()).fields?.value?.integerValue ?? 0)
+  } catch {
+    /* counter nemusí existovat — pak rozhodnou data */
+  }
+  let fromData = 0
+  if (collectionId) {
+    const rows = await runQuery(token, { from: [{ collectionId }] })
+    for (const r of rows) {
+      if (!r.document) continue
+      const f = r.document.fields ?? {}
+      const inOrg =
+        orgField === 'orgAccessList'
+          ? (f.orgAccessList?.arrayValue?.values ?? []).some((v) => v.stringValue === ORG_ID)
+          : f[orgField]?.stringValue === ORG_ID
+      if (!inOrg) continue
+      const seq = Number(String(f.uid?.stringValue ?? '').slice(6, 12))
+      if (Number.isFinite(seq) && seq > fromData) fromData = seq
+    }
+  }
+  return Math.max(fromCounter, fromData)
+}
+
+let famSeq = await startSeq('familyFile', 'families', 'orgAccessList')
+let fpSeq = await startSeq('fosterPerson', 'fosterPersons', 'orgAccessList')
+let chSeq = await startSeq('child', 'children', 'organizationId')
+let agrSeq = await startSeq('agreement', null)
+let photo = 3
+console.log(`Navazuji na sekvence — rodina ${famSeq}, pěstoun ${fpSeq}, dítě ${chSeq}, dohoda ${agrSeq}.`)
 const families = []
 
 for (let i = 1; i <= FAMILY_COUNT; i++) {
@@ -236,6 +298,21 @@ for (let i = 1; i <= FAMILY_COUNT; i++) {
   families.push({ famId, famUid: buildUid('familyFile', famSeq), assignedTo, fosterRefs, kids })
 }
 
+/**
+ * `subjectKeys` je plochá denormalizace `subjectRefs` (+ `familyDocId`).
+ * Bez ní se událost ani úkol NEDAJÍ najít dotazem „co patří téhle rodině"
+ * (Firestore neumí filtrovat podle pole uvnitř polí objektů), takže by se
+ * v profilu neobjevily. Dřív to za seedem dorovnával `backfill:subject-keys`
+ * — teď to seed zapisuje správně hned, aby data z něj nebyla rozbitá.
+ * Logika je stejná jako `buildSubjectKeys` v `src/lib/eventSubjects.ts`.
+ */
+function subjectKeysOf(subjectRefs, familyDocId) {
+  const keys = new Set()
+  for (const ref of subjectRefs) if (ref?.kind && ref?.id) keys.add(`${ref.kind}:${ref.id}`)
+  if (familyDocId) keys.add(`family:${familyDocId}`)
+  return [...keys]
+}
+
 // calendar events (with subjectRefs → overlapping avatars)
 for (let e = 0; e < 18; e++) {
   const fam = families[e % families.length]
@@ -249,9 +326,41 @@ for (let e = 0; e < 18; e++) {
     organizationId: ORG_ID, createdByUid: fam.assignedTo, assignedToUid: pick(STAFF_POOL),
     title: pick(EVENT_TITLES), kind: pick(KINDS), status: 'planovano',
     start: iso(start), end: iso(end), familyDocId: fam.famId, familyUid: fam.famUid,
-    subjectRefs, notes: null, createdAt: iso(daysAgo(10)), updatedAt: iso(daysAgo(10)),
+    subjectRefs, subjectKeys: subjectKeysOf(subjectRefs, fam.famId),
+    notes: null, createdAt: iso(daysAgo(10)), updatedAt: iso(daysAgo(10)),
   }))
 }
+
+/* Vzdělávání: dvě proběhlá školení na rodinu za posledních 12 měsíců, každé
+   6–8 h. Tím se limit u některých rodin naplní a u jiných ne — a právě ten
+   rozdíl má profil ukázat. */
+for (const [index, fam] of families.entries()) {
+  const blocks = index % 3 === 0 ? 1 : 2
+  for (let b = 0; b < blocks; b++) {
+    const start = daysFromNow(-(40 + b * 120 + Math.floor(rnd() * 30)))
+    start.setHours(9, 0, 0, 0)
+    const hours = 6 + Math.floor(rnd() * 3)
+    const end = new Date(start.getTime() + hours * 3600_000)
+    const subjectRefs = [
+      { kind: 'family', id: fam.famId },
+      ...fam.fosterRefs.map((id) => ({ kind: 'fosterPerson', id })),
+    ]
+    writes.push(writeDoc(`organizations/${ORG_ID}/calendarEvents/rich-edu-${index}-${b}`, {
+      organizationId: ORG_ID, createdByUid: fam.assignedTo, assignedToUid: fam.assignedTo,
+      title: EDU_TITLES[(index + b) % EDU_TITLES.length], kind: 'vzdelavani', status: 'planovano',
+      start: iso(start), end: iso(end), familyDocId: fam.famId, familyUid: fam.famUid,
+      subjectRefs, subjectKeys: subjectKeysOf(subjectRefs, fam.famId),
+      notes: null, createdAt: iso(daysAgo(200)), updatedAt: iso(daysAgo(200)),
+    }))
+  }
+}
+
+/* Aby „Vzdělávání" nebylo v kalendáři jen technický klíč, ale popisek.
+   Číselník je JEDEN dokument s polem `options` (viz `types/enumOptions.ts`),
+   ne podkolekce — `mergeDoc` proto přepíše jen tohle jedno pole. */
+writes.push(mergeDoc(`organizations/${ORG_ID}/enumOptions/calendarEventKind`, {
+  options: [{ key: 'vzdelavani', label: 'Vzdělávání', createdByUid: 'demo-ko', createdAt: iso(daysAgo(200)) }],
+}))
 
 // tasks
 for (let t = 0; t < 9; t++) {
@@ -261,6 +370,7 @@ for (let t = 0; t < 9; t++) {
     title: pick(TASK_TITLES), notes: null,
     dueDate: t % 4 === 0 ? null : iso(daysFromNow(1 + Math.floor(rnd() * 20))).slice(0, 10),
     status: 'otevreny', subjectRefs: [{ kind: 'family', id: fam.famId }],
+    subjectKeys: subjectKeysOf([{ kind: 'family', id: fam.famId }], fam.famId),
     createdAt: iso(daysAgo(3)), updatedAt: iso(daysAgo(3)),
   }))
 }
@@ -288,10 +398,19 @@ writes.push(mergeDoc(`counters/${ORG_ID}_90`, { organizationId: ORG_ID, entityTy
 
 // ---- commit in chunks ----------------------------------------------------
 async function main() {
+  /*
+    TOKEN JAKO PRVNÍ ARGUMENT. Tady byl 2026-07-25 nalezen důvod, proč tenhle
+    seed v produkci nikdy neproběhl: volalo se `firestoreCommit(writes)`, ale
+    helper má podpis `(token, writes)`. Pole zápisů tedy šlo do hlavičky
+    `Authorization: Bearer [object Array]` a Google odpovídal
+    „Expected OAuth 2 access token" — což vypadá jako chybějící oprávnění
+    a půl hodiny jsem hledal chybu v credentials, ne ve volání.
+  */
+  const token = await getAccessToken()
   console.log(`Seeduji ${writes.length} dokumentů do ${ORG_ID}…`)
   const CHUNK = 300
   for (let i = 0; i < writes.length; i += CHUNK) {
-    await firestoreCommit(writes.slice(i, i + CHUNK))
+    await firestoreCommit(token, writes.slice(i, i + CHUNK))
     console.log(`  commit ${Math.min(i + CHUNK, writes.length)}/${writes.length}`)
   }
   console.log(`HOTOVO. ${FAMILY_COUNT} nových rodin (rich-fam-1..${FAMILY_COUNT}) + události/úkoly/zápisy + fotky.`)

@@ -19,12 +19,24 @@ export const PROJECT_ID = process.env.SEED_PROJECT_ID ?? 'v10c-doprovazeni-com'
 export async function getAccessToken() {
   const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
   if (keyPath) {
-    const { GoogleAuth } = await import('google-auth-library')
-    const auth = new GoogleAuth({
-      keyFile: keyPath,
+    /*
+      JWT.authorize(), NE GoogleAuth.getAccessToken().
+      `GoogleAuth` u service accountu vydá „self-signed JWT" — Firestore ho
+      u ČTENÍ (`runQuery`) vezme, ale u ZÁPISU (`Commit`) ho odmítne s
+      „ACCESS_TOKEN_TYPE_UNSUPPORTED / Expected OAuth 2 access token"
+      (naraženo 2026-07-25 při seedu produkce; čtení přitom fungovalo, takže
+      to vypadalo jako problém oprávnění, a nebyl). `authorize()` provede
+      skutečnou výměnu za OAuth access token, který bere obojí.
+    */
+    const { readFile } = await import('node:fs/promises')
+    const { JWT } = await import('google-auth-library')
+    const key = JSON.parse(await readFile(keyPath, 'utf8'))
+    const jwt = new JWT({
+      email: key.client_email,
+      key: key.private_key,
       scopes: ['https://www.googleapis.com/auth/datastore'],
     })
-    const token = await auth.getAccessToken()
+    const { access_token: token } = await jwt.authorize()
     if (!token) throw new Error('Service account nevydal access token.')
     return token
   }
