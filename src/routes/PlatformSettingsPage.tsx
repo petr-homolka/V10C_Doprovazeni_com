@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
@@ -59,27 +59,29 @@ export default function PlatformSettingsPage() {
   if (!isSuperadmin) {
     return (
       <AppShell>
-        <PageHeader title="Platforma" />
-        <p className="mt-4 text-sm text-text-secondary">Tahle stránka je jen pro superadmina.</p>
+        <PageHead title="Platforma" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tahle stránka je jen pro superadmina.</p>
+        </section>
       </AppShell>
     )
   }
 
   return (
     <AppShell>
-      <PageHeader
+      <PageHead
         title="Platforma"
         description="Výchozí hodnoty pro všechny organizace, dokud si je organizace sama nepřepíše."
-      />
-
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+      >
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
       {loaded && (
-        <form onSubmit={handleSave} className="mt-6 max-w-[560px] space-y-5">
+        <form onSubmit={handleSave} className="sp__card sp__card--pad max-w-[560px] space-y-5">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">
               Výchozí práh kapacity klíčové osoby

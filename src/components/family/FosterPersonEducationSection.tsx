@@ -169,15 +169,12 @@ export function FosterPersonEducationSection({
   const educationWindow = fosterPerson.educationOfficial
 
   return (
-    <section className="mt-8">
-      <h2 className="text-base font-medium text-text-primary">
-        Vzdělávání a dávky — {fosterPerson.firstName} {fosterPerson.lastName}
-      </h2>
+    <div>
 
-      <div className="mt-4 rounded-lg border border-border-subtle bg-surface p-4">
+      <div className="mt-4 sp__sub">
         {educationWindow ? (
           <>
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-end gap-4">
               <span className="text-sm text-text-primary">
                 {educationWindow.hoursCompletedInWindow} / {educationWindow.hoursRequired} h
               </span>
@@ -204,7 +201,7 @@ export function FosterPersonEducationSection({
         </p>
       </div>
 
-      <div className="mt-6 flex items-center justify-between gap-4">
+      <div className="mt-6 flex items-center justify-end gap-4">
         <h3 className="text-sm font-medium text-text-primary">Kurzy</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowCourseForm((v) => !v)}>
           {showCourseForm ? (
@@ -220,7 +217,7 @@ export function FosterPersonEducationSection({
       {showCourseForm && (
         <form
           onSubmit={handleAddCourse}
-          className="mt-3 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
+          className="mt-3 flex max-w-[560px] flex-col gap-4 sp__sub"
         >
           <div className="grid grid-cols-2 gap-4">
             <label className="flex flex-col gap-1.5">
@@ -313,7 +310,7 @@ export function FosterPersonEducationSection({
 
       <div className="mt-6">
         <h3 className="text-sm font-medium text-text-primary">Stav dávek</h3>
-        <div className="mt-3 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <div className="mt-3 flex max-w-[560px] flex-col gap-3 sp__sub">
           {BENEFIT_KEYS.map((key) => (
             <div key={key} className="flex flex-wrap items-center justify-between gap-3">
               <span className="text-sm text-text-primary">{BENEFIT_LABELS[key]}</span>
@@ -356,6 +353,6 @@ export function FosterPersonEducationSection({
           </div>
         </div>
       </div>
-    </section>
+    </div>
   )
 }

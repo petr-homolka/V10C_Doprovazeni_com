@@ -8,6 +8,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ProgressBar } from '@/components/ui/progress-bar'
+import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
 const RESPIT_ANNUAL_MIN = 14
@@ -76,10 +77,6 @@ const RECURRENCE_LABELS: Record<AssistedContactScheduleRecurrence['frequency'], 
   biweekly: 'Jednou za 2 týdny',
   monthly: 'Měsíčně',
 }
-
-const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-lg leading-relaxed ' +
-  'text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
 
 function StatusBadge({ label, tone = 'default' }: { label: string; tone?: 'default' | 'warning' }) {
   return (
@@ -590,7 +587,7 @@ function AssistedContactSubsection({
         ) : (
           <div className="flex max-w-[928px] flex-col gap-3">
             {rows.map(({ docId: seriesId, series, occurrences }) => (
-              <div key={seriesId} className="flex flex-col gap-3 rounded-lg bg-surface-soft p-4 shadow-raised">
+              <div key={seriesId} className="sp__sub flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm text-text-primary">{childName(children, series.childRef)} — {series.purpose}</p>
@@ -624,7 +621,7 @@ function AssistedContactSubsection({
                     const key = `${seriesId}/${occId}`
                     const needsEvaluation = occurrence.status === 'probehlo' && !occurrence.evaluation
                     return (
-                      <div key={occId} className="rounded-md bg-inset p-3">
+                      <div key={occId} className="sp__sub">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm text-text-primary">{new Date(occurrence.plannedDate).toLocaleDateString('cs-CZ')}</p>
                           <StatusBadge
@@ -695,12 +692,11 @@ function AssistedContactSubsection({
                         )}
                         {openAction === `eval-${key}` && (
                           <div className="mt-2 flex flex-col gap-2">
-                            <textarea
+                            <Textarea
                               placeholder="Shrnutí vyhodnocení"
                               value={evalSummary[occId] ?? ''}
                               onChange={(e) => setEvalSummary((prev) => ({ ...prev, [occId]: e.target.value }))}
                               rows={3}
-                              className={TEXTAREA_CLASSNAME}
                             />
                             <Input
                               placeholder="Doporučení pro příště (volitelné)"

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Switch } from '@/components/ui/switch'
 import { useAuth } from '@/hooks/useAuth'
 import { updateNotifyBirthdays, updateNotifyNameDays } from '@/services/staffService'
@@ -53,17 +53,20 @@ export default function CalendarSettingsPage() {
     <AppShell
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <PageHeader title="Kalendář" variant="settings" />
+      <PageHead title="Kalendář" />
 
-      <section className="sp__card sp__card--pad">
-
-      <div className="max-w-[560px]">
+      <section className="sp__card sp__card--pad max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">Narozeniny</p>
         <div className="mt-3 flex items-center justify-between gap-5">
           <span className="text-sm text-text-secondary">
             Upozornit v Provozních upozorněních na blížící se narozeniny dětí a pěstounů ve vaší péči.
           </span>
-          <Switch checked={birthdayNotifications} onChange={handleBirthdayToggle} label="Narozeninová upozornění" />
+          <Switch
+            checked={birthdayNotifications}
+            onChange={handleBirthdayToggle}
+            label="Narozeninová upozornění"
+            showLabel={false}
+          />
         </div>
 
         <p className="mt-6 text-sm font-medium text-text-primary">Svátky (jmeniny)</p>
@@ -71,7 +74,12 @@ export default function CalendarSettingsPage() {
           <span className="text-sm text-text-secondary">
             Upozornit v Provozních upozorněních na dnešní svátek dětí a pěstounů ve vaší péči.
           </span>
-          <Switch checked={nameDayNotifications} onChange={handleNameDayToggle} label="Jmeninová upozornění" />
+          <Switch
+            checked={nameDayNotifications}
+            onChange={handleNameDayToggle}
+            label="Jmeninová upozornění"
+            showLabel={false}
+          />
         </div>
 
         {saveError && (
@@ -79,7 +87,6 @@ export default function CalendarSettingsPage() {
             {saveError}
           </p>
         )}
-      </div>
       </section>
     </AppShell>
   )

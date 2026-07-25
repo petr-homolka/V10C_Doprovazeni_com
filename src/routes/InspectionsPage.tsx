@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -144,7 +144,7 @@ export default function InspectionsPage() {
   if (!organizationId) {
     return (
       <AppShell>
-        <PageHeader title="Kvalita" />
+        <PageHead title="Kvalita" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -154,23 +154,26 @@ export default function InspectionsPage() {
 
   return (
     <AppShell>
-      <PageHeader
-        title="Kvalita — evidence inspekcí"
+      <PageHead
+        title="Kvalita"
+        description="Evidence inspekcí a nápravných opatření."
+        count={inspections?.length}
         actions={
-          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? 'Zrušit' : (<><Plus size={16} /> Zaznamenat inspekci</>)}
+          <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Zrušit' : (<><Plus size={17} /> Zaznamenat inspekci</>)}
           </Button>
         }
-      />
+      >
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-
+      <section className="sp__card sp__card--pad">
       {overdueActions.length > 0 && (
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mb-4 flex flex-col gap-2">
           {overdueActions.map((a) => (
             <div
               key={`${a.docId}-${a.criterionCode}`}
@@ -184,7 +187,7 @@ export default function InspectionsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-4 max-w-[560px] sp__sub flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Období inspekce
             <DateRangePicker
@@ -284,7 +287,7 @@ export default function InspectionsPage() {
               </p>
             )}
             {inspections.map(({ docId, inspection }) => (
-              <div key={docId} className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div key={docId} className="sp__sub">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm text-text-primary">
@@ -301,7 +304,7 @@ export default function InspectionsPage() {
                 </div>
                 <div className="mt-3 flex flex-col gap-2">
                   {inspection.findings.map((f) => (
-                    <div key={f.criterionCode} className="flex items-center justify-between gap-3 rounded-md border border-border-subtle bg-surface-soft px-3 py-2">
+                    <div key={f.criterionCode} className="flex items-center justify-between gap-3 sp__sub">
                       <div>
                         <p className="text-sm text-text-primary">
                           {f.criterionCode} — {SCORE_LABELS[f.score]}
@@ -327,6 +330,7 @@ export default function InspectionsPage() {
           </div>
         )}
       </div>
+      </section>
     </AppShell>
   )
 }

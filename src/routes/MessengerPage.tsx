@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { MessageCircle, Search, Send, Users } from '@/components/ui/icons'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PersonLink } from '@/components/ui/person-link'
+import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { listFamiliesWithDocIds } from '@/services/familyService'
@@ -174,13 +175,13 @@ export default function MessengerPage() {
   return (
     <AppShell fullBleed>
       <div className="flex min-h-0 flex-1 flex-col bg-app px-4 pb-4">
-        <PageHeader title="Zprávy" />
+        <PageHead title="Zprávy" />
 
         <div className="flex min-h-0 flex-1 gap-4">
           {/* Seznam konverzací */}
-          <div className="flex w-[320px] shrink-0 flex-col rounded-lg bg-surface-soft shadow-raised">
+          <div className="sp__card flex w-[320px] shrink-0 flex-col p-0">
             <div className="shrink-0 border-b border-border-subtle p-3">
-              <div className="flex items-center gap-2 rounded-full bg-field px-3 py-2">
+              <div className="flex items-center gap-2 rounded-md border border-border-default px-3 py-2">
                 <Search size={16} className="shrink-0 text-text-tertiary" />
                 <input
                   value={search}
@@ -226,7 +227,7 @@ export default function MessengerPage() {
           </div>
 
           {/* Vlákno */}
-          <div className="flex min-h-0 flex-1 flex-col rounded-lg bg-surface-soft shadow-raised">
+          <div className="sp__card flex min-h-0 flex-1 flex-col p-0">
             {!selected ? (
               <div className="flex h-full items-center justify-center">
                 <EmptyState icon={MessageCircle} text="Vyberte rodinu vlevo a otevřete konverzaci." />
@@ -266,7 +267,7 @@ export default function MessengerPage() {
                           <div key={gi} className="flex flex-col gap-1">
                             {showDayPill && (
                               <div className="my-1 flex justify-center">
-                                <span className="rounded-full bg-field px-3 py-1 text-xs font-medium capitalize text-text-secondary">
+                                <span className="sp__chip capitalize">
                                   {group.dayLabel}
                                 </span>
                               </div>
@@ -331,19 +332,16 @@ export default function MessengerPage() {
                 </div>
 
                 <form onSubmit={handleSend} className="shrink-0 border-t border-border-subtle p-3">
-                  <div className="rounded-lg border border-transparent bg-field p-2 transition-colors duration-150 focus-within:border-accent">
-                    <textarea
+                  <div className="rounded-md border border-border-default p-2 transition-colors duration-150 focus-within:border-border-strong">
+                    <Textarea
                       value={body}
                       onChange={(e) => setBody(e.target.value)}
                       placeholder={asNote ? 'Interní poznámka pro tým…' : 'Napište pěstounovi…'}
                       rows={2}
-                      className="w-full resize-none bg-transparent px-1.5 py-1 text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none"
+                      className="resize-none border-0 bg-transparent px-1.5 py-1 text-sm hover:border-0 focus:shadow-none"
                     />
                     <div className="flex items-center justify-between gap-3 px-1 pt-1">
-                      <label className="flex items-center gap-2 text-xs text-text-secondary">
-                        <Switch checked={asNote} onChange={setAsNote} label="Jen interní poznámka" />
-                        Jen interní poznámka
-                      </label>
+                      <Switch checked={asNote} onChange={setAsNote} label="Jen interní poznámka" />
                       <button
                         type="submit"
                         disabled={!body.trim() || loading}

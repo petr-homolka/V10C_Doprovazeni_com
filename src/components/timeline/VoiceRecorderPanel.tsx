@@ -320,13 +320,13 @@ export function VoiceRecorderPanel({
 
         <div className="flex items-center justify-between gap-4">
           <span className="text-sm text-text-primary">Soukromá poznámka</span>
-          <Switch checked={isPrivate} onChange={setIsPrivate} label="Soukromá poznámka" />
+          <Switch checked={isPrivate} onChange={setIsPrivate} label="Soukromá poznámka" showLabel={false} />
         </div>
 
         {!isPrivate && (
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm text-text-primary">Sdílet s pěstounem</span>
-            <Switch checked={shareWithFoster} onChange={setShareWithFoster} label="Sdílet s pěstounem" />
+            <Switch checked={shareWithFoster} onChange={setShareWithFoster} label="Sdílet s pěstounem" showLabel={false} />
           </div>
         )}
 
@@ -337,6 +337,7 @@ export function VoiceRecorderPanel({
               checked={shareBothPartners}
               onChange={setShareBothPartners}
               label="Sdílet s oběma pěstouny"
+              showLabel={false}
             />
           </div>
         )}

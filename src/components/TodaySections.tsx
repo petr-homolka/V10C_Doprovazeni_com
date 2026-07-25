@@ -69,7 +69,7 @@ export function TodaySections() {
   return (
     <>
       <SpisSection id="ceka" title="Čeká na vás" description="Návštěvy, ke kterým ještě není zápis.">
-        <div className="mt-3 flex flex-col gap-3">
+        <div className="flex flex-col">
           {error ? (
             <p className="text-sm text-danger" role="alert">
               {error}

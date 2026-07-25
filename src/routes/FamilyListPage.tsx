@@ -41,6 +41,7 @@ import type { AgreementDoc } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { SubjectRef } from '@/types/timelineEntry'
 import { Mic, Plus, Star, Users } from '@/components/ui/icons'
+import { Textarea } from '@/components/ui/textarea'
 
 const SORT_OPTIONS = [
   { value: 'adresa' as const, label: 'Adresa' },
@@ -656,13 +657,12 @@ export default function FamilyListPage() {
             </h2>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Text poznámky</span>
-              <textarea
+              <Textarea
                 required
                 rows={4}
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
                 placeholder="Např. byla oznámena dovolená klíčové osoby…"
-                className="w-full rounded-sm border border-transparent bg-field px-3 py-2 text-base text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
             <p className="text-xs text-text-tertiary">

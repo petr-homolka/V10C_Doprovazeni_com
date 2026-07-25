@@ -21,6 +21,7 @@ import { Select } from '@/components/ui/select'
 import { Combobox } from '@/components/ui/combobox'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -491,7 +492,7 @@ export default function CalendarPage() {
       <SidePanel title="Nastavení kalendáře" onClose={closePanel}>
         <div className="flex flex-col gap-6">
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+            <h3 className="sp__grouplabel">
               Zobrazit zaměstnance
             </h3>
             <div className="mt-2 flex flex-col gap-0.5">
@@ -519,7 +520,7 @@ export default function CalendarPage() {
            * přidají do kalendáře události té rodiny/pěstouna/dítěte i
            * tehdy, když je jejich řešitel ve filtru výš schovaný. */}
           <div className="flex flex-col gap-2 border-t border-border-subtle pt-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">
+            <h3 className="sp__grouplabel">
               Kalendáře entit (na vyžádání)
             </h3>
             <SubjectRefsPicker
@@ -538,7 +539,7 @@ export default function CalendarPage() {
           </div>
 
           <div className="flex flex-col gap-2 border-t border-border-subtle pt-4">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Napojení</h3>
+            <h3 className="sp__grouplabel">Napojení</h3>
             <Link
               to="/nastaveni/kalendar"
               className="flex items-center gap-2 rounded-sm px-2 py-2 text-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
@@ -614,8 +615,8 @@ export default function CalendarPage() {
             </label>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Termín</h3>
+          <div className="sp__group">
+            <h3 className="sp__grouplabel">Termín</h3>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Začátek</span>
               <div className="flex gap-2">
@@ -645,7 +646,7 @@ export default function CalendarPage() {
               <div className="flex flex-col gap-2 border-t border-border-subtle pt-3">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm font-medium leading-relaxed text-text-primary">Opakovat</span>
-                  <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" />
+                  <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" showLabel={false} />
                 </div>
                 {form.recurrenceEnabled && (
                   <div className="flex flex-wrap items-center gap-2">
@@ -705,11 +706,10 @@ export default function CalendarPage() {
 
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Poznámka</span>
-              <textarea
+              <Textarea
                 value={form.notes}
                 onChange={(e) => set('notes', e.target.value)}
                 rows={2}
-                className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
           </div>
@@ -742,7 +742,7 @@ export default function CalendarPage() {
             </p>
           )}
 
-          <div className="min-h-0 flex-1 overflow-hidden rounded-lg bg-surface-soft p-4 shadow-raised">
+          <div className="sp__card sp__card--pad min-h-0 flex-1 overflow-hidden">
             {loaded && (
               <DnDCalendar
                 localizer={localizer}

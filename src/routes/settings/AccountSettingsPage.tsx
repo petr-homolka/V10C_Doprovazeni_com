@@ -1,7 +1,7 @@
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
@@ -21,11 +21,9 @@ export default function AccountSettingsPage() {
     <AppShell
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <PageHeader title="Účet" variant="settings" />
+      <PageHead title="Účet" />
 
-      <section className="sp__card sp__card--pad">
-
-      <div className="max-w-[560px] space-y-5">
+      <section className="sp__card sp__card--pad max-w-[560px] space-y-5">
         <label className="flex flex-col gap-1.5">
           <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
           <Input defaultValue="Jana Málková" />
@@ -39,7 +37,6 @@ export default function AccountSettingsPage() {
         <Button variant="secondary" size="sm">
           Uložit změny
         </Button>
-      </div>
       </section>
     </AppShell>
   )

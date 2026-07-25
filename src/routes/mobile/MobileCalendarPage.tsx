@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Textarea } from '@/components/ui/textarea'
 import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
 import { EventAvatarStack } from '@/components/calendar/EventAvatarStack'
 import { EntitySearch } from '@/components/search/EntitySearch'
@@ -820,12 +821,11 @@ export default function MobileCalendarPage() {
             </label>
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium text-text-primary">Poznámky (volitelné)</span>
-              <textarea
+              <Textarea
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                 rows={3}
                 placeholder="Doplňující poznámka…"
-                className="w-full resize-none rounded-sm border border-transparent bg-field px-3 py-2.5 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
               />
             </label>
             <Button type="submit" loading={saving} className="h-14 text-base">

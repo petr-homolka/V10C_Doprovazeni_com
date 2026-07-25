@@ -27,7 +27,6 @@ import type { SupportExpenseCategory, SupportExpenseDoc, SupportExpenseSource } 
 
 export interface ChildSupportSectionProps {
   childId: string
-  childName: string
   organizationId: string
   currentUid: string
 }
@@ -65,7 +64,7 @@ const EXPENSE_SOURCE_LABELS: Record<SupportExpenseSource, string> = { interni: '
 
 function StatusBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex h-6 items-center rounded-full bg-surface-soft px-2.5 text-xs font-medium text-text-primary">
+    <span className="sp__chip">
       {label}
     </span>
   )
@@ -200,7 +199,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
 
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-end gap-4">
         <h3 className="text-base font-medium text-text-primary">Naplánované aktivity</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Zrušit' : (<><Plus size={16} /> Naplánovat aktivitu</>)}
@@ -208,7 +207,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] sp__sub flex flex-col gap-3">
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Typ aktivity
@@ -341,7 +340,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
         ) : (
           <div className="flex flex-col gap-3">
             {rows.map(({ docId: activityId, activity, occurrences }) => (
-              <div key={activityId} className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+              <div key={activityId} className="sp__sub flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm text-text-primary">
@@ -363,7 +362,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
 
                 <div className="flex flex-col gap-2">
                   {(occurrences ?? []).map(({ docId: occId, occurrence }) => (
-                    <div key={occId} className="flex items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-soft px-3 py-2">
+                    <div key={occId} className="flex items-center justify-between gap-2 sp__sub">
                       <span className="text-sm text-text-primary">{new Date(occurrence.date).toLocaleDateString('cs-CZ')}</span>
                       <div className="flex items-center gap-2">
                         <StatusBadge label={OCCURRENCE_STATUS_LABELS[occurrence.status]} />
@@ -475,7 +474,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
 
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-end gap-4">
         <h3 className="text-base font-medium text-text-primary">Podpůrné výdaje</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat doklad</>)}
@@ -484,15 +483,15 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
 
       {summary && (
         <div className="mt-3 flex gap-3">
-          <div className="rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="sp__sub">
             <p className="text-xs text-text-secondary">Posledních 90 dní</p>
             <p className="text-sm text-text-primary">{summary.last90Days} Kč</p>
           </div>
-          <div className="rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="sp__sub">
             <p className="text-xs text-text-secondary">Posledních 182 dní</p>
             <p className="text-sm text-text-primary">{summary.last182Days} Kč</p>
           </div>
-          <div className="rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="sp__sub">
             <p className="text-xs text-text-secondary">Posledních 365 dní</p>
             <p className="text-sm text-text-primary">{summary.last365Days} Kč</p>
           </div>
@@ -500,7 +499,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] sp__sub flex flex-col gap-3">
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Kategorie
@@ -598,10 +597,9 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
  * dokladů + tři prosté souhrnné částky. */
 export function ChildSupportSection(props: ChildSupportSectionProps) {
   return (
-    <section className="mt-8">
-      <h2 className="text-base font-medium text-text-primary">Podpůrné aktivity a výdaje — {props.childName}</h2>
+    <div>
       <ScheduledActivitiesSubsection {...props} />
       <SupportExpensesSubsection {...props} />
-    </section>
+    </div>
   )
 }

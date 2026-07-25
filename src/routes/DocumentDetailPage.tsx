@@ -3,11 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
 import ReactMarkdown from 'react-markdown'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHead } from '@/components/spis/PageBody'
+import { SpisSection } from '@/components/spis/SpisSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { PersonLink } from '@/components/ui/person-link'
+import { Textarea } from '@/components/ui/textarea'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -257,7 +260,10 @@ export default function DocumentDetailPage() {
   if (notFound) {
     return (
       <AppShell>
-        <p className="text-sm text-text-secondary">Tenhle dokument se nepodařilo najít.</p>
+        <PageHead title="Dokument" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tenhle dokument se nepodařilo najít.</p>
+        </section>
       </AppShell>
     )
   }
@@ -265,7 +271,10 @@ export default function DocumentDetailPage() {
   if (!document) {
     return (
       <AppShell>
-        <p className="text-sm text-text-secondary">Načítám…</p>
+        <PageHead title="Dokument" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-tertiary">Načítám…</p>
+        </section>
       </AppShell>
     )
   }
@@ -278,43 +287,47 @@ export default function DocumentDetailPage() {
   return (
     <AppShell
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl text-text-primary">{document.title}</h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            {document.uid} · verze {document.currentVersion} · {DOCUMENT_STATUS_LABELS[status]}
-          </p>
-          {subjectLabels.length > 0 && <p className="mt-0.5 text-xs text-text-tertiary">Týká se: {subjectLabels.join(', ')}</p>}
-        </div>
-        {qrDataUrl && (
-          <div className="shrink-0 text-center">
-            <img src={qrDataUrl} alt="QR ověřovací kód dokumentu" className="rounded-sm border border-border" />
-            <p className="mt-1 text-2xs text-text-tertiary">hash {document.hash.slice(0, 12)}…</p>
-          </div>
+      <PageHead
+        title={document.title}
+        description={`${document.uid} · verze ${document.currentVersion} · ${DOCUMENT_STATUS_LABELS[status]}`}
+        actions={
+          qrDataUrl && (
+            <div className="shrink-0 text-center">
+              <img src={qrDataUrl} alt="QR ověřovací kód dokumentu" className="rounded-sm border border-border-default" />
+              <p className="mt-1 text-2xs text-text-faint">hash {document.hash.slice(0, 12)}…</p>
+            </div>
+          )
+        }
+      >
+        {(subjectLabels.length > 0 || error) && (
+          <>
+            {subjectLabels.length > 0 && (
+              <p className="text-sm text-text-tertiary">Týká se: {subjectLabels.join(', ')}</p>
+            )}
+            {error && (
+              <p className="mt-1 text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+          </>
         )}
-      </div>
-
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+      </PageHead>
 
       {document.rejectionReason && status === 'draft' && (
-        <div className="mt-4 max-w-[560px] rounded-lg border border-warning bg-warning-bg p-4">
+        <div className="sp__card sp__card--pad border-warning">
           <p className="text-sm font-medium text-text-primary">Vedení dokument zamítlo</p>
           <p className="mt-1 text-sm text-text-secondary">{document.rejectionReason}</p>
         </div>
       )}
 
       {document.fosterComments && (status === 'commented' || status === 'draft') && (
-        <div className="mt-4 max-w-[560px] rounded-lg border border-border bg-surface p-4">
+        <div className="sp__card sp__card--pad">
           <p className="text-sm font-medium text-text-primary">Komentář pěstouna</p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-text-secondary">{document.fosterComments}</p>
         </div>
       )}
 
-      <section className="mt-6 max-w-[928px]">
+      <section className="sp__card sp__card--pad">
         {isEditable ? (
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
@@ -341,7 +354,7 @@ export default function DocumentDetailPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-lg border border-border bg-surface p-6">
+          <div>
             <div className="prose prose-sm max-w-none text-text-primary">
               <ReactMarkdown>{document.body}</ReactMarkdown>
             </div>
@@ -350,11 +363,11 @@ export default function DocumentDetailPage() {
       </section>
 
       {status === 'foster_review' && (
-        <p className="mt-4 text-sm text-text-secondary">Čeká na reakci pěstouna.</p>
+        <p className="sp__card sp__card--pad text-sm text-text-secondary">Čeká na reakci pěstouna.</p>
       )}
 
       {(status === 'commented' || status === 'approved_foster') && (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Button onClick={handleMarkFinal} loading={markingFinal} success={markingFinalSuccess}>
             Označit jako Konečný
           </Button>
@@ -362,7 +375,7 @@ export default function DocumentDetailPage() {
       )}
 
       {status === 'final' && (
-        <div className="mt-4 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="sp__card sp__card--pad flex max-w-[560px] flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Schvalovatel (volitelné)</span>
             <Select
@@ -384,7 +397,7 @@ export default function DocumentDetailPage() {
       )}
 
       {status === 'mgmt_review' && (
-        <div className="mt-4">
+        <div className="sp__card sp__card--pad">
           <p className="text-sm text-text-secondary">Čeká na schválení vedením.</p>
           {isVedeni && (
             <div className="mt-3 flex flex-col gap-3">
@@ -397,14 +410,13 @@ export default function DocumentDetailPage() {
                 </Button>
               </div>
               {showRejectForm && (
-                <div className="flex max-w-[560px] flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+                <div className="sp__sub flex max-w-[560px] flex-col gap-2">
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-relaxed text-text-primary">Důvod zamítnutí</span>
-                    <textarea
+                    <Textarea
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       rows={3}
-                      className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                     />
                   </label>
                   <Button
@@ -427,7 +439,7 @@ export default function DocumentDetailPage() {
         status === 'closed_foster_unapproved' ||
         status === 'closed_ko_unapproved' ||
         status === 'closed_both_unapproved') && (
-        <div className="mt-4 flex max-w-[560px] flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="sp__card sp__card--pad flex max-w-[560px] flex-col gap-3">
           <p className="text-sm text-text-primary">{DOCUMENT_STATUS_LABELS[status]}</p>
           <div className="flex items-center gap-2">
             <Select
@@ -453,22 +465,21 @@ export default function DocumentDetailPage() {
       )}
 
       {status === 'sent' && (
-        <p className="mt-4 text-sm text-text-secondary">
+        <p className="sp__card sp__card--pad text-sm text-text-secondary">
           Odesláno na {document.sentTo === 'soud' ? 'soud' : 'OSPOD'}{' '}
           {document.sentAt && new Date(document.sentAt).toLocaleString('cs-CZ')}.
         </p>
       )}
       {status === 'filed' && (
-        <p className="mt-4 text-sm text-text-secondary">
+        <p className="sp__card sp__card--pad text-sm text-text-secondary">
           Uloženo do spisu {document.filedAt && new Date(document.filedAt).toLocaleString('cs-CZ')}.
         </p>
       )}
 
-      <section className="mt-8">
-        <h2 className="text-base font-medium text-text-primary">Historie verzí</h2>
-        <div className="mt-3 flex max-w-[928px] flex-col gap-2">
+      <SpisSection id="verze" title="Historie verzí" description="Každá uložená verze i s otiskem obsahu." padded>
+        <div className="flex flex-col">
           {versions.map(({ docId: vId, version }) => (
-            <div key={vId} className="rounded-lg border border-border bg-surface p-3 text-sm">
+            <div key={vId} className="border-b border-border-subtle py-2 text-sm last:border-0">
               <p className="text-text-primary">
                 v{version.version} ·{' '}
                 <PersonLink
@@ -484,9 +495,9 @@ export default function DocumentDetailPage() {
             </div>
           ))}
         </div>
-      </section>
+      </SpisSection>
 
-      <div className="mt-6">
+      <div>
         <Button variant="ghost" size="sm" onClick={() => navigate(`/rodiny/${familyUid}`)}>
           ← Zpět na Spis
         </Button>

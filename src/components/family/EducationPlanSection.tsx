@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Textarea } from '@/components/ui/textarea'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   activateEducationPlan,
@@ -21,7 +22,6 @@ import { EDUCATION_TOPIC_CATEGORIES } from '@/types/legislativeParameter'
 
 export interface EducationPlanSectionProps {
   fosterPersonId: string
-  fosterPersonName: string
   organizationId: string
   agreementId: string // = organizationId by convention (deterministic Agreement ID), pass as-is to agreementRef
   currentUid: string
@@ -76,7 +76,6 @@ function emptyItemRow(): ItemRow {
  */
 export function EducationPlanSection({
   fosterPersonId,
-  fosterPersonName,
   organizationId,
   agreementId,
   currentUid,
@@ -202,9 +201,8 @@ export function EducationPlanSection({
   }
 
   return (
-    <section className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-base font-medium text-text-primary">Plán vzdělávání — {fosterPersonName}</h2>
+    <div>
+      <div className="flex items-center justify-end gap-4">
         <Button
           variant="secondary"
           size="sm"
@@ -226,7 +224,7 @@ export function EducationPlanSection({
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="mt-4 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
+          className="mt-4 flex max-w-[560px] flex-col gap-4 sp__sub"
         >
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Období</span>
@@ -235,7 +233,7 @@ export function EducationPlanSection({
 
           <div className="flex flex-col gap-3">
             {itemRows.map((row) => (
-              <div key={row.id} className="flex flex-col gap-2 rounded-md bg-inset p-3">
+              <div key={row.id} className="sp__sub flex flex-col gap-2">
                 <div className="grid grid-cols-2 gap-3">
                   <label className="flex flex-col gap-1">
                     <span className="text-xs font-medium text-text-secondary">Kategorie</span>
@@ -336,7 +334,7 @@ export function EducationPlanSection({
             {plans.map(({ docId, plan }) => {
               const busy = busyDocId === docId
               return (
-                <div key={docId} className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+                <div key={docId} className="sp__sub flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium text-text-primary">
@@ -347,7 +345,7 @@ export function EducationPlanSection({
                         Odhadované náklady: {plan.totalEstimatedCost.toLocaleString('cs-CZ')} Kč
                       </p>
                     </div>
-                    <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-surface-soft px-2.5 text-xs font-medium text-text-primary">
+                    <span className="sp__chip shrink-0">
                       {STATUS_LABELS[plan.status]}
                     </span>
                   </div>
@@ -356,7 +354,7 @@ export function EducationPlanSection({
                     {plan.items.map((item) => {
                       const name = childName(item.childRef)
                       return (
-                        <div key={item.id} className="rounded-md bg-inset p-3">
+                        <div key={item.id} className="sp__sub">
                           <div className="flex items-center justify-between gap-3">
                             <p className="text-sm font-medium text-text-primary">{item.topicName}</p>
                             <span className="shrink-0 text-xs text-text-tertiary">
@@ -383,12 +381,11 @@ export function EducationPlanSection({
 
                   {rejectingDocId === docId ? (
                     <div className="flex flex-col gap-2">
-                      <textarea
+                      <Textarea
                         value={rejectNote}
                         onChange={(e) => setRejectNote(e.target.value)}
                         rows={3}
                         placeholder="Důvod zamítnutí"
-                        className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-lg leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                       />
                       {rejectError && (
                         <p className="text-sm text-danger" role="alert">
@@ -476,6 +473,6 @@ export function EducationPlanSection({
           </div>
         )}
       </div>
-    </section>
+    </div>
   )
 }

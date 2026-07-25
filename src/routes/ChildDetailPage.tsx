@@ -199,7 +199,6 @@ export default function ChildDetailPage() {
               {childId && organizationId && userDoc && (
                 <ChildSupportSection
                   childId={childId}
-                  childName={`${child.firstName} ${child.lastName}`}
                   organizationId={organizationId}
                   currentUid={userDoc.uid}
                 />

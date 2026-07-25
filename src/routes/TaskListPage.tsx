@@ -11,6 +11,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { Switch } from '@/components/ui/switch'
 import { PersonLink } from '@/components/ui/person-link'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Textarea } from '@/components/ui/textarea'
 import { SubjectRefsPicker } from '@/components/calendar/SubjectRefsPicker'
 import { useAuth } from '@/hooks/useAuth'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -266,8 +267,8 @@ export default function TaskListPage() {
           </label>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Termín</h3>
+        <div className="sp__group">
+          <h3 className="sp__grouplabel">Termín</h3>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Termín (volitelné)</span>
             <DatePicker value={form.dueDate} onChange={(v) => set('dueDate', v)} />
@@ -277,7 +278,7 @@ export default function TaskListPage() {
             <div className="flex flex-col gap-2 border-t border-border-subtle pt-3">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-sm font-medium leading-relaxed text-text-primary">Opakovat</span>
-                <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" />
+                <Switch checked={form.recurrenceEnabled} onChange={(v) => set('recurrenceEnabled', v)} label="Opakovat" showLabel={false} />
               </div>
               {form.recurrenceEnabled && (
                 <div className="flex flex-wrap items-center gap-2">
@@ -337,11 +338,10 @@ export default function TaskListPage() {
 
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Poznámka</span>
-            <textarea
+            <Textarea
               value={form.notes}
               onChange={(e) => set('notes', e.target.value)}
               rows={2}
-              className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
             />
           </label>
         </div>
@@ -389,9 +389,7 @@ export default function TaskListPage() {
             {visibleTasks === null ? (
               <p className="text-sm text-text-secondary">Načítám…</p>
             ) : visibleTasks.length === 0 ? (
-              <div className="rounded-lg bg-surface-soft p-8 shadow-raised">
-                <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
-              </div>
+              <EmptyState icon={CheckSquare} text="Žádné úkoly k zobrazení." />
             ) : (
               <RecordCardList
                 cellCount={1}

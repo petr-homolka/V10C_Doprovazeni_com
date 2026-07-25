@@ -250,7 +250,6 @@ export default function FosterPersonDetailPage() {
               {fosterPersonId && organizationId && userDoc && (
                 <EducationPlanSection
                   fosterPersonId={fosterPersonId}
-                  fosterPersonName={`${fosterPerson.firstName} ${fosterPerson.lastName}`}
                   organizationId={organizationId}
                   agreementId={organizationId}
                   currentUid={userDoc.uid}

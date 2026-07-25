@@ -162,8 +162,8 @@ export default function FosterPersonListPage() {
   const sidePanel = creating ? (
     <SidePanel title="Nový pěstoun" onClose={() => setCreating(false)}>
       <form onSubmit={handleCreate} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Rodina</h3>
+        <div className="sp__group">
+          <h3 className="sp__grouplabel">Rodina</h3>
           <Combobox
             options={familyOptions}
             value={newFamilyDocId}
@@ -178,8 +178,8 @@ export default function FosterPersonListPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Osoba</h3>
+        <div className="sp__group">
+          <h3 className="sp__grouplabel">Osoba</h3>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-text-primary">Jméno</span>
             <Input required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
@@ -194,8 +194,8 @@ export default function FosterPersonListPage() {
           </label>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Kontakt</h3>
+        <div className="sp__group">
+          <h3 className="sp__grouplabel">Kontakt</h3>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-text-primary">Telefon</span>
             <Input
@@ -263,9 +263,7 @@ export default function FosterPersonListPage() {
               {filtered === null ? (
                 <p className="text-sm text-text-secondary">Načítám…</p>
               ) : filtered.length === 0 ? (
-                <div className="rounded-lg bg-surface-soft p-8 shadow-raised">
-                  <EmptyState icon={UserRound} text="Žádný pěstoun neodpovídá hledání." />
-                </div>
+                <EmptyState icon={UserRound} text="Žádný pěstoun neodpovídá hledání." />
               ) : (
                 <RecordCardList
                   cellCount={3}

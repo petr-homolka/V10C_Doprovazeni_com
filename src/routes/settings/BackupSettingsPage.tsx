@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -145,10 +145,10 @@ export default function BackupSettingsPage() {
   if (!organizationId) {
     return (
       <AppShell>
-        <PageHeader title="Zálohy" variant="settings" />
-        <p className="mt-4 text-sm text-text-secondary">
-          Tahle stránka je pro zaměstnance konkrétní organizace.
-        </p>
+        <PageHead title="Zálohy" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
+        </section>
       </AppShell>
     )
   }
@@ -157,21 +157,23 @@ export default function BackupSettingsPage() {
     <AppShell
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <PageHeader
+      <PageHead
         title="Zálohy a export"
         description="Data organizace nejsou uzamčená u dodavatele — export i záloha jsou vždy k dispozici."
-        variant="settings"
-      />
+      >
+        {(error || notice) && (
+          <>
+            {error && (
+              <p className="text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+            {notice && <p className="text-sm text-success">{notice}</p>}
+          </>
+        )}
+      </PageHead>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && <p className="mt-3 text-sm text-success">{notice}</p>}
-
-      <div className="max-w-[560px] space-y-6">
-        <section className="rounded-lg border border-border bg-surface p-5">
+      <section className="sp__card sp__card--pad">
           <p className="text-sm font-medium text-text-primary">Export všech dat organizace</p>
           <p className="mt-1 text-sm text-text-secondary">
             Nešifrovaná .xlsx tabulka rodin, pěstounů, dětí a Dohod — pro vlastní evidenci nebo
@@ -182,7 +184,7 @@ export default function BackupSettingsPage() {
           </Button>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5">
+        <section className="sp__card sp__card--pad">
           <p className="text-sm font-medium text-text-primary">Zálohovat teď</p>
           <p className="mt-1 text-sm text-text-secondary">
             Záloha se zašifruje heslem, které zadáte — systém si ho NEUKLÁDÁ. Bez něj nejde záloha
@@ -210,7 +212,7 @@ export default function BackupSettingsPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5">
+        <section className="sp__card sp__card--pad">
           <p className="text-sm font-medium text-text-primary">Naplánovaná záloha</p>
           <p className="mt-1 text-sm text-text-secondary">
             Nastavení se uloží, ale sama se zatím nespustí — potřebuje naplánovanou úlohu na
@@ -285,14 +287,13 @@ export default function BackupSettingsPage() {
               {savingConfig ? 'Ukládám…' : 'Uložit nastavení'}
             </Button>
           )}
-        </section>
-      </div>
+      </section>
 
-      <div className="mt-6">
-        <h2 className="text-sm font-medium text-text-primary">Historie záloh</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Historie záloh</h2>
         <div className="mt-3">
           {jobs === null ? (
-            <p className="text-sm text-text-secondary">Načítám…</p>
+            <p className="text-sm text-text-tertiary">Načítám…</p>
           ) : jobs.length === 0 ? (
             <EmptyState icon={ShieldCheck} text="Zatím žádná záloha." />
           ) : (
@@ -324,7 +325,7 @@ export default function BackupSettingsPage() {
             </Table>
           )}
         </div>
-      </div>
+      </section>
     </AppShell>
   )
 }

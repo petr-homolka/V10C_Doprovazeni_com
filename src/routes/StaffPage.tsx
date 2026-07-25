@@ -300,7 +300,7 @@ export default function StaffPage() {
             Co spolupracovník vidí/může u osob, co mu přiřadíte (Rodina → profil dítěte/pěstouna →
             "Přiřadit spolupracovníkovi").
           </p>
-          <div className="flex flex-col gap-2 rounded-lg bg-inset p-3">
+          <div className="sp__group">
             {COLLABORATOR_MODULE_KEYS.map((key) => (
               <label key={key} className="flex items-center gap-2 text-sm text-text-primary">
                 <input
@@ -364,9 +364,7 @@ export default function StaffPage() {
             {staff === null ? (
               <p className="text-sm text-text-secondary">Načítám…</p>
             ) : staff.length === 0 ? (
-              <div className="rounded-lg bg-surface-soft p-8 shadow-raised">
-                <EmptyState icon={UserCog} text="Zatím tu nejsou žádní zaměstnanci." />
-              </div>
+              <EmptyState icon={UserCog} text="Zatím tu nejsou žádní zaměstnanci." />
             ) : (
               <RecordCardList
                 cellCount={2}

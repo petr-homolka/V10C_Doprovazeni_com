@@ -103,12 +103,16 @@
   --online: #10b981;
 
   /* ---- Radiusy ------------------------------------------------------
-     Odečteno: 3px 182×, 7px 173×, 10px 44×. Nic mezi tím a nic většího.
-     Malý radius u kompaktních věcí (čip, řádek), 7px u bloků a tlačítek,
-     10px u kontejnerů a popupů. */
-  --radius-sm: 3px;
-  --radius-md: 7px;
-  --radius-lg: 10px;
+     Tři stupně, jedna řada: 4 / 8 / 12. Malý u kompaktních věcí (čip),
+     střední u polí a tlačítek, velký u karet a popupů.
+
+     Dřív to bylo 3 / 7 / 10 (odečteno z referenční appky) a karta v
+     `spis.css` měla vlastních 12 px — tedy čtvrtý stupeň mimo stupnici.
+     Od 2026-07-25 je karta `var(--radius-lg)`, aby „změň zaoblení"
+     znamenalo změnit JEDNO číslo tady, ne dvě na dvou místech. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-full: 9999px;
 
   /* ---- Stíny --------------------------------------------------------

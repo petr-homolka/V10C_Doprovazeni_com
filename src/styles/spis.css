@@ -170,7 +170,7 @@
 .sp__card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   padding: 8px 24px 16px;
   /* Sloupce se ubírají podle šířky KARTY, ne okna — viz `@container` níž. */
   container-type: inline-size;
@@ -392,6 +392,68 @@
   color: var(--text-secondary);
 }
 
+/* ---------- co smí být UVNITŘ karty ---------- */
+
+/*
+  Karta je jediná plocha, která má rám a stín. Do 2026-07-25 se ale uvnitř
+  karet stavěly další rámečky a tónované kachlíky (`bg-inset`,
+  `bg-surface-soft`, `shadow-raised`) — na šedé ploše to fungovalo, v bílé
+  kartě z toho byla „krabice v krabici v krabici". Petrovo slovo pro to
+  bylo „nepřehlednost".
+
+  Uvnitř karty existují právě tři stavební prvky, všechny bez vlastního
+  pozadí:
+    .sp__group  — skupina polí ve formuláři/panelu, oddělená linkou
+    .sp__sub    — vnořený záznam (série, cíl, položka plánu) s vlasovým rámem
+    .sp__empty  — obal prázdného stavu
+*/
+.sp__group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sp__group:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+/* Popisek skupiny: velikostí, ne verzálkami. Uppercase tracking-wide byl
+   z jiného slovníku než zbytek appky. */
+.sp__grouplabel {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-faint);
+}
+
+.sp__sub {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.sp__empty {
+  padding: 24px 0;
+}
+
+/* Neutrální pilulka (stav série, počet hodin, typ kurzu). Barevná pilulka
+   je `Badge` a nese SUBJEKT; tahle nenese nic než slovo, takže má jen
+   vlasový rám — plocha navíc uvnitř bílé karty ruší. */
+.sp__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 100px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 /* ---------- pruh lhůty ---------- */
 
 .sp__meter {
@@ -454,7 +516,7 @@
     height: 84vh;
     border-left: 0;
     border-top: 1px solid var(--border-default);
-    border-radius: 12px 12px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     box-shadow: var(--shadow-xl);
     animation: sp-sheet-in 200ms ease;
     z-index: 60;

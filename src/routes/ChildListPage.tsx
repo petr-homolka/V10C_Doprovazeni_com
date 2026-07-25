@@ -146,8 +146,8 @@ export default function ChildListPage() {
   const sidePanel = creating ? (
     <SidePanel title="Nové dítě" onClose={() => setCreating(false)}>
       <form onSubmit={handleCreate} className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Rodina</h3>
+        <div className="sp__group">
+          <h3 className="sp__grouplabel">Rodina</h3>
           <Combobox
             options={familyOptions}
             value={newFamilyDocId}
@@ -162,8 +162,8 @@ export default function ChildListPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-tertiary">Dítě</h3>
+        <div className="sp__group">
+          <h3 className="sp__grouplabel">Dítě</h3>
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium text-text-primary">Jméno</span>
             <Input required value={newFirstName} onChange={(e) => setNewFirstName(e.target.value)} />
@@ -230,9 +230,7 @@ export default function ChildListPage() {
               {filtered === null ? (
                 <p className="text-sm text-text-secondary">Načítám…</p>
               ) : filtered.length === 0 ? (
-                <div className="rounded-lg bg-surface-soft p-8 shadow-raised">
-                  <EmptyState icon={Baby} text="Žádné dítě neodpovídá hledání." />
-                </div>
+                <EmptyState icon={Baby} text="Žádné dítě neodpovídá hledání." />
               ) : (
                 <RecordCardList
                   cellCount={3}

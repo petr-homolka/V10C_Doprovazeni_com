@@ -23,17 +23,13 @@ export function TeamWidget({ organizationId }: { organizationId: string }) {
   if (staff !== null && staff.length === 0) return null
 
   return (
-    <section className="mb-8">
-      <div className="flex items-end justify-between gap-4">
-        <h2 className="font-heading text-lg font-bold text-text-primary">Tým</h2>
-        <Link to="/zamestnanci" className="text-sm font-medium text-primary hover:underline">
-          Zobrazit vše →
-        </Link>
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+    <div>
+      {/* Nadpis „Tým" i odkaz na seznam nese `SpisSection` v levém okraji —
+          druhý nadpis uvnitř karty by byl tentýž titulek dvakrát. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {staff === null
           ? Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-[132px] animate-pulse rounded-lg bg-surface-soft shadow-raised" />
+              <div key={i} className="sp__sub h-[128px] animate-pulse" />
             ))
           : staff.map((member) => (
               // Celá karta je proklik na profil — jméno v platformě vždycky
@@ -41,14 +37,14 @@ export function TeamWidget({ organizationId }: { organizationId: string }) {
               <Link
                 key={member.uid}
                 to={`/zamestnanci/${member.uid}`}
-                className="flex flex-col items-center gap-1.5 rounded-lg bg-surface-soft p-4 text-center shadow-raised transition-shadow hover:shadow-overlay"
+                className="sp__sub flex flex-col items-center gap-1.5 text-center transition-colors hover:bg-overlay-hover"
               >
                 <EntityAvatar photoURL={member.avatarUrl} label={member.displayName} size="lg" ring className="size-12" />
-                <p className="mt-1 w-full truncate text-sm font-semibold text-text-primary">{member.displayName}</p>
-                <p className="w-full truncate text-xs text-text-secondary">{STAFF_ROLE_LABELS[member.role as keyof typeof STAFF_ROLE_LABELS] ?? member.role}</p>
+                <p className="mt-1 w-full truncate text-sm text-text-primary">{member.displayName}</p>
+                <p className="w-full truncate text-xs text-text-tertiary">{STAFF_ROLE_LABELS[member.role as keyof typeof STAFF_ROLE_LABELS] ?? member.role}</p>
               </Link>
             ))}
       </div>
-    </section>
+    </div>
   )
 }

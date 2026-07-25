@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -282,16 +282,20 @@ export default function ExternalParticipantsPage() {
   if (!organizationId) {
     return (
       <AppShell>
-        <PageHeader title="Externisté" />
-        <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
+        <PageHead title="Externisté" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
+        </section>
       </AppShell>
     )
   }
 
   return (
     <AppShell>
-      <PageHeader
+      <PageHead
         title="Externí spolupracovníci"
+        description="Prarodiče, psychologové, škola — lidé mimo organizaci, kteří mají přístup k jednomu dítěti nebo pěstounovi."
+        count={participants?.length}
         actions={
           canRequest && (
             <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
@@ -299,16 +303,16 @@ export default function ExternalParticipantsPage() {
             </Button>
           )
         }
-      />
-
-      {error && (
-        <p className="mt-3 max-w-[560px] text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+      >
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border bg-surface p-5">
+        <form onSubmit={handleSubmit} className="sp__card sp__card--pad flex max-w-[560px] flex-col gap-4">
           <label className="flex flex-col gap-1.5 text-sm text-text-secondary">
             Dítě nebo pěstoun, ke kterému externista patří
             <Combobox
@@ -366,15 +370,15 @@ export default function ExternalParticipantsPage() {
         </form>
       )}
 
-      <div className="mt-4 max-w-[560px]">
+      <section className="sp__card sp__card--pad">
         {participants === null ? (
-          <p className="text-sm text-text-secondary">Načítám…</p>
+          <p className="text-sm text-text-tertiary">Načítám…</p>
         ) : participants.length === 0 ? (
           <EmptyState icon={UserSquare2} text="Zatím žádný externista." />
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             {participants.map(({ docId, participant }) => (
-              <div key={docId} className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div key={docId} className="border-b border-border-subtle py-3 last:border-0">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm text-text-primary">{participant.name}</p>
@@ -446,7 +450,7 @@ export default function ExternalParticipantsPage() {
                             <p className="text-sm text-text-secondary">Zatím žádný přístup pro tuhle osobu.</p>
                           ) : (
                             grants.map(({ docId: grantId, grant }) => (
-                              <div key={grantId} className="flex items-center justify-between gap-3 rounded-md bg-surface-soft px-3 py-2">
+                              <div key={grantId} className="flex min-h-[44px] items-center justify-between gap-3 border-b border-border-subtle py-2 last:border-0">
                                 <div>
                                   <p className="text-sm text-text-primary">{PERMISSION_LABELS[grant.permissionKey]}</p>
                                   <p className="text-xs text-text-secondary">{STATUS_LABELS[grant.status]}</p>
@@ -509,7 +513,7 @@ export default function ExternalParticipantsPage() {
             ))}
           </div>
         )}
-      </div>
+      </section>
     </AppShell>
   )
 }

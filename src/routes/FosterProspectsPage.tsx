@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -169,7 +169,7 @@ export default function FosterProspectsPage() {
   if (!organizationId) {
     return (
       <AppShell>
-        <PageHeader title="Zájemci" />
+        <PageHead title="Zájemci" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
@@ -179,23 +179,25 @@ export default function FosterProspectsPage() {
 
   return (
     <AppShell>
-      <PageHeader
+      <PageHead
         title="Zájemci o pěstounství"
+        count={prospects?.length}
         actions={
-          <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat zájemce</>)}
+          <Button variant="secondary" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Zrušit' : (<><Plus size={17} /> Přidat zájemce</>)}
           </Button>
         }
-      />
+      >
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-
+      <section className="sp__card sp__card--pad">
       {dormant.length > 0 && (
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mb-4 flex flex-col gap-2">
           {dormant.map(({ docId, prospect }) => (
             <div key={docId} className="rounded-lg bg-warning-bg px-3 py-2 text-sm text-warning">
               {prospect.name}: bez kontaktu 60+ dní, zvažte "uspáno".
@@ -205,7 +207,7 @@ export default function FosterProspectsPage() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col max-w-[560px] gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-4 flex flex-col max-w-[560px] gap-3 sp__sub">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Jméno
             <Input required value={name} onChange={(e) => setName(e.target.value)} />
@@ -293,7 +295,7 @@ export default function FosterProspectsPage() {
                   <h2 className="text-sm font-medium text-text-primary">{STATUS_LABELS[status]}</h2>
                   <div className="mt-2 flex flex-col max-w-[560px] gap-2">
                     {inStatus.map(({ docId, prospect }) => (
-                      <div key={docId} className="rounded-lg border border-border-subtle bg-surface p-4">
+                      <div key={docId} className="sp__sub">
                         <div className="flex items-start justify-between gap-3">
                           <div>
                             <p className="text-sm text-text-primary">{prospect.name}</p>
@@ -364,6 +366,7 @@ export default function FosterProspectsPage() {
           </div>
         )}
       </div>
+      </section>
     </AppShell>
   )
 }

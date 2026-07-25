@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
-import { Tabs, type TabItem } from '@/components/ui/tabs'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
+import { SpisSection } from '@/components/spis/SpisSection'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
@@ -30,18 +30,12 @@ import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
 import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
-import { Ban, FileText, Plus, UserSquare2 } from '@/components/ui/icons'
+import { FileText, Plus } from '@/components/ui/icons'
 
 const CARE_TYPE_LABELS: Record<CareType, string> = {
   zprostredkovana: 'Zprostředkovaná (24 h/12 měsíců)',
   nezprostredkovana: 'Nezprostředkovaná — příbuzenská (18 h/12 měsíců)',
 }
-
-const SECTIONS: TabItem[] = [
-  { key: 'prehled', label: 'Přehled', icon: UserSquare2 },
-  { key: 'ippd', label: 'IPPD', icon: FileText },
-  { key: 'ukonceni', label: 'Ukončení Dohody', icon: Ban },
-]
 
 function tomorrowIsoDate(): string {
   const d = new Date()
@@ -72,7 +66,6 @@ export default function AgreementDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
 
-  const [activeSection, setActiveSection] = useState('prehled')
 
   const [showAgreementForm, setShowAgreementForm] = useState(false)
   const [careType, setCareType] = useState<CareType>('zprostredkovana')
@@ -215,7 +208,10 @@ export default function AgreementDetailPage() {
   if (notFound) {
     return (
       <AppShell>
-        <p className="text-sm text-text-secondary">Tenhle Spis se nepodařilo najít.</p>
+        <PageHead title="Dohoda" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tenhle Spis se nepodařilo najít.</p>
+        </section>
       </AppShell>
     )
   }
@@ -225,19 +221,18 @@ export default function AgreementDetailPage() {
     >
       {/* Jméno rodiny nesly dřív drobečky. Kontext se nemá zahodit, jen
           přesunout tam, kde ho člověk čte — pod nadpis. */}
-      <PageHeader title="Dohoda" description={familyName || undefined} />
-      <Tabs items={SECTIONS} active={activeSection} onSelect={setActiveSection} />
+      <PageHead title="Dohoda" description={familyName || undefined}>
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-
-      {activeSection === 'prehled' && (
-        <div className="mt-6 flex flex-col gap-6">
+      <SpisSection id="prehled" title="Přehled" description="Co Dohoda určuje: typ péče, klíčovou osobu a lhůty." padded>
+        <div className="flex flex-col gap-6">
           {agreement ? (
-            <div className="max-w-[560px] rounded-lg border border-border bg-surface p-5">
+            <div>
               <p className="text-sm text-text-primary">{CARE_TYPE_LABELS[agreement.careType]}</p>
               <p className="mt-1 text-sm text-text-secondary">
                 Platí od {new Date(agreement.validFrom).toLocaleDateString('cs-CZ')}
@@ -268,7 +263,7 @@ export default function AgreementDetailPage() {
               {showAgreementForm && (
                 <form
                   onSubmit={handleCreateAgreement}
-                  className="flex max-w-[560px] flex-col gap-4 rounded-lg border border-border bg-surface p-5"
+                  className="flex max-w-[560px] flex-col gap-4"
                 >
                   <div className="grid grid-cols-2 gap-4">
                     <label className="flex flex-col gap-1.5">
@@ -332,10 +327,10 @@ export default function AgreementDetailPage() {
             </>
           )}
         </div>
-      )}
+      </SpisSection>
 
-      {activeSection === 'ippd' && docId && organizationId && userDoc && (
-        <div className="mt-6">
+      {docId && organizationId && userDoc && (
+        <SpisSection id="ippd" title="IPPD" description="Individuální plán průběhu doprovázení." lazy padded>
           <IppdSection
             familyDocId={docId}
             organizationId={organizationId}
@@ -343,15 +338,20 @@ export default function AgreementDetailPage() {
             fosterPersons={fosterPersons}
             children={children}
           />
-        </div>
+        </SpisSection>
       )}
 
-      {activeSection === 'ukonceni' && (
-        <div className="mt-6 max-w-[560px]">
+      <SpisSection
+        id="ukonceni"
+        title="Ukončení Dohody"
+        description="Dohoda se nikdy neukončuje okamžitě — jen se naplánuje k budoucímu datu."
+        padded
+      >
+        <div className="max-w-[560px]">
           {!agreement ? (
-            <p className="text-sm text-text-secondary">Nejdřív založte Dohodu na záložce Přehled.</p>
+            <p className="text-sm text-text-secondary">Nejdřív založte Dohodu v sekci Přehled.</p>
           ) : agreement.pendingEndDate ? (
-            <div className="rounded-lg bg-warning-bg p-4">
+            <div className="sp__sub border-warning">
               <p className="text-sm text-text-primary">
                 Dohoda je naplánovaná k ukončení dne {new Date(agreement.pendingEndDate).toLocaleDateString('cs-CZ')}.
               </p>
@@ -371,7 +371,7 @@ export default function AgreementDetailPage() {
             </div>
           ) : (
             <DangerZone>
-              <div className="flex flex-col gap-2 rounded-md border border-border-subtle p-3">
+              <div className="flex flex-col gap-2">
                 <p className="text-sm text-text-primary">Ukončit Dohodu</p>
                 <p className="text-xs text-text-secondary">
                   Dohoda se neukončí okamžitě — vyberte datum v budoucnosti. Do tohoto data půjde naplánované
@@ -399,7 +399,7 @@ export default function AgreementDetailPage() {
             </DangerZone>
           )}
         </div>
-      )}
+      </SpisSection>
     </AppShell>
   )
 }

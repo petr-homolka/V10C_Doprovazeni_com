@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { closeIppd, createIppd, evaluateIppd, listIppds } from '@/services/ippdService'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -51,15 +52,11 @@ function defaultPeriod(): { from: string; to: string } {
 
 function StatusBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex h-6 items-center rounded-full bg-surface-soft px-2.5 text-xs font-medium text-text-primary">
+    <span className="sp__chip">
       {label}
     </span>
   )
 }
-
-const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-lg leading-relaxed ' +
-  'text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none'
 
 /**
  * M7 §B.4 — IPPD je per Dohoda (agreementId=organizationId, M2), ne per
@@ -188,9 +185,8 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
   }
 
   return (
-    <section className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-base font-medium text-text-primary">IPPD — individuální plán ochrany dítěte</h2>
+    <div>
+      <div className="flex items-center justify-end gap-4">
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? (
             'Zrušit'
@@ -205,7 +201,7 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
       {showForm && (
         <form
           onSubmit={handleCreateSubmit}
-          className="mt-3 flex max-w-[560px] flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
+          className="mt-3 flex max-w-[560px] flex-col gap-4 sp__sub"
         >
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Období
@@ -306,7 +302,7 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
             {ippds.map(({ docId, ippd }) => {
               const overdue = ippd.status === 'aktivni' && !!ippd.evaluation && new Date(ippd.evaluation.dueDate) < new Date()
               return (
-                <div key={docId} className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+                <div key={docId} className="sp__sub flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm text-text-primary">
                       {new Date(ippd.periodFrom).toLocaleDateString('cs-CZ')} –{' '}
@@ -328,7 +324,7 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
 
                   <div className="flex flex-col gap-2">
                     {ippd.goals.map((goal) => (
-                      <div key={goal.id} className="rounded-md border border-border-subtle bg-surface-soft p-3">
+                      <div key={goal.id} className="sp__sub">
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-sm text-text-primary">{goal.description}</p>
                           <StatusBadge label={GOAL_STATUS_LABELS[goal.status]} />
@@ -367,12 +363,11 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
                       <form onSubmit={(e) => handleEvaluateSubmit(e, docId)} className="flex flex-col gap-2">
                         <label className="flex flex-col gap-1 text-sm text-text-secondary">
                           Shrnutí vyhodnocení
-                          <textarea
+                          <Textarea
                             required
                             value={evaluationSummary}
                             onChange={(e) => setEvaluationSummary(e.target.value)}
                             rows={4}
-                            className={TEXTAREA_CLASSNAME}
                           />
                         </label>
                         <div className="flex gap-2">
@@ -414,6 +409,6 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
           </div>
         )}
       </div>
-    </section>
+    </div>
   )
 }

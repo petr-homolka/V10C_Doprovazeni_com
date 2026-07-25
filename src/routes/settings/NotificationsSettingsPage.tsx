@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Switch } from '@/components/ui/switch'
 
 /**
@@ -29,11 +29,9 @@ export default function NotificationsSettingsPage() {
     <AppShell
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <PageHeader title="Oznámení" variant="settings" />
+      <PageHead title="Oznámení" />
 
-      <section className="sp__card sp__card--pad">
-
-      <div className="max-w-[560px]">
+      <section className="sp__card sp__card--pad max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">E-mailová upozornění</p>
         <div className="mb-4 mt-3 flex items-center justify-between gap-5">
           <span className="text-sm text-text-secondary">
@@ -43,6 +41,7 @@ export default function NotificationsSettingsPage() {
             checked={emailNotifications}
             onChange={setEmailNotifications}
             label="E-mailová upozornění"
+            showLabel={false}
           />
         </div>
         <p className="text-xs text-text-secondary">
@@ -53,7 +52,6 @@ export default function NotificationsSettingsPage() {
           . Vypnutím přepínače přestanete dostávat e-maily — systémová upozornění v appce zůstanou
           beze změny.
         </p>
-      </div>
       </section>
     </AppShell>
   )

@@ -5,6 +5,7 @@ import { MojeShell } from '@/components/moje/MojeShell'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
@@ -172,24 +173,25 @@ export default function MojeDashboardPage() {
 
   return (
     <MojeShell>
-      <h1 className="text-2xl text-text-primary">Vítejte, {userDoc?.displayName}</h1>
-      {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
+      <header className="sp__card sp__card--pad">
+        <h1 className="text-2xl text-text-primary">Vítejte, {userDoc?.displayName}</h1>
+        {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
+        {error && (
+          <p className="mt-3 text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </header>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-
-      <section className="mt-8">
-        <h2 className="text-base font-medium text-text-primary">Vaše děti</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Vaše děti</h2>
         <div className="mt-3">
           {children.length === 0 ? (
             <EmptyState icon={Baby} text="Zatím tu nejsou žádné svěřené děti." />
           ) : (
             <div className="flex flex-col gap-2">
               {children.map(({ docId, child }) => (
-                <div key={docId} className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4">
+                <div key={docId} className="sp__sub flex items-center gap-3">
                   <EntityAvatar photoURL={child.avatarUrl} label={`${child.firstName} ${child.lastName}`} />
                   <span className="text-sm text-text-primary">
                     {child.firstName} {child.lastName}
@@ -201,8 +203,8 @@ export default function MojeDashboardPage() {
         </div>
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-base font-medium text-text-primary">Sdílené zápisy</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Sdílené zápisy</h2>
         <div className="mt-3">
           {entries.length === 0 ? (
             <EmptyState icon={Clock} text="Zatím tu nejsou žádné sdílené zápisy." />
@@ -215,7 +217,7 @@ export default function MojeDashboardPage() {
                     key={docId}
                     type="button"
                     onClick={() => setSelectedEntry({ docId, entry })}
-                    className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
+                    className="flex items-start gap-3 sp__sub text-left transition-colors duration-150 hover:bg-overlay-hover"
                   >
                     <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
                       <Icon className="size-4" />
@@ -237,9 +239,9 @@ export default function MojeDashboardPage() {
         </div>
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-base font-medium text-text-primary">Chat s klíčovou osobou</h2>
-        <div className="mt-3 flex max-h-[420px] flex-col gap-2 overflow-y-auto rounded-lg border border-border bg-inset p-4">
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Chat s klíčovou osobou</h2>
+        <div className="mt-3 flex max-h-[420px] flex-col gap-2 overflow-y-auto border-t border-border-subtle pt-4">
           {messages.length === 0 ? (
             <EmptyState icon={MessageCircle} text="Zatím žádné zprávy — napište klíčové osobě jako první." />
           ) : (
@@ -264,12 +266,11 @@ export default function MojeDashboardPage() {
           <div ref={messagesEndRef} />
         </div>
         <form onSubmit={handleSendMessage} className="mt-3 flex flex-col gap-2">
-          <textarea
+          <Textarea
             value={messageBody}
             onChange={(e) => setMessageBody(e.target.value)}
             placeholder="Napište klíčové osobě…"
             rows={2}
-            className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
           />
           <Button type="submit" size="sm" className="w-fit" loading={sendingMessage} disabled={!messageBody.trim()}>
             <Send size={16} /> Odeslat
@@ -277,15 +278,15 @@ export default function MojeDashboardPage() {
         </form>
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-base font-medium text-text-primary">Dokumenty</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Dokumenty</h2>
         <div className="mt-3">
           {documents.length === 0 ? (
             <EmptyState icon={FileText} text="Zatím tu nejsou žádné dokumenty ke schválení." />
           ) : (
             <div className="flex flex-col gap-3">
               {documents.map(({ docId, document }) => (
-                <div key={docId} className="rounded-lg border border-border bg-surface p-4">
+                <div key={docId} className="sp__sub">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-text-primary">{document.title}</p>
                     <p className="shrink-0 text-xs text-text-tertiary">{DOCUMENT_STATUS_LABELS[document.status]}</p>
@@ -303,12 +304,11 @@ export default function MojeDashboardPage() {
                       >
                         Schválit
                       </Button>
-                      <textarea
+                      <Textarea
                         value={commentDrafts[docId] ?? ''}
                         onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [docId]: e.target.value }))}
                         placeholder="Nebo napište komentář…"
                         rows={2}
-                        className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                       />
                       <Button
                         variant="secondary"

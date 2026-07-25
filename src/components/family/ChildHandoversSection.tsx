@@ -172,14 +172,8 @@ export function ChildHandoversSection({ familyDocId, childId, childName, organiz
   }
 
   return (
-    <section className="max-w-[720px]">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h2 className="text-base font-medium text-text-primary">Předání dítěte</h2>
-          <p className="mt-0.5 text-sm text-text-tertiary">
-            Předání do biologické či jiné náhradní rodiny (§B.10.2)
-          </p>
-        </div>
+    <div className="max-w-[720px]">
+      <div className="flex items-end justify-end gap-4">
         <Button variant="secondary" size="sm" onClick={openNew}>
           <Plus size={16} /> Zaznamenat předání
         </Button>
@@ -203,7 +197,7 @@ export function ChildHandoversSection({ familyDocId, childId, childName, organiz
                 key={docId}
                 type="button"
                 onClick={() => openEdit(docId, handover)}
-                className="group flex items-start justify-between gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
+                className="group flex items-start justify-between gap-3 sp__sub text-left transition-colors duration-150 hover:bg-overlay-hover"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-baseline gap-x-2 text-sm text-text-secondary">
@@ -318,7 +312,7 @@ export function ChildHandoversSection({ familyDocId, childId, childName, organiz
                 </div>
               )}
 
-              <div className="rounded-lg border border-border-subtle bg-surface-soft p-3">
+              <div className="sp__sub">
                 <p className="text-xs font-medium text-text-secondary">Náklady (PPPD — volitelné)</p>
                 <div className="mt-2 flex gap-3">
                   <label className="flex flex-1 flex-col gap-1 text-xs text-text-secondary">
@@ -354,6 +348,6 @@ export function ChildHandoversSection({ familyDocId, childId, childName, organiz
           </form>
         </Drawer>
       )}
-    </section>
+    </div>
   )
 }

@@ -4,6 +4,7 @@ import { BottomSheet } from './BottomSheet'
 import { Button } from '@/components/ui/button'
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox'
 import { MicWaveform } from '@/components/ui/mic-waveform'
+import { Textarea } from '@/components/ui/textarea'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
 import { useMicLevels } from '@/hooks/useMicLevels'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
@@ -160,13 +161,12 @@ export function VoiceCaptureSheet({
         </div>
         {recognizer.error && <p className="shrink-0 text-sm text-danger">{recognizer.error}</p>}
 
-        <textarea
+        <Textarea
           ref={textareaRef}
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={7}
           placeholder="Text zápisu…"
-          className="min-h-[120px] w-full flex-1 resize-none rounded-lg border border-transparent bg-field px-4 py-3 text-base leading-relaxed text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
         />
         <Button
           variant="secondary"

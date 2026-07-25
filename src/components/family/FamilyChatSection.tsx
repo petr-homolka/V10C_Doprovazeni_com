@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PersonLink } from '@/components/ui/person-link'
+import { Textarea } from '@/components/ui/textarea'
 import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { listMessages, sendStaffMessage } from '@/services/messageService'
 import type { MessageDoc } from '@/types/message'
@@ -89,14 +90,8 @@ export function FamilyChatSection({ familyDocId, organizationId, currentUid, sta
   }
 
   return (
-    <section className="max-w-[720px]">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h2 className="text-base font-medium text-text-primary">Chat s pěstounem</h2>
-          <p className="mt-0.5 text-sm text-text-tertiary">
-            Zprávy vidí i pěstoun na svém portálu — interní poznámku vidí jen tým.
-          </p>
-        </div>
+    <div className="max-w-[720px]">
+      <div className="flex items-end justify-end gap-4">
         <Button variant="secondary" size="sm" onClick={reload} type="button">
           Obnovit
         </Button>
@@ -108,7 +103,7 @@ export function FamilyChatSection({ familyDocId, organizationId, currentUid, sta
         </p>
       )}
 
-      <div className="mt-4 flex max-h-[480px] flex-col gap-2 overflow-y-auto rounded-lg border border-border bg-inset p-4">
+      <div className="mt-4 flex max-h-[480px] flex-col gap-2 overflow-y-auto border-t border-border-subtle pt-4">
         {messages === null ? (
           <p className="text-sm text-text-secondary">Načítám…</p>
         ) : messages.length === 0 ? (
@@ -156,23 +151,19 @@ export function FamilyChatSection({ familyDocId, organizationId, currentUid, sta
       </div>
 
       <form onSubmit={handleSend} className="mt-3 flex flex-col gap-2">
-        <textarea
+        <Textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder={asNote ? 'Interní poznámka pro tým…' : 'Napište pěstounovi…'}
           rows={3}
-          className="w-full resize-y rounded-sm border border-transparent bg-field px-3 py-2 text-sm text-text-primary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
         />
-        <div className="flex items-center justify-between gap-4">
-          <label className="flex items-center gap-2 text-sm text-text-secondary">
-            <Switch checked={asNote} onChange={setAsNote} label="Jen interní poznámka (tým, ne pěstoun)" />
-            Jen interní poznámka (tým, ne pěstoun)
-          </label>
+        <div className="flex items-center justify-end gap-4">
+          <Switch checked={asNote} onChange={setAsNote} label="Jen interní poznámka (tým, ne pěstoun)" />
           <Button type="submit" loading={loading} disabled={!body.trim()}>
             <Send size={16} /> Odeslat
           </Button>
         </div>
       </form>
-    </section>
+    </div>
   )
 }

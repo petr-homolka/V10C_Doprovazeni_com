@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
-import { PageHeader } from '@/components/ui/page-header'
+import { PageHead } from '@/components/spis/PageBody'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
@@ -12,6 +12,7 @@ import {
 } from '@/services/collaboratorService'
 import type { CollaboratorAssignmentDoc, CollaboratorEntryDoc } from '@/types/collaborator'
 import { UserSquare2 } from '@/components/ui/icons'
+import { Textarea } from '@/components/ui/textarea'
 
 /**
  * /spolupracovnik — M9, UX zpětná vazba 2026-07-21. Vlastní, VÝRAZNĚ
@@ -84,29 +85,30 @@ export default function SpolupracovnikDashboardPage() {
 
   return (
     <AppShell>
-      <PageHeader
+      <PageHead
         title="Moje přiřazené osoby"
         description="Vidíte jen osoby a moduly, co vám přiřadí klíčová osoba nebo vedení."
-      />
+        count={assignments?.length}
+      >
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
-      {error && (
-        <p className="mt-3 max-w-[560px] text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-
-      <div className="mt-6 max-w-[560px]">
+      <section className="sp__card sp__card--pad">
         {assignments === null ? (
-          <p className="text-sm text-text-secondary">Načítám…</p>
+          <p className="text-sm text-text-tertiary">Načítám…</p>
         ) : assignments.length === 0 ? (
           <EmptyState icon={UserSquare2} text="Zatím vám nikdo nepřiřadil žádnou osobu." />
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             {assignments.map(({ docId, assignment }) => {
               const key = `${assignment.entityType}_${assignment.entityId}`
               const expanded = expandedId === key
               return (
-                <div key={docId} className="rounded-lg border border-border-subtle bg-surface p-4">
+                <div key={docId} className="border-b border-border-subtle py-3 last:border-0">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-sm text-text-primary">
@@ -135,13 +137,12 @@ export default function SpolupracovnikDashboardPage() {
                     <div className="mt-3 flex flex-col gap-3 border-t border-border-subtle pt-3">
                       {modules.writeTimeline && (
                         <form onSubmit={(e) => handleAddEntry(e, assignment)} className="flex flex-col gap-2">
-                          <textarea
+                          <Textarea
                             required
                             rows={3}
                             value={entryText}
                             onChange={(e) => setEntryText(e.target.value)}
                             placeholder="Co jste dnes dělali (pro výkaz práce)…"
-                            className="w-full rounded-sm border border-transparent bg-field px-3 py-2 text-base text-text-primary placeholder:text-text-tertiary transition-shadow duration-150 focus:border-accent focus:shadow-focus focus:outline-none"
                           />
                           <Button type="submit" size="sm" loading={savingEntry} success={saveEntrySuccess} className="w-fit">
                             Uložit zápis
@@ -160,7 +161,7 @@ export default function SpolupracovnikDashboardPage() {
                               .slice()
                               .sort((a, b) => b.entry.occurredAt.localeCompare(a.entry.occurredAt))
                               .map(({ docId: entryId, entry }) => (
-                                <div key={entryId} className="rounded-md bg-surface-soft px-3 py-2">
+                                <div key={entryId} className="border-b border-border-subtle py-2 last:border-0">
                                   <p className="text-sm text-text-primary">{entry.body}</p>
                                   <p className="text-xs text-text-secondary">
                                     {new Date(entry.occurredAt).toLocaleString('cs-CZ')}
@@ -177,7 +178,7 @@ export default function SpolupracovnikDashboardPage() {
             })}
           </div>
         )}
-      </div>
+      </section>
     </AppShell>
   )
 }

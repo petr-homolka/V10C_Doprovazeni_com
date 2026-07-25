@@ -74,9 +74,8 @@ export function OspodReportSection({
   }
 
   return (
-    <section className="mt-8">
+    <div>
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-medium text-text-primary">Report pro OSPOD</h2>
         {!open && (
           <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
             <FileText size={16} /> Vyplnit report
@@ -84,7 +83,7 @@ export function OspodReportSection({
         )}
       </div>
       {open && (
-        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] sp__sub flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
             Název dokumentu
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -108,6 +107,6 @@ export function OspodReportSection({
           </div>
         </form>
       )}
-    </section>
+    </div>
   )
 }

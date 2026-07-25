@@ -590,7 +590,7 @@ export default function FamilyDetailPage() {
     panelMode === 'foster' ? (
       <SidePanel title="Přidat pěstouna" onClose={() => setPanelMode(null)}>
         <form onSubmit={handleAddFoster} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <div className="sp__group">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
               <Input required autoFocus value={fosterFirstName} onChange={(e) => setFosterFirstName(e.target.value)} />
@@ -600,7 +600,7 @@ export default function FamilyDetailPage() {
               <Input required value={fosterLastName} onChange={(e) => setFosterLastName(e.target.value)} />
             </label>
           </div>
-          <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <div className="sp__group">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Telefon</span>
               <Input
@@ -649,7 +649,7 @@ export default function FamilyDetailPage() {
     ) : panelMode === 'child' ? (
       <SidePanel title="Přidat dítě" onClose={() => setPanelMode(null)}>
         <form onSubmit={handleAddChild} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 rounded-lg bg-inset p-3">
+          <div className="sp__group">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm font-medium leading-relaxed text-text-primary">Jméno</span>
               <Input required autoFocus value={childFirstName} onChange={(e) => setChildFirstName(e.target.value)} />
@@ -1232,7 +1232,7 @@ export default function FamilyDetailPage() {
               {showDocumentForm && (
                 <form
                   onSubmit={handleCreateDocument}
-                  className="mt-4 flex flex-col gap-4 rounded-lg border border-border-default p-4"
+                  className="mt-4 flex flex-col gap-4 border-t border-border-subtle pt-4"
                 >
                   <label className="flex max-w-[560px] flex-col gap-1.5">
                     <span className="text-sm font-medium text-text-primary">Název</span>
