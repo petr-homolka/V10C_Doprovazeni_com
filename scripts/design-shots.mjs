@@ -49,6 +49,8 @@ const SCREENS = [
   { name: 'zamestnanci', route: '/zamestnanci' },
   { name: 'zamestnanec-profil', route: '/zamestnanci/u-eva' },
   { name: 'kalendar', route: '/kalendar' },
+  // Měsíc má jinou sazbu události (tečka + text), takže se kontroluje zvlášť.
+  { name: 'kalendar-mesic', route: '/kalendar', click: 'Měsíc' },
   { name: 'ukoly', route: '/ukoly' },
   { name: 'zpravy', route: '/zpravy' },
 ]

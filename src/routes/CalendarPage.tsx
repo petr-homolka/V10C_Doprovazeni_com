@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Calendar as BigCalendar, dateFnsLocalizer, Views, type View } from 'react-big-calendar'
 import * as DragAndDropAddon from 'react-big-calendar/lib/addons/dragAndDrop'
@@ -95,24 +95,15 @@ const withDragAndDrop = unwrapDefault<typeof import('react-big-calendar/lib/addo
 )
 const DnDCalendar = withDragAndDrop<CalendarItem>(BigCalendar)
 
-/** Routine.co inspirace (2026-07-22, "vypadá to jako z roku 1999") — místo
- * plné saturované barvy s bílým textem: PASTELOVÉ pozadí (stejný odstín,
- * jen zesvětlený) + tmavý text appky + silnější barevný levý okraj coby
- * jediný sytý akcent. Čitelnější, klidnější, sedí do zbytku appky (žádný
- * blok čisté saturované barvy nikde jinde v UI). */
-function lightenHex(hex: string, amount: number): string {
-  const n = parseInt(hex.slice(1), 16)
-  const r = Math.round(((n >> 16) & 255) + (255 - ((n >> 16) & 255)) * amount)
-  const g = Math.round(((n >> 8) & 255) + (255 - ((n >> 8) & 255)) * amount)
-  const b = Math.round((n & 255) + (255 - (n & 255)) * amount)
-  return `rgb(${r}, ${g}, ${b})`
-}
+/* `lightenHex` odsud zmizel spolu s pastelovou výplní událostí: barva už
+   není plocha, je to 3px pruh, a ten se nezesvětluje. */
 
+/** Barva pruhu u návštěvy z Dohody podle toho, jak na tom lhůta je. */
 const TIER_COLORS: Record<string, string> = {
-  ok: '#7587A8',
-  waiting: '#C8790A',
-  warning: '#E21D12',
-  crisis: '#E21D12',
+  ok: '#79818c',
+  waiting: '#a4691a',
+  warning: '#f96359',
+  crisis: '#f96359',
 }
 
 function splitIso(iso: string): { date: string; time: string } {
@@ -779,10 +770,17 @@ export default function CalendarPage() {
                   ),
                   event: ({ event }: { event: CalendarItem }) => {
                     const subjects = resolveItemSubjects(subjectDirectory, event)
+                    /* Avatary POD názvem, ne před ním. Před názvem sežraly na
+                       150px sloupci půlku textu a z „Případová konference"
+                       zbylo „Příp…" — odhaleno na screenshotu, ne v kódu. */
                     return (
-                      <span className="flex items-center gap-1 overflow-hidden">
-                        {subjects.length > 0 && <EventAvatarStack subjects={subjects} />}
-                        <span className="truncate">{event.title}</span>
+                      <span className="block overflow-hidden">
+                        <span className="rbc-event-title">{event.title}</span>
+                        {subjects.length > 0 && (
+                          <span className="calendar-event-faces mt-0.5 flex">
+                            <EventAvatarStack subjects={subjects} />
+                          </span>
+                        )}
                       </span>
                     )
                   },
@@ -796,16 +794,12 @@ export default function CalendarPage() {
                 eventPropGetter={(item) => {
                   const color =
                     item.source === 'agreementVisit' ? TIER_COLORS[item.tier ?? 'ok'] : staffColor(item.staffUid ?? '')
-                  return {
-                    style: {
-                      backgroundColor: lightenHex(color, item.source === 'agreementVisit' ? 0.82 : 0.78),
-                      color: 'var(--text-primary)',
-                      borderLeft: `3px solid ${color}`,
-                      borderTop: 'none',
-                      borderRight: 'none',
-                      borderBottom: 'none',
-                    },
-                  }
+                  /* Barva jde do PROMĚNNÉ, ne do výplně. Událost je bílá karta
+                     s vlasovou linkou a barevný je jen 3px pruh vlevo
+                     (`calendar-overrides.css`). Dřív to byla pastelová výplň
+                     a týden plný výplní je patchwork, ve kterém nevystoupí
+                     ani to, co hoří. */
+                  return { style: { '--event-color': color } as CSSProperties }
                 }}
               />
             )}
