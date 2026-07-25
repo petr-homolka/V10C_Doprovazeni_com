@@ -29,6 +29,7 @@ import {
   sendToFosterReview,
   sendToMgmtReview,
 } from '@/services/documentService'
+import { auditActor } from '@/services/auditLogService'
 import { isReadOnlyManagerRole } from '@/types/user'
 import type { DocumentVersionDoc, FamilyDocumentDoc } from '@/types/familyDocument'
 import type { UserDoc } from '@/types/user'
@@ -60,6 +61,13 @@ export default function DocumentDetailPage() {
   const [fosterPersons, setFosterPersons] = useState<Array<{ docId: string; fosterPerson: FosterPersonDoc }>>([])
   const [children, setChildren] = useState<Array<{ docId: string; child: ChildDoc }>>([])
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+
+  /** Popisek rodiny pro auditní stopu — log musí dávat smysl i za pět let,
+      kdy tenhle spis už u organizace být nemusí. */
+  const familyLabel =
+    fosterPersons.length > 0
+      ? `${fosterPersons[0].fosterPerson.firstName} ${fosterPersons[0].fosterPerson.lastName}`
+      : `Spis ${familyUid ?? ''}`
 
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
@@ -236,7 +244,15 @@ export default function DocumentDetailPage() {
     setError(null)
     try {
       await runSendToAuthority(async () => {
-        await sendDocumentToAuthority({ familyDocId, docId, organizationId, title: document.title, sentTo })
+        await sendDocumentToAuthority({
+          familyDocId,
+          docId,
+          organizationId,
+          title: document.title,
+          sentTo,
+          actor: auditActor(userDoc!),
+          familyLabel,
+        })
         await reload()
       })
     } catch {

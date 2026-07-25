@@ -25,6 +25,8 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
       { to: '/nastaveni/externi-pristup', label: 'Externí přístup — šablony' },
       { to: '/nastaveni/zalohy', label: 'Zálohy' },
       { to: '/nastaveni/import', label: 'Import dat' },
+      { to: '/nastaveni/audit', label: 'Auditní stopa' },
+      { to: '/nastaveni/retence', label: 'Doba uchování' },
     ],
   },
 ]

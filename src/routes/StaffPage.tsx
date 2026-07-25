@@ -14,7 +14,13 @@ import { CapacityRing } from '@/components/ui/capacity-ring'
 import { useAuth } from '@/hooks/useAuth'
 import { STAFF_ROLES, STAFF_ROLE_LABELS, type StaffRole, type UserDoc } from '@/types/user'
 import { COLLABORATOR_MODULE_KEYS, COLLABORATOR_MODULE_LABELS, type CollaboratorModuleKey } from '@/types/collaborator'
-import { createStaffMember, listStaff, setStaffMemberDisabled, updateStaffCapacitySettings } from '@/services/staffService'
+import {
+  createStaffMember,
+  listStaff,
+  setStaffMemberDisabledAudited,
+  updateStaffCapacitySettings,
+} from '@/services/staffService'
+import { auditActor } from '@/services/auditLogService'
 import { uploadUserAvatar } from '@/services/avatarService'
 import { setCollaboratorModules } from '@/services/collaboratorService'
 import { listActiveCaseloadByKo } from '@/services/agreementService'
@@ -187,7 +193,12 @@ export default function StaffPage() {
 
   async function handleToggleDisabled(member: UserDoc) {
     try {
-      await setStaffMemberDisabled(member.uid, !member.disabledAt)
+      if (!userDoc || !organizationId) return
+      await setStaffMemberDisabledAudited(member.uid, !member.disabledAt, {
+        organizationId,
+        actor: auditActor(userDoc),
+        targetName: member.displayName,
+      })
       await reload()
     } catch {
       setError('Změnu stavu se nepodařilo uložit.')

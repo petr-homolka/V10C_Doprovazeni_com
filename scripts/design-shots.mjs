@@ -71,6 +71,8 @@ const SCREENS = [
   { name: 'nastaveni-vzhled', route: '/nastaveni/vzhled' },
   { name: 'nastaveni-kalendar', route: '/nastaveni/kalendar' },
   { name: 'moje-pestoun', route: '/moje' },
+  { name: 'nastaveni-audit', route: '/nastaveni/audit' },
+  { name: 'nastaveni-retence', route: '/nastaveni/retence' },
 ]
 
 const VIEWPORTS = [

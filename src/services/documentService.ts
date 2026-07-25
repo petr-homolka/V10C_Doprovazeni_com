@@ -11,6 +11,8 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { actorFields, auditWriteInto } from '@/services/auditLogService'
+import type { AuditActor } from '@/types/auditLog'
 import { allocateUid } from '@/lib/counters'
 import type { DocumentVersionDoc, FamilyDocumentDoc, FamilyDocumentStatus } from '@/types/familyDocument'
 import type { SubjectRef } from '@/types/timelineEntry'
@@ -301,6 +303,10 @@ export interface SendToAuthorityInput {
   organizationId: string
   title: string
   sentTo: 'ospod' | 'soud'
+  /** Kdo odesílá — jde do auditní stopy v TÉŽE dávce. */
+  actor: AuditActor
+  /** Popisek rodiny do logu (log musí zůstat čitelný, i když rodina zmizí). */
+  familyLabel: string
 }
 
 /**
@@ -329,6 +335,17 @@ export async function sendDocumentToAuthority(input: SendToAuthorityInput): Prom
     updatedAt: now,
   })
   batch.set(doc(collection(db, 'families', input.familyDocId, 'historyDigest')), digestData)
+  // Auditní záznam je součástí TÉŽE dávky, ne zápis navíc po ní: tohle je
+  // okamžik, kdy údaje o dítěti opouštějí organizaci. Nesmí nastat stav
+  // „odesláno, ale v logu nic".
+  auditWriteInto(batch, {
+    organizationId: input.organizationId,
+    action: 'document_sent_authority',
+    ...actorFields(input.actor),
+    subject: { kind: 'family', id: input.familyDocId, label: input.familyLabel },
+    target: { kind: 'document', id: input.docId, label: input.title },
+    detail: `Odesláno na ${input.sentTo === 'soud' ? 'soud' : 'OSPOD'}.`,
+  })
   await batch.commit()
 }
 

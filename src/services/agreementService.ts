@@ -11,6 +11,8 @@ import {
   arrayUnion,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { actorFields, recordAudit } from '@/services/auditLogService'
+import type { AuditActor } from '@/types/auditLog'
 import { allocateUid } from '@/lib/counters'
 import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
 import { getStaffMember, listStaff } from '@/services/staffService'
@@ -75,6 +77,36 @@ export async function getActiveAgreement(
 
 /** Naplánuje budoucí ukončení Dohody — `status` zůstává `'active'` po
  * celou dobu čekací lhůty, viz `AgreementDoc.pendingEndDate` komentář. */
+export async function scheduleAgreementEndAudited(
+  familyDocId: string,
+  organizationId: string,
+  pendingEndDate: string,
+  audit: { actor: AuditActor; familyLabel: string },
+): Promise<void> {
+  await scheduleAgreementEnd(familyDocId, organizationId, pendingEndDate)
+  await recordAudit({
+    organizationId,
+    action: 'agreement_end_scheduled',
+    ...actorFields(audit.actor),
+    subject: { kind: 'family', id: familyDocId, label: audit.familyLabel },
+    detail: `Ukončení naplánováno na ${pendingEndDate.slice(0, 10)}.`,
+  })
+}
+
+export async function cancelPendingAgreementEndAudited(
+  familyDocId: string,
+  organizationId: string,
+  audit: { actor: AuditActor; familyLabel: string },
+): Promise<void> {
+  await cancelPendingAgreementEnd(familyDocId, organizationId)
+  await recordAudit({
+    organizationId,
+    action: 'agreement_end_cancelled',
+    ...actorFields(audit.actor),
+    subject: { kind: 'family', id: familyDocId, label: audit.familyLabel },
+  })
+}
+
 export async function scheduleAgreementEnd(
   familyDocId: string,
   organizationId: string,
@@ -119,6 +151,13 @@ export interface CreateAgreementInput {
   validTo?: string | null
   /** Viz FamilyDoc stejnojmenné pole — import rollback (§5.5, M1.5). */
   createdByImportJobRef?: string
+  /**
+   * Auditní kontext. POVINNÝ: založení Dohody je okamžik, kdy spis (a s ním
+   * údaje o dítěti) vstupuje do organizace — přesně to, co musí být
+   * doložitelné. `null` smí předat JEN import, který běží dávkově pod
+   * jedním jobem a má vlastní stopu (`importJobs`).
+   */
+  audit: { actor: AuditActor; familyLabel: string } | null
 }
 
 export async function createAgreement(input: CreateAgreementInput): Promise<AgreementDoc> {
@@ -180,6 +219,17 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
   await Promise.all(
     childrenSnap.docs.map((childDoc) => updateDoc(childDoc.ref, { organizationId })),
   )
+
+  if (input.audit) {
+    await recordAudit({
+      organizationId,
+      action: 'agreement_created',
+      ...actorFields(input.audit.actor),
+      subject: { kind: 'family', id: familyDocId, label: input.audit.familyLabel },
+      target: { kind: 'other', id: uid, label: `Dohoda ${uid}` },
+      detail: `Typ péče: ${careType}. Platí od ${data.validFrom.slice(0, 10)}.`,
+    })
+  }
 
   return data
 }

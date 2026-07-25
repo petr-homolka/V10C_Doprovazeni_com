@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { PageHead } from '@/components/spis/PageBody'
 import { SpisSection } from '@/components/spis/SpisSection'
+import { auditActor } from '@/services/auditLogService'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
@@ -168,6 +169,9 @@ export default function AgreementDetailPage() {
           assignedTo: assignedTo || undefined,
           validFrom: new Date(validFrom).toISOString(),
           validTo: validTo ? new Date(validTo).toISOString() : null,
+          audit: userDoc
+            ? { actor: auditActor(userDoc), familyLabel: familyName || `Spis ${familyUid ?? ''}` }
+            : null,
         })
         await reload()
       })

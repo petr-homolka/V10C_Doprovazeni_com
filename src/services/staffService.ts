@@ -1,5 +1,7 @@
 import { doc, collection, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { actorFields, recordAudit } from '@/services/auditLogService'
+import type { AuditActor } from '@/types/auditLog'
 import { createStaffAuthAccount } from '@/lib/secondaryAuth'
 import { STAFF_ROLES, type StaffRole, type UserDoc } from '@/types/user'
 
@@ -56,6 +58,35 @@ export async function createStaffMember(input: CreateStaffMemberInput): Promise<
 }
 
 /** Soft-delete (§5 append-only/audit princip — nikdy hard delete profilu). */
+export async function setStaffMemberDisabledAudited(
+  uid: string,
+  disabled: boolean,
+  audit: { organizationId: string; actor: AuditActor; targetName: string },
+): Promise<void> {
+  await setStaffMemberDisabled(uid, disabled)
+  await recordAudit({
+    organizationId: audit.organizationId,
+    action: disabled ? 'staff_access_disabled' : 'staff_access_enabled',
+    ...actorFields(audit.actor),
+    target: { kind: 'user', id: uid, label: audit.targetName },
+  })
+}
+
+export async function updateStaffMemberRoleAudited(
+  uid: string,
+  role: StaffRole,
+  audit: { organizationId: string; actor: AuditActor; targetName: string; previousRole: string },
+): Promise<void> {
+  await updateStaffMemberRole(uid, role)
+  await recordAudit({
+    organizationId: audit.organizationId,
+    action: 'staff_role_changed',
+    ...actorFields(audit.actor),
+    target: { kind: 'user', id: uid, label: audit.targetName },
+    detail: `${audit.previousRole} → ${role}`,
+  })
+}
+
 export async function setStaffMemberDisabled(uid: string, disabled: boolean): Promise<void> {
   await updateDoc(doc(db, 'users', uid), {
     disabledAt: disabled ? new Date().toISOString() : null,

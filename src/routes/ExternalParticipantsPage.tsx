@@ -19,7 +19,9 @@ import {
   rejectGrant,
   requestGrant,
   revokeGrant,
+  type GrantAuditContext,
 } from '@/services/externalParticipantService'
+import { auditActor } from '@/services/auditLogService'
 import { listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
 import {
   PERMISSION_KEYS,
@@ -241,17 +243,30 @@ export default function ExternalParticipantsPage() {
     }
   }
 
+  /** Kontext do auditní stopy — kdo, komu a ke komu dává přístup. */
+  function grantAudit(epId: string): GrantAuditContext | null {
+    if (!userDoc || !organizationId) return null
+    const participant = participants?.find((p) => p.docId === epId)?.participant
+    return {
+      organizationId,
+      actor: auditActor(userDoc),
+      entityLabel: entityOptions.find((o) => o.value === entityValue)?.label ?? loadedEntityId ?? '—',
+      participantLabel: participant ? `${participant.name} (${participant.relationLabel})` : epId,
+    }
+  }
+
   async function handleAddGrant(epId: string) {
     const entityId = loadedEntityId
     const uid = userDoc?.uid
-    if (!entityId || !uid) return
+    const audit = grantAudit(epId)
+    if (!entityId || !uid || !audit) return
     setActionError(null)
     try {
       await runAddGrant(async () => {
         if (isSensitivePermission(newPermission)) {
-          await requestGrant(epId, entityId, newPermission, newValidFrom, uid)
+          await requestGrant(epId, entityId, newPermission, newValidFrom, uid, audit)
         } else {
-          await grantDirect(epId, entityId, newPermission, newValidFrom, uid)
+          await grantDirect(epId, entityId, newPermission, newValidFrom, uid, audit)
         }
         setGrants(await listGrantsForEntity(epId, entityId))
       })
@@ -263,15 +278,16 @@ export default function ExternalParticipantsPage() {
   async function handleAction(epId: string, action: 'approve' | 'reject' | 'activate' | 'revoke', grantId: string) {
     const entityId = loadedEntityId
     const uid = userDoc?.uid
-    if (!entityId || !uid) return
+    const audit = grantAudit(epId)
+    if (!entityId || !uid || !audit) return
     setActionError(null)
     setPendingGrantId(grantId)
     try {
       await runAction(async () => {
-        if (action === 'approve') await approveGrant(epId, entityId, grantId, uid)
-        if (action === 'reject') await rejectGrant(epId, entityId, grantId, uid)
-        if (action === 'activate') await activateGrant(epId, entityId, grantId, uid)
-        if (action === 'revoke') await revokeGrant(epId, entityId, grantId, uid)
+        if (action === 'approve') await approveGrant(epId, entityId, grantId, uid, audit)
+        if (action === 'reject') await rejectGrant(epId, entityId, grantId, uid, audit)
+        if (action === 'activate') await activateGrant(epId, entityId, grantId, uid, audit)
+        if (action === 'revoke') await revokeGrant(epId, entityId, grantId, uid, audit)
         setGrants(await listGrantsForEntity(epId, entityId))
       })
     } catch {

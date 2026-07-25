@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import { downloadBlob } from '@/lib/utils'
 import { exportOrganizationDataToBlob } from '@/services/exportService'
+import { actorFields, auditActor, recordAudit } from '@/services/auditLogService'
 import {
   getBackupConfig,
   saveBackupConfig,
@@ -118,6 +119,16 @@ export default function BackupSettingsPage() {
     try {
       const { blob, filename } = await runManualBackup(organizationId, password)
       downloadBlob(blob, filename)
+      // Záloha obsahuje kompletní data organizace a opouští systém do
+      // počítače člověka — patří do stopy stejně jako odeslání úřadu.
+      if (userDoc) {
+        await recordAudit({
+          organizationId,
+          action: 'backup_created',
+          ...actorFields(auditActor(userDoc)),
+          detail: `Soubor ${filename}`,
+        })
+      }
       setPassword('')
       setNotice('Záloha stažena. Heslo je potřeba i k obnovení — systém si ho nikde neukládá.')
       await reload()
@@ -135,6 +146,14 @@ export default function BackupSettingsPage() {
     try {
       const { blob, filename } = await exportOrganizationDataToBlob(organizationId)
       downloadBlob(blob, filename)
+      if (userDoc) {
+        await recordAudit({
+          organizationId,
+          action: 'export_generated',
+          ...actorFields(auditActor(userDoc)),
+          detail: `Soubor ${filename}`,
+        })
+      }
     } catch {
       setError('Export se nepodařilo vytvořit.')
     } finally {

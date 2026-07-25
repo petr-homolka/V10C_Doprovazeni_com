@@ -1,5 +1,7 @@
 import { collection, doc, deleteDoc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { actorFields, recordAudit } from '@/services/auditLogService'
+import type { AuditActor } from '@/types/auditLog'
 import { getChild, getFosterPerson } from '@/services/familyService'
 import { getActiveAgreement } from '@/services/agreementService'
 import { getStaffMember } from '@/services/staffService'
@@ -60,6 +62,36 @@ export async function assignEntityToCollaborator(input: AssignCollaboratorInput)
     createdBy: input.createdBy,
   }
   await setDoc(assignmentRef(input.collaboratorUid, input.entityType, input.entityId), data)
+}
+
+export async function assignEntityToCollaboratorAudited(
+  input: AssignCollaboratorInput,
+  audit: { actor: AuditActor; collaboratorName: string; entityLabel: string },
+): Promise<void> {
+  await assignEntityToCollaborator(input)
+  await recordAudit({
+    organizationId: input.organizationId,
+    action: 'collaborator_assigned',
+    ...actorFields(audit.actor),
+    subject: { kind: 'other', id: input.entityId, label: audit.entityLabel },
+    target: { kind: 'user', id: input.collaboratorUid, label: audit.collaboratorName },
+  })
+}
+
+export async function unassignEntityFromCollaboratorAudited(
+  collaboratorUid: string,
+  entityType: CollaboratorEntityType,
+  entityId: string,
+  audit: { organizationId: string; actor: AuditActor; collaboratorName: string; entityLabel: string },
+): Promise<void> {
+  await unassignEntityFromCollaborator(collaboratorUid, entityType, entityId)
+  await recordAudit({
+    organizationId: audit.organizationId,
+    action: 'collaborator_unassigned',
+    ...actorFields(audit.actor),
+    subject: { kind: 'other', id: entityId, label: audit.entityLabel },
+    target: { kind: 'user', id: collaboratorUid, label: audit.collaboratorName },
+  })
 }
 
 export async function unassignEntityFromCollaborator(

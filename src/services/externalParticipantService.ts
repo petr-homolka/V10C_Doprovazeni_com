@@ -1,5 +1,7 @@
 import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { actorFields, recordAudit } from '@/services/auditLogService'
+import type { AuditAction, AuditActor } from '@/types/auditLog'
 import type { ExternalParticipantDoc, ExternalRoleTemplateDoc, GrantDoc, PermissionKey } from '@/types/externalParticipant'
 import { isSensitivePermission } from '@/types/externalParticipant'
 
@@ -49,12 +51,44 @@ export async function listGrantsForEntity(
 }
 
 /** Necitlivé oprávnění — rovnou `active`, jeden krok/jeden aktér. */
+/**
+ * Kontext pro auditní stopu. Je POVINNÝ u všech funkcí, které hýbou
+ * s přístupem k údajům — díky tomu překladač nepustí nové volání, které
+ * by se zapomnělo zalogovat. To je celý smysl: aby na log nešlo zapomenout.
+ */
+export interface GrantAuditContext {
+  organizationId: string
+  actor: AuditActor
+  /** Koho se přístup týká (dítě/pěstoun) — denormalizovaný popisek. */
+  entityLabel: string
+  /** Externista, kterému se přístup dává. */
+  participantLabel: string
+}
+
+async function logGrant(
+  action: AuditAction,
+  ctx: GrantAuditContext,
+  entityId: string,
+  epId: string,
+  permissionLabel: string,
+): Promise<void> {
+  await recordAudit({
+    organizationId: ctx.organizationId,
+    action,
+    ...actorFields(ctx.actor),
+    subject: { kind: 'other', id: entityId, label: ctx.entityLabel },
+    target: { kind: 'externalParticipant', id: epId, label: ctx.participantLabel },
+    detail: permissionLabel,
+  })
+}
+
 export async function grantDirect(
   epId: string,
   entityId: string,
   permissionKey: PermissionKey,
   validFrom: string,
   grantedBy: string,
+  audit: GrantAuditContext,
 ): Promise<string> {
   if (isSensitivePermission(permissionKey)) {
     throw new Error(`${permissionKey} je citlivé oprávnění — použij requestGrant, ne grantDirect.`)
@@ -69,6 +103,7 @@ export async function grantDirect(
     activatedBy: grantedBy,
     activatedAt: new Date().toISOString(),
   } satisfies GrantDoc)
+  await logGrant('external_grant_activated', audit, entityId, epId, `Přímo udělené oprávnění: ${permissionKey}`)
   return ref.id
 }
 
@@ -79,6 +114,7 @@ export async function requestGrant(
   permissionKey: PermissionKey,
   validFrom: string,
   requestedBy: string,
+  audit: GrantAuditContext,
   note?: string,
 ): Promise<string> {
   const ref = doc(grantsCollection(epId, entityId))
@@ -90,38 +126,68 @@ export async function requestGrant(
     requestedAt: new Date().toISOString(),
     ...(note ? { note } : {}),
   } satisfies GrantDoc)
+  await logGrant('external_grant_requested', audit, entityId, epId, `Citlivé oprávnění: ${permissionKey}`)
   return ref.id
 }
 
 /** Krok 2/3 — vedení organizace. */
-export async function approveGrant(epId: string, entityId: string, grantId: string, approvedBy: string): Promise<void> {
+export async function approveGrant(
+  epId: string,
+  entityId: string,
+  grantId: string,
+  approvedBy: string,
+  audit: GrantAuditContext,
+): Promise<void> {
   await updateDoc(doc(grantsCollection(epId, entityId), grantId), {
     status: 'approved',
     approvedBy,
     approvedAt: new Date().toISOString(),
   })
+  await logGrant('external_grant_approved', audit, entityId, epId, 'Schváleno vedením')
 }
 
-export async function rejectGrant(epId: string, entityId: string, grantId: string, approvedBy: string, note?: string): Promise<void> {
+export async function rejectGrant(
+  epId: string,
+  entityId: string,
+  grantId: string,
+  approvedBy: string,
+  audit: GrantAuditContext,
+  note?: string,
+): Promise<void> {
   await updateDoc(doc(grantsCollection(epId, entityId), grantId), {
     status: 'rejected',
     approvedBy,
     approvedAt: new Date().toISOString(),
     ...(note ? { note } : {}),
   })
+  await logGrant('external_grant_rejected', audit, entityId, epId, note ?? 'Zamítnuto')
 }
 
 /** Krok 3/3 — samostatný, užší gate (jen org_admin, viz firestore.rules). */
-export async function activateGrant(epId: string, entityId: string, grantId: string, activatedBy: string): Promise<void> {
+export async function activateGrant(
+  epId: string,
+  entityId: string,
+  grantId: string,
+  activatedBy: string,
+  audit: GrantAuditContext,
+): Promise<void> {
   await updateDoc(doc(grantsCollection(epId, entityId), grantId), {
     status: 'active',
     activatedBy,
     activatedAt: new Date().toISOString(),
   })
+  await logGrant('external_grant_activated', audit, entityId, epId, 'Přístup aktivován')
 }
 
 /** Odebrání přístupu — VŽDY `validTo`, nikdy delete (viz firestore.rules `allow delete: if false`). */
-export async function revokeGrant(epId: string, entityId: string, grantId: string, revokedBy: string, note?: string): Promise<void> {
+export async function revokeGrant(
+  epId: string,
+  entityId: string,
+  grantId: string,
+  revokedBy: string,
+  audit: GrantAuditContext,
+  note?: string,
+): Promise<void> {
   const now = new Date().toISOString()
   await updateDoc(doc(grantsCollection(epId, entityId), grantId), {
     status: 'revoked',
@@ -130,6 +196,7 @@ export async function revokeGrant(epId: string, entityId: string, grantId: strin
     revokedAt: now,
     ...(note ? { note } : {}),
   })
+  await logGrant('external_grant_revoked', audit, entityId, epId, note ?? 'Přístup odebrán')
 }
 
 // ---- organizations/{orgId}/externalRoleTemplates/{id} ----

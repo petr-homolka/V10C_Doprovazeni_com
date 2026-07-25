@@ -444,7 +444,11 @@ export async function commitImportJob(
             orgCode,
             careType: fields.careType,
             validFrom: fields.validFrom,
-            createdByImportJobRef: jobId,
+            // Import má vlastní doložitelnou stopu (`importJobs` + staging
+        // záznamy s tím, kdo job spustil), proto tady záměrně `null` —
+        // jinak by jeden import vyrobil stovky řádků v auditu.
+        audit: null,
+        createdByImportJobRef: jobId,
           })
           manifest.agreementFamilyDocIds.push(familyDocId)
         }

@@ -387,6 +387,44 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- organizations/{orgId}/auditLog/{entryId} — NEMĚNITELNÁ stopa ----
+    //
+    // Viz src/types/auditLog.ts pro to, PROČ log existuje a co nezaručuje.
+    // Tady je jeho jediná skutečná záruka, a proto stojí za přesné čtení:
+    //
+    // 1. NEJDE ZMĚNIT ANI SMAZAT. `update`/`delete` jsou `false` pro
+    //    VŠECHNY, superadmina včetně. Log, který umí smazat ten, koho
+    //    zaznamenává, není log. Když bude potřeba záznamy odstranit
+    //    (retenční lhůta), udělá se to mimo klienta — vědomým zásahem
+    //    přes admin SDK, ne funkcí v aplikaci.
+    // 2. NEJDE PODEPSAT CIZÍM JMÉNEM. `actorUid == request.auth.uid`.
+    // 3. ČAS JE SERVEROVÝ. `serverAt == request.time` — klient si nemůže
+    //    záznam antedatovat. Pole `at` (klientské) slouží jen k řazení a
+    //    zobrazení; při sporu platí `serverAt`.
+    // 4. ZŮSTÁVÁ VE SVÉ ORGANIZACI. `sameOrg(orgId)` — přenos spisu mezi
+    //    organizacemi proto zapisuje DVA záznamy, každý u sebe. Obojí je
+    //    pravdivé tvrzení o tom, co ta která organizace udělala.
+    //
+    // Čte vedení a správce organizace (log je nástroj kontroly NAD
+    // pracovníky, ne pracovní pomůcka) — plus superadmin.
+
+    match /organizations/{orgId}/auditLog/{entryId} {
+      allow read: if isSuperadmin() ||
+        (sameOrg(orgId) && userDoc().role in ['org_admin', 'vedouci_pobocky', 'teamleader']);
+
+      allow create: if isStaff() && sameOrg(orgId) &&
+        request.resource.data.organizationId == orgId &&
+        request.resource.data.actorUid == request.auth.uid &&
+        request.resource.data.serverAt == request.time &&
+        request.resource.data.action is string &&
+        request.resource.data.category is string &&
+        request.resource.data.actorName is string &&
+        request.resource.data.actorRole is string &&
+        request.resource.data.at is string;
+
+      allow update, delete: if false;
+    }
+
     // ---- organizations/{orgId}/backupRestoreTests/{id} — §5.5 gate, M1.5 -
     //
     // POVINNÝ GATE před produkčním nasazením zálohy/obnovení (§5.5) —

@@ -38,7 +38,8 @@ import {
   updateFamilyPartnerSharingDefault,
 } from '@/services/familyService'
 import { getActiveAgreement } from '@/services/agreementService'
-import { assignEntityToCollaborator } from '@/services/collaboratorService'
+import { assignEntityToCollaboratorAudited } from '@/services/collaboratorService'
+import { auditActor } from '@/services/auditLogService'
 import { createDocument, listFamilyDocuments } from '@/services/documentService'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
@@ -422,13 +423,21 @@ export default function FamilyDetailPage() {
     setError(null)
     try {
       await runAssignCollaborator(async () => {
-        await assignEntityToCollaborator({
-          organizationId,
-          collaboratorUid: assignTarget,
-          entityType: assigningEntity.entityType,
-          entityId: assigningEntity.entityId,
-          createdBy: userDoc.uid,
-        })
+        await assignEntityToCollaboratorAudited(
+          {
+            organizationId,
+            collaboratorUid: assignTarget,
+            entityType: assigningEntity.entityType,
+            entityId: assigningEntity.entityId,
+            createdBy: userDoc.uid,
+          },
+          {
+            actor: auditActor(userDoc),
+            collaboratorName:
+              collaboratorOptions.find((c) => c.uid === assignTarget)?.displayName ?? assignTarget,
+            entityLabel: assigningEntity.label,
+          },
+        )
       })
       setAssigningEntity(null)
       setAssignTarget('')
