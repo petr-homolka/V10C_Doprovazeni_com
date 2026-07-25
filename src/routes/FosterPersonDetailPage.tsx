@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { Tabs, type TabItem } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -125,7 +125,7 @@ export default function FosterPersonDetailPage() {
 
   if (notFound) {
     return (
-      <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: 'Nenalezeno' }]}>
+      <AppShell>
         <p className="text-sm text-text-secondary">Tenhle profil se nepodařilo najít.</p>
       </AppShell>
     )
@@ -133,11 +133,6 @@ export default function FosterPersonDetailPage() {
 
   return (
     <AppShell
-      breadcrumb={[
-        { label: 'Rodiny', href: '/rodiny' },
-        { label: familyName, href: `/rodiny/${familyUid}` },
-        { label: fosterPerson ? `${fosterPerson.firstName} ${fosterPerson.lastName}` : '' },
-      ]}
     >
       <Tabs items={SECTIONS} active={activeSection} onSelect={setActiveSection} />
 
@@ -166,6 +161,15 @@ export default function FosterPersonDetailPage() {
                   </h1>
                   <p className="mt-1 text-sm text-text-secondary">{fosterPerson.phone || '—'}</p>
                   <p className="text-sm text-text-secondary">{fosterPerson.email || '—'}</p>
+                  {/* Viz ChildDetailPage — rodina byla v drobečkách, teď je
+                      pod jménem jako proklik. */}
+                  {familyName && family && (
+                    <p className="text-sm text-text-tertiary">
+                      <Link to={`/rodiny/${family.uid}`} className="hover:text-text-primary hover:underline">
+                        {familyName}
+                      </Link>
+                    </p>
+                  )}
                   <label className="mt-3 flex flex-col gap-1.5">
                     <span className="text-sm font-medium text-text-primary">Datum narození (volitelné)</span>
                     <DatePicker value={birthDate} onChange={handleBirthDateChange} className="max-w-[220px]" />

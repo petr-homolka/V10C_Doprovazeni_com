@@ -256,7 +256,7 @@ export default function DocumentDetailPage() {
 
   if (notFound) {
     return (
-      <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: 'Nenalezeno' }]}>
+      <AppShell>
         <p className="text-sm text-text-secondary">Tenhle dokument se nepodařilo najít.</p>
       </AppShell>
     )
@@ -264,7 +264,7 @@ export default function DocumentDetailPage() {
 
   if (!document) {
     return (
-      <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }]}>
+      <AppShell>
         <p className="text-sm text-text-secondary">Načítám…</p>
       </AppShell>
     )
@@ -277,11 +277,6 @@ export default function DocumentDetailPage() {
 
   return (
     <AppShell
-      breadcrumb={[
-        { label: 'Rodiny', href: '/rodiny' },
-        { label: familyUid ?? '', href: `/rodiny/${familyUid}` },
-        { label: document.title },
-      ]}
     >
       <div className="flex items-start justify-between gap-4">
         <div>

@@ -19,7 +19,6 @@ import { Button } from '@/components/ui/button'
 export default function AccountSettingsPage() {
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Účet' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
       <PageHeader title="Účet" variant="settings" />

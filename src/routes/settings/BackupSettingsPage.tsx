@@ -144,7 +144,7 @@ export default function BackupSettingsPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Zálohy' }]}>
+      <AppShell>
         <PageHeader title="Zálohy" variant="settings" />
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
@@ -155,7 +155,6 @@ export default function BackupSettingsPage() {
 
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Zálohy' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
       <PageHeader

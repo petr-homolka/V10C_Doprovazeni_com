@@ -733,7 +733,7 @@ export default function CalendarPage() {
     ) : undefined
 
   return (
-    <AppShell breadcrumb={[{ label: 'Kalendář' }]} fullBleed sidePanel={sidePanel}>
+    <AppShell fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden p-4">
           {error && (

@@ -2,22 +2,23 @@ import type { ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { ActiveVisitBanner } from './ActiveVisitBanner'
-import type { BreadcrumbItem } from '@/components/ui/breadcrumb'
 
 /**
  * `sidePanel` renders as a sibling of the sidebar/main column, not nested
  * inside `main` — that's what gives it full viewport height (spanning
  * past the TopBar row) instead of starting below the header.
+ *
+ * `breadcrumb` odsud 2026-07-25 ZMIZEL. Nesl jednu informaci, která je
+ * zároveň v levém panelu (zvýrazněná položka) a v nadpisu stránky, takže
+ * ji appka říkala třikrát. Hlavička teď nese šipky zpět/vpřed (`TopBar`).
  */
 export function AppShell({
   children,
-  breadcrumb,
   secondaryPanel,
   fullBleed,
   sidePanel,
 }: {
   children: ReactNode
-  breadcrumb?: BreadcrumbItem[]
   secondaryPanel?: ReactNode
   fullBleed?: boolean
   sidePanel?: ReactNode
@@ -26,7 +27,7 @@ export function AppShell({
     <div className="flex h-screen bg-app">
       <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <TopBar breadcrumb={breadcrumb} />
+        <TopBar />
         <ActiveVisitBanner />
         {secondaryPanel ? (
           <div className="flex min-h-0 flex-1">

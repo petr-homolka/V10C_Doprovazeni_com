@@ -47,7 +47,7 @@ export default function DocumentVerifyPage() {
   }, [uid, organizationId])
 
   return (
-    <AppShell breadcrumb={[{ label: 'Ověření dokumentu' }]}>
+    <AppShell>
       <h1 className="text-xl font-bold leading-tight text-text-primary">Ověření dokumentu {uid}</h1>
 
       {error && (

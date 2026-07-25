@@ -176,7 +176,7 @@ export default function ImportSettingsPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Import dat' }]}>
+      <AppShell>
         <PageHeader title="Import dat" variant="settings" />
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
@@ -187,7 +187,6 @@ export default function ImportSettingsPage() {
 
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Import dat' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
       <PageHeader

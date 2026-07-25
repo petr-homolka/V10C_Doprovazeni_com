@@ -39,7 +39,7 @@ export default function DocumentListPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Dokumenty' }]}>
+      <AppShell>
         <PageHeader title="Dokumenty" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
@@ -47,7 +47,7 @@ export default function DocumentListPage() {
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Dokumenty' }]}>
+    <AppShell>
       <PageHeader title="Dokumenty" />
 
       {error && (

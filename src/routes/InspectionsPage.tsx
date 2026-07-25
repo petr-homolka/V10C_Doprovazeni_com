@@ -143,7 +143,7 @@ export default function InspectionsPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Kvalita' }]}>
+      <AppShell>
         <PageHeader title="Kvalita" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
@@ -153,7 +153,7 @@ export default function InspectionsPage() {
   const overdueActions = inspections ? findOverdueCorrectiveActions(inspections) : []
 
   return (
-    <AppShell breadcrumb={[{ label: 'Kvalita' }]}>
+    <AppShell>
       <PageHeader
         title="Kvalita — evidence inspekcí"
         actions={

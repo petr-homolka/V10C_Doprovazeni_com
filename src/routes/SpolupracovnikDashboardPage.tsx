@@ -83,7 +83,7 @@ export default function SpolupracovnikDashboardPage() {
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Spolupráce' }]}>
+    <AppShell>
       <PageHeader
         title="Moje přiřazené osoby"
         description="Vidíte jen osoby a moduly, co vám přiřadí klíčová osoba nebo vedení."

@@ -66,7 +66,7 @@ export default function StaffDetailPage() {
 
   if (member === null) {
     return (
-      <AppShell breadcrumb={[{ label: 'Zaměstnanci', href: '/zamestnanci' }, { label: '…' }]}>
+      <AppShell>
         <p className="text-sm text-text-secondary">Načítám…</p>
       </AppShell>
     )
@@ -74,7 +74,7 @@ export default function StaffDetailPage() {
 
   if (member === 'notFound') {
     return (
-      <AppShell breadcrumb={[{ label: 'Zaměstnanci', href: '/zamestnanci' }, { label: 'Nenalezen' }]}>
+      <AppShell>
         <EmptyState icon={UserCog} text="Takového zaměstnance jsme nenašli." />
       </AppShell>
     )
@@ -92,7 +92,7 @@ export default function StaffDetailPage() {
   )
 
   return (
-    <AppShell breadcrumb={[{ label: 'Zaměstnanci', href: '/zamestnanci' }, { label: member.displayName }]}>
+    <AppShell>
       <div className="flex max-w-[860px] flex-col gap-6">
         <div className="flex items-start gap-5 rounded-lg bg-surface-soft p-6 shadow-raised">
           {canEditPhoto ? (

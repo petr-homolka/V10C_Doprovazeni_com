@@ -364,7 +364,7 @@ export default function TaskListPage() {
   )
 
   return (
-    <AppShell breadcrumb={[{ label: 'Úkoly' }]} fullBleed sidePanel={sidePanel}>
+    <AppShell fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">

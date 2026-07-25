@@ -214,7 +214,7 @@ export default function AgreementDetailPage() {
 
   if (notFound) {
     return (
-      <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: 'Nenalezeno' }]}>
+      <AppShell>
         <p className="text-sm text-text-secondary">Tenhle Spis se nepodařilo najít.</p>
       </AppShell>
     )
@@ -222,13 +222,10 @@ export default function AgreementDetailPage() {
 
   return (
     <AppShell
-      breadcrumb={[
-        { label: 'Rodiny', href: '/rodiny' },
-        { label: familyName, href: `/rodiny/${familyUid}` },
-        { label: 'Dohoda' },
-      ]}
     >
-      <PageHeader title="Dohoda" />
+      {/* Jméno rodiny nesly dřív drobečky. Kontext se nemá zahodit, jen
+          přesunout tam, kde ho člověk čte — pod nadpis. */}
+      <PageHeader title="Dohoda" description={familyName || undefined} />
       <Tabs items={SECTIONS} active={activeSection} onSelect={setActiveSection} />
 
       {error && (

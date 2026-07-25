@@ -76,7 +76,7 @@ export default function OrganizationSettingsPage() {
 
   if (!isOrgAdmin) {
     return (
-      <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Organizace' }]} secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}>
+      <AppShell secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}>
         <PageHeader title="Organizace" variant="settings" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je jen pro org_admina.</p>
       </AppShell>
@@ -85,7 +85,6 @@ export default function OrganizationSettingsPage() {
 
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Organizace' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
       <PageHeader

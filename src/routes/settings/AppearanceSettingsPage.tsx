@@ -26,7 +26,6 @@ export default function AppearanceSettingsPage() {
 
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Vzhled' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
       <PageHeader

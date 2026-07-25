@@ -281,7 +281,7 @@ export default function ExternalParticipantsPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Externisté' }]}>
+      <AppShell>
         <PageHeader title="Externisté" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
@@ -289,7 +289,7 @@ export default function ExternalParticipantsPage() {
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Externisté' }]}>
+    <AppShell>
       <PageHeader
         title="Externí spolupracovníci"
         actions={

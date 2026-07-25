@@ -51,7 +51,6 @@ export default function CalendarSettingsPage() {
 
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Kalendář' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
       <PageHeader title="Kalendář" variant="settings" />

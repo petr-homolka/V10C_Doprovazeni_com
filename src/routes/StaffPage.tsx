@@ -195,7 +195,7 @@ export default function StaffPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]}>
+      <AppShell>
         <h1 className="text-xl font-bold leading-tight text-text-primary">Zaměstnanci</h1>
         <p className="mt-4 text-sm text-text-secondary">
           Tahle stránka je pro zaměstnance konkrétní organizace.
@@ -332,7 +332,7 @@ export default function StaffPage() {
     ) : undefined
 
   return (
-    <AppShell breadcrumb={[{ label: 'Zaměstnanci' }]} fullBleed sidePanel={sidePanel}>
+    <AppShell fullBleed sidePanel={sidePanel}>
       <div className="flex h-full min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto p-8">

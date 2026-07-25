@@ -168,7 +168,7 @@ export default function FosterProspectsPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Zájemci' }]}>
+      <AppShell>
         <PageHeader title="Zájemci" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
@@ -178,7 +178,7 @@ export default function FosterProspectsPage() {
   const dormant = prospects ? suggestDormantProspects(prospects) : []
 
   return (
-    <AppShell breadcrumb={[{ label: 'Zájemci' }]}>
+    <AppShell>
       <PageHeader
         title="Zájemci o pěstounství"
         actions={
