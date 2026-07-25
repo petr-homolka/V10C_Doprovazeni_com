@@ -1,4 +1,5 @@
-import { createContext, useContext, type CSSProperties, type ReactNode } from 'react'
+import { createContext, useContext, useState, type CSSProperties, type ReactNode } from 'react'
+import { ChevronDown, ChevronRight } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 /**
@@ -201,5 +202,64 @@ export function RecordCardList({
         {children}
       </div>
     </RecordGridContext.Provider>
+  )
+}
+
+
+/**
+ * SKUPINA V SEZNAMU — nadpis, POČET a rozbalování.
+ *
+ * Vzato z Routine (jejich tabulka seskupuje řádky do „Leads 6" /
+ * „Qualified 7" a skupiny se dají sbalit). U nás to dělá víc než pořádek:
+ * seznam rodin seřazený podle data říká „tady je dvanáct rodin", zatímco
+ * seznam SESKUPENÝ podle lhůty říká „tři hoří, dvě se blíží, sedm je
+ * v pořádku" — a to je odpověď na otázku, se kterou tam člověk chodí.
+ *
+ * Počet je v nadpisu schválně: kdo chce vědět, kolik toho hoří, nemá to
+ * počítat očima. U skupiny, která hoří, je počet v akcentu; jinde tiše.
+ *
+ * Sbalení si drží skupina sama (`useState`), protože je to zobrazovací
+ * rozmar, ne stav dat — a přežít překreslení stránky nemusí.
+ */
+export function RecordGroup({
+  title,
+  count,
+  tone = 'calm',
+  defaultOpen = true,
+  children,
+}: {
+  title: string
+  count: number
+  tone?: 'calm' | 'hot' | 'warm'
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <section className="mt-1 first:mt-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left transition-colors duration-150 hover:bg-overlay-active"
+      >
+        <span className="text-text-faint">
+          {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </span>
+        <span className="text-xs uppercase tracking-wide text-text-tertiary">{title}</span>
+        <span
+          className={cn(
+            'rounded-md px-1.5 text-xs',
+            tone === 'hot' && 'bg-danger-bg text-danger',
+            tone === 'warm' && 'bg-warning-bg text-warning',
+            tone === 'calm' && 'text-text-faint',
+          )}
+        >
+          {count}
+        </span>
+      </button>
+      {open && children}
+    </section>
   )
 }

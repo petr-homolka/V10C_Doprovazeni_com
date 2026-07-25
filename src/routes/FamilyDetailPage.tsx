@@ -17,6 +17,7 @@ import { Modal } from '@/components/ui/modal'
 import { AddressLink } from '@/components/ui/address-link'
 import { PersonLink } from '@/components/ui/person-link'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { PropertyEmpty, PropertyList, PropertyRow } from '@/components/ui/property-list'
 import { VoiceRecorderPanel, type RecordablePerson, type VisitContext } from '@/components/timeline/VoiceRecorderPanel'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { OspodReportSection } from '@/components/family/OspodReportSection'
@@ -45,11 +46,12 @@ import { checkEmail, checkPhone } from '@/lib/contactValidation'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
+import { EDUCATION_HOURS_TARGET } from '@/types/agreement'
 import type { AgreementDoc, CareType } from '@/types/agreement'
 import type { UserDoc } from '@/types/user'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
-import { Baby, Clock, FileText, Handshake, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from '@/components/ui/icons'
+import { Baby, Clock, FileText, Mic, Pencil, Plus, StickyNote, UserRound, UserSquare2 } from '@/components/ui/icons'
 
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
   note: 'Poznámka',
@@ -67,9 +69,12 @@ const TIMELINE_TYPE_ICONS: Record<TimelineEntryKind, typeof Clock> = {
 }
 const NO_ACTIVE_AGREEMENT_REASON = 'Tahle rodina nemá s vaší organizací aktivní Dohodu — zápis by nešlo uložit.'
 
+/* Bez hodin v závorce: „Zprostředkovaná (24 h/12 měsíců)" byly dva slepené
+   údaje v jednom. Hodiny mají vlastní řádek „Vzdělávání" — a hlavně se
+   u nich dá poznat, když v Dohodě chybí. */
 const CARE_TYPE_LABELS: Record<CareType, string> = {
-  zprostredkovana: 'Zprostředkovaná (24 h/12 měsíců)',
-  nezprostredkovana: 'Nezprostředkovaná — příbuzenská (18 h/12 měsíců)',
+  zprostredkovana: 'Zprostředkovaná',
+  nezprostredkovana: 'Nezprostředkovaná — příbuzenská',
 }
 
 const SECTIONS: TabItem[] = [
@@ -627,28 +632,64 @@ export default function FamilyDetailPage() {
 
         {activeSection === 'prehled' && (
           <>
+            {/* DOHODA JAKO SEZNAM VLASTNOSTÍ, ne karta.
+                Dřív to byla béžová karta se dvěma slepenými větami
+                („Zprostředkovaná (24 h/12 měsíců)" / „Platí od … · klíčová
+                osoba: …"). Petr na tu plochu ukázal právem: nenese žádnou
+                informaci, ale bere pozornost. Jako vlastnosti je z toho pět
+                samostatných údajů, každý s popiskem — dají se skenovat svisle
+                a hlavně se u každého zvlášť pozná, že chybí.
+                Klíčová osoba je navíc PROKLIK na její profil; z karty se na ni
+                kliknout nedalo. */}
             <section className="mt-8">
-              <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
-              <Link
-                to={`/rodiny/${familyUid}/dohoda`}
-                className="mt-3 flex items-center gap-3 max-w-[560px] rounded-lg bg-surface-soft p-5 shadow-raised transition-shadow duration-150 hover:shadow-md"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
-                  <Handshake size={18} strokeWidth={1.75} />
-                </span>
-                {agreement ? (
-                  <div>
-                    <p className="text-sm text-text-primary">{CARE_TYPE_LABELS[agreement.careType]}</p>
-                    <p className="mt-0.5 text-sm text-text-secondary">
-                      Platí od {new Date(agreement.validFrom).toLocaleDateString('cs-CZ')}
-                      {agreement.assignedTo &&
-                        ` · klíčová osoba: ${koOptions.find((k) => k.uid === agreement.assignedTo)?.displayName ?? agreement.assignedTo}`}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-text-secondary">Zatím žádná Dohoda s vaší organizací — založit →</p>
-                )}
-              </Link>
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-lg font-normal leading-tight text-text-primary">Dohoda</h2>
+                <Link
+                  to={`/rodiny/${familyUid}/dohoda`}
+                  className="text-sm text-text-tertiary transition-colors duration-150 hover:text-text-primary"
+                >
+                  {agreement ? 'Otevřít Dohodu →' : 'Založit Dohodu →'}
+                </Link>
+              </div>
+              {agreement ? (
+                <PropertyList className="mt-2 max-w-[560px]">
+                  <PropertyRow label="Typ péče">{CARE_TYPE_LABELS[agreement.careType]}</PropertyRow>
+                  <PropertyRow label="Platí od">
+                    {new Date(agreement.validFrom).toLocaleDateString('cs-CZ')}
+                  </PropertyRow>
+                  <PropertyRow label="Klíčová osoba">
+                    {agreement.assignedTo ? (
+                      <PersonLink
+                        kind="staff"
+                        id={agreement.assignedTo}
+                        name={
+                          koOptions.find((k) => k.uid === agreement.assignedTo)?.displayName ?? agreement.assignedTo
+                        }
+                      />
+                    ) : (
+                      <PropertyEmpty />
+                    )}
+                  </PropertyRow>
+                  <PropertyRow label="Interval návštěv">{agreement.visitIntervalDays} dní</PropertyRow>
+                  {/* Cíl hodin je v Dohodě, ale u starších záznamů chybět
+                      může — pak se dopočítá z typu péče, protože ho určuje
+                      zákon (24 h zprostředkovaná, 18 h příbuzenská). */}
+                  <PropertyRow label="Vzdělávání">
+                    {agreement.educationHoursTarget ?? EDUCATION_HOURS_TARGET[agreement.careType]} h / 12 měsíců
+                  </PropertyRow>
+                  {family && family.fosterPersonRefs.length >= 2 && (
+                    <PropertyRow label="Sdílení zápisů" align="right">
+                      <Switch
+                        checked={family.partnerSharingDefault ?? true}
+                        onChange={handlePartnerSharingDefaultChange}
+                        label="Nové zápisy výchozí sdílet s oběma pěstouny"
+                      />
+                    </PropertyRow>
+                  )}
+                </PropertyList>
+              ) : (
+                <p className="mt-2 text-sm text-text-tertiary">Zatím žádná Dohoda s vaší organizací.</p>
+              )}
             </section>
 
           <section className="mt-8">
@@ -658,17 +699,6 @@ export default function FamilyDetailPage() {
                 <Plus size={16} /> Přidat pěstouna
               </Button>
             </div>
-            {family && family.fosterPersonRefs.length >= 2 && (
-              <div className="mt-3 flex items-center justify-between gap-4 max-w-[560px] rounded-lg bg-surface-soft p-4 shadow-raised">
-                <span className="text-sm text-text-primary">Nové zápisy výchozí sdílet s oběma pěstouny</span>
-                <Switch
-                  checked={family.partnerSharingDefault ?? true}
-                  onChange={handlePartnerSharingDefaultChange}
-                  label="Nové zápisy výchozí sdílet s oběma pěstouny"
-                />
-              </div>
-            )}
-
             <div className="mt-4 max-w-[928px]">
               {fosterPersons.length === 0 ? (
                 <EmptyState icon={UserRound} text="Zatím žádní pěstouni." />

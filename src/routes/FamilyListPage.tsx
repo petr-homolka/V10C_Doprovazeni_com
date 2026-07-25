@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { SidePanel } from '@/components/ui/side-panel'
 import { ListToolbar } from '@/components/ui/list-toolbar'
-import { RecordCard, RecordCardList } from '@/components/ui/record-card'
+import { RecordCard, RecordCardList, RecordGroup } from '@/components/ui/record-card'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -49,6 +49,30 @@ const SORT_OPTIONS = [
 ]
 type SortBy = (typeof SORT_OPTIONS)[number]['value']
 
+/**
+ * SESKUPENÍ (Routine: jejich tabulka dělí řádky do „Leads 6" / „Qualified 7").
+ *
+ * Rozdíl proti řazení je v tom, na co seznam odpovídá. Řazený podle data říká
+ * „tady je dvanáct rodin". Seskupený podle lhůty říká „tři hoří, dvě se
+ * blíží, sedm je v pořádku" — a s tou otázkou tam člověk chodí.
+ *
+ * Výchozí je proto STAV, ne „bez seskupení".
+ */
+const GROUP_OPTIONS = [
+  { value: 'stav' as const, label: 'Stav' },
+  { value: 'ko' as const, label: 'Klíčová osoba' },
+  { value: 'zadne' as const, label: 'Bez seskupení' },
+]
+type GroupBy = (typeof GROUP_OPTIONS)[number]['value']
+
+/** Skupiny podle lhůty. Pořadí je od nejnaléhavější — ne abecedně. */
+const STAV_BUCKETS: Array<{ key: string; label: string; tone: 'hot' | 'warm' | 'calm' }> = [
+  { key: 'crisis', label: 'Po termínu', tone: 'hot' },
+  { key: 'warning', label: 'Naléhavé', tone: 'hot' },
+  { key: 'waiting', label: 'Blíží se', tone: 'warm' },
+  { key: 'ok', label: 'V pořádku', tone: 'calm' },
+]
+
 interface FamilyRow {
   docId: string
   family: FamilyDoc
@@ -79,6 +103,7 @@ export default function FamilyListPage() {
   const [recorderState, setRecorderState] = useState<{ docId: string; people: RecordablePerson[] } | null>(null)
   const [recorderLoadingDocId, setRecorderLoadingDocId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<SortBy>('adresa')
+  const [groupBy, setGroupBy] = useState<GroupBy>('stav')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [noteModalOpen, setNoteModalOpen] = useState(false)
   const [noteText, setNoteText] = useState('')
@@ -331,69 +356,101 @@ export default function FamilyListPage() {
     </SidePanel>
   )
 
-  return (
-    <AppShell fullBleed sidePanel={sidePanel}>
-      <div className="flex h-full min-w-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 overflow-y-auto p-8">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">Rodiny</h1>
-              <Button size="sm" onClick={() => setShowForm(true)}>
-                <Plus size={16} /> Nová rodina
-              </Button>
-            </div>
 
-            {error && (
-              <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
-                {error}
-              </p>
-            )}
+  /**
+   * Sloupce podle seskupení. Sloupec, který nese totéž jako nadpis skupiny,
+   * se nekreslí — a mřížka se musí zkrátit s ním, jinak zbude prázdný pruh
+   * (přesně tuhle vadu měl seznam po prvním převodu na mřížku).
+   */
+  const columnPlan = useMemo(() => {
+    if (groupBy === 'stav') {
+      return {
+        headers: ['Poslední kontakt', 'Klíčová osoba'],
+        columns: {
+          lg: 'minmax(220px,1fr) minmax(0,150px) minmax(0,180px)',
+          md: 'minmax(200px,1fr) minmax(0,150px)',
+          sm: 'minmax(160px,1fr) minmax(0,150px)',
+        },
+      }
+    }
+    if (groupBy === 'ko') {
+      return {
+        headers: ['Stav', 'Poslední kontakt'],
+        columns: {
+          lg: 'minmax(220px,1fr) minmax(0,130px) minmax(0,150px)',
+          md: 'minmax(200px,1fr) minmax(0,130px)',
+          sm: 'minmax(160px,1fr) minmax(0,130px)',
+        },
+      }
+    }
+    return {
+      headers: ['Stav', 'Poslední kontakt', 'Klíčová osoba'],
+      columns: {
+        lg: 'minmax(220px,1fr) minmax(0,130px) minmax(0,150px) minmax(0,180px)',
+        md: 'minmax(200px,1fr) minmax(0,130px) minmax(0,150px)',
+        sm: 'minmax(160px,1fr) minmax(0,130px)',
+      },
+    }
+  }, [groupBy])
 
-            <ListToolbar>
-              {/* Bez popisku to vypadalo jako záložky (tedy navigace), ne jako
-               * řazení — přitom se tím obsah nemění, jen pořadí. */}
-              <div className="flex items-center gap-2.5">
-                <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">Řadit podle</span>
-                <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
-              </div>
-              {selected.size > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
-                  <Button variant="secondary" size="sm" onClick={() => setNoteModalOpen(true)}>
-                    + Poznámka
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => setReassignModalOpen(true)}>
-                    Předat
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
-                    Zrušit výběr
-                  </Button>
-                </div>
-              )}
-            </ListToolbar>
-            {families === null ? (
-              <p className="mt-3 text-sm text-text-secondary">Načítám…</p>
-            ) : sortedRows.length === 0 ? (
-              <div className="mt-3 rounded-lg bg-surface-soft p-8 shadow-raised">
-                <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
-              </div>
-            ) : (
-              // Sloupce definuje SEZNAM (DESIGN_RULES.md §4) — pořadí buněk je
-              // od nejdůležitější a na užších šířkách ubývají zprava:
-              // Stav → Poslední kontakt → Klíčová osoba. Jméno nikdy.
-              <RecordCardList
-                className="mt-3"
-                cellCount={3}
-                headers={['Stav', 'Poslední kontakt', 'Klíčová osoba']}
-                lead={56}
-                trail={64}
-                columns={{
-                  lg: 'minmax(220px,1fr) minmax(0,130px) minmax(0,150px) minmax(0,180px)',
-                  md: 'minmax(200px,1fr) minmax(0,130px) minmax(0,150px)',
-                  sm: 'minmax(160px,1fr) minmax(0,130px)',
-                }}
-              >
-                {sortedRows.map((row) => {
+  /**
+   * Seskupení řádků. Řazení zůstává v platnosti UVNITŘ skupiny — jsou to dvě
+   * nezávislé věci: skupina odpovídá „co hoří", řazení „v jakém pořadí".
+   *
+   * Přišpendlené (hvězdička) jdou vždy první a mimo seskupení. Kdo si rodinu
+   * označí, chce ji vidět hned, ne ji hledat ve skupině podle lhůty.
+   */
+  const groups = useMemo(() => {
+    const pinned = sortedRows.filter((r) => starredIds.has(r.docId))
+    const rest = sortedRows.filter((r) => !starredIds.has(r.docId))
+    const head =
+      pinned.length > 0 && groupBy !== 'zadne'
+        ? [{ key: 'pinned', label: 'Přišpendlené', tone: 'calm' as const, rows: pinned }]
+        : []
+
+    if (groupBy === 'zadne') {
+      return [{ key: 'vse', label: 'Vše', tone: 'calm' as const, rows: sortedRows }]
+    }
+
+    if (groupBy === 'ko') {
+      const byKo = new Map<string, FamilyRow[]>()
+      for (const row of rest) {
+        const key = row.assignedToDisplay ?? 'Bez klíčové osoby'
+        const list = byKo.get(key)
+        if (list) list.push(row)
+        else byKo.set(key, [row])
+      }
+      return [
+        ...head,
+        ...[...byKo.entries()]
+          // „Bez klíčové osoby" nakonec — je to díra, ne osoba.
+          .sort(([a], [b]) =>
+            a === 'Bez klíčové osoby' ? 1 : b === 'Bez klíčové osoby' ? -1 : a.localeCompare(b, 'cs'),
+          )
+          .map(([label, rows]) => ({
+            key: label,
+            label,
+            tone: (label === 'Bez klíčové osoby' ? 'warm' : 'calm') as 'warm' | 'calm',
+            rows,
+          })),
+      ]
+    }
+
+    return [
+      ...head,
+      ...STAV_BUCKETS.map(({ key, label, tone }) => ({
+        key,
+        label,
+        tone,
+        rows: rest.filter((row) => (row.alert?.tier ?? 'ok') === key),
+      })),
+    ]
+  }, [sortedRows, starredIds, groupBy])
+
+  /** Řádek seznamu. Vytažené z mapy, protože se teď vykresluje uvnitř
+   * skupin (viz `groups`) — a stejná JSX na dvou místech je začátek
+   * rozjezdu. */
+  const renderRow = (row: FamilyRow, opts?: { alertInline?: boolean }) => {
               const { docId, family, displayName, assignedToDisplay, alert } = row
               return (
                 <RecordCard
@@ -414,7 +471,20 @@ export default function FamilyListPage() {
                       <EntityAvatar photoURL={family.avatarUrl} label={displayName} fallbackIcon={Users} />
                     </>
                   }
-                  title={displayName}
+                  title={
+                    // V přišpendlené skupině není sloupec „Stav" (nadpis skupiny
+                    // říká „Přišpendlené", ne naléhavost), takže by u té jedné
+                    // rodiny, kterou si člověk vytáhl nahoru, zmizela informace
+                    // o tom, že hoří. Štítek jde proto k jménu.
+                    opts?.alertInline && alert ? (
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate">{displayName}</span>
+                        <AlertTag tier={alert.tier} title={`${alert.reason} — ${alert.action}`} />
+                      </span>
+                    ) : (
+                      displayName
+                    )
+                  }
                   subtitle={
                     family.address ? (
                       <AddressLink address={family.address} className="text-sm" />
@@ -426,20 +496,28 @@ export default function FamilyListPage() {
                     // Pořadí = důležitost, ubývá se ZPRAVA (DESIGN_RULES.md §4).
                     // Stav je vedle jména schválně: seznam se skenuje kvůli
                     // "komu hoří", ne kvůli tomu, kdo je klíčová osoba.
-                    {
-                      label: 'Stav',
-                      value: alert ? (
-                        <AlertTag tier={alert.tier} title={`${alert.reason} — ${alert.action}`} />
-                      ) : (
-                        // Klidný stav nesmí soutěžit se štítkem naléhavosti.
-                        <span className="text-text-tertiary">V pořádku</span>
-                      ),
-                    },
+                    //
+                    // Když se ale seskupuje PODLE STAVU, sloupec zmizí: nadpis
+                    // skupiny říká „Po termínu" a každý řádek pod ním by to
+                    // opakoval ještě jednou. Totéž u klíčové osoby.
+                    ...(groupBy === 'stav'
+                      ? []
+                      : [
+                          {
+                            label: 'Stav',
+                            value: alert ? (
+                              <AlertTag tier={alert.tier} title={`${alert.reason} — ${alert.action}`} />
+                            ) : (
+                              // Klidný stav nesmí soutěžit se štítkem naléhavosti.
+                              <span className="text-text-tertiary">V pořádku</span>
+                            ),
+                          },
+                        ]),
                     {
                       label: 'Poslední kontakt',
                       value: family.lastTouchAt ? new Date(family.lastTouchAt).toLocaleDateString('cs-CZ') : 'Nikdy',
                     },
-                    { label: 'Klíčová osoba', value: assignedToDisplay || '—' },
+                    ...(groupBy === 'ko' ? [] : [{ label: 'Klíčová osoba', value: assignedToDisplay || '—' }]),
                   ]}
                   trailing={
                     <>
@@ -476,7 +554,85 @@ export default function FamilyListPage() {
                   }
                 />
               )
-            })}
+  }
+
+  return (
+    <AppShell fullBleed sidePanel={sidePanel}>
+      <div className="flex h-full min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto p-8">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <h1 className="font-heading text-xl font-bold leading-tight text-text-primary">Rodiny</h1>
+              <Button size="sm" onClick={() => setShowForm(true)}>
+                <Plus size={16} /> Nová rodina
+              </Button>
+            </div>
+
+            {error && (
+              <p className="mb-3 max-w-xl text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+
+            <ListToolbar>
+              {/* Bez popisku to vypadalo jako záložky (tedy navigace), ne jako
+               * řazení — přitom se tím obsah nemění, jen pořadí. */}
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs uppercase tracking-wide text-text-faint">Seskupit</span>
+                  <SegmentedTabs options={GROUP_OPTIONS} value={groupBy} onChange={setGroupBy} />
+                </div>
+                {/* Bez popisku to vypadalo jako záložky (tedy navigace), ne jako
+                 * řazení — přitom se tím obsah nemění, jen pořadí. */}
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xs uppercase tracking-wide text-text-faint">Řadit</span>
+                  <SegmentedTabs options={SORT_OPTIONS} value={sortBy} onChange={setSortBy} />
+                </div>
+              </div>
+              {selected.size > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
+                  <Button variant="secondary" size="sm" onClick={() => setNoteModalOpen(true)}>
+                    + Poznámka
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={() => setReassignModalOpen(true)}>
+                    Předat
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>
+                    Zrušit výběr
+                  </Button>
+                </div>
+              )}
+            </ListToolbar>
+            {families === null ? (
+              <p className="mt-3 text-sm text-text-secondary">Načítám…</p>
+            ) : sortedRows.length === 0 ? (
+              <div className="mt-3 rounded-lg bg-surface-soft p-8 shadow-raised">
+                <EmptyState icon={Users} text="Zatím tu nejsou žádné rodiny." />
+              </div>
+            ) : (
+              // Sloupce definuje SEZNAM (DESIGN_RULES.md §4) — pořadí buněk je
+              // od nejdůležitější a na užších šířkách ubývají zprava:
+              // Stav → Poslední kontakt → Klíčová osoba. Jméno nikdy.
+              <RecordCardList
+                className="mt-3"
+                cellCount={columnPlan.headers.length}
+                headers={columnPlan.headers}
+                lead={56}
+                trail={64}
+                columns={columnPlan.columns}
+              >
+                {groups.map(({ key, label, tone, rows: groupRows }) =>
+                  groupRows.length === 0 ? null : groupBy === 'zadne' ? (
+                    groupRows.map((row) => renderRow(row))
+                  ) : (
+                    <RecordGroup key={key} title={label} count={groupRows.length} tone={tone}>
+                      {groupRows.map((row) =>
+                        renderRow(row, { alertInline: key === 'pinned' && groupBy === 'stav' }),
+                      )}
+                    </RecordGroup>
+                  ),
+                )}
               </RecordCardList>
             )}
           </div>
