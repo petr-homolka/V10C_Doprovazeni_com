@@ -476,10 +476,109 @@ export default function FamilyDetailPage() {
     }
   }
 
+  /* ---------- co se dá spočítat (viz `lib/spisInsights.ts`) ---------- */
+
+  /*
+    POZOR NA POŘADÍ: tyhle `useMemo` MUSÍ být nad `if (notFound) return` níž.
+    Chvíli byly pod ním a v produkci to spadlo na „Minified React error #300"
+    (rendered fewer hooks than expected) — jakmile se rodina nenašla, funkce
+    se vrátila dřív, čtyři hooky se nezavolaly a React ztratil jejich pořadí.
+    Tady je to strukturálně bezpečné: mezi začátkem funkce a hooky není žádný
+    `return`. Hlídá to i `npm run lint` (oxlint, react-hooks/rules-of-hooks),
+    který jsem si tehdy nepustil.
+  */
+  const educationHours = useMemo(() => educationHoursInLastYear(events), [events])
+  const limits = useMemo(
+    () => buildCareLimits({ agreement, entries: timelineEntries, educationHours }),
+    [agreement, timelineEntries, educationHours],
+  )
+  const due = agreement ? nextVisitDue(agreement) : null
+  const noActiveAgreement = !agreement || agreement.status !== 'active'
+
+  /** Lidé ve spisu s datem „naposledy osobně". Tohle je jádro nového
+   * profilu: telefon se nemění a nikdo ho v profilu nehledá, ale „koho
+   * z nich jsem půl roku neviděl" se jinak nikde nedozví. */
+  const people = useMemo(
+    () =>
+      [
+        ...fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => ({
+          group: 'Pěstouni',
+          kind: 'fosterPerson' as const,
+          id: fpId,
+          name: `${fp.firstName} ${fp.lastName}`,
+          age: ageYears(fp.birthDate),
+          contact: fp.phone ?? fp.email ?? null,
+          avatarUrl: fp.avatarUrl ?? null,
+          href: `/rodiny/${familyUid}/pestoun/${fpId}`,
+          lastSeen: lastSeenInPerson(timelineEntries, { kind: 'fosterPerson', id: fpId }),
+        })),
+        ...children.map(({ docId: childId, child }) => ({
+          group: 'Děti v péči',
+          kind: 'child' as const,
+          id: childId,
+          name: `${child.firstName} ${child.lastName}`,
+          age: ageYears(child.birthDate),
+          contact: null,
+          avatarUrl: child.avatarUrl ?? null,
+          href: `/rodiny/${familyUid}/dite/${childId}`,
+          lastSeen: lastSeenInPerson(timelineEntries, { kind: 'child', id: childId }),
+        })),
+      ] as const,
+    [fosterPersons, children, timelineEntries, familyUid],
+  )
+
+  /** Kdo je nejdéle bez osobního kontaktu. Kdyby to na obrazovce nebylo,
+   * musel by si to člověk odvodit ze pěti řádků — a proto se to zapomíná. */
+  const longestUnseen = people.reduce<(typeof people)[number] | null>((worst, person) => {
+    if (!person.lastSeen) return person
+    if (!worst) return person
+    if (!worst.lastSeen) return worst
+    return person.lastSeen < worst.lastSeen ? person : worst
+  }, null)
+
+  /** Zápisy po měsících. Skupina se nekreslí jako rám, jen jako tichý
+   * popisek — dělí to čas, ne obsah. */
+  const entriesByMonth = useMemo(() => {
+    const map = new Map<string, typeof timelineEntries>()
+    for (const item of [...timelineEntries].sort((a, b) => b.entry.occurredAt.localeCompare(a.entry.occurredAt))) {
+      const key = new Date(item.entry.occurredAt).toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })
+      const list = map.get(key)
+      if (list) list.push(item)
+      else map.set(key, [item])
+    }
+    return [...map]
+  }, [timelineEntries])
+
+
+  /* Rodina, která pod tímhle `uid` neexistuje (nebo na ni tahle organizace
+     nevidí). Vlastní obrazovka, ne jedna větička: člověk se sem dostane
+     z odkazu ve zprávě nebo ze zálohy prohlížeče a potřebuje vědět, kam dál. */
   if (notFound) {
     return (
-      <AppShell>
-        <p className="text-sm text-text-secondary">Tenhle Spis se nepodařilo najít.</p>
+      <AppShell
+        pageContext={
+          <nav className="flex min-w-0 items-center gap-1.5 text-sm">
+            <Link to="/rodiny" className="text-text-tertiary transition-colors duration-150 hover:text-text-primary">
+              Rodiny
+            </Link>
+            <span className="text-text-faint">/</span>
+            <span className="text-text-primary">Nenalezeno</span>
+          </nav>
+        }
+      >
+        <div className="mx-auto max-w-[560px] py-16 text-center">
+          <h1 className="text-xl text-text-primary">Tenhle spis jsme nenašli</h1>
+          <p className="mt-2 text-base text-text-secondary">
+            Spis {familyUid} v téhle organizaci neexistuje, nebo na něj nevidíte. Zkontrolujte odkaz, nebo rodinu
+            najděte v seznamu.
+          </p>
+          <Link
+            to="/rodiny"
+            className="mt-6 inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm text-primary-foreground hover:bg-primary-hover"
+          >
+            Zpátky na Rodiny
+          </Link>
+        </div>
       </AppShell>
     )
   }
@@ -583,70 +682,6 @@ export default function FamilyDetailPage() {
         <div ref={setPanelSlotEl} />
       </SidePanel>
     ) : undefined
-
-  /* ---------- co se dá spočítat (viz `lib/spisInsights.ts`) ---------- */
-
-  const educationHours = useMemo(() => educationHoursInLastYear(events), [events])
-  const limits = useMemo(
-    () => buildCareLimits({ agreement, entries: timelineEntries, educationHours }),
-    [agreement, timelineEntries, educationHours],
-  )
-  const due = agreement ? nextVisitDue(agreement) : null
-  const noActiveAgreement = !agreement || agreement.status !== 'active'
-
-  /** Lidé ve spisu s datem „naposledy osobně". Tohle je jádro nového
-   * profilu: telefon se nemění a nikdo ho v profilu nehledá, ale „koho
-   * z nich jsem půl roku neviděl" se jinak nikde nedozví. */
-  const people = useMemo(
-    () =>
-      [
-        ...fosterPersons.map(({ docId: fpId, fosterPerson: fp }) => ({
-          group: 'Pěstouni',
-          kind: 'fosterPerson' as const,
-          id: fpId,
-          name: `${fp.firstName} ${fp.lastName}`,
-          age: ageYears(fp.birthDate),
-          contact: fp.phone ?? fp.email ?? null,
-          avatarUrl: fp.avatarUrl ?? null,
-          href: `/rodiny/${familyUid}/pestoun/${fpId}`,
-          lastSeen: lastSeenInPerson(timelineEntries, { kind: 'fosterPerson', id: fpId }),
-        })),
-        ...children.map(({ docId: childId, child }) => ({
-          group: 'Děti v péči',
-          kind: 'child' as const,
-          id: childId,
-          name: `${child.firstName} ${child.lastName}`,
-          age: ageYears(child.birthDate),
-          contact: null,
-          avatarUrl: child.avatarUrl ?? null,
-          href: `/rodiny/${familyUid}/dite/${childId}`,
-          lastSeen: lastSeenInPerson(timelineEntries, { kind: 'child', id: childId }),
-        })),
-      ] as const,
-    [fosterPersons, children, timelineEntries, familyUid],
-  )
-
-  /** Kdo je nejdéle bez osobního kontaktu. Kdyby to na obrazovce nebylo,
-   * musel by si to člověk odvodit ze pěti řádků — a proto se to zapomíná. */
-  const longestUnseen = people.reduce<(typeof people)[number] | null>((worst, person) => {
-    if (!person.lastSeen) return person
-    if (!worst) return person
-    if (!worst.lastSeen) return worst
-    return person.lastSeen < worst.lastSeen ? person : worst
-  }, null)
-
-  /** Zápisy po měsících. Skupina se nekreslí jako rám, jen jako tichý
-   * popisek — dělí to čas, ne obsah. */
-  const entriesByMonth = useMemo(() => {
-    const map = new Map<string, typeof timelineEntries>()
-    for (const item of [...timelineEntries].sort((a, b) => b.entry.occurredAt.localeCompare(a.entry.occurredAt))) {
-      const key = new Date(item.entry.occurredAt).toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })
-      const list = map.get(key)
-      if (list) list.push(item)
-      else map.set(key, [item])
-    }
-    return [...map]
-  }, [timelineEntries])
 
   const quietAction =
     'flex h-7 items-center gap-1.5 rounded-md px-2 text-sm text-text-secondary transition-colors duration-150 hover:bg-overlay-active disabled:opacity-50'

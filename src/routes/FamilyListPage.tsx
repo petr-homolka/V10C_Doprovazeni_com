@@ -325,37 +325,14 @@ export default function FamilyListPage() {
     }
   }
 
-  if (!organizationId) {
-    return (
-      <AppShell>
-        <h1 className="text-xl font-bold leading-tight text-text-primary">Rodiny</h1>
-        <p className="mt-4 text-sm text-text-secondary">
-          Tahle stránka je pro zaměstnance konkrétní organizace.
-        </p>
-      </AppShell>
-    )
-  }
-
-  const sidePanel = showForm && (
-    <SidePanel title="Nová rodina" onClose={() => setShowForm(false)}>
-      <form onSubmit={handleCreate} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium leading-relaxed text-text-primary">Adresa (volitelné)</span>
-          <Input autoFocus value={address} onChange={(e) => setAddress(e.target.value)} />
-        </label>
-        <div className="flex gap-2 border-t border-border-default pt-4">
-          <Button type="submit" loading={submitting} success={success}>
-            Založit Spis
-          </Button>
-          <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
-            Zrušit
-          </Button>
-        </div>
-      </form>
-    </SidePanel>
-  )
-
-
+  /*
+    POZOR NA POŘADÍ: `columnPlan` i `groups` musí zůstat NAD `if
+    (!organizationId) return` níž. Chvíli byly pod ním a je to stejná mina,
+    na jakou 2026-07-25 spadl profil rodiny v produkci („Minified React error
+    #300" — rendered fewer hooks than expected): jakmile funkce vyskočí dřív,
+    hooky se nezavolají a React ztratí jejich pořadí. Hlídá to
+    `npm run lint`.
+  */
   /**
    * Sloupce podle seskupení. Sloupec, který nese totéž jako nadpis skupiny,
    * se nekreslí — a mřížka se musí zkrátit s ním, jinak zbude prázdný pruh
@@ -445,6 +422,38 @@ export default function FamilyListPage() {
       })),
     ]
   }, [sortedRows, starredIds, groupBy])
+
+  if (!organizationId) {
+    return (
+      <AppShell>
+        <h1 className="text-xl font-bold leading-tight text-text-primary">Rodiny</h1>
+        <p className="mt-4 text-sm text-text-secondary">
+          Tahle stránka je pro zaměstnance konkrétní organizace.
+        </p>
+      </AppShell>
+    )
+  }
+
+  const sidePanel = showForm && (
+    <SidePanel title="Nová rodina" onClose={() => setShowForm(false)}>
+      <form onSubmit={handleCreate} className="flex flex-col gap-4">
+        <label className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium leading-relaxed text-text-primary">Adresa (volitelné)</span>
+          <Input autoFocus value={address} onChange={(e) => setAddress(e.target.value)} />
+        </label>
+        <div className="flex gap-2 border-t border-border-default pt-4">
+          <Button type="submit" loading={submitting} success={success}>
+            Založit Spis
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
+            Zrušit
+          </Button>
+        </div>
+      </form>
+    </SidePanel>
+  )
+
+
 
   /** Řádek seznamu. Vytažené z mapy, protože se teď vykresluje uvnitř
    * skupin (viz `groups`) — a stejná JSX na dvou místech je začátek

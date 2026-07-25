@@ -50,6 +50,9 @@ const SCREENS = [
   { name: 'rodina-profil-lhuty', route: '/rodiny/9900010000015', scroll: 900 },
   { name: 'rodina-profil-zapisy', route: '/rodiny/9900010000015', scroll: 1700 },
   { name: 'rodina-profil-bloky', route: '/rodiny/9900010000015', scroll: 2600 },
+  // Neexistující spis — tahle cesta 2026-07-25 v produkci SPADLA (hooky pod
+  // podmíněným `return`, React #300), takže se od teď fotí taky.
+  { name: 'rodina-nenalezena', route: '/rodiny/0000000000000' },
   { name: 'deti', route: '/deti' },
   { name: 'deti-nove', route: '/deti', click: 'Nové dítě' },
   { name: 'pestouni', route: '/pestouni' },

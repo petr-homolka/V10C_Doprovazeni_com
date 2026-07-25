@@ -1,7 +1,15 @@
 import { families, fosterPersons, children } from '../fixtures'
 export const listFamilies = async () => families.map((f) => f.family)
 export const listFamiliesWithDocIds = async () => families
-export const getFamilyByUid = async (uid: string) => families.find((f) => f.family.uid === uid) ?? families[0]
+/**
+ * Neznámé `uid` vrací `null`, ne první rodinu v poli.
+ *
+ * Dřív tu bylo `?? families[0]`, takže náhled ukázal profil VŽDYCKY — a cesta
+ * „spis nenalezen" se tím nedala vyfotit ani otestovat. Právě na ní 2026-07-25
+ * spadla produkce (hooky pod podmíněným `return`, React #300) a screenshoty to
+ * nemohly odhalit, protože se do toho stavu nikdy nedostaly.
+ */
+export const getFamilyByUid = async (uid: string) => families.find((f) => f.family.uid === uid) ?? null
 export const createFamily = async () => families[0] as never
 export const updateFamilyPartnerSharingDefault = async () => {}
 export const updateFamilyDisplayName = async () => {}
