@@ -54,8 +54,8 @@ describe('stav jednoho segmentu', () => {
     expect(segmentLifecycle(inHandover, NOW)).toBe('prevod')
   })
 
-  it('archivovaný segment organizaci nic neříká', () => {
-    expect(segmentLifecycle(archived, NOW)).toBeNull()
+  it('archivovaný segment má vlastní stav, ne prázdno', () => {
+    expect(segmentLifecycle(archived, NOW)).toBe('archivovano')
   })
 
   it('ukončená Dohoda bez archivace taky nic neříká', () => {
@@ -68,7 +68,7 @@ describe('stav jednoho segmentu', () => {
    * by si stará organizace přístup navěky jen tím, že nic neudělá.
    */
   it('po vypršení lhůty se chová jako archivovaný, i když ho nikdo neuklidil', () => {
-    expect(segmentLifecycle(handoverExpired, NOW)).toBeNull()
+    expect(segmentLifecycle(handoverExpired, NOW)).toBe('archivovano')
   })
 })
 
@@ -87,6 +87,14 @@ describe('právo zápisu během převodu', () => {
 })
 
 describe('stav celého UID', () => {
+  /**
+   * `archivovano` je stav SEGMENTU, nikdy celého UID: když archivují
+   * všichni, UID není archivované — čeká na další organizaci.
+   */
+  it('samé archivované segmenty znamenají spánek UID, ne archiv', () => {
+    expect(uidLifecycle([archived, archived], NOW)).toBe('spanek')
+  })
+
   it('bez jakéhokoli živého segmentu je UID ve spánku', () => {
     expect(uidLifecycle([], NOW)).toBe('spanek')
     expect(uidLifecycle([archived, ended], NOW)).toBe('spanek')

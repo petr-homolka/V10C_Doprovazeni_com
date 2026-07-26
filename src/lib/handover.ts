@@ -26,10 +26,15 @@
  *             Stará může kdykoli sama uzavřít a archivovat. Po 90 dnech
  *             se archivuje sama.
  *
+ *  archivovano  Organizace spis uklidila z provozu. Data jsou nedotčená,
+ *             jen neviditelná (viz retentionPolicy.ts). Je to stav
+ *             SEGMENTU — jedné organizace, ne celého UID.
+ *
  *  spanek     Stará organizace uzavřela a archivovala, nová si UID
  *             nepřevzala. Pěstoun mohl podepsat s organizací MIMO náš
  *             systém — nebo nepodepsal nikde. UID čeká, klidně roky.
- *             NIKDY se nemaže; historie zůstává celá.
+ *             NIKDY se nemaže; historie zůstává celá. Je to stav UID,
+ *             ne segmentu.
  *
  * ─── Co tenhle soubor záměrně NEŘEŠÍ ──────────────────────────────────
  *
@@ -43,12 +48,25 @@
 /** Délka přechodného období po podpisu nové Dohody. */
 export const HANDOVER_WINDOW_DAYS = 90
 
-export type UidLifecycle = 'zajemce' | 'aktivni' | 'prevod' | 'spanek'
+/**
+ * Pět stavů. POZOR na to, že nežijí všechny na stejné úrovni:
+ *
+ *   zajemce, aktivni, prevod, archivovano  … stav SEGMENTU (jedné organizace)
+ *   aktivni, prevod, spanek                … stav UID (napříč organizacemi)
+ *
+ * `archivovano` je proto stav segmentu, ale nikdy ne celého UID: když
+ * archivují všichni, UID není „archivované", je ve `spanku` a čeká na
+ * další organizaci. A `spanek` naopak nedává smysl u jednoho segmentu.
+ * Držet to v jednom výčtu je schválně — jsou to fáze téhož života a dva
+ * paralelní výčty by se do měsíce rozešly.
+ */
+export type UidLifecycle = 'zajemce' | 'aktivni' | 'prevod' | 'archivovano' | 'spanek'
 
 export const UID_LIFECYCLE_LABELS: Record<UidLifecycle, string> = {
   zajemce: 'Zájemce',
   aktivni: 'Aktivní',
   prevod: 'Běží převod dohody',
+  archivovano: 'Archivováno',
   spanek: 'Spánek — čeká na organizaci',
 }
 
@@ -84,17 +102,23 @@ export interface SegmentState {
 
 /**
  * Stav jednoho segmentu z pohledu organizace, které patří.
- * `null` = segment už organizaci nic neříká (archivovaný).
+ * `null` = organizaci už tenhle segment nic neříká (ukončený a neuklizený).
  */
 export function segmentLifecycle(segment: SegmentState, now: Date = new Date()): UidLifecycle | null {
-  if (segment.archivedAt) return null
+  if (segment.archivedAt) return 'archivovano'
   if (segment.handoverStartedAt) {
     // Po vypršení lhůty se segment CHOVÁ jako archivovaný, i když ho
     // ještě nikdo fyzicky nearchivoval — automatické doarchivování je
     // líné (proběhne při prvním čtení, viz agreementService).
-    return isHandoverExpired(segment.handoverDeadline, now) ? null : 'prevod'
+    return isHandoverExpired(segment.handoverDeadline, now) ? 'archivovano' : 'prevod'
   }
   return segment.status === 'active' ? 'aktivni' : null
+}
+
+/** Pracuje s tímhle segmentem organizace ještě aktivně? */
+export function isLiveSegment(segment: SegmentState, now: Date = new Date()): boolean {
+  const state = segmentLifecycle(segment, now)
+  return state === 'aktivni' || state === 'prevod'
 }
 
 /**
@@ -111,7 +135,7 @@ export function segmentLifecycle(segment: SegmentState, now: Date = new Date()):
  * schovávali navíc, ale protože je nikdy vidět nemohla.
  */
 export function canWriteDuringHandover(segment: SegmentState, now: Date = new Date()): boolean {
-  return segmentLifecycle(segment, now) === 'prevod' || segmentLifecycle(segment, now) === 'aktivni'
+  return isLiveSegment(segment, now)
 }
 
 /**
@@ -119,9 +143,11 @@ export function canWriteDuringHandover(segment: SegmentState, now: Date = new Da
  * kterou se ptá nová organizace, když zadá UID.
  */
 export function uidLifecycle(segments: SegmentState[], now: Date = new Date()): UidLifecycle {
-  const states = segments.map((s) => segmentLifecycle(s, now)).filter((s): s is UidLifecycle => s !== null)
+  const states = segments.map((s) => segmentLifecycle(s, now))
   if (states.includes('prevod')) return 'prevod'
   if (states.includes('aktivni')) return 'aktivni'
+  // Ani samé „archivovano" nedělá z UID archivované — UID se archivovat
+  // nedá, jen čeká na další organizaci.
   return 'spanek'
 }
 
