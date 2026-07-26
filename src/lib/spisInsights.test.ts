@@ -4,6 +4,7 @@ import {
 } from './spisInsights'
 import type { AgreementDoc } from '@/types/agreement'
 import type { CalendarEventDoc } from '@/types/calendarEvent'
+import type { ExternalFulfilmentDoc } from '@/types/externalFulfilment'
 import type { TimelineEntryDoc } from '@/types/timelineEntry'
 
 const NOW = new Date('2026-07-25T09:30:00')
@@ -125,6 +126,45 @@ describe('nextVisitDue', () => {
   it('propadlý termín pozná', () => {
     const due = nextVisitDue({ visitIntervalDays: 60, lastVisitAt: '2026-01-01T10:00:00.000Z' }, NOW)!
     expect(due.overdue).toBe(true)
+  })
+})
+
+/**
+ * Zadání 2026-07-26: UID žije i v době, kdy ho žádná naše organizace
+ * nespravuje (stav „spánek" — pěstoun podepsal mimo systém). Vzdělávání
+ * z toho období se MUSÍ započítat, jinak by systém po převzetí hlásil
+ * nesplněnou povinnost, která splněná byla.
+ */
+describe('educationHoursInLastYear — plnění mimo náš systém', () => {
+  function event(start: string, end: string) {
+    return { event: { kind: 'vzdelavani', status: 'planovano', start, end } as unknown as CalendarEventDoc }
+  }
+  function external(occurredAt: string, amount: number, kind = 'vzdelavani') {
+    return { fulfilment: { kind, amount, occurredAt, title: 'Kurz jinde' } as unknown as ExternalFulfilmentDoc }
+  }
+
+  it('připočte hodiny doložené z jiné organizace', () => {
+    const hours = educationHoursInLastYear(
+      [event('2026-03-01T09:00:00', '2026-03-01T13:00:00')],
+      NOW,
+      [external('2026-01-15T00:00:00', 6)],
+    )
+    expect(hours).toBe(10)
+  })
+
+  it('bez externích záznamů počítá jako dřív', () => {
+    const hours = educationHoursInLastYear([event('2026-03-01T09:00:00', '2026-03-01T13:00:00')], NOW)
+    expect(hours).toBe(4)
+  })
+
+  it('respit se do hodin vzdělávání neplete', () => {
+    const hours = educationHoursInLastYear([], NOW, [external('2026-01-15T00:00:00', 14, 'respit')])
+    expect(hours).toBe(0)
+  })
+
+  it('starší než 12 měsíců se nepočítá ani zvenčí', () => {
+    const hours = educationHoursInLastYear([], NOW, [external('2024-01-15T00:00:00', 20)])
+    expect(hours).toBe(0)
   })
 })
 

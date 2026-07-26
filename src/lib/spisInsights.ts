@@ -1,5 +1,6 @@
 import { EDUCATION_HOURS_TARGET, type AgreementDoc } from '@/types/agreement'
 import type { CalendarEventDoc } from '@/types/calendarEvent'
+import type { ExternalFulfilmentDoc } from '@/types/externalFulfilment'
 import type { SubjectRef, TimelineEntryDoc } from '@/types/timelineEntry'
 
 /**
@@ -93,6 +94,13 @@ export function lastSeenInPerson(
 export function educationHoursInLastYear(
   events: Array<{ event: CalendarEventDoc }>,
   now: Date = new Date(),
+  /**
+   * Plnění MIMO náš systém (zadání 2026-07-26). UID žije i v době, kdy ho
+   * žádná naše organizace nespravuje — pěstoun mohl mít Dohodu s
+   * organizací, která systém nepoužívá. Kdyby se ty hodiny nezapočítaly,
+   * hlásili bychom po převzetí nesplněnou povinnost, která splněná byla.
+   */
+  external: Array<{ fulfilment: ExternalFulfilmentDoc }> = [],
 ): number {
   const from = new Date(now)
   from.setFullYear(from.getFullYear() - 1)
@@ -104,6 +112,12 @@ export function educationHoursInLastYear(
     const end = new Date(event.end)
     const length = (end.getTime() - start.getTime()) / 3_600_000
     if (length > 0) hours += length
+  }
+  for (const { fulfilment } of external) {
+    if (fulfilment.kind !== 'vzdelavani') continue
+    const at = new Date(fulfilment.occurredAt)
+    if (at < from || at > now) continue
+    if (fulfilment.amount > 0) hours += fulfilment.amount
   }
   return Math.round(hours * 10) / 10
 }
