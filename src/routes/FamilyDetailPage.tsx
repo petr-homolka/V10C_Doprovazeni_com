@@ -331,7 +331,7 @@ export default function FamilyDetailPage() {
       await runAddFoster(async () => {
         const org = await getOrganization(organizationId)
         if (!org) throw new Error('org not found')
-        await addFosterPersonToFamily(docId, organizationId, org.orgCode, {
+        await addFosterPersonToFamily(docId, organizationId, {
           firstName: fosterFirstName,
           lastName: fosterLastName,
           ...(phoneCheck.value ? { phone: phoneCheck.value } : {}),
@@ -401,7 +401,7 @@ export default function FamilyDetailPage() {
       await runAddChild(async () => {
         const org = await getOrganization(organizationId)
         if (!org) throw new Error('org not found')
-        await addChildToFamily(docId, organizationId, org.orgCode, {
+        await addChildToFamily(docId, organizationId, {
           firstName: childFirstName,
           lastName: childLastName,
           birthNumber: childBirthNumber,
@@ -470,7 +470,6 @@ export default function FamilyDetailPage() {
         const result = await createDocument({
           familyDocId: docId,
           organizationId,
-          orgCode: org.orgCode,
           createdByUid: userDoc.uid,
           title: docTitle,
           body: docBody,

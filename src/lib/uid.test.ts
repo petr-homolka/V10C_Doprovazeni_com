@@ -8,7 +8,7 @@ import {
   uidEntityTypeCode,
   uidOrgCode,
 } from './uid'
-import { SELF_REGISTRATION_ORG_CODE } from './orgCode'
+import { randomUid } from './uidAllocator'
 
 describe('ean13CheckDigit', () => {
   it('matches the known EAN-13 example (400638133393 -> 1)', () => {
@@ -101,26 +101,33 @@ describe('připravenost na delší UID', () => {
 })
 
 /**
- * SAMOREGISTRACE PĚSTOUNA (pestouni.com). Pěstoun dostane UID dřív, než
- * ho začne vést jakákoli organizace — segment OOOO tedy nemá co obsahovat
- * a používá se rezervovaná `0000`.
+ * NÁHODNÉ UID (politika od 26. 7.). Testuje se tvar a to, že se z generátoru
+ * nesypou opakující se čísla — samotná srážka se řeší transakcí
+ * v `allocateUid`, ale generátor, který vrací pořád totéž, by ji zahltil.
  */
-describe('rezervovaný kód pro samoregistraci', () => {
-  it('UID se z něj poskládá a projde validací', () => {
-    const uid = buildUid('fosterPerson', SELF_REGISTRATION_ORG_CODE, 1)
-    expect(isValidUid(uid)).toBe(true)
-    expect(uidOrgCode(uid)).toBe('0000')
-    // Nezačíná nulou — tu drží typ entity na prvních dvou místech.
-    expect(uid[0]).not.toBe('0')
+describe('náhodné UID', () => {
+  it('má správný tvar a projde validací', () => {
+    for (let i = 0; i < 200; i++) {
+      const uid = randomUid()
+      expect(uid).toHaveLength(13)
+      expect(isValidUid(uid)).toBe(true)
+      expect(uid[0]).not.toBe('0')
+    }
   })
 
   /**
-   * Kdyby čítač organizací někdy začal od nuly, samoregistrovaní pěstouni
-   * by dostali stejný prefix jako reálná organizace a nešli by odlišit.
-   * Test je tu proto, aby se ta hodnota nespotřebovala nedopatřením.
+   * Deset tisíc čísel ze zásoby 9·10^11 se nemá jak potkat. Kdyby se
+   * potkala, je rozbitý generátor — a to je horší než srážka, protože
+   * transakce by pak selhávala pořád dokola.
    */
-  it('kód organizací začíná na 0001, takže 0000 zůstane volná', () => {
-    expect(String(1).padStart(4, '0')).toBe('0001')
-    expect(SELF_REGISTRATION_ORG_CODE).toBe('0000')
+  it('deset tisíc losů nedá ani jednu shodu', () => {
+    const seen = new Set<string>()
+    for (let i = 0; i < 10_000; i++) seen.add(randomUid())
+    expect(seen.size).toBe(10_000)
+  })
+
+  /** Stará strukturovaná čísla musí projít pořád — nepřečíslovávají se. */
+  it('stará strukturovaná UID zůstávají platná', () => {
+    expect(isValidUid(buildUid('fosterPerson', '0001', 42))).toBe(true)
   })
 })

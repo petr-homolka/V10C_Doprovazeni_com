@@ -299,3 +299,65 @@ describe('sebezablokování při překročení limitu', () => {
     await assertFails(getDoc(doc(other, 'lookupQuota', 'ko-a')))
   })
 })
+
+/**
+ * uidRegistry — všechna vydaná čísla. Od chvíle, kdy je UID náhodné, je
+ * tohle jediné místo, kde se pozná srážka. Testuje se hlavně to, že se
+ * číslo nedá uvolnit a přidělit podruhé.
+ */
+describe('uidRegistry — rejstřík vydaných čísel', () => {
+  const UID = '1000000001'
+  const entry = { uid: UID, entityType: 'fosterPerson', issuedAt: 'x', issuedBy: ORG_A }
+
+  async function seedUid() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'uidRegistry', UID), entry)
+    })
+  }
+
+  it('zaměstnanec číslo vydá', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(setDoc(doc(db, 'uidRegistry', UID), entry))
+  })
+
+  it('document ID musí sedět s uid v dokumentu', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(setDoc(doc(db, 'uidRegistry', UID), { ...entry, uid: '9999999999' }))
+  })
+
+  it('kdokoli se smí zeptat, jestli je číslo obsazené — na tom stojí alokátor', async () => {
+    await seedUid()
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertSucceeds(getDoc(doc(db, 'uidRegistry', UID)))
+  })
+
+  it('celý rejstřík stáhnout NEJDE', async () => {
+    await seedUid()
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(getDocs(collection(db, 'uidRegistry')))
+  })
+
+  /**
+   * NEJDŮLEŽITĚJŠÍ TEST. Uvolněné číslo by šlo přidělit podruhé a dva různí
+   * lidé by měli totéž UID — přesně to, co má rejstřík vyloučit. Nesmí to
+   * jít ani superadminovi.
+   */
+  it('vydané číslo NEJDE přepsat ani smazat — ani superadminem', async () => {
+    await seedUid()
+    for (const who of ['ko-a', 'super']) {
+      const db = testEnv.authenticatedContext(who).firestore()
+      await assertFails(setDoc(doc(db, 'uidRegistry', UID), { ...entry, entityType: 'child' }))
+      await assertFails(deleteDoc(doc(db, 'uidRegistry', UID)))
+    }
+  })
+
+  it('zablokovaný účet číslo nevydá', async () => {
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(setDoc(doc(db, 'uidRegistry', UID), entry))
+  })
+
+  it('pěstoun číslo nevydá', async () => {
+    const db = testEnv.authenticatedContext('foster-a').firestore()
+    await assertFails(setDoc(doc(db, 'uidRegistry', UID), entry))
+  })
+})

@@ -127,7 +127,7 @@ export default function FosterPersonListPage() {
       await runSave(async () => {
         const org = await getOrganization(organizationId)
         if (!org) throw new Error('Organizace nenalezena.')
-        await addFosterPersonToFamily(newFamilyDocId, organizationId, org.orgCode, {
+        await addFosterPersonToFamily(newFamilyDocId, organizationId, {
           firstName: newFirstName.trim(),
           lastName: newLastName.trim(),
           ...(phoneCheck?.ok ? { phone: phoneCheck.value } : {}),

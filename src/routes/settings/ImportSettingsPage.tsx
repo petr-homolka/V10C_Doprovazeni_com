@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import { downloadBlob } from '@/lib/utils'
-import { getOrganization } from '@/services/organizationService'
 import {
   generateImportTemplate,
   parseImportTemplate,
@@ -149,9 +148,7 @@ export default function ImportSettingsPage() {
     setBusyJobId(jobId)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await commitImportJob(organizationId, org.orgCode, jobId)
+      await commitImportJob(organizationId, jobId)
       await reload()
     } catch {
       setError('Spuštění importu se nezdařilo.')

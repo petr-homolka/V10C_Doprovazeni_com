@@ -13,23 +13,7 @@ import { db } from './firebase'
  */
 const ORG_CODE_MAX = 9999
 
-/**
- * `0000` — REZERVOVÁNO PRO SAMOREGISTRACI PĚSTOUNA (pestouni.com).
- *
- * Záměr Petr Homolka, 26. 7.: na pěstouni.com se bude registrovat pěstoun
- * SÁM a UID dostane hned — dřív, než ho začne vést jakákoli organizace.
- * Jenže segment OOOO v UID dnes znamená „organizace, která entitu
- * založila", a u samoregistrace žádná není.
- *
- * `0000` je pro ten případ přirozená volba: čítač organizací začíná na 1
- * (`padStart` z jedničky dá `0001`), takže tuhle hodnotu NIKDY nepřidělí —
- * je volná bez jakéhokoli zásahu a hlídá to test. Zároveň je na první
- * pohled poznat, že takové UID nevzniklo v organizaci.
- *
- * Zapsané je to tady TEĎ, i když pestouni.com ještě neexistuje, přesně
- * proto, aby se ta hodnota mezitím nespotřebovala na něco jiného.
- */
-export const SELF_REGISTRATION_ORG_CODE = '0000'
+
 
 export async function allocateOrgCode(): Promise<string> {
   const counterRef = doc(db, 'systemCounters', 'orgCode')

@@ -15,7 +15,7 @@ import { actorFields, recordAudit } from '@/services/auditLogService'
 import type { AuditActor } from '@/types/auditLog'
 import { retentionReviewDueDate } from '@/lib/retentionPolicy'
 import { isTestData } from '@/types/dataClass'
-import { allocateUid } from '@/lib/counters'
+import { allocateUid } from '@/lib/uidAllocator'
 import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
 import { getStaffMember, listStaff } from '@/services/staffService'
 import { computeEffectiveCapacityThreshold } from '@/lib/capacityThreshold'
@@ -236,7 +236,6 @@ export async function updateAgreementAssignedTo(
 export interface CreateAgreementInput {
   familyDocId: string
   organizationId: string
-  orgCode: string
   careType: CareType
   assignedTo?: string
   /** Import (§5.5, M1.5) často zakládá historickou Dohodu — bez tohohle
@@ -276,7 +275,7 @@ export interface CreateAgreementInput {
 }
 
 export async function createAgreement(input: CreateAgreementInput): Promise<AgreementDoc> {
-  const { familyDocId, organizationId, orgCode, careType, assignedTo, validFrom, validTo, createdByImportJobRef } = input
+  const { familyDocId, organizationId, careType, assignedTo, validFrom, validTo, createdByImportJobRef } = input
 
   // 0) VÝLUČNOST TITULU — dřív než cokoli jiného.
   //
@@ -306,7 +305,7 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
     await assertCanOpenTitle(fosterUids, input.spousesLivingApart ?? false, organizationId)
   }
 
-  const uid = await allocateUid(organizationId, orgCode, 'agreement')
+  const uid = await allocateUid('agreement', organizationId)
   const data: AgreementDoc = {
     uid,
     familyId: familyDocId,

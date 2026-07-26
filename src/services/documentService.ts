@@ -13,7 +13,7 @@ import {
 import { db } from '@/lib/firebase'
 import { actorFields, auditWriteInto } from '@/services/auditLogService'
 import type { AuditActor } from '@/types/auditLog'
-import { allocateUid } from '@/lib/counters'
+import { allocateUid } from '@/lib/uidAllocator'
 import type { DocumentVersionDoc, FamilyDocumentDoc, FamilyDocumentStatus } from '@/types/familyDocument'
 import type { SubjectRef } from '@/types/timelineEntry'
 import type { HistoryDigestDoc } from '@/types/historyDigest'
@@ -50,7 +50,6 @@ function versionsCollection(familyDocId: string, docId: string) {
 export interface CreateDocumentInput {
   familyDocId: string
   organizationId: string
-  orgCode: string
   createdByUid: string
   title: string
   body: string
@@ -61,7 +60,7 @@ export async function createDocument(
   input: CreateDocumentInput,
 ): Promise<{ docId: string; document: FamilyDocumentDoc }> {
   const ref = doc(collection(db, 'families', input.familyDocId, 'documents'))
-  const uid = await allocateUid(input.organizationId, input.orgCode, 'document')
+  const uid = await allocateUid('document', input.organizationId)
   const hash = await sha256Hex(input.body)
   const now = new Date().toISOString()
 

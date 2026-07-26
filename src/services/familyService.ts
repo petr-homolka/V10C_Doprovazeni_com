@@ -10,7 +10,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { allocateUid } from '@/lib/counters'
+import { allocateUid } from '@/lib/uidAllocator'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -77,12 +77,11 @@ export async function getFamilyByUid(
 
 export async function createFamily(
   organizationId: string,
-  orgCode: string,
   address: string | undefined,
   createdByImportJobRef?: string,
 ): Promise<{ docId: string; family: FamilyDoc }> {
   const ref = doc(collection(db, 'families'))
-  const uid = await allocateUid(organizationId, orgCode, 'familyFile')
+  const uid = await allocateUid('familyFile', organizationId)
   const data: FamilyDoc = {
     uid,
     orgAccessList: [organizationId],
@@ -167,12 +166,11 @@ export interface AddFosterPersonInput {
 export async function addFosterPersonToFamily(
   familyId: string,
   organizationId: string,
-  orgCode: string,
   input: AddFosterPersonInput,
   createdByImportJobRef?: string,
 ): Promise<{ docId: string; fosterPerson: FosterPersonDoc }> {
   const ref = doc(collection(db, 'fosterPersons'))
-  const uid = await allocateUid(organizationId, orgCode, 'fosterPerson')
+  const uid = await allocateUid('fosterPerson', organizationId)
   const data: FosterPersonDoc = {
     uid,
     orgAccessList: [organizationId],
@@ -237,12 +235,11 @@ export interface AddChildInput {
 export async function addChildToFamily(
   familyId: string,
   organizationId: string,
-  orgCode: string,
   input: AddChildInput,
   createdByImportJobRef?: string,
 ): Promise<{ docId: string; child: ChildDoc }> {
   const ref = doc(collection(db, 'children'))
-  const uid = await allocateUid(organizationId, orgCode, 'child')
+  const uid = await allocateUid('child', organizationId)
   const data: ChildDoc = {
     uid,
     familyId,

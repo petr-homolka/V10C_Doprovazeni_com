@@ -381,7 +381,6 @@ export async function confirmImportJob(organizationId: string, jobId: string): P
  */
 export async function commitImportJob(
   organizationId: string,
-  orgCode: string,
   jobId: string,
 ): Promise<ImportManifest> {
   const jobRef = doc(db, 'organizations', organizationId, 'importJobs', jobId)
@@ -412,7 +411,7 @@ export async function commitImportJob(
 
   for (const [familyRef, groupRecords] of groupsByFamilyRef) {
     try {
-      const { docId: familyDocId } = await createFamily(organizationId, orgCode, undefined, jobId)
+      const { docId: familyDocId } = await createFamily(organizationId, undefined, jobId)
       manifest.familyDocIds.push(familyDocId)
 
       for (const record of groupRecords) {
@@ -421,7 +420,6 @@ export async function commitImportJob(
           const { docId } = await addFosterPersonToFamily(
             familyDocId,
             organizationId,
-            orgCode,
             { firstName: fields.firstName, lastName: fields.lastName, phone: fields.phone, email: fields.email },
             jobId,
           )
@@ -431,7 +429,6 @@ export async function commitImportJob(
           const { docId } = await addChildToFamily(
             familyDocId,
             organizationId,
-            orgCode,
             { firstName: fields.firstName, lastName: fields.lastName, birthNumber: fields.birthNumber },
             jobId,
           )
@@ -441,7 +438,6 @@ export async function commitImportJob(
           await createAgreement({
             familyDocId,
             organizationId,
-            orgCode,
             careType: fields.careType,
             validFrom: fields.validFrom,
             // Import má vlastní doložitelnou stopu (`importJobs` + staging

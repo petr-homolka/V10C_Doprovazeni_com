@@ -109,7 +109,7 @@ export default function ChildListPage() {
       await runSave(async () => {
         const org = await getOrganization(organizationId)
         if (!org) throw new Error('Organizace nenalezena.')
-        await addChildToFamily(newFamilyDocId, organizationId, org.orgCode, {
+        await addChildToFamily(newFamilyDocId, organizationId, {
           firstName: newFirstName.trim(),
           lastName: newLastName.trim(),
           birthNumber: newBirthNumber.trim(),

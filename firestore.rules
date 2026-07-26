@@ -628,6 +628,34 @@ service cloud.firestore {
       allow delete: if isSuperadmin();
     }
 
+    // ---- uidRegistry/{uid} — VŠECHNA VYDANÁ ČÍSLA ----------------------
+    //
+    // Od 26. 7. je UID NÁHODNÉ číslo bez struktury (viz lib/uidAllocator.ts).
+    // Tahle kolekce je jediné místo, kde je vidět, že číslo už je vydané —
+    // a proto se do ní zapisuje TRANSAKCÍ při každém přidělení.
+    //
+    // Obsah: UID, typ entity, kdy a kým vydáno. ŽÁDNÉ osobní údaje a nic
+    // o obsahu té entity — jen „tohle číslo je obsazené a je to dítě".
+    //
+    // Čte každý zaměstnanec (alokátor musí ověřit srážku). `list` zakázaný:
+    // vylistovaný rejstřík by prozradil, kolik čeho v systému je.
+    //
+    // PŘEPSAT ANI SMAZAT NEJDE NIKOMU, ani superadminovi. Uvolněné číslo by
+    // šlo přidělit podruhé a dva různí lidé by měli totéž UID — přesně to,
+    // co má rejstřík vyloučit. Kdyby to bylo někdy opravdu potřeba, řeší se
+    // to migrací, ne pravidlem.
+
+    match /uidRegistry/{uid} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create: if isStaff() &&
+        request.resource.data.uid == uid &&
+        request.resource.data.entityType is string;
+
+      allow update, delete: if false;
+    }
+
     match /personIndex/{hash} {
       allow get: if isSuperadmin() || isStaff();
       allow list: if false;

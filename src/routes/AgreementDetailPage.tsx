@@ -181,7 +181,6 @@ export default function AgreementDetailPage() {
         await createAgreement({
           familyDocId: docId,
           organizationId,
-          orgCode: org.orgCode,
           careType,
           assignedTo: assignedTo || undefined,
           validFrom: new Date(validFrom).toISOString(),

@@ -102,7 +102,6 @@ export async function generateOspodReport(
   const { docId } = await createDocument({
     familyDocId: input.familyDocId,
     organizationId: input.organizationId,
-    orgCode: input.orgCode,
     createdByUid: input.createdByUid,
     title: input.title,
     body,
