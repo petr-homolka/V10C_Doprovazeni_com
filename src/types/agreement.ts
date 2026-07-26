@@ -1,3 +1,5 @@
+import type { DataClassed } from '@/types/dataClass'
+
 /**
  * families/{familyId}/agreements/{agreementId} — DOHODA, TT=90, ZADANI
  * §3/§4.1/§4.5/M2. Smluvní vztah mezi JEDNOU organizací a rodinou —
@@ -38,7 +40,7 @@ export const EDUCATION_HOURS_TARGET: Record<CareType, number> = {
 export const DEFAULT_VISIT_INTERVAL_DAYS = 60 // "min. 1x za 2 měsíce"
 export const DEFAULT_NOTE_DEADLINE_HOURS = 72
 
-export interface AgreementDoc {
+export interface AgreementDoc extends DataClassed {
   uid: string
   familyId: string
   organizationId: string
@@ -53,6 +55,34 @@ export interface AgreementDoc {
   createdAt: string
   /** Viz FamilyDoc stejnojmenné pole — import rollback (§5.5, M1.5). */
   createdByImportJobRef?: string
+
+  /**
+   * ARCHIVACE SEGMENTU — zadání 2026-07-25.
+   *
+   * Archivovaný spis se organizaci nezobrazuje v seznamech, nepracuje se
+   * s ním a fulltext ho nenabízí; dostat se k němu jde jen vědomě, přes
+   * sekci Archivováno. NENÍ to mazání ani zkrácení lhůty — data zůstávají
+   * nedotčená, jen uklizená z cesty.
+   *
+   * Proč to sedí TADY a ne na `families/{id}`: Spis je sdílená entita
+   * napříč organizacemi. Kdyby archivaci nesl Spis, jedna organizace by
+   * schovala rodinu i té druhé, která s ní má živou Dohodu. Dohoda je
+   * naopak přesně „vztah TÉHLE organizace k tomuhle spisu" (má
+   * deterministické ID = organizationId), takže archivace je automaticky
+   * per-organizace, bez nové kolekce a bez nových pravidel.
+   */
+  archivedAt?: string | null
+  archivedBy?: string | null
+
+  /**
+   * Kdy se má vedení zeptat, co se spisem dál. Nastavuje se při ukončení
+   * Dohody na `validTo` + 30 let (`lib/retentionPolicy.ts`). Ukládá se
+   * jako HODNOTA, ne dopočet: kdyby se lhůta v budoucnu změnila, u už
+   * ukončených Dohod má platit ta, která platila při ukončení.
+   *
+   * Uplynutí NIC nespouští automaticky — jen se objeví výzva.
+   */
+  retentionReviewDueAt?: string | null
   /** Viz FamilyDoc stejnojmenné pole — Cloud Storage avatar URL (M3). */
   avatarUrl?: string | null
   /**

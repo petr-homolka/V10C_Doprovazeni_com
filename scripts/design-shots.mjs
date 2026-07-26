@@ -72,6 +72,7 @@ const SCREENS = [
   { name: 'nastaveni-kalendar', route: '/nastaveni/kalendar' },
   { name: 'moje-pestoun', route: '/moje' },
   { name: 'nastaveni-audit', route: '/nastaveni/audit' },
+  { name: 'archiv', route: '/archiv' },
   { name: 'nastaveni-retence', route: '/nastaveni/retence' },
 ]
 

@@ -29,6 +29,7 @@ const NotificationsSettingsPage = lazy(() => import('@/routes/settings/Notificat
 const CalendarSettingsPage = lazy(() => import('@/routes/settings/CalendarSettingsPage'))
 const ImportSettingsPage = lazy(() => import('@/routes/settings/ImportSettingsPage'))
 const BackupSettingsPage = lazy(() => import('@/routes/settings/BackupSettingsPage'))
+const ArchivePage = lazy(() => import('@/routes/ArchivePage'))
 const AuditLogPage = lazy(() => import('@/routes/settings/AuditLogPage'))
 const RetentionSettingsPage = lazy(() => import('@/routes/settings/RetentionSettingsPage'))
 const OrganizationSettingsPage = lazy(() => import('@/routes/settings/OrganizationSettingsPage'))
@@ -144,6 +145,7 @@ export default function App() {
                 <Route path="/nastaveni/kalendar" element={<CalendarSettingsPage />} />
                 <Route path="/nastaveni/import" element={<ImportSettingsPage />} />
                 <Route path="/nastaveni/zalohy" element={<BackupSettingsPage />} />
+                <Route path="/archiv" element={<ArchivePage />} />
                 <Route path="/nastaveni/audit" element={<AuditLogPage />} />
                 <Route path="/nastaveni/retence" element={<RetentionSettingsPage />} />
                 <Route path="/nastaveni/organizace" element={<OrganizationSettingsPage />} />

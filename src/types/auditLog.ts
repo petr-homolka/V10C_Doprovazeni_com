@@ -35,6 +35,8 @@ export const AUDIT_ACTIONS = {
   agreement_end_scheduled: 'Naplánováno ukončení Dohody',
   agreement_end_cancelled: 'Zrušeno naplánované ukončení Dohody',
   spis_access_granted: 'Spis zpřístupněn organizaci',
+  segment_archived: 'Spis přesunut do archivu',
+  segment_unarchived: 'Spis vrácen z archivu',
 
   // ---- Kdo dostal přístup k údajům ----------------------------------
   external_grant_requested: 'Požádáno o přístup pro externistu',
@@ -76,6 +78,8 @@ export const AUDIT_ACTION_CATEGORY: Record<AuditAction, AuditCategory> = {
   agreement_end_scheduled: 'transfer',
   agreement_end_cancelled: 'transfer',
   spis_access_granted: 'transfer',
+  segment_archived: 'transfer',
+  segment_unarchived: 'transfer',
   external_grant_requested: 'access',
   external_grant_approved: 'access',
   external_grant_rejected: 'access',

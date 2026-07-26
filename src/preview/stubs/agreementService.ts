@@ -2,6 +2,10 @@ import { agreementsByFamilyId, staff } from '../fixtures'
 export const agreementRef = () => ({}) as never
 export const getActiveAgreement = async (familyDocId: string) => agreementsByFamilyId[familyDocId] ?? null
 export const scheduleAgreementEnd = async () => {}
+export const archiveSegment = async () => {}
+export const unarchiveSegment = async () => {}
+export const listSegmentsForOrg = async () => ({})
+export const listArchivedFamilyIds = async () => new Set<string>()
 export const scheduleAgreementEndAudited = async () => {}
 export const cancelPendingAgreementEndAudited = async () => {}
 export const cancelPendingAgreementEnd = async () => {}

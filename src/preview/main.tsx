@@ -43,6 +43,7 @@ import AppearanceSettingsPage from '@/routes/settings/AppearanceSettingsPage'
 import CalendarSettingsPage from '@/routes/settings/CalendarSettingsPage'
 import MojeDashboardPage from '@/routes/moje/MojeDashboardPage'
 import AuditLogPage from '@/routes/settings/AuditLogPage'
+import ArchivePage from '@/routes/ArchivePage'
 import RetentionSettingsPage from '@/routes/settings/RetentionSettingsPage'
 import MobileHomePage from '@/routes/mobile/MobileHomePage'
 import MobileFamiliesPage from '@/routes/mobile/MobileFamiliesPage'
@@ -184,6 +185,7 @@ function PreviewApp() {
           <Route path="/nastaveni/vzhled" element={<AppearanceSettingsPage />} />
           <Route path="/nastaveni/kalendar" element={<CalendarSettingsPage />} />
           <Route path="/moje" element={<MojeDashboardPage />} />
+          <Route path="/archiv" element={<ArchivePage />} />
           <Route path="/nastaveni/audit" element={<AuditLogPage />} />
           <Route path="/nastaveni/retence" element={<RetentionSettingsPage />} />
         </Routes>

@@ -13,6 +13,8 @@ import {
 import { db } from '@/lib/firebase'
 import { actorFields, recordAudit } from '@/services/auditLogService'
 import type { AuditActor } from '@/types/auditLog'
+import { retentionReviewDueDate } from '@/lib/retentionPolicy'
+import { isTestData } from '@/types/dataClass'
 import { allocateUid } from '@/lib/counters'
 import { getOrganization, getPlatformDefaults } from '@/services/organizationService'
 import { getStaffMember, listStaff } from '@/services/staffService'
@@ -68,11 +70,68 @@ export async function getActiveAgreement(
   if (!snap.exists()) return null
   const data = snap.data() as AgreementDoc
   if (data.status === 'active' && data.pendingEndDate && new Date(data.pendingEndDate) <= new Date()) {
-    const applied = { status: 'ended' as const, validTo: data.pendingEndDate, pendingEndDate: null }
+    const applied = {
+      status: 'ended' as const,
+      validTo: data.pendingEndDate,
+      pendingEndDate: null,
+      // Skončením Dohody se rozbíhá třicetiletá archivační doba. Termín se
+      // ZAPISUJE, ne dopočítává při každém čtení: kdyby se lhůta v zákoně
+      // změnila, u téhle Dohody má platit ta, která platila při ukončení.
+      // Testovacích dat se lhůty netýkají (zadání 2026-07-25).
+      ...(isTestData(data) ? {} : { retentionReviewDueAt: retentionReviewDueDate(data.pendingEndDate) }),
+    }
     await updateDoc(ref, applied)
     return { ...data, ...applied }
   }
   return data
+}
+
+/**
+ * ARCHIVACE SEGMENTU — spis zmizí organizaci z cesty, ale nikam se
+ * neztratí. Viz `AgreementDoc.archivedAt` pro to, proč sedí na Dohodě
+ * a ne na Spisu.
+ *
+ * Archivovat jde jen UKONČENOU Dohodu. Archivovat rodinu, se kterou
+ * organizace pořád pracuje, nedává smysl a byla by to nejrychlejší cesta,
+ * jak si omylem schovat živý případ.
+ */
+export async function archiveSegment(
+  familyDocId: string,
+  organizationId: string,
+  audit: { actor: AuditActor; familyLabel: string },
+): Promise<void> {
+  const agreement = await getActiveAgreement(familyDocId, organizationId)
+  if (!agreement) throw new Error('Dohoda neexistuje.')
+  if (agreement.status !== 'ended') {
+    throw new Error('Archivovat lze jen spis s ukončenou Dohodou.')
+  }
+  const now = new Date().toISOString()
+  await updateDoc(agreementRef(familyDocId, organizationId), {
+    archivedAt: now,
+    archivedBy: audit.actor.uid,
+  })
+  await recordAudit({
+    organizationId,
+    action: 'segment_archived',
+    ...actorFields(audit.actor),
+    subject: { kind: 'family', id: familyDocId, label: audit.familyLabel },
+    detail: 'Spis přesunut do archivu. Data zůstávají beze změny.',
+  })
+}
+
+/** Vrácení z archivu do běžného provozu. */
+export async function unarchiveSegment(
+  familyDocId: string,
+  organizationId: string,
+  audit: { actor: AuditActor; familyLabel: string },
+): Promise<void> {
+  await updateDoc(agreementRef(familyDocId, organizationId), { archivedAt: null, archivedBy: null })
+  await recordAudit({
+    organizationId,
+    action: 'segment_unarchived',
+    ...actorFields(audit.actor),
+    subject: { kind: 'family', id: familyDocId, label: audit.familyLabel },
+  })
 }
 
 /** Naplánuje budoucí ukončení Dohody — `status` zůstává `'active'` po
@@ -355,6 +414,34 @@ export async function listOverCapacityKos(organizationId: string): Promise<OverC
  * podle KO/termínu/stavu pro VŠECHNY, ne jen pro overdue). Spisy bez
  * aktivní Dohody týhle organizace (jen historická návaznost, §4.5) v
  * mapě chybí — volající to čte jako "žádná KO, žádný termín ke sledování". */
+/**
+ * VŠECHNY segmenty organizace (aktivní i ukončené, archivované i ne).
+ * `listActiveAgreementsForOrg` níž filtruje na `status: 'active'` a
+ * archivované tím pádem nikdy nevrátí — jenže právě ty potřebujeme umět
+ * najít, abychom je mohli ze seznamů a z hledání VYNECHAT.
+ */
+export async function listSegmentsForOrg(organizationId: string): Promise<Record<string, AgreementDoc>> {
+  const snap = await getDocs(
+    query(collectionGroup(db, 'agreements'), where('organizationId', '==', organizationId)),
+  )
+  const byFamilyId: Record<string, AgreementDoc> = {}
+  for (const d of snap.docs) {
+    const agreement = d.data() as AgreementDoc
+    byFamilyId[agreement.familyId] = agreement
+  }
+  return byFamilyId
+}
+
+/**
+ * Spisy, které si organizace uklidila do archivu. Vrací množinu, protože
+ * jediná otázka, kterou o nich seznamy a hledání kladou, zní „je tenhle
+ * familyId archivovaný?".
+ */
+export async function listArchivedFamilyIds(organizationId: string): Promise<Set<string>> {
+  const segments = await listSegmentsForOrg(organizationId)
+  return new Set(Object.values(segments).filter((a) => !!a.archivedAt).map((a) => a.familyId))
+}
+
 export async function listActiveAgreementsForOrg(organizationId: string): Promise<Record<string, AgreementDoc>> {
   const snap = await getDocs(
     query(

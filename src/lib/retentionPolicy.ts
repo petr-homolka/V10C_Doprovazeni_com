@@ -52,6 +52,24 @@ export type RetentionAction =
   | 'delete'
   /** Záznam zůstane, ale osobní údaje se z něj vymažou (statistika přežije). */
   | 'anonymize'
+  /**
+   * Lhůta uplyne a systém se ZEPTÁ. Nic nemaže — vedení rozhodne.
+   * U dokumentace o dítěti je tohle jediná přípustná akce: třicetiletá
+   * lhůta je MINIMUM, po kterém teprve začíná úvaha, ne rozsudek smrti
+   * nad spisem.
+   */
+  | 'review'
+
+/**
+ * MINIMÁLNÍ archivační doba dokumentace o dítěti v náhradní rodinné péči.
+ * Zadání Petr Homolka, 2026-07-25: 30 let, a po jejich uplynutí se systém
+ * ZEPTÁ (rozhoduje vedení), nemaže sám.
+ *
+ * Jedno číslo na jednom místě — mění se tady a projeví se v politice,
+ * v termínu revize u každé ukončené Dohody i v textech na obrazovce.
+ */
+export const RETENTION_CHILD_CARE_YEARS = 30
+export const RETENTION_CHILD_CARE_MONTHS = RETENTION_CHILD_CARE_YEARS * 12
 
 export interface RetentionRule {
   key: string
@@ -170,14 +188,16 @@ export const RETENTION_RULES: RetentionRule[] = [
     what: 'Zápisy, dokumenty, zprávy pro OSPOD a evidence u rodiny, se kterou už organizace Dohodu nemá.',
     path: 'families/{familyId}/** (segment ukončené Dohody)',
     anchor: 'agreementEnded',
-    keepMonths: null,
-    action: 'delete',
+    keepMonths: RETENTION_CHILD_CARE_MONTHS,
+    action: 'review',
     basis:
-      'TOHLE JE TA HLAVNÍ PRÁVNÍ OTÁZKA a schválně tu na ni není odpověď. Délku určuje ' +
-      'skartační řád organizace a archivační povinnosti, ne aplikace. Do rozhodnutí ' +
-      'systém drží všechno — a platí, že organizace svůj segment vidí i po skončení ' +
-      'Dohody (§4.5), takže smazáním by přišla o vlastní historii.',
-    status: 'needs_decision',
+      'Třicet let od skončení Dohody je MINIMÁLNÍ doba, ne lhůta ke smazání — proto ' +
+      'akce „zeptat se", ne „smazat". Po uplynutí systém vyzve vedení k rozhodnutí a ' +
+      'do té doby se nesmaže nic. Během těch třiceti let si organizace volí, jestli ' +
+      'spis drží v běžném provozu, nebo ho archivuje (zneviditelní — viz ' +
+      '`archiveSegment` v agreementService.ts). Archivace NENÍ mazání ani zkrácení ' +
+      'lhůty, jen uklizení z cesty. Netýká se testovacích dat (`dataClass: test`).',
+    status: 'active',
   },
   {
     key: 'audit_log',
@@ -216,6 +236,23 @@ export function isPastRetention(
   const cutoff = retentionCutoff(rule, today)
   if (!cutoff || !anchorDate) return false
   return anchorDate < cutoff
+}
+
+/**
+ * Kdy se má vedení zeptat, co dál se spisem. Počítá se od skončení Dohody
+ * a ukládá se na Dohodu (`retentionReviewDueAt`), aby to šlo číst bez
+ * dopočítávání a aby zůstalo zafixované i kdyby se lhůta v budoucnu
+ * změnila — u záznamu má platit ta, která platila při ukončení.
+ */
+export function retentionReviewDueDate(agreementEndedAt: string): string {
+  const due = new Date(agreementEndedAt)
+  due.setFullYear(due.getFullYear() + RETENTION_CHILD_CARE_YEARS)
+  return due.toISOString()
+}
+
+/** Je termín revize už za námi? */
+export function isRetentionReviewDue(reviewDueAt: string | null | undefined, today: Date = new Date()): boolean {
+  return !!reviewDueAt && reviewDueAt <= today.toISOString()
 }
 
 export interface RetentionSummary {

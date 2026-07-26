@@ -18,7 +18,10 @@ import { computeEffectiveAgreementDurationMonths, addMonthsToDateValue } from '@
 import { DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS } from '@/types/platformDefaults'
 import { listStaff } from '@/services/staffService'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
+import { RETENTION_CHILD_CARE_YEARS } from '@/lib/retentionPolicy'
 import {
+  archiveSegment,
+  unarchiveSegment,
   cancelPendingAgreementEnd,
   checkKoCapacity,
   createAgreement,
@@ -151,6 +154,19 @@ export default function AgreementDetailPage() {
     // sama neupraví "Platí do" — pak už predikci dál nepřepisujeme, i
     // když se "Platí od" ještě jednou změní (respektuje ruční volbu).
     if (!validToTouched) setValidTo(addMonthsToDateValue(next, durationMonths))
+  }
+
+  async function handleArchive(archive: boolean) {
+    if (!docId || !organizationId || !userDoc) return
+    setError(null)
+    const audit = { actor: auditActor(userDoc), familyLabel: familyName || `Spis ${familyUid ?? ''}` }
+    try {
+      if (archive) await archiveSegment(docId, organizationId, audit)
+      else await unarchiveSegment(docId, organizationId, audit)
+      setAgreement(await getActiveAgreement(docId, organizationId))
+    } catch {
+      setError(archive ? 'Archivaci se nepodařilo provést.' : 'Vrácení z archivu se nezdařilo.')
+    }
   }
 
   async function handleCreateAgreement(e: FormEvent) {
@@ -404,6 +420,47 @@ export default function AgreementDetailPage() {
           )}
         </div>
       </SpisSection>
+
+      {agreement?.status === 'ended' && (
+        <SpisSection
+          id="archivace"
+          title="Archivace"
+          description={`Uklidit spis z běžného provozu. Data zůstávají — mažou se až po rozhodnutí vedení, nejdřív po ${RETENTION_CHILD_CARE_YEARS} letech.`}
+          padded
+        >
+          <div className="max-w-[560px]">
+            {agreement.archivedAt ? (
+              <>
+                <p className="text-sm text-text-primary">
+                  Spis je v archivu od {new Date(agreement.archivedAt).toLocaleDateString('cs-CZ')}.
+                </p>
+                <p className="mt-1 text-sm text-text-secondary">
+                  Nezobrazuje se v seznamu rodin ani ve výsledcích hledání. Najdete ho v sekci Archivováno.
+                </p>
+                <Button className="mt-3" variant="secondary" size="sm" onClick={() => handleArchive(false)}>
+                  Vrátit do provozu
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-text-secondary">
+                  Archivovaný spis zmizí ze seznamů i z fulltextu — dostanete se k němu jen přes sekci
+                  Archivováno. Nic se nemaže a archivaci lze kdykoli vrátit.
+                </p>
+                {agreement.retentionReviewDueAt && (
+                  <p className="mt-1 text-sm text-text-tertiary">
+                    Vedení se bude o dalším osudu spisu rozhodovat po{' '}
+                    {new Date(agreement.retentionReviewDueAt).toLocaleDateString('cs-CZ')}.
+                  </p>
+                )}
+                <Button className="mt-3" variant="secondary" size="sm" onClick={() => handleArchive(true)}>
+                  Archivovat spis
+                </Button>
+              </>
+            )}
+          </div>
+        </SpisSection>
+      )}
     </AppShell>
   )
 }

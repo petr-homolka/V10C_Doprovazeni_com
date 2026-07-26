@@ -47,8 +47,22 @@ function toFields(obj) {
   for (const [k, v] of Object.entries(obj)) { if (v !== undefined) fields[k] = toValue(v) }
   return fields
 }
+/**
+ * Každý dokument ze seedu nese `dataClass: 'test'`. Bez toho by po pár
+ * letech nešlo poznat, co je zkušební a co ostrý spis — a retenční
+ * i archivační pravidla (30 let, viz src/lib/retentionPolicy.ts) platí
+ * VÝHRADNĚ pro ostrá data. Chybějící pole se čte jako 'live', takže
+ * neoznačený záznam je vždycky ten chráněný.
+ */
+const DATA_CLASS_TEST = 'test'
+
 function writeDoc(path, data) {
-  return { update: { name: `projects/${PROJECT_ID}/databases/(default)/documents/${path}`, fields: toFields(data) } }
+  return {
+    update: {
+      name: `projects/${PROJECT_ID}/databases/(default)/documents/${path}`,
+      fields: toFields({ ...data, dataClass: DATA_CLASS_TEST }),
+    },
+  }
 }
 // merge (only listed fields) — safe backfill onto pre-existing docs
 function mergeDoc(path, data) {

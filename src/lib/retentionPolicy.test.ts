@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  RETENTION_CHILD_CARE_YEARS,
   RETENTION_RULES,
+  isRetentionReviewDue,
+  retentionReviewDueDate,
   describeRetention,
   isPastRetention,
   retentionCutoff,
@@ -83,6 +86,43 @@ describe('skutečná politika', () => {
   })
 })
 
+/**
+ * Zadání 2026-07-25: 30 let je MINIMÁLNÍ doba uchování, po které se systém
+ * ZEPTÁ — ne lhůta, po které maže. Tyhle testy hlídají přesně ten rozdíl,
+ * protože záměna „review" za „delete" by znamenala automatické mazání
+ * spisů dětí.
+ */
+describe('archivační doba dokumentace o dítěti', () => {
+  it('je 30 let', () => {
+    expect(RETENTION_CHILD_CARE_YEARS).toBe(30)
+  })
+
+  it('pravidlo pro ukončený spis se po lhůtě PTÁ, nemaže', () => {
+    const rule = RETENTION_RULES.find((r) => r.key === 'closed_case_file')
+    expect(rule?.action).toBe('review')
+    expect(rule?.keepMonths).toBe(30 * 12)
+    expect(rule?.status).toBe('active')
+  })
+
+  it('žádné pravidlo nemaže spis dítěte automaticky', () => {
+    const rule = RETENTION_RULES.find((r) => r.key === 'closed_case_file')
+    expect(rule?.action).not.toBe('delete')
+    expect(rule?.action).not.toBe('anonymize')
+  })
+
+  it('termín revize je konec Dohody + 30 let', () => {
+    expect(retentionReviewDueDate('2026-07-25T00:00:00.000Z').slice(0, 10)).toBe('2056-07-25')
+  })
+
+  it('revize se hlásí až po termínu', () => {
+    const today = new Date('2026-07-25T12:00:00.000Z')
+    expect(isRetentionReviewDue('2026-07-24T00:00:00.000Z', today)).toBe(true)
+    expect(isRetentionReviewDue('2056-07-25T00:00:00.000Z', today)).toBe(false)
+    expect(isRetentionReviewDue(null, today)).toBe(false)
+    expect(isRetentionReviewDue(undefined, today)).toBe(false)
+  })
+})
+
 describe('describeRetention', () => {
   it('měsíce', () => {
     expect(describeRetention(activeRule)).toBe('3 měsíce od vzniku záznamu')
@@ -91,6 +131,12 @@ describe('describeRetention', () => {
   it('roky', () => {
     expect(describeRetention({ ...activeRule, keepMonths: 24, anchor: 'agreementEnded' })).toBe(
       '2 roky od skončení Dohody',
+    )
+  })
+
+  it('třicet let se řekne jako „30 let"', () => {
+    expect(describeRetention({ ...activeRule, keepMonths: 360, anchor: 'agreementEnded' })).toBe(
+      '30 let od skončení Dohody',
     )
   })
 

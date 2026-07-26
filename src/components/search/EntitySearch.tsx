@@ -6,6 +6,7 @@ import { searchEntities, type SearchResult, type SearchResultKind } from '@/lib/
 import { personProfilePath } from '@/components/ui/person-link'
 import { listFamiliesWithDocIds, listChildrenForOrg, listFosterPersonsForOrg } from '@/services/familyService'
 import { listStaff } from '@/services/staffService'
+import { listArchivedFamilyIds } from '@/services/agreementService'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -52,6 +53,7 @@ export function EntitySearch({
   organizationId,
   onNavigated,
   autoFocus = true,
+  includeArchived = false,
 }: {
   data?: SearchDataset
   /** Když není `data`, hledání si je dotáhne samo pro tuhle organizaci. */
@@ -59,10 +61,19 @@ export function EntitySearch({
   /** Zavolá se po odskoku na profil — volající tím zavře panel/modál. */
   onNavigated?: () => void
   autoFocus?: boolean
+  /**
+   * Archivované spisy se ve výsledcích NEOBJEVUJÍ — to je celý smysl
+   * archivu (zadání 2026-07-25: „fulltext výsledky z archivovaného
+   * nenabízí"). Dostat se k nim jde jedině tak, že to člověk výslovně
+   * chce, a to projeví tím, že hledá v sekci Archivováno — ta si tuhle
+   * komponentu pustí s `includeArchived`.
+   */
+  includeArchived?: boolean
 }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [loaded, setLoaded] = useState<SearchDataset | null>(null)
+  const [archivedFamilyIds, setArchivedFamilyIds] = useState<Set<string>>(() => new Set())
   const [loadFailed, setLoadFailed] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const listRef = useRef<HTMLDivElement>(null)
@@ -77,15 +88,39 @@ export function EntitySearch({
       listFosterPersonsForOrg(organizationId),
       listChildrenForOrg(organizationId),
       listStaff(organizationId),
+      includeArchived ? Promise.resolve(new Set<string>()) : listArchivedFamilyIds(organizationId),
     ])
-      .then(([families, fosterPersons, children, staff]) => {
-        if (!cancelled) setLoaded({ families, fosterPersons, children, staff })
+      .then(([families, fosterPersons, children, staff, archived]) => {
+        if (cancelled) return
+        setArchivedFamilyIds(archived)
+        setLoaded({ families, fosterPersons, children, staff })
       })
       .catch(() => { if (!cancelled) setLoadFailed(true) })
     return () => { cancelled = true }
-  }, [selfLoading, organizationId])
+  }, [selfLoading, organizationId, includeArchived])
 
-  const dataset = data ?? loaded ?? EMPTY_DATASET
+  const rawDataset = data ?? loaded ?? EMPTY_DATASET
+
+  /**
+   * Odfiltrování archivovaných se dělá až tady, nad hotovou datovou sadou —
+   * ne v dotazu. Důvod: rodina, pěstoun i dítě se filtrují podle TÉHOŽ
+   * `familyId`, takže jedna množina stačí na všechny tři kolekce a nikde
+   * nevznikne stav „rodina schovaná, ale její pěstoun pořád ve výsledcích".
+   */
+  const dataset = useMemo(() => {
+    if (includeArchived || archivedFamilyIds.size === 0) return rawDataset
+    return {
+      ...rawDataset,
+      families: rawDataset.families.filter(({ docId }) => !archivedFamilyIds.has(docId)),
+      fosterPersons: rawDataset.fosterPersons.filter(
+        ({ fosterPerson }) => !fosterPerson.familyId || !archivedFamilyIds.has(fosterPerson.familyId),
+      ),
+      children: rawDataset.children.filter(
+        ({ child }) => !child.familyId || !archivedFamilyIds.has(child.familyId),
+      ),
+    }
+  }, [rawDataset, archivedFamilyIds, includeArchived])
+
   const results = useMemo(() => searchEntities(query, dataset), [query, dataset])
 
   // Po každé změně dotazu se výběr vrací na první výsledek — jinak by Enter

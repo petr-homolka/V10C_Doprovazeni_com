@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
 import { PageBody, PageHead } from '@/components/spis/PageBody'
 import { SidePanel } from '@/components/ui/side-panel'
@@ -23,7 +23,11 @@ import {
   listFamiliesWithDocIds,
   listFosterPersonsByRefs,
 } from '@/services/familyService'
-import { listActiveAgreementsForOrg, updateAgreementAssignedTo } from '@/services/agreementService'
+import {
+  listActiveAgreementsForOrg,
+  listArchivedFamilyIds,
+  updateAgreementAssignedTo,
+} from '@/services/agreementService'
 import { listStaff } from '@/services/staffService'
 import { listStarredFamilyIds, setFamilyStarred } from '@/services/familyStarService'
 import { createNoteTimelineEntry } from '@/services/timelineService'
@@ -93,6 +97,7 @@ export default function FamilyListPage() {
   const navigate = useNavigate()
   const { userDoc } = useAuth()
   const [families, setFamilies] = useState<Array<{ docId: string; family: FamilyDoc }> | null>(null)
+  const [archivedCount, setArchivedCount] = useState(0)
   const [fosterNamesById, setFosterNamesById] = useState<Record<string, string>>({})
   const [agreementsByFamilyId, setAgreementsByFamilyId] = useState<Record<string, AgreementDoc>>({})
   const [staff, setStaff] = useState<UserDoc[]>([])
@@ -131,14 +136,19 @@ export default function FamilyListPage() {
     setError(null)
     try {
       const familyList = await listFamiliesWithDocIds(organizationId)
-      setFamilies(familyList)
       const allFosterRefs = [...new Set(familyList.flatMap(({ family }) => family.fosterPersonRefs))]
-      const [fosters, agreements, staffList, starred] = await Promise.all([
+      const [fosters, agreements, staffList, starred, archived] = await Promise.all([
         listFosterPersonsByRefs(allFosterRefs),
         listActiveAgreementsForOrg(organizationId),
         listStaff(organizationId),
         listStarredFamilyIds(userDoc.uid),
+        listArchivedFamilyIds(organizationId),
       ])
+      // Archivované spisy se v běžném seznamu neobjeví — jsou v sekci
+      // Archivováno. Filtruje se tady, ne až v `rows`, aby na nich
+      // nestavěly ani počty a seskupení.
+      setArchivedCount(familyList.filter(({ docId }) => archived.has(docId)).length)
+      setFamilies(familyList.filter(({ docId }) => !archived.has(docId)))
       setFosterNamesById(
         Object.fromEntries(fosters.map(({ docId, fosterPerson }) => [docId, `${fosterPerson.firstName} ${fosterPerson.lastName}`])),
       )
@@ -600,6 +610,15 @@ export default function FamilyListPage() {
                   { label: 'Řadit', value: sortBy, options: SORT_OPTIONS, onChange: (v) => setSortBy(v as SortBy) },
                 ]}
               />
+              {/* Archiv se nepřipomíná sám od sebe — jen tichým počtem.
+                  Kdyby byl vedle „Rodiny" jako záložka, tlačil by se do
+                  pozornosti, a to je přesně to, čemu se archivací
+                  vyhýbáme. */}
+              {archivedCount > 0 && (
+                <Link to="/archiv" className="text-sm text-text-tertiary hover:text-text-secondary">
+                  Archivováno: {archivedCount}
+                </Link>
+              )}
               {selected.size > 0 && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-text-secondary">Označeno: {selected.size}</span>
