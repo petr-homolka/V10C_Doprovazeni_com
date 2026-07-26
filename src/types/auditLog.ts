@@ -39,6 +39,7 @@ export const AUDIT_ACTIONS = {
   segment_unarchived: 'Spis vrácen z archivu',
   person_lookup: 'Dotaz, zda osobu už vedeme',
   foster_released: 'Pěstoun uvolněn pro jinou organizaci',
+  account_auto_blocked: 'Účet automaticky zablokován',
 
   // ---- Kdo dostal přístup k údajům ----------------------------------
   external_grant_requested: 'Požádáno o přístup pro externistu',
@@ -84,6 +85,7 @@ export const AUDIT_ACTION_CATEGORY: Record<AuditAction, AuditCategory> = {
   segment_unarchived: 'transfer',
   person_lookup: 'transfer',
   foster_released: 'transfer',
+  account_auto_blocked: 'access',
   external_grant_requested: 'access',
   external_grant_approved: 'access',
   external_grant_rejected: 'access',

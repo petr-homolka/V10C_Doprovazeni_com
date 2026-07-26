@@ -6,7 +6,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { collection, deleteDoc, doc, getDoc, getDocs, setDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore'
 
 /**
  * orgDirectory a personIndex — dvě kolekce, na kterých stojí předání
@@ -76,6 +76,10 @@ beforeEach(async () => {
     })
     await setDoc(doc(db, 'users', 'foster-a'), {
       ...base, uid: 'foster-a', role: 'pestoun', organizationId: ORG_A, displayName: 'Pěstoun', email: 'p@example.com',
+    })
+    await setDoc(doc(db, 'users', 'ko-blocked'), {
+      ...base, uid: 'ko-blocked', role: 'klicova_osoba', organizationId: ORG_A,
+      displayName: 'Zablokovaná KO', email: 'z@example.com', disabledAt: '2026-07-26T10:00:00.000Z',
     })
   })
 })
@@ -221,5 +225,77 @@ describe('uidHolderCard — ověřovací karta k UID', () => {
     await seedHolder()
     await assertFails(deleteDoc(doc(testEnv.authenticatedContext('ko-a').firestore(), 'uidHolderCard', UID)))
     await assertSucceeds(deleteDoc(doc(testEnv.authenticatedContext('super').firestore(), 'uidHolderCard', UID)))
+  })
+})
+
+/**
+ * ZABLOKOVANÝ ÚČET. Do 26. 7. se `disabledAt` sice zapisovalo a zobrazovalo,
+ * ale pravidla ho nečetla — zablokovaný člověk jen zmizel ze seznamu a jeho
+ * přihlášení mělo dál plný přístup. Tyhle testy hlídají, aby se to nevrátilo.
+ */
+describe('zablokovaný účet', () => {
+  const UID = '1000000001'
+
+  it('nedostane se k vizitce ani k rejstříku', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'orgDirectory', ORG_A), card())
+      await setDoc(doc(ctx.firestore(), 'personIndex', HASH), indexEntry())
+    })
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(getDoc(doc(db, 'orgDirectory', ORG_A)))
+    await assertFails(getDoc(doc(db, 'personIndex', HASH)))
+  })
+
+  it('nedostane se ani k ověřovací kartě', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'uidHolderCard', HASH), {
+        uid: UID, firstName: 'Jana', lastName: 'Nováková', municipality: 'Kolín',
+        holderOrgId: ORG_A, updatedAt: '2026-07-26T10:00:00.000Z',
+      })
+    })
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(getDoc(doc(db, 'uidHolderCard', HASH)))
+  })
+
+  it('nic nezapíše', async () => {
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(setDoc(doc(db, 'personIndex', HASH), indexEntry()))
+  })
+
+  /** Kdyby šlo, každý automaticky zablokovaný účet se hned odemkne. */
+  it('SÁM SE NEODEMKNE', async () => {
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(updateDoc(doc(db, 'users', 'ko-blocked'), { disabledAt: null }))
+  })
+})
+
+describe('sebezablokování při překročení limitu', () => {
+  it('účet si smí sám zapsat disabledAt', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(updateDoc(doc(db, 'users', 'ko-a'), { disabledAt: '2026-07-26T12:00:00.000Z' }))
+  })
+
+  it('ale nesmí u toho měnit nic jiného — třeba si zvýšit roli', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(
+      updateDoc(doc(db, 'users', 'ko-a'), { disabledAt: '2026-07-26T12:00:00.000Z', role: 'org_admin' }),
+    )
+  })
+
+  it('a nesmí zablokovat kolegu', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(updateDoc(doc(db, 'users', 'admin-a'), { disabledAt: '2026-07-26T12:00:00.000Z' }))
+  })
+
+  it('počítadlo si vede každý své a do cizího nevidí', async () => {
+    const own = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(
+      setDoc(doc(own, 'lookupQuota', 'ko-a'), { userUid: 'ko-a', day: '2026-07-26', count: 1 }),
+    )
+    await assertFails(
+      setDoc(doc(own, 'lookupQuota', 'ko-b'), { userUid: 'ko-b', day: '2026-07-26', count: 1 }),
+    )
+    const other = testEnv.authenticatedContext('admin-b').firestore()
+    await assertFails(getDoc(doc(other, 'lookupQuota', 'ko-a')))
   })
 })

@@ -27,15 +27,41 @@ service cloud.firestore {
     // výslovně přiřadí (`collaboratorAssignments`), ne totéž, co
     // `zamestnanec`. Viz `isCollaborator()`/`hasCollaboratorAssignment()`
     // níž pro jeho VLASTNÍ, úzký gate.
+    // ZABLOKOVANÝ ÚČET SKUTEČNĚ NIC NESMÍ — oprava 2026-07-26.
+    //
+    // `disabledAt` se od M9 zapisovalo (StaffPage „Zablokovat"), zobrazovalo
+    // se v seznamu a v profilu — ale PRAVIDLA HO NIKDY NEČETLA. Zablokovaný
+    // člověk tím pádem jen zmizel z výpisu a jeho přihlášení dál mělo plný
+    // přístup k celé organizaci. Blokace, která neblokuje.
+    //
+    // Odhaleno při zadání „podezřelé chování zablokuje účet": bez tohohle
+    // by automatické zablokování bylo jen kosmetika.
+    //
+    // POZOR NA `.get()` — bez něj to shodí CELOU appku.
+    //
+    // `disabledAt` na účtech založených dřív vůbec neexistuje. Napsal jsem
+    // sem nejdřív `userDoc().disabledAt != null` s poznámkou, že chybějící
+    // pole se vyhodnotí jako `false`. NEVYHODNOTÍ — sáhnutí na neexistující
+    // klíč mapy je v pravidlech CHYBA VYHODNOCENÍ a shodí celý výraz, takže
+    // pravidlo zamítne. Odhalila to sada testů: spadlo 20 testů napříč
+    // moduly, které s blokací nemají nic společného.
+    //
+    // `.get('disabledAt', null)` je ta správná forma: chybějící pole vrátí
+    // výchozí hodnotu místo chyby. Stejná past jako `path[1]` vs `.split()`
+    // popsaná níž.
+    function isDisabled() {
+      return isSignedIn() && userDoc().get('disabledAt', null) != null;
+    }
+
     function isStaff() {
-      return isSignedIn() && userDoc().role in [
+      return isSignedIn() && !isDisabled() && userDoc().role in [
         'superadmin', 'org_admin', 'vedouci_pobocky', 'teamleader',
         'klicova_osoba', 'asistent_ko', 'zamestnanec'
       ];
     }
 
     function isReadOnlyManager() {
-      return isSignedIn() && userDoc().role in ['vedouci_pobocky', 'teamleader'];
+      return isSignedIn() && !isDisabled() && userDoc().role in ['vedouci_pobocky', 'teamleader'];
     }
 
     // M4 (§6 A6): pěstoun má VLASTNÍ, úzký profil (role 'pestoun', mimo
@@ -45,11 +71,11 @@ service cloud.firestore {
     // viz "Klíčová past" komentář výš) — pěstounovo scoping jde vždy přes
     // tuhle funkci + přímé porovnání `familyId`.
     function isFoster() {
-      return isSignedIn() && userDoc().role == 'pestoun';
+      return isSignedIn() && !isDisabled() && userDoc().role == 'pestoun';
     }
 
     function isSuperadmin() {
-      return isSignedIn() && userDoc().role == 'superadmin';
+      return isSignedIn() && !isDisabled() && userDoc().role == 'superadmin';
     }
 
     // M9 (UX zpětná vazba 2026-07-21) — Spolupracovník: STAFF_ROLES, ale
@@ -58,7 +84,7 @@ service cloud.firestore {
     // dokument (deterministické ID, stejný vzor jako Dohoda) — žádné
     // `sameOrg()`, žádný obecný organizační přístup.
     function isCollaborator() {
-      return isSignedIn() && userDoc().role == 'spolupracovnik';
+      return isSignedIn() && !isDisabled() && userDoc().role == 'spolupracovnik';
     }
 
     function hasCollaboratorAssignment(entityType, entityId) {
@@ -208,7 +234,23 @@ service cloud.firestore {
       // org_admin disjunktu (kapacita KO, žádný nový bezpečnostní vzor).
       // M9: `collaboratorModules` stejně — jen org_admin smí spolupracovníkovi
       // zapínat/vypínat moduly, NIKDY on sám sobě (nesměl by si sám rozšířit rozsah).
+      // SEBEZABLOKOVÁNÍ (2026-07-26) — jediná cesta, jak si účet může
+      // ublížit, a to je záměr. Když překročí denní limit dotazů na cizí
+      // UID, klient si sám zapíše `disabledAt` a tím se zamkne;
+      // odblokovat ho může UŽ JEN org_admin nebo provozovatel.
+      //
+      // Bezpečné je to proto, že podmínka je JEDNOSMĚRNÁ: nastavit
+      // `disabledAt` na neprázdnou hodnotu ano, vynulovat ne. Kdo se
+      // zamkne, sám se neodemkne.
+      //
+      // Poctivě: tohle zastaví klienta aplikace, ne někoho, kdo si napíše
+      // vlastní. Skutečnou zábranou proti hádání je tvar klíče
+      // `uidHolderCard` (bez příjmení se dokument nenajde) — tohle je
+      // druhá vrstva pro běžný případ, ne pro útočníka.
       allow update: if
+        (request.auth.uid == uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['disabledAt']) &&
+         request.resource.data.disabledAt != null) ||
         (request.auth.uid == uid &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'notifyBirthdays', 'notifyNameDays', 'avatarUrl'])) ||
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(resource.data.organizationId) &&
@@ -556,14 +598,33 @@ service cloud.firestore {
     // dostávat jména. Omezit počet dotazů pravidla neumí — chce to
     // serverovou funkci a musí přibýt před ostrým provozem.
 
-    match /uidHolderCard/{uid} {
+    match /uidHolderCard/{key} {
       allow get: if isSuperadmin() || isStaff();
       allow list: if false;
 
+      // `key` je OTISK UID + příjmení, ne UID — proto se s `data.uid`
+      // porovnávat nedá ani nemá. Zaručuje se jen to, že kartu zapisuje
+      // organizace, která osobu vede.
       allow create, update: if isStaff() &&
-        request.resource.data.uid == uid &&
         request.resource.data.holderOrgId == userDoc().organizationId;
 
+      allow delete: if isSuperadmin();
+    }
+
+    // ---- lookupQuota/{userUid} — denní počítadlo dotazů na cizí UID ----
+    //
+    // Druhá vrstva k tvaru klíče `uidHolderCard`: při překročení limitu si
+    // klient sám zapíše `disabledAt` na svůj profil a zamkne se (viz
+    // `users` update pravidlo, jednosměrné).
+    //
+    // Poctivě: počítadlo si vede sám uživatel, takže vlastní klient by ho
+    // zvyšovat nemusel. Skutečnou zábranou proti hádání je to, že karta
+    // se bez příjmení nenajde; tohle chytá zvědavost, ne útok.
+
+    match /lookupQuota/{userUid} {
+      allow read: if isSuperadmin() || request.auth.uid == userUid;
+      allow create, update: if request.auth.uid == userUid &&
+        request.resource.data.userUid == userUid;
       allow delete: if isSuperadmin();
     }
 

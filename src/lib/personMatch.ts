@@ -33,6 +33,8 @@ export type MatchKeyKind =
   | 'cislo_rozsudku'
   | 'jmeno_adresa'
   | 'jmeno_dite'
+  /** UID + příjmení — klíč k ověřovací kartě, viz `uidHolderKey`. */
+  | 'uid_prijmeni'
 
 export const MATCH_KEY_LABELS: Record<MatchKeyKind, string> = {
   rodne_cislo: 'Rodné číslo',
@@ -41,6 +43,7 @@ export const MATCH_KEY_LABELS: Record<MatchKeyKind, string> = {
   cislo_rozsudku: 'Číslo rozsudku',
   jmeno_adresa: 'Jméno, příjmení a adresa',
   jmeno_dite: 'Jméno pěstouna a jméno dítěte',
+  uid_prijmeni: 'UID a příjmení',
 }
 
 /**
@@ -89,6 +92,30 @@ export async function matchKeyHash(kind: MatchKeyKind, parts: string[]): Promise
   const bytes = new TextEncoder().encode(material)
   const digest = await crypto.subtle.digest('SHA-256', bytes)
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/**
+ * KLÍČ K OVĚŘOVACÍ KARTĚ — otisk UID **a příjmení** dohromady.
+ *
+ * Tímhle padá největší slabina předchozího návrhu. Karta byla uložená pod
+ * samotným UID, a UID se dá hádat: má kontrolní číslici, takže platné je
+ * zhruba každé desáté třináctimístné číslo, a první čtyři místa (typ +
+ * organizace) se dají odvodit. Kdo by zkoušel čísla po řadě, dostával by
+ * jména a obce.
+ *
+ * Teď se dokument bez příjmení NENAJDE. Není to pravidlo, které by šlo
+ * obejít — je to tvar klíče: kdo příjmení nezná, nemá co načíst, protože
+ * ta cesta v databázi neexistuje. A pracovníkovi to nepřidá práci ani
+ * vteřinu: člověk, kterého zavádí, mu sedí naproti.
+ *
+ * Proto se taky nemuselo sahat na UID samotné. Zvětšovat ho nebo dělat
+ * náhodným by znamenalo přečíslovat identitu celé platformy (UID je na
+ * dokumentech a v QR kódech) — a vyřešilo by to hůř, protože i náhodné
+ * číslo v jediném parametru se dá zkoušet. Dva parametry, z nichž jeden
+ * není číslo, se zkoušet nedají.
+ */
+export async function uidHolderKey(uid: string, lastName: string): Promise<string | null> {
+  return matchKeyHash('uid_prijmeni', [uid, lastName])
 }
 
 /** Vstup, ze kterého se dá poskládat sada klíčů pro jednu osobu. */

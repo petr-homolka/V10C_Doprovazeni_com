@@ -7,37 +7,41 @@ import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
 import { auditActor } from '@/services/auditLogService'
 import { isValidUid, normalizeUidInput } from '@/lib/uid'
-import { lookupUidHolder } from '@/services/uidHolderCardService'
+import { LookupBlockedError, lookupUidHolder } from '@/services/uidHolderCardService'
 import { describeHolder, type UidHolderCardDoc } from '@/types/uidHolderCard'
 import { readTitle } from '@/services/titleRegistryService'
 import { readOrgCard } from '@/services/orgDirectoryService'
 import { planTakeoverContact, type TakeoverGuidance } from '@/lib/takeoverFlow'
+import { createFosterProspect } from '@/services/fosterProspectService'
+import type { FosterProspectExistingStatus } from '@/types/fosterProspect'
 
 /**
  * /zajemci/novy — PRŮVODCE ZAŘAZENÍM ZÁJEMCE.
  *
- * Zadání Petr Homolka, 26. 7. Průvodce se hned na začátku ptá na to,
- * na co se dosud neptal nikdo: NEMÁ UŽ TENHLE ČLOVĚK UID?
- *
  *   1. Má zájemce UID? → ano / ne / nevím
- *   2. Když ano: zadá se, systém najde držitele a ukáže jméno, příjmení,
- *      obec a organizaci, která ho vede, včetně kontaktu.
- *   3. Následuje TELEFONÁT — mimo systém. Stará organizace buď potvrdí,
- *      že je to její klient, nebo zjistí, že Dohodu ukončila a zapomněla
- *      uvolnit, a uvolní ho.
- *   4. Podle výsledku: buď se průvodce nedokončí vůbec, nebo se zájemce
- *      založí — ale bez možnosti uzavřít Dohodu, dokud není uvolněný.
+ *   2. Když ano: UID + PŘÍJMENÍ. Systém najde držitele a ukáže jméno,
+ *      obec a organizaci s kontaktem.
+ *   3. Telefonát — mimo systém. Stará organizace pěstouna buď potvrdí
+ *      jako svého, nebo ho jedním kliknutím uvolní.
+ *   4. Průvodce KONČÍ ZALOŽENÝM ZÁJEMCEM. Když je UID obsazené, zájemce
+ *      vznikne taky — jen s poznámkou, že Dohodu s ním zatím nelze uzavřít.
  *
- * ─── PROČ SE PRŮVODCE NESNAŽÍ ROZHODNOUT SÁM ──────────────────────────
+ * ─── PROČ SE PTÁ I NA PŘÍJMENÍ ────────────────────────────────────────
  *
- * Protože nemůže. Rozdíl mezi „je to pořád náš klient" a „zapomněli jsme
- * ho uvolnit" v datech není. Průvodce tedy nezakazuje pokračovat — jen
- * ODDĚLÍ dvě věci, které se dřív pletly dohromady: zavést si člověka do
- * pipeline (smí se vždycky, nikomu to nevadí) a uzavřít s ním Dohodu
- * (nesmí se, dokud ho stará organizace nepustí).
+ * Ne kvůli formuláři. Ověřovací karta je uložená pod otiskem UID
+ * A PŘÍJMENÍ dohromady (`lib/personMatch.ts`), takže bez příjmení ji
+ * nejde ani adresovat. Hádání samotných UID je tím k ničemu. Pracovníka
+ * to nezdrží — člověk, kterého zavádí, mu sedí naproti.
+ *
+ * ─── PROČ PRŮVODCE NEROZHODUJE SÁM ────────────────────────────────────
+ *
+ * Rozdíl mezi „je to pořád náš klient" a „zapomněli jsme ho uvolnit"
+ * v datech není. Průvodce tedy nezakazuje pokračovat — jen ODDĚLÍ dvě
+ * věci, které se dřív pletly: zavést si člověka do pipeline (smí se
+ * vždycky) a uzavřít s ním Dohodu (nesmí, dokud ho starý nepustí).
  */
 
-type Step = 'uid-otazka' | 'uid-zadani' | 'vysledek' | 'udaje'
+type Step = 'uid-otazka' | 'uid-zadani' | 'vysledek' | 'udaje' | 'hotovo'
 
 export default function ProspectWizardPage() {
   const navigate = useNavigate()
@@ -45,44 +49,98 @@ export default function ProspectWizardPage() {
   const organizationId = userDoc?.organizationId
 
   const [step, setStep] = useState<Step>('uid-otazka')
-  const [uidInput, setUidInput] = useState('')
-  const [uidError, setUidError] = useState<string | null>(null)
-  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
+  const [uidInput, setUidInput] = useState('')
+  const [checking, setChecking] = useState(false)
   const [holder, setHolder] = useState<UidHolderCardDoc | null>(null)
   const [guidance, setGuidance] = useState<TakeoverGuidance | null>(null)
+  /** `true` = uživatel prošel větví s UID; ovlivňuje výchozí stav zájemce. */
+  const [hadUid, setHadUid] = useState(false)
 
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [note, setNote] = useState('')
+  const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [source, setSource] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [createdName, setCreatedName] = useState('')
+
+  const blocked = guidance ? !guidance.canSign : false
 
   async function handleUidCheck() {
     if (!organizationId || !userDoc) return
     const uid = normalizeUidInput(uidInput)
     setUidInput(uid)
+    setError(null)
 
     if (!isValidUid(uid)) {
-      setUidError(
-        'Tohle není platné UID. Zkontrolujte opis — číslo má 13 míst a poslední číslice je kontrolní, ' +
-          'takže překlep v kterémkoli místě se pozná.',
+      setError(
+        'Tohle není platné UID. Zkontrolujte opis — poslední číslice je kontrolní, takže překlep ' +
+          'v kterémkoli místě se pozná.',
       )
       return
     }
+    if (!lastName.trim()) {
+      setError('Doplňte prosím příjmení. Bez něj se záznam nedá dohledat.')
+      return
+    }
 
-    setUidError(null)
     setChecking(true)
     try {
-      const card = await lookupUidHolder(uid, { actor: auditActor(userDoc), organizationId })
+      const card = await lookupUidHolder(uid, lastName, { actor: auditActor(userDoc), organizationId })
       setHolder(card)
+      if (card?.firstName && !firstName) setFirstName(card.firstName)
 
       const entry = await readTitle(uid)
       const orgCard = entry?.holderOrgId ? await readOrgCard(entry.holderOrgId) : null
       setGuidance(planTakeoverContact(entry, orgCard))
       setStep('vysledek')
-    } catch {
-      setUidError('Ověření se nepodařilo. Zkuste to prosím znovu.')
+    } catch (err) {
+      setError(
+        err instanceof LookupBlockedError ? err.message : 'Ověření se nepodařilo. Zkuste to prosím znovu.',
+      )
     } finally {
       setChecking(false)
+    }
+  }
+
+  /**
+   * ZALOŽENÍ ZÁJEMCE — konec průvodce, ne odkaz jinam.
+   *
+   * `existingFosterStatus` se dopočítá z toho, co průvodce zjistil, ne
+   * z toho, co člověk naklikal. Když UID drží jiná organizace, je to
+   * `jiz_pestoun_jinde` a nikdo to nemá jak omylem přepsat.
+   */
+  async function handleCreate() {
+    if (!organizationId) return
+    setSaving(true)
+    setError(null)
+
+    const existingFosterStatus: FosterProspectExistingStatus = blocked
+      ? 'jiz_pestoun_jinde'
+      : hadUid
+        ? 'jiz_pestoun_bez_do'
+        : 'neznamo'
+
+    const name = `${firstName.trim()} ${lastName.trim()}`.trim()
+    try {
+      await createFosterProspect({
+        organizationId,
+        name,
+        contactPhone: phone.trim() || undefined,
+        contactEmail: email.trim() || undefined,
+        source: source.trim() || undefined,
+        existingFosterStatus,
+        assignedTo: userDoc?.uid ?? null,
+        lastContactAt: new Date().toISOString(),
+      })
+      setCreatedName(name)
+      setStep('hotovo')
+    } catch {
+      setError('Zájemce se nepodařilo založit. Zkuste to prosím znovu.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -102,19 +160,31 @@ export default function ProspectWizardPage() {
       <PageHead
         title="Nový zájemce"
         description="Než člověka zavedeme, podíváme se, jestli ho už někdo v systému nevede."
-      />
+      >
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
       {/* ── 1. Má UID? ───────────────────────────────────────────── */}
       {step === 'uid-otazka' && (
         <section className="sp__card sp__card--pad">
           <h2 className="text-base text-text-primary">Má už zájemce přidělené UID?</h2>
           <p className="mt-1 text-sm text-text-tertiary">
-            UID dostal, pokud ho někdy vedla jakákoli organizace v tomhle systému. Najde ho na
-            svých dokumentech nebo mu ho řekne jeho dosavadní organizace. Když si nejste jistí,
-            zeptejte se ho — číslo si obvykle schovává.
+            UID dostal, pokud ho někdy vedla jakákoli organizace v tomhle systému. Najde ho na svých
+            dokumentech nebo mu ho řekne jeho dosavadní organizace.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Button onClick={() => setStep('uid-zadani')}>Ano, UID mám</Button>
+            <Button
+              onClick={() => {
+                setHadUid(true)
+                setStep('uid-zadani')
+              }}
+            >
+              Ano, UID mám
+            </Button>
             <Button variant="ghost" onClick={() => setStep('udaje')}>
               Ne, je to úplně nový zájemce
             </Button>
@@ -122,41 +192,52 @@ export default function ProspectWizardPage() {
               Nevím
             </Button>
           </div>
-          <p className="mt-3 text-xs text-text-faint">
-            „Nevím" pokračuje stejně jako „ne" — systém pak zkusí shodu podle rodného čísla nebo
-            jména a adresy, až tyhle údaje zadáte.
-          </p>
         </section>
       )}
 
-      {/* ── 2. Zadání UID ────────────────────────────────────────── */}
+      {/* ── 2. UID + příjmení ────────────────────────────────────── */}
       {step === 'uid-zadani' && (
         <section className="sp__card sp__card--pad">
-          <h2 className="text-base text-text-primary">Zadejte UID zájemce</h2>
+          <h2 className="text-base text-text-primary">Zadejte UID a příjmení</h2>
+          <p className="mt-1 text-sm text-text-tertiary">
+            Obojí — záznam je vedený pod kombinací obou údajů, aby se nedal dohledat pouhým zkoušením
+            čísel.
+          </p>
+
           <div className="sp__group mt-4">
             <label className="sp__grouplabel" htmlFor="uid">
-              UID (13 míst)
+              UID
             </label>
             <Input
               id="uid"
               value={uidInput}
               onChange={(e) => {
                 setUidInput(e.target.value)
-                setUidError(null)
+                setError(null)
               }}
               placeholder="1000410000013"
               inputMode="numeric"
             />
             <p className="mt-1 text-xs text-text-faint">Mezery a pomlčky nevadí, srovnám si to.</p>
-            {uidError && (
-              <p className="mt-2 text-sm text-danger" role="alert">
-                {uidError}
-              </p>
-            )}
           </div>
+
+          <div className="sp__group">
+            <label className="sp__grouplabel" htmlFor="prijmeni-uid">
+              Příjmení zájemce
+            </label>
+            <Input
+              id="prijmeni-uid"
+              value={lastName}
+              onChange={(e) => {
+                setLastName(e.target.value)
+                setError(null)
+              }}
+            />
+          </div>
+
           <div className="mt-4 flex gap-3">
-            <Button onClick={handleUidCheck} disabled={checking || !uidInput.trim()}>
-              {checking ? 'Ověřuji…' : 'Ověřit UID'}
+            <Button onClick={handleUidCheck} disabled={checking || !uidInput.trim() || !lastName.trim()}>
+              {checking ? 'Ověřuji…' : 'Ověřit'}
             </Button>
             <Button variant="ghost" onClick={() => setStep('uid-otazka')}>
               Zpět
@@ -170,7 +251,7 @@ export default function ProspectWizardPage() {
         <>
           <section className="sp__card sp__card--pad">
             <h2 className="text-base text-text-primary">
-              {holder ? 'Tohle UID v systému máme' : 'Tohle UID u nás nikdo nevede'}
+              {holder ? 'Tohle UID v systému máme' : 'Pod tímhle UID a příjmením nikoho nevedeme'}
             </h2>
 
             {holder && (
@@ -178,7 +259,7 @@ export default function ProspectWizardPage() {
                 <span className="sp__grouplabel">Držitel UID</span>
                 <p className="text-base text-text-primary">{describeHolder(holder)}</p>
                 <p className="mt-1 text-xs text-text-faint">
-                  Ověřte, že to sedí s člověkem, se kterým jednáte. Když ne, opsali jste špatné číslo.
+                  Ověřte, že to sedí s člověkem, se kterým jednáte.
                 </p>
               </div>
             )}
@@ -187,7 +268,7 @@ export default function ProspectWizardPage() {
               className={
                 guidance.canSign
                   ? 'mt-3 text-sm text-text-primary'
-                  : 'mt-3 text-sm text-text-primary border-l-2 border-l-accent pl-3'
+                  : 'mt-3 border-l-2 border-l-accent pl-3 text-sm text-text-primary'
               }
             >
               {guidance.message}
@@ -201,14 +282,14 @@ export default function ProspectWizardPage() {
                   <p className="text-sm text-text-secondary">{guidance.contact.contactPersonName}</p>
                 )}
                 {guidance.contact.phone && (
-                  <p className="text-sm text-text-secondary">
+                  <p className="text-sm">
                     <a className="text-accent hover:underline" href={`tel:${guidance.contact.phone}`}>
                       {guidance.contact.phone}
                     </a>
                   </p>
                 )}
                 {guidance.contact.email && (
-                  <p className="text-sm text-text-secondary">
+                  <p className="text-sm">
                     <a className="text-accent hover:underline" href={`mailto:${guidance.contact.email}`}>
                       {guidance.contact.email}
                     </a>
@@ -220,21 +301,14 @@ export default function ProspectWizardPage() {
 
           <section className="sp__card sp__card--pad">
             <h2 className="text-base text-text-primary">Jak dál</h2>
-            {guidance.canSign ? (
-              <p className="mt-1 text-sm text-text-secondary">
-                Nic vás nebrzdí — zájemce jde zavést a rovnou s ním uzavřít Dohodu.
-              </p>
-            ) : (
-              <p className="mt-1 text-sm text-text-secondary">
-                Zavolejte druhé organizaci. Když vám pěstouna uvolní, Dohodu půjde uzavřít hned —
-                stačí se sem vrátit. Do té doby si ho můžete zavést jako zájemce; bude vidět
-                v pipeline, ale zařadit ho do správy nepůjde.
-              </p>
-            )}
+            <p className="mt-1 text-sm text-text-secondary">
+              {guidance.canSign
+                ? 'Nic vás nebrzdí — zájemce jde zavést a rovnou s ním uzavřít Dohodu.'
+                : 'Zavolejte druhé organizaci. Když vám pěstouna uvolní, Dohodu půjde uzavřít hned. ' +
+                  'Zájemce si ale můžete zavést už teď — bude vidět v pipeline.'}
+            </p>
             <div className="mt-4 flex flex-wrap gap-3">
-              <Button onClick={() => setStep('udaje')}>
-                {guidance.canSign ? 'Pokračovat' : 'Zavést jako zájemce'}
-              </Button>
+              <Button onClick={() => setStep('udaje')}>Pokračovat k údajům</Button>
               <Button variant="ghost" onClick={() => navigate('/zajemci')}>
                 Nepokračovat
               </Button>
@@ -243,14 +317,14 @@ export default function ProspectWizardPage() {
         </>
       )}
 
-      {/* ── 4. Údaje ─────────────────────────────────────────────── */}
+      {/* ── 4. Údaje a založení ──────────────────────────────────── */}
       {step === 'udaje' && (
         <section className="sp__card sp__card--pad">
           <h2 className="text-base text-text-primary">Údaje zájemce</h2>
-          {guidance && !guidance.canSign && (
-            <p className="mt-1 text-sm text-text-primary border-l-2 border-l-accent pl-3">
+          {blocked && (
+            <p className="mt-2 border-l-2 border-l-accent pl-3 text-sm text-text-primary">
               Zavádíte člověka, kterého vede jiná organizace. Zájemce z něj bude, ale Dohodu s ním
-              nepůjde uzavřít, dokud vám ho neuvolní.
+              nepůjde uzavřít, dokud vám ho neuvolní. Zapíše se to k němu jako „již pěstoun jinde".
             </p>
           )}
 
@@ -267,21 +341,64 @@ export default function ProspectWizardPage() {
             <Input id="prijmeni" value={lastName} onChange={(e) => setLastName(e.target.value)} />
           </div>
           <div className="sp__group">
-            <label className="sp__grouplabel" htmlFor="pozn">
-              Poznámka
+            <label className="sp__grouplabel" htmlFor="tel">
+              Telefon
             </label>
-            <Input id="pozn" value={note} onChange={(e) => setNote(e.target.value)} />
+            <Input id="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <div className="sp__group">
+            <label className="sp__grouplabel" htmlFor="mail">
+              E-mail
+            </label>
+            <Input id="mail" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="sp__group">
+            <label className="sp__grouplabel" htmlFor="zdroj">
+              Odkud o nás ví
+            </label>
+            <Input id="zdroj" value={source} onChange={(e) => setSource(e.target.value)} />
           </div>
 
-          <p className="mt-4 text-sm text-text-tertiary">
-            Založení zájemce vede přes stávající stránku Zájemci — průvodce zatím řeší tu část,
-            kvůli které vznikl: ověření UID a rozhodnutí, jestli se s člověkem vůbec smí podepsat.
-          </p>
-
           <div className="mt-4 flex gap-3">
-            <Button onClick={() => navigate('/zajemci')}>Přejít na Zájemce</Button>
+            <Button onClick={handleCreate} disabled={saving || !firstName.trim() || !lastName.trim()}>
+              {saving ? 'Zakládám…' : 'Založit zájemce'}
+            </Button>
             <Button variant="ghost" onClick={() => navigate('/zajemci')}>
               Zrušit
+            </Button>
+          </div>
+        </section>
+      )}
+
+      {/* ── 5. Hotovo ────────────────────────────────────────────── */}
+      {step === 'hotovo' && (
+        <section className="sp__card sp__card--pad">
+          <h2 className="text-base text-text-primary">Zájemce {createdName} je zavedený</h2>
+          <p className="mt-1 text-sm text-text-secondary">
+            {blocked
+              ? 'Je vedený jako „již pěstoun jinde". Až vám ho druhá organizace uvolní, půjde s ním ' +
+                'uzavřít Dohodu — vraťte se sem nebo pokračujte přímo ze seznamu zájemců.'
+              : 'Můžete s ním rovnou pokračovat k Dohodě.'}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button onClick={() => navigate('/zajemci')}>Na seznam zájemců</Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setStep('uid-otazka')
+                setUidInput('')
+                setHolder(null)
+                setGuidance(null)
+                setHadUid(false)
+                setFirstName('')
+                setLastName('')
+                setPhone('')
+                setEmail('')
+                setSource('')
+                setError(null)
+              }}
+            >
+              Zavést dalšího
             </Button>
           </div>
         </section>
