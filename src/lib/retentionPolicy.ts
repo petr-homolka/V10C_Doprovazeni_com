@@ -279,3 +279,73 @@ export function describeRetention(rule: RetentionRule): string {
       : `${rule.keepMonths} ${rule.keepMonths < 5 ? 'měsíce' : 'měsíců'}`
   return `${period} ${RETENTION_ANCHOR_LABELS[rule.anchor]}`
 }
+
+// ─── NASTAVITELNÉ LHŮTY ────────────────────────────────────────────────
+//
+// Tabulka výš je KATALOG: co za kategorie existuje, co přesně obsahují,
+// kde v databázi žijí a jaká je výchozí odpověď. To je věc kódu — přibude
+// kolekce, přibude řádek.
+//
+// Kolik měsíců se to drží a co se pak stane, to je ale ROZHODNUTÍ, ne kód.
+// Původně se muselo přepsat v tomhle souboru a nasadit; od 26. 7. je to
+// nastavení, které mění superadmin na `/platforma/retence`.
+//
+// Katalog přitom zůstává zdrojem výchozích hodnot. Kdo nic nenastaví,
+// dostane to, co je tady — a to je pořád „nemazat, zeptat se".
+
+/** Co jde u jednoho pravidla nastavit. Všechno ostatní je pevně v katalogu. */
+export interface RetentionOverride {
+  keepMonths: number | null
+  action: RetentionAction
+  /** Kdy o tom někdo rozhodl — odlišuje „rozhodnuto" od „ještě ne". */
+  decidedAt: string
+  decidedByUid: string
+  /** Čím je lhůta podložená. Píše ten, kdo rozhoduje. */
+  note?: string
+}
+
+export type RetentionOverrides = Record<string, RetentionOverride>
+
+/**
+ * Katalog + nastavení = pravidla, podle kterých se skutečně jedná.
+ *
+ * `status` se DOPOČÍTÁVÁ, neukládá: pravidlo je `active` právě tehdy, když
+ * má lhůtu. Dvě pole o téže věci by se dřív nebo později rozešla a vzniklo
+ * by „rozhodnuto, ale bez lhůty" — což by mazací běh musel nějak
+ * interpretovat, a každá interpretace by byla špatná.
+ *
+ * Nastavení pro klíč, který v katalogu není, se IGNORUJE. Přejmenovaná
+ * nebo zrušená kategorie tím nemůže oživit mazání něčeho jiného.
+ */
+export function applyRetentionOverrides(
+  overrides: RetentionOverrides | null | undefined,
+  rules: RetentionRule[] = RETENTION_RULES,
+): RetentionRule[] {
+  if (!overrides) return rules
+  return rules.map((rule) => {
+    const o = overrides[rule.key]
+    if (!o) return rule
+    return {
+      ...rule,
+      keepMonths: o.keepMonths,
+      action: o.action,
+      status: o.keepMonths === null ? 'needs_decision' : 'active',
+      basis: o.note?.trim() ? o.note.trim() : rule.basis,
+    }
+  })
+}
+
+/**
+ * Kontrola před uložením. Vrací chybu, nebo `null`.
+ *
+ * Nulová lhůta by znamenala „smazat hned, jak to vznikne" — to není
+ * retenční politika, to je porucha. Kdo to opravdu chce, ať kolekci
+ * nezakládá.
+ */
+export function validateRetentionOverride(input: { keepMonths: number | null; action: RetentionAction }): string | null {
+  if (input.keepMonths === null) return null
+  if (!Number.isInteger(input.keepMonths)) return 'Lhůta musí být celý počet měsíců.'
+  if (input.keepMonths < 1) return 'Lhůta musí být aspoň jeden měsíc.'
+  if (input.keepMonths > 1200) return 'Lhůta nad sto let je skoro jistě překlep.'
+  return null
+}

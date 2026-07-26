@@ -26,20 +26,20 @@
  *    a výpověď musí být doručena nejpozději 30 dnů předem. Doručí-li se
  *    později, posouvá se konec na závěr NÁSLEDUJÍCÍHO pololetí.
  *
- * 4. SPRÁVNÍ ROZHODNUTÍ NEMODELUJEME — ale MUSÍME O NĚM VĚDĚT.
- *    Upřesnění Petr Homolka: OSPOD náš systém používat nebude a na obsah
- *    jeho rozhodnutí nemáme žádný vliv. Vydá-li ho, stává se OSPOD SÁM
- *    doprovázejícím subjektem — pěstoun má fakticky dohodu s OSPODem.
+ * 4. SPRÁVNÍ ROZHODNUTÍ ANI OSPOD NEMODELUJEME. VŮBEC.
+ *    Upřesnění Petr Homolka, 26. 7. večer: „OSPOD nebude nikdy uživatelem
+ *    systému a tak ho nemusíme nikdy zapsat — OSPOD si jede na svém."
  *
- *    Pro nás to tedy NENÍ druhý druh titulu k naprogramování. Je to titul
- *    u subjektu MIMO náš systém, a jediné, co z něj potřebujeme, je jeho
- *    EXISTENCE: blokuje výlučnost stejně jako dohoda s kteroukoli jinou
- *    organizací. Kdybychom ho ignorovali, systém by dovolil podepsat
- *    dohodu s pěstounem, kterého už doprovází OSPOD — a to je přesně ta
- *    chyba, kvůli které se výlučnost hlídá.
+ *    Odpoledne tu stálo, že o titulu u OSPODu sice nerozhodujeme, ale
+ *    musíme o něm VĚDĚT, a `LegalTitleState` proto uměl „subjekt mimo náš
+ *    systém". Bylo to zbytečné: kdyby to nikdo nikdy nezapsal — a nezapíše,
+ *    protože OSPOD u nás účet mít nebude — je to cesta, kterou nikdo
+ *    neprojde. Nepoužívaná cesta v kódu je horší než žádná: tváří se, že
+ *    postup existuje, a příští čtenář na něj spoléhá.
  *
- *    Totéž platí pro konkurenční doprovázející organizaci, která u nás
- *    není. Model je stejný, jen jméno subjektu je jiné.
+ *    DŮSLEDEK, ať je řečený nahlas: pěstouna doprovázeného OSPODem uvidí
+ *    systém jako volného a dovolí s ním podepsat. Vědomě — my o tom titulu
+ *    nemáme jak vědět a předstírat opak by bylo horší.
  */
 
 /** Lhůta na uzavření dohody od právní moci rozhodnutí o svěření. */
@@ -110,26 +110,16 @@ export function daysToTitleDeadline(effectiveFrom: Date, now: Date = new Date())
 
 // ─── Výlučnost právního titulu ─────────────────────────────────────────
 
-/**
- * Minimum o právním titulu, ze kterého se dá posoudit výlučnost.
- *
- * Titul nemusí být u nás. Doprovázet může OSPOD (na základě vlastního
- * správního rozhodnutí) nebo organizace, která náš systém nepoužívá —
- * a výlučnost blokují úplně stejně. Proto `organizationId` smí být `null`
- * a subjekt se pak pojmenuje slovem.
- */
+/** Minimum o právním titulu, ze kterého se dá posoudit výlučnost. */
 export interface LegalTitleState {
-  /** Organizace v našem systému. `null` = titul běží mimo něj. */
   organizationId: string | null
-  /** Kdo doprovází, když to není naše organizace — „OSPOD Praha 4" apod. */
-  externalSubjectName?: string | null
   validFrom: string
   validTo?: string | null
 }
 
 /** Lidské pojmenování subjektu, u kterého titul běží. */
 function subjectLabel(title: LegalTitleState): string {
-  return title.externalSubjectName || title.organizationId || 'neznámý subjekt'
+  return title.organizationId || 'neznámý subjekt'
 }
 
 function isRunning(title: LegalTitleState, at: Date): boolean {
@@ -141,12 +131,9 @@ function isRunning(title: LegalTitleState, at: Date): boolean {
 export interface ExclusivityCheck {
   ok: boolean
   reason?: string
-  /** Organizace v našem systému, u které titul běží. `null` u externího. */
+  /** Organizace, u které titul běží. */
   conflictingOrgId?: string | null
-  /** Kdo doprovází — vždy vyplněné, i když je subjekt mimo náš systém. */
   conflictingSubject?: string
-  /** Titul běží mimo náš systém (OSPOD, cizí organizace) — nevidíme jeho konec. */
-  conflictIsExternal?: boolean
 }
 
 /**
@@ -160,10 +147,6 @@ export interface ExclusivityCheck {
  * ve výlučné péči a manželé spolu nežijí ve společné domácnosti, takže
  * péči fakticky vykonává každý sám. Je to vědomě POVINNÝ parametr — kdo
  * chce výjimku použít, musí ji výslovně potvrdit, ne ji dostat mlčky.
- *
- * Do `existingTitles` patří i tituly MIMO náš systém (OSPOD jako
- * doprovázející subjekt, cizí organizace). Blokují stejně — jen se u nich
- * dá říct míň, protože jejich zánik nevidíme.
  */
 export function canOpenNewTitle(
   existingTitles: LegalTitleState[],
@@ -174,22 +157,15 @@ export function canOpenNewTitle(
   if (running.length === 0) return { ok: true }
   if (spousesLivingApart) return { ok: true }
 
-  // Přednost má konflikt s naší organizací: o něm umíme říct přesně, kdy
-  // skončí, a uživateli se s tím dá pracovat.
   const conflict = running.find((t) => t.organizationId) ?? running[0]
-  const external = !conflict.organizationId
   return {
     ok: false,
     conflictingOrgId: conflict.organizationId,
     conflictingSubject: subjectLabel(conflict),
-    conflictIsExternal: external,
-    reason: external
-      ? `Osobu pečující už doprovází ${subjectLabel(conflict)} — subjekt mimo náš systém. ` +
-        'V daném čase smí být jen jeden právní titul, takže podepsat lze až po jeho zániku. ' +
-        'Konec tohohle titulu u sebe nevidíme, musí se doložit.'
-      : 'Osoba pečující může mít v daném čase jen jeden právní titul doprovázení. ' +
-        'Další dítě se řeší změnou stávající dohody, ne novou. Přechod k jiné organizaci ' +
-        'je možný až po zániku té stávající (k 30. 6. nebo 31. 12.).',
+    reason:
+      'Osoba pečující může mít v daném čase jen jeden právní titul doprovázení. ' +
+      'Další dítě se řeší změnou stávající dohody, ne novou. Přechod k jiné organizaci ' +
+      'je možný až po zániku té stávající (k 30. 6. nebo 31. 12.).',
   }
 }
 

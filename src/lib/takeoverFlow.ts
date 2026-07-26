@@ -92,7 +92,7 @@ export function planTakeoverContact(
   // Zbývá 'aktivni' a 'ukoncena'. Ven se to NEROZLIŠUJE: v obou případech
   // je jediný správný krok telefonát a rozdíl mezi nimi je informace
   // o cizím klientovi, do které nové organizaci nic není.
-  const holder = entry.externalSubjectName ?? entry.holderOrgId ?? 'jiná organizace'
+  const holder = entry.holderOrgId ?? 'jiná organizace'
   const reachable = isReachable(holderCard)
 
   return {

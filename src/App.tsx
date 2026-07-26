@@ -37,6 +37,7 @@ const OrganizationSettingsPage = lazy(() => import('@/routes/settings/Organizati
 const MojeLoginPage = lazy(() => import('@/routes/moje/MojeLoginPage'))
 const MojeDashboardPage = lazy(() => import('@/routes/moje/MojeDashboardPage'))
 const PlatformSettingsPage = lazy(() => import('@/routes/PlatformSettingsPage'))
+const PlatformRetentionPage = lazy(() => import('@/routes/PlatformRetentionPage'))
 const InspectionsPage = lazy(() => import('@/routes/InspectionsPage'))
 const FosterProspectsPage = lazy(() => import('@/routes/FosterProspectsPage'))
 const ProspectWizardPage = lazy(() => import('@/routes/ProspectWizardPage'))
@@ -153,6 +154,7 @@ export default function App() {
                 <Route path="/nastaveni/vizitka" element={<OrgDirectorySettingsPage />} />
                 <Route path="/nastaveni/organizace" element={<OrganizationSettingsPage />} />
                 <Route path="/platforma" element={<PlatformSettingsPage />} />
+                <Route path="/platforma/retence" element={<PlatformRetentionPage />} />
                 <Route path="/kvalita" element={<InspectionsPage />} />
                 <Route path="/zajemci" element={<FosterProspectsPage />} />
                 <Route path="/zajemci/novy" element={<ProspectWizardPage />} />

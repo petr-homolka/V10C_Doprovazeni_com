@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest'
 import {
   RETENTION_CHILD_CARE_YEARS,
   RETENTION_RULES,
-  isRetentionReviewDue,
-  retentionReviewDueDate,
+  applyRetentionOverrides,
   describeRetention,
   isPastRetention,
+  isRetentionReviewDue,
   retentionCutoff,
+  retentionReviewDueDate,
   summarizeRetention,
   type RetentionRule,
+  validateRetentionOverride,
 } from './retentionPolicy'
 
 const activeRule: RetentionRule = {
@@ -142,5 +144,68 @@ describe('describeRetention', () => {
 
   it('nerozhodnuto se řekne nahlas', () => {
     expect(describeRetention(undecidedRule)).toContain('není rozhodnutá')
+  })
+})
+
+/**
+ * NASTAVITELNÉ LHŮTY. Katalog v kódu drží význam kategorií, nastavení drží
+ * čísla. Tyhle testy hlídají hlavně jednu věc: aby se z nastavení nedalo
+ * omylem vyrobit mazání.
+ */
+describe('nastavení retenčních lhůt', () => {
+  const NOW = new Date('2026-07-26T00:00:00.000Z')
+
+  it('bez nastavení platí katalog', () => {
+    expect(applyRetentionOverrides(null)).toEqual(RETENTION_RULES)
+    expect(applyRetentionOverrides({})).toEqual(RETENTION_RULES)
+  })
+
+  it('nastavená lhůta pravidlo aktivuje', () => {
+    const rules = applyRetentionOverrides({
+      audit_log: { keepMonths: 60, action: 'delete', decidedAt: NOW.toISOString(), decidedByUid: 'super' },
+    })
+    const rule = rules.find((r) => r.key === 'audit_log')!
+    expect(rule.keepMonths).toBe(60)
+    expect(rule.status).toBe('active')
+  })
+
+  /** Rozhodnuté „nevím" je pořád nerozhodnuto — a nerozhodnuto nemaže. */
+  it('prázdná lhůta vrací pravidlo do nerozhodnutého stavu', () => {
+    const rules = applyRetentionOverrides({
+      import_staging: { keepMonths: null, action: 'delete', decidedAt: NOW.toISOString(), decidedByUid: 'super' },
+    })
+    const rule = rules.find((r) => r.key === 'import_staging')!
+    expect(rule.status).toBe('needs_decision')
+    expect(retentionCutoff(rule, NOW)).toBeNull()
+  })
+
+  /** Přejmenovaná kategorie nesmí oživit mazání něčeho jiného. */
+  it('nastavení pro neexistující klíč se ignoruje', () => {
+    const rules = applyRetentionOverrides({
+      uz_neexistuje: { keepMonths: 1, action: 'delete', decidedAt: NOW.toISOString(), decidedByUid: 'super' },
+    })
+    expect(rules).toEqual(RETENTION_RULES)
+  })
+
+  it('vlastní odůvodnění nahradí to z katalogu, prázdné ne', () => {
+    const base = RETENTION_RULES.find((r) => r.key === 'messages')!
+    const withNote = applyRetentionOverrides({
+      messages: { keepMonths: 24, action: 'delete', note: 'Podle směrnice z 1. 8.', decidedAt: '', decidedByUid: 's' },
+    }).find((r) => r.key === 'messages')!
+    expect(withNote.basis).toBe('Podle směrnice z 1. 8.')
+
+    const blankNote = applyRetentionOverrides({
+      messages: { keepMonths: 24, action: 'delete', note: '   ', decidedAt: '', decidedByUid: 's' },
+    }).find((r) => r.key === 'messages')!
+    expect(blankNote.basis).toBe(base.basis)
+  })
+
+  it('nesmyslná lhůta neprojde validací', () => {
+    expect(validateRetentionOverride({ keepMonths: 0, action: 'delete' })).toContain('aspoň jeden')
+    expect(validateRetentionOverride({ keepMonths: -5, action: 'delete' })).toContain('aspoň jeden')
+    expect(validateRetentionOverride({ keepMonths: 1.5, action: 'delete' })).toContain('celý počet')
+    expect(validateRetentionOverride({ keepMonths: 5000, action: 'delete' })).toContain('překlep')
+    expect(validateRetentionOverride({ keepMonths: null, action: 'review' })).toBeNull()
+    expect(validateRetentionOverride({ keepMonths: 360, action: 'review' })).toBeNull()
   })
 })

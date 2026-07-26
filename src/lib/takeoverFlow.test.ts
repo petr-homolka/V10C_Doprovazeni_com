@@ -9,7 +9,6 @@ function reg(over: Partial<TitleRegistryDoc> = {}): TitleRegistryDoc {
   return {
     uid: '1000000001',
     holderOrgId: 'org-A',
-    externalSubjectName: null,
     validFrom: '2025-01-01T00:00:00.000Z',
     validTo: null,
     releasedAt: null,
@@ -112,9 +111,5 @@ describe('co uvidí nová organizace', () => {
     expect(g.contactMissing).toBe(true)
   })
 
-  it('doprovázení mimo systém (OSPOD) se pojmenuje jménem', () => {
-    const g = planTakeoverContact(reg({ holderOrgId: null, externalSubjectName: 'OSPOD Praha 4' }), null, NOW)
-    expect(g.outcome).toBe('kontaktovat')
-    expect(g.message).toContain('OSPOD Praha 4')
-  })
+
 })

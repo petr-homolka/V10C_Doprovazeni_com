@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
@@ -6,7 +6,14 @@ import { PageHead } from '@/components/spis/PageBody'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
-import { RETENTION_RULES, describeRetention, summarizeRetention } from '@/lib/retentionPolicy'
+import {
+  RETENTION_RULES,
+  applyRetentionOverrides,
+  describeRetention,
+  summarizeRetention,
+  type RetentionRule,
+} from '@/lib/retentionPolicy'
+import { readRetentionOverrides } from '@/services/retentionSettingsService'
 import { auditActor } from '@/services/auditLogService'
 import {
   RETENTION_CONFIRMATION,
@@ -30,7 +37,20 @@ export default function RetentionSettingsPage() {
   const { userDoc } = useAuth()
   const organizationId = userDoc?.organizationId
   const isOrgAdmin = userDoc?.role === 'org_admin' || userDoc?.role === 'superadmin'
-  const summary = summarizeRetention()
+
+  // Zobrazuje se to, co SKUTEČNĚ platí, ne výchozí hodnoty z kódu. Kdyby
+  // tahle stránka ukazovala katalog a mazací běh jel podle nastavení,
+  // organizace by četla jiná čísla, než podle kterých se maže.
+  const [rules, setRules] = useState<RetentionRule[]>(RETENTION_RULES)
+  useEffect(() => {
+    readRetentionOverrides()
+      .then((o) => setRules(applyRetentionOverrides(o)))
+      .catch(() => {
+        /* Nepovedlo se načíst nastavení — ukáže se katalog, tedy ta
+           přísnější varianta („nerozhodnuto, nemaže se"). */
+      })
+  }, [])
+  const summary = summarizeRetention(rules)
 
   const [plan, setPlan] = useState<RetentionPlan | null>(null)
   const [planning, setPlanning] = useState(false)
@@ -119,7 +139,7 @@ export default function RetentionSettingsPage() {
       <section className="sp__card sp__card--pad">
         <h2 className="text-base text-text-primary">Politika</h2>
         <div className="mt-3 flex flex-col">
-          {RETENTION_RULES.map((rule) => {
+          {rules.map((rule) => {
             const item = plan?.items.find((i) => i.rule.key === rule.key)
             return (
               <article key={rule.key} className="border-b border-border-subtle py-3 last:border-0">

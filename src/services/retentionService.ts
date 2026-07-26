@@ -1,7 +1,8 @@
 import { collection, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { readRetentionOverrides } from '@/services/retentionSettingsService'
 import {
-  RETENTION_RULES,
+  applyRetentionOverrides,
   isPastRetention,
   retentionCutoff,
   type RetentionRule,
@@ -93,11 +94,16 @@ const SCANNERS: Record<string, Scanner> = {
 export async function planRetention(
   organizationId: string,
   today: Date = new Date(),
-  rules: RetentionRule[] = RETENTION_RULES,
+  rules?: RetentionRule[],
 ): Promise<RetentionPlan> {
+  // Bez výslovného seznamu se lhůty NAČTOU Z NASTAVENÍ, ne z konstant
+  // v kódu. Kdyby se tu nechal `= RETENTION_RULES`, superadmin by lhůty
+  // nastavil, obrazovka by je zobrazila — a mazací běh by dál jel podle
+  // původních výchozích hodnot. Tichý rozpor, který by nikdo nenašel.
+  const effective = rules ?? applyRetentionOverrides(await readRetentionOverrides())
   const items: RetentionPlanItem[] = []
 
-  for (const rule of rules) {
+  for (const rule of effective) {
     const cutoff = retentionCutoff(rule, today)
 
     if (rule.status === 'needs_decision' || cutoff === null) {
@@ -143,16 +149,20 @@ export async function executeRetention(
   actor: AuditActor,
   confirmation: string,
   today: Date = new Date(),
-  rules: RetentionRule[] = RETENTION_RULES,
+  rules?: RetentionRule[],
 ): Promise<RetentionExecutionResult> {
   if (confirmation !== RETENTION_CONFIRMATION) {
     throw new Error('Mazání nebylo potvrzeno.')
   }
 
+  // Znovu z nastavení, viz `planRetention` — a schválně TEĎ, ne z toho,
+  // co si volající přinesl: mezi náhledem a potvrzením mohl superadmin
+  // lhůtu zkrátit i prodloužit.
+  const effective = rules ?? applyRetentionOverrides(await readRetentionOverrides())
   const perRule: Record<string, number> = {}
   let deleted = 0
 
-  for (const rule of rules) {
+  for (const rule of effective) {
     if (rule.status !== 'active') continue
     const scanner = SCANNERS[rule.key]
     if (!scanner) continue

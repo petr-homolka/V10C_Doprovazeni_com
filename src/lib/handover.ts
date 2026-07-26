@@ -192,20 +192,6 @@ export interface TakeoverPlan {
 }
 
 /**
- * Doprovázející subjekt MIMO náš systém. Typicky OSPOD, který vydal
- * správní rozhodnutí a doprovází sám, nebo konkurenční organizace.
- *
- * Nevidíme u něj nic — ani kdy jeho titul skončí. Proto se s ním nedá
- * zacházet jako s naším segmentem: nejde říct „už skončil", jde jen říct
- * „naposledy jsme věděli tohle".
- */
-export interface ExternalAccompaniment {
-  subjectName: string
-  /** Co o konci víme, když něco. `null` = nevíme nic. */
-  knownEndsAt?: string | null
-}
-
-/**
  * Co se stane, když nová organizace na tomhle UID podepíše Dohodu.
  * ČISTÁ funkce: rozhodnutí je testovatelné bez databáze a bez UI, protože
  * na něm visí ukončení cizí Dohody — to není místo na improvizaci.
@@ -215,8 +201,6 @@ export function planTakeover(
   /** Má nová organizace UID aspoň zavedené jako zájemce? */
   hasProspect: boolean,
   now: Date = new Date(),
-  /** Víme o doprovázení mimo náš systém? (OSPOD, cizí organizace.) */
-  external: ExternalAccompaniment | null = null,
 ): TakeoverPlan {
   const state = uidLifecycle(segments, now)
 
@@ -249,17 +233,12 @@ export function planTakeover(
       consequence:
         'UID v našem systému nikdo nespravuje. Podpisem se spis probudí u vás a dostanete ' +
         'dohodnutý rozsah historie. Žádná jiná organizace se nic neztratí.',
-      // Spánek u NÁS neznamená, že osobu nikdo nedoprovází — doprovázet ji
-      // může OSPOD nebo organizace mimo systém, a pak platí výlučnost
-      // titulu úplně stejně. Nesmíme to zablokovat (konec cizího titulu
-      // nevidíme a systém by se tím dal zamknout napořád), ale zamlčet
-      // taky ne: kdo podepíše, ať ví, co si má ověřit.
-      warning: external
-        ? `Podle poslední známé informace osobu doprovází ${external.subjectName} — subjekt mimo ` +
-          'náš systém. Souběžně mohou platit dva tituly jen u manželů žijících odděleně. ' +
-          'Před podpisem si ověřte, že předchozí doprovázení skončilo' +
-          (external.knownEndsAt ? ` (evidujeme konec k ${external.knownEndsAt.slice(0, 10)}).` : ' — datum konce u sebe nemáme.')
-        : undefined,
+      // POZOR: „spánek" znamená jen to, že UID nikdo nespravuje U NÁS.
+      // Pěstouna může doprovázet OSPOD nebo organizace mimo systém — my
+      // se to nemáme jak dozvědět (viz agreementLaw.ts bod 4) a vědomě to
+      // ani nehlásíme. Varovat před něčím, co nemáme čím podložit, by
+      // znamenalo strašit u každého druhého UID; takové varování lidi
+      // přestanou číst a pak přehlédnou i to, které něco znamená.
     }
   }
 

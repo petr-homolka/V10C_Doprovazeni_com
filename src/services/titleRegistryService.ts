@@ -80,14 +80,13 @@ export async function assertCanOpenTitle(
     // je pravidlo na jednom místě.
     const asTitle: LegalTitleState = {
       organizationId: entry.holderOrgId,
-      externalSubjectName: entry.externalSubjectName ?? null,
       validFrom: entry.validFrom,
       validTo: null,
     }
     const check = canOpenNewTitle([asTitle], spousesLivingApart, now)
     if (check.ok) continue
 
-    const subject = entry.externalSubjectName ?? entry.holderOrgId ?? 'jiná organizace'
+    const subject = entry.holderOrgId ?? 'jiná organizace'
     const reason =
       titleState(entry, now) === 'aktivni'
         ? `UID ${uid}: pěstoun má platnou Dohodu s organizací ${subject}. Spojte se s ní — ` +
@@ -115,7 +114,6 @@ export async function claimTitle(input: {
   const entry: TitleRegistryDoc = {
     uid: input.uid,
     holderOrgId: input.holderOrgId,
-    externalSubjectName: null,
     validFrom: input.validFrom,
     validTo: input.validTo ?? null,
     updatedAt: new Date().toISOString(),
@@ -183,31 +181,4 @@ export async function releaseFosterParent(
     subject: { kind: 'fosterPerson', id: uid, label: audit.fosterLabel },
     detail: 'Potvrzeno vypořádání. Pěstoun může uzavřít Dohodu s jinou organizací.',
   })
-}
-
-/**
- * Zaznamená, že osobu doprovází subjekt MIMO náš systém — typicky OSPOD,
- * který vydal správní rozhodnutí a je tím sám doprovázejícím subjektem.
- *
- * Zapisuje to organizace, která tu informaci má z terénu. Sami si ji
- * nemáme kde ověřit, ale bez ní by systém tvářil volné UID, které volné
- * není.
- */
-export async function recordExternalTitle(input: {
-  uid: string
-  subjectName: string
-  validFrom: string
-  validTo?: string | null
-  reportedByOrgId: string
-}): Promise<void> {
-  const entry: TitleRegistryDoc = {
-    uid: input.uid,
-    holderOrgId: null,
-    externalSubjectName: input.subjectName,
-    validFrom: input.validFrom,
-    validTo: input.validTo ?? null,
-    updatedAt: new Date().toISOString(),
-    updatedByOrgId: input.reportedByOrgId,
-  }
-  await setDoc(titleRegistryRef(input.uid), entry)
 }

@@ -64,14 +64,14 @@ export interface TitleRegistryDoc {
   uid: string
 
   /**
-   * Organizace v našem systému, která titul drží. `null` znamená, že titul
-   * běží MIMO nás — u OSPODu jako doprovázejícího subjektu nebo u cizí
-   * organizace.
+   * Organizace, která titul drží.
+   *
+   * Bylo tu i pole pro subjekt MIMO náš systém (OSPOD). Zrušeno 26. 7.:
+   * OSPOD uživatelem systému nikdy nebude, takže by ten údaj nikdo nikdy
+   * nezapsal. Viz `lib/agreementLaw.ts` bod 4 — a důsledek, že pěstouna
+   * doprovázeného OSPODem uvidíme jako volného.
    */
   holderOrgId: string | null
-
-  /** Jméno subjektu mimo náš systém, když `holderOrgId` je `null`. */
-  externalSubjectName?: string | null
 
   validFrom: string
   /** `null` = běží. Vyplněné = titul skončil (nebo má konec naplánovaný). */
