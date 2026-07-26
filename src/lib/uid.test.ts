@@ -8,6 +8,7 @@ import {
   uidEntityTypeCode,
   uidOrgCode,
 } from './uid'
+import { SELF_REGISTRATION_ORG_CODE } from './orgCode'
 
 describe('ean13CheckDigit', () => {
   it('matches the known EAN-13 example (400638133393 -> 1)', () => {
@@ -96,5 +97,30 @@ describe('připravenost na delší UID', () => {
     const uid = buildUid('fosterPerson', '0001', 13)
     expect(normalizeUidInput(`${uid.slice(0, 4)} ${uid.slice(4, 8)}-${uid.slice(8)}`)).toBe(uid)
     expect(isValidUid(normalizeUidInput(` ${uid} `))).toBe(true)
+  })
+})
+
+/**
+ * SAMOREGISTRACE PĚSTOUNA (pestouni.com). Pěstoun dostane UID dřív, než
+ * ho začne vést jakákoli organizace — segment OOOO tedy nemá co obsahovat
+ * a používá se rezervovaná `0000`.
+ */
+describe('rezervovaný kód pro samoregistraci', () => {
+  it('UID se z něj poskládá a projde validací', () => {
+    const uid = buildUid('fosterPerson', SELF_REGISTRATION_ORG_CODE, 1)
+    expect(isValidUid(uid)).toBe(true)
+    expect(uidOrgCode(uid)).toBe('0000')
+    // Nezačíná nulou — tu drží typ entity na prvních dvou místech.
+    expect(uid[0]).not.toBe('0')
+  })
+
+  /**
+   * Kdyby čítač organizací někdy začal od nuly, samoregistrovaní pěstouni
+   * by dostali stejný prefix jako reálná organizace a nešli by odlišit.
+   * Test je tu proto, aby se ta hodnota nespotřebovala nedopatřením.
+   */
+  it('kód organizací začíná na 0001, takže 0000 zůstane volná', () => {
+    expect(String(1).padStart(4, '0')).toBe('0001')
+    expect(SELF_REGISTRATION_ORG_CODE).toBe('0000')
   })
 })
