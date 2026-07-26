@@ -16,13 +16,16 @@
  *
  *  aktivni    Organizace má podepsanou Dohodu a spis spravuje.
  *
- *  prevod     PŘECHODNÉ OBDOBÍ, 90 dní. Běží od chvíle, kdy NOVÁ
- *             organizace podepsala Dohodu (ne dřív — zavedení zájemce
- *             lhůtu nespouští). Spis je aktivní u OBOU:
- *               • nová píše a vidí od začátku svoje,
- *               • stará UŽ NEVIDÍ nové zápisy, ale SMÍ dál zapisovat —
- *                 potřebuje dopsat předávací protokoly a odhlášení pro
- *                 OSPOD, a to bez práva zápisu nejde.
+ *  prevod     DOKONČOVACÍ OBDOBÍ, 90 dní. Běží od ZÁNIKU staré Dohody —
+ *             tedy od 30. 6. nebo 31. 12., protože jindy Dohoda skončit
+ *             nemůže (viz agreementLaw.ts). Nová Dohoda navazuje dnem
+ *             následujícím, takže dvě aktivní Dohody vedle sebe NIKDY
+ *             nestojí; překrývá se jen PŘÍSTUP:
+ *               • nová organizace spis od prvního dne vede,
+ *               • stará ho už nevede, ale ještě 90 dní SMÍ zapisovat do
+ *                 svého segmentu — potřebuje dopsat předávací protokoly
+ *                 a odhlášení pro OSPOD, a to bez práva zápisu nejde.
+ *                 Nové zápisy druhé organizace nevidí.
  *             Stará může kdykoli sama uzavřít a archivovat. Po 90 dnech
  *             se archivuje sama.
  *
@@ -36,17 +39,33 @@
  *             NIKDY se nemaže; historie zůstává celá. Je to stav UID,
  *             ne segmentu.
  *
+ * ─── OPRAVA PŘEDPOKLADU, 2026-07-26 odpoledne ─────────────────────────
+ *
+ * Tady dřív stálo, že jeden pěstoun může mít při souběžné péči o víc dětí
+ * několik Dohod s RŮZNÝMI organizacemi zároveň. Metodika MPSV (aktualizace
+ * 20. 1. 2026) to VYVRACÍ: osoba pečující smí mít v daném čase uzavřenu
+ * jen JEDNU dohodu s JEDNÍM doprovázejícím subjektem. Další dítě se řeší
+ * změnou stávající dohody, ne novou. Jediná výjimka — manželé, kteří spolu
+ * nežijí, každý s dítětem ve výlučné péči.
+ *
+ * Hlídá to `canOpenNewTitle()` v `agreementLaw.ts`, kde jsou i lhůty.
+ *
  * ─── Co tenhle soubor záměrně NEŘEŠÍ ──────────────────────────────────
  *
- * Výlučnost NENÍ „jeden pěstoun = jedna organizace". Jeden pěstoun může
- * mít v čase několik dětí, několik Dohod, a při souběžné péči o víc dětí
- * i několik Dohod s RŮZNÝMI organizacemi zároveň. Výlučnost platí na
- * úrovni JEDNOHO SPISU: jeden spis spravuje v jednu chvíli jedna
- * organizace (a během převodu dvě, v jasně vymezených rolích).
+ * Výlučnost právního titulu (kolik Dohod smí osoba mít) je věc
+ * `agreementLaw.ts`. Tady se řeší jen to, kdo SPIS spravuje: v jednu
+ * chvíli jedna organizace, a v dokončovacím období ta nová plus ta stará
+ * s právem dopsat vlastní segment.
  */
 
-/** Délka přechodného období po podpisu nové Dohody. */
-export const HANDOVER_WINDOW_DAYS = 90
+import { WIND_DOWN_DAYS } from './agreementLaw'
+
+/**
+ * Délka dokončovacího období. Je to TÁŽ lhůta jako `WIND_DOWN_DAYS`
+ * v `agreementLaw.ts` — schválně odvozená, ne opsaná, aby se dvě „devadesátky"
+ * v kódu nemohly rozejít.
+ */
+export const HANDOVER_WINDOW_DAYS = WIND_DOWN_DAYS
 
 /**
  * Pět stavů. POZOR na to, že nežijí všechny na stejné úrovni:

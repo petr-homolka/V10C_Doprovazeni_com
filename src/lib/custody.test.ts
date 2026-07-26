@@ -64,14 +64,21 @@ describe('pěstoun ve svěření', () => {
 })
 
 /**
- * SCÉNÁŘ 1 — jeden pěstoun, dvě děti ze dvou rozsudků, DVĚ RŮZNÉ
- * organizace. Přesně ten případ, kvůli kterému starý model nestačil:
- * dřív by obě organizace viděly obě děti, protože rozhodovala domácnost.
+ * SCÉNÁŘ 1 — DVĚ DĚTI V JEDNÉ DOMÁCNOSTI, KAŽDÉ U JINÉ ORGANIZACE.
+ *
+ * POZOR, tenhle test byl původně napsaný jako „jeden pěstoun, dvě děti,
+ * dvě organizace". To metodika MPSV (20. 1. 2026) NEPŘIPOUŠTÍ: jedna
+ * osoba pečující smí mít v daném čase jen jeden právní titul. Scénář je
+ * tu proto přepsaný na zákonnou variantu — rozvedení manželé, kteří spolu
+ * nežijí, každý s dítětem ve výlučné péči a s vlastní Dohodou.
+ *
+ * Pointa zůstává stejná a je to ta, kvůli které model vznikl: DOMÁCNOST
+ * NENÍ JEDNOTKA. Dřív by obě organizace viděly obě děti.
  */
-describe('pěstoun se dvěma dětmi u dvou organizací', () => {
-  const s1 = assignment({ id: 's1', childId: 'dite-1', courtDecisionId: 'rozsudek-1' })
-  const s2 = assignment({ id: 's2', childId: 'dite-2', courtDecisionId: 'rozsudek-2' })
-  const subjects = [subject('dohoda-A', 's1', 'pest-A'), subject('dohoda-B', 's2', 'pest-A')]
+describe('dvě děti v jedné domácnosti, každé u jiné organizace', () => {
+  const s1 = assignment({ id: 's1', childId: 'dite-1', fosterPersonIds: ['pest-A'], courtDecisionId: 'rozsudek-1' })
+  const s2 = assignment({ id: 's2', childId: 'dite-2', fosterPersonIds: ['pest-B'], courtDecisionId: 'rozsudek-2' })
+  const subjects = [subject('dohoda-A', 's1', 'pest-A'), subject('dohoda-B', 's2', 'pest-B')]
   const orgByAgreement = { 'dohoda-A': 'org-A', 'dohoda-B': 'org-B' }
 
   it('každé dítě doprovází jen jeho organizace', () => {
@@ -84,8 +91,35 @@ describe('pěstoun se dvěma dětmi u dvou organizací', () => {
     expect(agreementCoversChild('dohoda-A', 'dite-1', [s1, s2], subjects, NOW)).toBe(true)
   })
 
-  it('pěstoun má v péči obě děti, i když je každé jinde', () => {
-    expect(childrenInCareOf('pest-A', [s1, s2], NOW).sort()).toEqual(['dite-1', 'dite-2'])
+  it('každý pěstoun má v péči své dítě', () => {
+    expect(childrenInCareOf('pest-A', [s1, s2], NOW)).toEqual(['dite-1'])
+    expect(childrenInCareOf('pest-B', [s1, s2], NOW)).toEqual(['dite-2'])
+  })
+})
+
+/**
+ * SCÉNÁŘ 1b — DALŠÍ DÍTĚ K TÉMUŽ PĚSTOUNOVI. Podle metodiky se NEZAKLÁDÁ
+ * nová Dohoda, ale mění se stávající. V modelu to znamená: druhé svěření,
+ * ale TÝŽ `agreementId` v předmětu dohody.
+ */
+describe('další dítě se přidává ke stávající Dohodě', () => {
+  const prvni = assignment({ id: 's1', childId: 'dite-1', courtDecisionId: 'rozsudek-1' })
+  const druhe = assignment({
+    id: 's2',
+    childId: 'dite-2',
+    courtDecisionId: 'rozsudek-2',
+    validFrom: '2026-01-01T00:00:00.000Z',
+  })
+  const subjects = [subject('dohoda-A', 's1', 'pest-A'), subject('dohoda-A', 's2', 'pest-A')]
+
+  it('obě děti spadají pod tutéž Dohodu', () => {
+    expect(agreementCoversChild('dohoda-A', 'dite-1', [prvni, druhe], subjects, NOW)).toBe(true)
+    expect(agreementCoversChild('dohoda-A', 'dite-2', [prvni, druhe], subjects, NOW)).toBe(true)
+  })
+
+  it('obě děti doprovází jedna a tatáž organizace', () => {
+    const orgs = organizationsAccompanyingChild('dite-2', [prvni, druhe], subjects, { 'dohoda-A': 'org-A' }, NOW)
+    expect(orgs).toEqual(['org-A'])
   })
 })
 

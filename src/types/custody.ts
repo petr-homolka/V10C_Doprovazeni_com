@@ -145,13 +145,19 @@ export interface CustodyAssignmentDoc extends DataClassed {
  * z jednoho rozsudku) a naopak jedno svěření může být v čase pokryté
  * několika Dohodami po sobě (organizace se vymění).
  *
- * POZOR NA ROZPOR, který je potřeba vyjasnit: 26. 7. dopoledne padlo, že
- * dva pěstouni ve společné péči = DVĚ Dohody. Odpoledne, v propracovaném
- * návrhu, že manželé uzavírají JEDNU Dohodu společně. Model tady jde po
- * té druhé variantě, protože odpovídá zákonu (dohodu uzavírají manželé
- * společně) — jedna `Dohoda`, a v ní dva `agreementSubjects`, po jednom
+ * ROZPOR VYŘEŠEN metodikou MPSV (aktualizace 20. 1. 2026). 26. 7. dopoledne
+ * padlo, že dva pěstouni ve společné péči = DVĚ Dohody; odpoledne, že
+ * manželé uzavírají JEDNU. Platí to druhé: manželé uzavírají dohodu
+ * společně a osoba pečující smí mít v daném čase jen jednu dohodu s jedním
+ * doprovázejícím subjektem. Model už po téhle variantě šel, takže se nic
+ * nepřepisuje — jedna `Dohoda` a v ní dva `agreementSubjects`, po jednom
  * za každého manžela. Vykazování za konkrétního pěstouna tím zůstává
  * možné, ale smlouva je jedna.
+ *
+ * Ze stejné metodiky plyne i druhá věc, kterou tenhle tvar dat unese
+ * a starý ne: PŘIJETÍ DALŠÍHO DÍTĚTE NENÍ NOVÁ DOHODA, ale změna té
+ * stávající — v datech tedy další `agreementSubject` s TÝMŽ `agreementId`.
+ * Hlídá to `canOpenNewTitle()` v `lib/agreementLaw.ts`.
  */
 export interface AgreementSubjectDoc extends DataClassed {
   agreementId: string
