@@ -167,3 +167,59 @@ describe('personIndex — vyhledávací otisky', () => {
     await assertSucceeds(deleteDoc(doc(su, 'personIndex', HASH)))
   })
 })
+
+/**
+ * uidHolderCard — jediná kolekce, kde osobní údaj překračuje hranici
+ * organizace. Testuje se hlavně to, že se nedá vytěžit hromadně: bez
+ * `list` musí útočník znát konkrétní UID.
+ */
+describe('uidHolderCard — ověřovací karta k UID', () => {
+  const UID = '1000000001'
+  const holderCard = {
+    uid: UID,
+    firstName: 'Jana',
+    lastName: 'Nováková',
+    municipality: 'Kolín',
+    holderOrgId: ORG_A,
+    updatedAt: '2026-07-26T10:00:00.000Z',
+  }
+
+  async function seedHolder() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'uidHolderCard', UID), holderCard)
+    })
+  }
+
+  it('cizí organizace kartu přečte — na tom stojí ověření opsaného UID', async () => {
+    await seedHolder()
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertSucceeds(getDoc(doc(db, 'uidHolderCard', UID)))
+  })
+
+  /** Bez tohohle by šel stáhnout jmenný seznam všech vedených osob. */
+  it('hromadně se karty stáhnout NEDAJÍ', async () => {
+    await seedHolder()
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertFails(getDocs(collection(db, 'uidHolderCard')))
+  })
+
+  it('pěstoun ani nepřihlášený na kartu nedosáhne', async () => {
+    await seedHolder()
+    await assertFails(getDoc(doc(testEnv.authenticatedContext('foster-a').firestore(), 'uidHolderCard', UID)))
+    await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), 'uidHolderCard', UID)))
+  })
+
+  it('kartu zapíše jen organizace, která osobu vede', async () => {
+    const own = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(setDoc(doc(own, 'uidHolderCard', UID), holderCard))
+
+    const foreign = testEnv.authenticatedContext('ko-b').firestore()
+    await assertFails(setDoc(doc(foreign, 'uidHolderCard', UID), holderCard))
+  })
+
+  it('mazat smí jen superadmin', async () => {
+    await seedHolder()
+    await assertFails(deleteDoc(doc(testEnv.authenticatedContext('ko-a').firestore(), 'uidHolderCard', UID)))
+    await assertSucceeds(deleteDoc(doc(testEnv.authenticatedContext('super').firestore(), 'uidHolderCard', UID)))
+  })
+})

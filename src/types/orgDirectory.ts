@@ -16,6 +16,30 @@
  * jméno vedení, firemní telefon, firemní e-mail. Nic dalšího sem nepatří,
  * i kdyby se to hodilo.
  */
+/**
+ * Kraje. Podle nich se bude pěstounovi nabízet místně příslušná
+ * organizace, dřív než bude mapa — a je to údaj, který se dá vyplnit
+ * spolehlivě, na rozdíl od souřadnic.
+ */
+export const REGIONS = [
+  'Praha',
+  'Středočeský',
+  'Jihočeský',
+  'Plzeňský',
+  'Karlovarský',
+  'Ústecký',
+  'Liberecký',
+  'Královéhradecký',
+  'Pardubický',
+  'Vysočina',
+  'Jihomoravský',
+  'Olomoucký',
+  'Zlínský',
+  'Moravskoslezský',
+] as const
+
+export type Region = (typeof REGIONS)[number]
+
 export interface OrgDirectoryDoc {
   organizationId: string
   /** Název organizace, jak se má ukázat druhé straně. */
@@ -24,6 +48,18 @@ export interface OrgDirectoryDoc {
   contactPersonName: string
   phone: string
   email: string
+
+  /**
+   * Kde organizace působí. Zatím jen pro lidské čtení a pro budoucí
+   * nabídku „místně příslušná organizace"; souřadnice tu schválně nejsou —
+   * geokódovat adresu jde kdykoli později, vymýšlet si polohu ne.
+   */
+  address?: string
+  region?: Region | ''
+  website?: string
+  /** IČO — jediný spolehlivý veřejný identifikátor organizace. */
+  ico?: string
+
   updatedAt: string
   updatedByUid: string
 }

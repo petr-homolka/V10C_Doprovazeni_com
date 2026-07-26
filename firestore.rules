@@ -536,6 +536,37 @@ service cloud.firestore {
     // ne prevence. Skutečné omezení chce serverovou funkci a musí přibýt
     // před ostrým provozem.
 
+    // ---- uidHolderCard/{uid} — OVĚŘOVACÍ KARTA K UID -------------------
+    //
+    // POZOR: JEDINÁ kolekce v celé databázi, kde osobní údaj překračuje
+    // hranici organizace. Zadání 26. 7.: po zadání UID se má ukázat jméno,
+    // příjmení a místo, aby pracovník poznal, že opsal správné číslo.
+    //
+    // Obsah je omezený na to a nic víc — jméno, příjmení, OBEC (ne ulice
+    // s číslem popisným), a která organizace osobu vede. Rodné číslo,
+    // datum narození ani cokoli o dětech sem nepatří a nikdy nesmí.
+    //
+    // `list` zakázaný. Zápis jen za vlastní organizaci. Čtení je navíc
+    // povinně auditované v `uidHolderCardService` — pravidla to vynutit
+    // neumí, ale služba nemá jinou cestu.
+    //
+    // ZNÁMÁ SLABINA, ať to nikdo neobjeví až za rok: UID má kontrolní
+    // číslici, takže platné je zhruba každé desáté třináctimístné číslo
+    // a prefix se dá uhodnout. Kdo bude zkoušet čísla po řadě, bude
+    // dostávat jména. Omezit počet dotazů pravidla neumí — chce to
+    // serverovou funkci a musí přibýt před ostrým provozem.
+
+    match /uidHolderCard/{uid} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create, update: if isStaff() &&
+        request.resource.data.uid == uid &&
+        request.resource.data.holderOrgId == userDoc().organizationId;
+
+      allow delete: if isSuperadmin();
+    }
+
     match /personIndex/{hash} {
       allow get: if isSuperadmin() || isStaff();
       allow list: if false;
