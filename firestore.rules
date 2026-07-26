@@ -464,14 +464,85 @@ service cloud.firestore {
         request.resource.data.uid == uid &&
         request.resource.data.updatedByOrgId == userDoc().organizationId;
 
+      // PŘEPSAT smí jen držitel — nebo kdokoli, když je pěstoun UVOLNĚNÝ.
+      //
+      // Pozor na rozdíl, který je jádrem celého předávání: „Dohoda
+      // skončila" (`validTo` v minulosti) NESTAČÍ. Dokud stará organizace
+      // nezapsala `releasedAt`, je pěstoun pořád její — může s ním mít
+      // nedořešené předávací protokoly nebo odhlášení pro OSPOD. Uvolnit
+      // ho musí ČLOVĚK po telefonátu, ne kalendář.
+      //
+      // Dřív tu stálo `resource.data.validTo != null`, což znamenalo, že
+      // naplánovaný konec Dohody stačil k převzetí. To bylo špatně.
       allow update: if isSuperadmin() || (
         isStaff() &&
         request.resource.data.uid == uid &&
         request.resource.data.updatedByOrgId == userDoc().organizationId && (
           resource.data.holderOrgId == userDoc().organizationId ||
-          resource.data.validTo != null
+          resource.data.releasedAt != null
         )
       );
+
+      allow delete: if isSuperadmin();
+    }
+
+    // ---- orgDirectory/{orgId} — VEŘEJNÁ VIZITKA ORGANIZACE --------------
+    //
+    // Předání pěstouna stojí na telefonátu: nová organizace uvidí, že
+    // pěstoun pravděpodobně patří jinam, a musí se mít kam obrátit.
+    // `organizations/{orgId}` na to použít nejde — čte ho jen ta
+    // organizace sama a jsou v něm i kapacitní prahy a tarif.
+    //
+    // Obsah je PRACOVNÍ KONTAKT (název, jméno vedení, firemní telefon
+    // a e-mail), ne osobní údaj a nikdy nic o klientech. Čte každý
+    // zaměstnanec; `list` je zakázaný stejně jako u rejstříku, aby se
+    // z toho nedal stáhnout seznam organizací na trhu. Sáhne se přímo na
+    // orgId, které volající zná z rejstříku.
+    //
+    // Píše VÝHRADNĚ org_admin své vlastní vizitky — vizitka je vyjádření
+    // organizace o sobě, ne provozní údaj, který mění kdokoli.
+
+    match /orgDirectory/{orgId} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create, update: if isSuperadmin() || (
+        sameOrg(orgId) &&
+        userDoc().role == 'org_admin' &&
+        request.resource.data.organizationId == orgId
+      );
+
+      allow delete: if isSuperadmin();
+    }
+
+    // ---- personIndex/{hash} — VYHLEDÁVACÍ OTISKY ------------------------
+    //
+    // Klíčem je SHA-256 otisk identifikátoru (rodné číslo, občanka, pas,
+    // číslo rozsudku, jméno s adresou) — viz src/lib/personMatch.ts.
+    // Najít někoho tedy znamená znát jeho údaj předem; nová organizace ho
+    // má proto, že jí pěstoun sedí naproti a ukazuje doklad.
+    //
+    // V dokumentu je JEN UID a druh klíče. Žádná jména, žádné hodnoty.
+    // Kdyby tu byly, byla by tahle kolekce nejcennějším cílem v databázi.
+    //
+    // `list` zakázaný — jinak by šel index stáhnout celý a spárovat
+    // s čímkoli dalším. Mazat nesmí nikdo kromě superadmina: smazaný otisk
+    // znamená, že se osoba přestane nacházet a systém ji povolí založit
+    // podruhé.
+    //
+    // ČEHO SE TÍMHLE NEDOSÁHNE: pravidla neumí omezit POČET dotazů, takže
+    // hádání po jednom tohle nezastaví. Zábranou je zatím jen povinný
+    // auditní zápis u každého dotazu (personIndexService) — odstrašení,
+    // ne prevence. Skutečné omezení chce serverovou funkci a musí přibýt
+    // před ostrým provozem.
+
+    match /personIndex/{hash} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create, update: if isStaff() &&
+        request.resource.data.uid is string &&
+        request.resource.data.createdByOrgId == userDoc().organizationId;
 
       allow delete: if isSuperadmin();
     }

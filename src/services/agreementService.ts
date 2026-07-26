@@ -28,7 +28,7 @@ import {
   type CareType,
 } from '@/types/agreement'
 import { resetEducationWindowForNewAgreement } from '@/services/courseService'
-import { assertCanOpenTitle, claimTitle, releaseTitle } from '@/services/titleRegistryService'
+import { assertCanOpenTitle, claimTitle, setTitleEnd } from '@/services/titleRegistryService'
 
 /**
  * Barrel service (ZADANI §11 bod 3) pro Dohodu — M2. Dohoda má
@@ -199,7 +199,7 @@ export async function scheduleAgreementEnd(
   // neběží, i když už na něj nikdo nesáhne. Kdyby uvolnění záviselo na
   // zápisu, jeden zapomenutý by UID zablokoval napořád.
   const uids = await fosterUidsOfFamily(familyDocId)
-  await Promise.all(uids.map((uid) => releaseTitle(uid, endDate, organizationId)))
+  await Promise.all(uids.map((uid) => setTitleEnd(uid, endDate, organizationId)))
 }
 
 /** Zruší naplánované ukončení (dostupné, dokud naplánované datum

@@ -25,6 +25,40 @@
  * tazatel už zná.
  */
 
+/**
+ * ─── OPRAVA: KONEC DOHODY NEZNAMENÁ VOLNO ─────────────────────────────
+ *
+ * Původně se tu titul uvolňoval SÁM, jakmile uplynulo `validTo` — s tím
+ * odůvodněním, že zapomenutý zápis by jinak UID zablokoval napořád.
+ * Petrův postup z 26. 7. tohle vyvrací a je to lepší:
+ *
+ *   Konec Dohody a vypořádání se starou organizací jsou DVĚ RŮZNÉ VĚCI.
+ *
+ * Dohoda může skončit a pěstoun pořád může mít s organizací nedořešené
+ * věci (předávací protokoly, odhlášení pro OSPOD, vyúčtování). Teprve když
+ * stará organizace řekne „vypořádáno", je pěstoun volný. To se nedá
+ * odvodit z kalendáře, to musí někdo potvrdit.
+ *
+ * Pojistka proti zapomenutému uvolnění není časovač, ale TELEFON: nová
+ * organizace uvidí, s kým se spojit, zavolá, a stará uvolní jedním
+ * kliknutím. Člověk v té smyčce je záměr, ne nedodělek — je to jediné
+ * místo, kde se pozná rozdíl mezi „je to pořád náš klient" a „zapomněli
+ * jsme ho uvolnit".
+ */
+export type TitleState =
+  /** Dohoda běží. Nová organizace nemůže podepsat. */
+  | 'aktivni'
+  /** Dohoda skončila, ale stará organizace pěstouna NEUVOLNILA. Blokuje. */
+  | 'ukoncena'
+  /** Stará organizace potvrdila vypořádání. Volné pro kohokoli. */
+  | 'uvolneny'
+
+export const TITLE_STATE_LABELS: Record<TitleState, string> = {
+  aktivni: 'Aktivní dohoda',
+  ukoncena: 'Dohoda ukončena — pěstoun zatím neuvolněn',
+  uvolneny: 'Uvolněný',
+}
+
 export interface TitleRegistryDoc {
   /** UID osoby pečující. Zároveň document ID — sáhne se přímo, bez dotazu. */
   uid: string
@@ -43,21 +77,43 @@ export interface TitleRegistryDoc {
   /** `null` = běží. Vyplněné = titul skončil (nebo má konec naplánovaný). */
   validTo: string | null
 
+  /**
+   * Kdy stará organizace pěstouna VYPOŘÁDALA A UVOLNILA. `null` = neuvolněn.
+   *
+   * JEDINÉ uložené pole o uvolnění. Stav se z něj a z `validTo` dopočítá
+   * (`titleState`), aby se dvě pole o téže věci nemohla rozejít — přesně
+   * ta chyba, kterou u svěření hlídá `validateAssignmentConsistency`.
+   */
+  releasedAt?: string | null
+  /** Kdo uvolnění provedl — do auditu i do hlášky „uvolnila organizace X". */
+  releasedByOrgId?: string | null
+
   updatedAt: string
   /** Kdo zápis provedl — kvůli dohledatelnosti, ne kvůli přístupu. */
   updatedByOrgId: string
 }
 
-/**
- * Běží titul k danému dni? Stejné pravidlo jako `isEffective` v custody.ts
- * — konec je VÝLUČNÝ.
- *
- * Díky tomu se skončený titul uvolní SÁM, bez zápisu: stačí, že `validTo`
- * uplynulo. Kdyby uvolnění záviselo na zápisu, jeden zapomenutý by UID
- * zablokoval navždycky.
- */
+/** Běží samotná Dohoda k danému dni? Konec je VÝLUČNÝ. */
 export function isTitleRunning(entry: TitleRegistryDoc, at: Date = new Date()): boolean {
   const day = at.toISOString()
   if (entry.validFrom > day) return false
   return !entry.validTo || entry.validTo > day
+}
+
+/**
+ * Stav pěstouna v rejstříku. Jedna funkce, jedno pravidlo — nikde jinde
+ * se to dopočítávat nesmí.
+ *
+ * Uvolnění PŘEBÍJÍ všechno ostatní: když stará organizace řekla
+ * „vypořádáno", je volno, i kdyby v datech zůstalo `validTo` napřesrok.
+ * Ten výrok je čerstvější a udělal ho člověk.
+ */
+export function titleState(entry: TitleRegistryDoc, at: Date = new Date()): TitleState {
+  if (entry.releasedAt) return 'uvolneny'
+  return isTitleRunning(entry, at) ? 'aktivni' : 'ukoncena'
+}
+
+/** Smí si na tohle UID sáhnout nová organizace? */
+export function isAvailableForTakeover(entry: TitleRegistryDoc | null, at: Date = new Date()): boolean {
+  return !entry || titleState(entry, at) === 'uvolneny'
 }

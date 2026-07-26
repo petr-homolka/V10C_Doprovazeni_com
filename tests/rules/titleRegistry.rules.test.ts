@@ -35,6 +35,8 @@ function entry(over: Record<string, unknown> = {}) {
     externalSubjectName: null,
     validFrom: '2026-01-01T00:00:00.000Z',
     validTo: null,
+    releasedAt: null,
+    releasedByOrgId: null,
     updatedAt: '2026-07-26T10:00:00.000Z',
     updatedByOrgId: ORG_A,
     ...over,
@@ -146,13 +148,52 @@ describe('zápis', () => {
     )
   })
 
-  it('po ukončení titulu si UID vezme kdokoli — to je legální přechod', async () => {
+  /**
+   * OPRAVA 26. 7. Dřív tu stačil naplánovaný konec Dohody. Nestačí:
+   * konec Dohody a vypořádání se starou organizací jsou dvě různé věci
+   * a jen to druhé znamená volno.
+   */
+  it('samotný konec Dohody k převzetí NESTAČÍ — pěstoun není uvolněný', async () => {
     await seedEntry({ validTo: '2026-06-30T00:00:00.000Z' })
+    const db = testEnv.authenticatedContext('ko-b').firestore()
+    await assertFails(
+      setDoc(doc(db, 'titleRegistry', UID), entry({ holderOrgId: ORG_B, updatedByOrgId: ORG_B })),
+    )
+  })
+
+  it('teprve po UVOLNĚNÍ si UID vezme kdokoli — to je legální přechod', async () => {
+    await seedEntry({ validTo: '2026-06-30T00:00:00.000Z', releasedAt: '2026-07-01T00:00:00.000Z' })
     const db = testEnv.authenticatedContext('ko-b').firestore()
     await assertSucceeds(
       setDoc(
         doc(db, 'titleRegistry', UID),
-        entry({ holderOrgId: ORG_B, updatedByOrgId: ORG_B, validFrom: '2026-07-01T00:00:00.000Z', validTo: null }),
+        entry({
+          holderOrgId: ORG_B,
+          updatedByOrgId: ORG_B,
+          validFrom: '2026-07-01T00:00:00.000Z',
+          validTo: null,
+          releasedAt: null,
+        }),
+      ),
+    )
+  })
+
+  /** Uvolnit smí jen držitel — jinak by si nová organizace odemkla sama. */
+  it('cizí organizace pěstouna NEUVOLNÍ', async () => {
+    await seedEntry()
+    const db = testEnv.authenticatedContext('ko-b').firestore()
+    await assertFails(
+      setDoc(doc(db, 'titleRegistry', UID), entry({ releasedAt: '2026-07-26T00:00:00.000Z', updatedByOrgId: ORG_B })),
+    )
+  })
+
+  it('držitel pěstouna uvolní', async () => {
+    await seedEntry({ validTo: '2026-06-30T00:00:00.000Z' })
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(
+      setDoc(
+        doc(db, 'titleRegistry', UID),
+        entry({ validTo: '2026-06-30T00:00:00.000Z', releasedAt: '2026-07-26T00:00:00.000Z', releasedByOrgId: ORG_A }),
       ),
     )
   })

@@ -1,7 +1,9 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { isTitleRunning, type TitleRegistryDoc } from '@/types/titleRegistry'
+import { isAvailableForTakeover, titleState, type TitleRegistryDoc } from '@/types/titleRegistry'
 import { canOpenNewTitle, type LegalTitleState } from '@/lib/agreementLaw'
+import { actorFields, recordAudit } from '@/services/auditLogService'
+import type { AuditActor } from '@/types/auditLog'
 
 /**
  * REJSTŘÍK OBSAZENÝCH UID — čtení a zápis.
@@ -63,28 +65,37 @@ export async function assertCanOpenTitle(
   const entries = await Promise.all(uids.map((uid) => readTitle(uid).then((e) => [uid, e] as const)))
 
   for (const [uid, entry] of entries) {
-    if (!entry || !isTitleRunning(entry, now)) continue
+    // O tom, jestli je volno, ROZHODUJE REJSTŘÍK, ne kalendář. Uplynulé
+    // `validTo` samo o sobě nestačí — dokud stará organizace pěstouna
+    // neuvolnila, je pořád její (viz `TitleState`).
+    if (isAvailableForTakeover(entry, now)) continue
+    if (!entry) continue
 
     // Vlastní běžící titul není konflikt — je to přesně ten případ, kdy se
     // podle metodiky přidává další dítě ZMĚNOU stávající dohody. Blokovat
     // by tady znamenalo zakázat zákonný postup.
     if (entry.holderOrgId === openingOrgId) continue
 
-    const state: LegalTitleState = {
+    // Zákonná výjimka pro odděleně žijící manžele se posuzuje jinde, ať
+    // je pravidlo na jednom místě.
+    const asTitle: LegalTitleState = {
       organizationId: entry.holderOrgId,
       externalSubjectName: entry.externalSubjectName ?? null,
       validFrom: entry.validFrom,
-      validTo: entry.validTo,
+      validTo: null,
     }
-    const check = canOpenNewTitle([state], spousesLivingApart, now)
+    const check = canOpenNewTitle([asTitle], spousesLivingApart, now)
     if (check.ok) continue
 
-    throw new TitleConflictError(
-      uid,
-      entry.holderOrgId,
-      check.conflictingSubject ?? 'neznámý subjekt',
-      `UID ${uid}: ${check.reason}`,
-    )
+    const subject = entry.externalSubjectName ?? entry.holderOrgId ?? 'jiná organizace'
+    const reason =
+      titleState(entry, now) === 'aktivni'
+        ? `UID ${uid}: pěstoun má platnou Dohodu s organizací ${subject}. Spojte se s ní — ` +
+          'pokud u ní Dohoda skončila, uvolní vám ho jedním kliknutím.'
+        : `UID ${uid}: pěstoun má u organizace ${subject} ukončenou Dohodu, ale zatím není uvolněný. ` +
+          'Spojte se s ní a požádejte o uvolnění.'
+
+    throw new TitleConflictError(uid, entry.holderOrgId, subject, reason)
   }
 }
 
@@ -114,13 +125,17 @@ export async function claimTitle(input: {
 }
 
 /**
- * Uvolní titul k danému dni.
+ * Zapíše KONEC DOHODY. Pozor — tohle NENÍ uvolnění pěstouna.
  *
- * Nemaže — zapisuje `validTo`. Smazaný záznam by vypadal stejně jako
- * „tohle UID jsme nikdy neviděli", kdežto ukončený nese informaci, že
- * titul existoval a kdy skončil.
+ * Nemaže, zapisuje `validTo`. Smazaný záznam by vypadal stejně jako „tohle
+ * UID jsme nikdy neviděli", kdežto ukončený nese informaci, že titul
+ * existoval a kdy skončil.
+ *
+ * Po tomhle zápisu je pěstoun ve stavu `ukoncena` a pro jinou organizaci
+ * je pořád ZAMČENÝ. Odemkne ho až `releaseFosterParent` — viz komentář
+ * u `TitleState`, proč jsou to dvě různé věci.
  */
-export async function releaseTitle(uid: string, endedAt: string, byOrgId: string): Promise<void> {
+export async function setTitleEnd(uid: string, endedAt: string, byOrgId: string): Promise<void> {
   const current = await readTitle(uid)
   if (!current) return
   await setDoc(titleRegistryRef(uid), {
@@ -129,6 +144,45 @@ export async function releaseTitle(uid: string, endedAt: string, byOrgId: string
     updatedAt: new Date().toISOString(),
     updatedByOrgId: byOrgId,
   } satisfies TitleRegistryDoc)
+}
+
+/**
+ * UVOLNĚNÍ PĚSTOUNA — to jedno kliknutí, o kterém je celý telefonát.
+ *
+ * Stará organizace tímhle prohlašuje: „s tímhle pěstounem už nemáme nic
+ * nedořešeného, může jít jinam." Je to VÝROK, ne technický úklid — proto
+ * je auditní kontext povinný a proto to nedělá žádný časovač.
+ *
+ * Uvolnit smí jen držitel. Kdyby to šlo komukoli, byla by blokace
+ * dekorace: nová organizace by si pěstouna uvolnila sama a šla podepsat.
+ */
+export async function releaseFosterParent(
+  uid: string,
+  byOrgId: string,
+  audit: { actor: AuditActor; fosterLabel: string },
+): Promise<void> {
+  const current = await readTitle(uid)
+  if (!current) throw new Error('Tohle UID v rejstříku není.')
+  if (current.holderOrgId !== byOrgId) {
+    throw new Error('Uvolnit pěstouna smí jen organizace, která ho vede.')
+  }
+
+  const now = new Date().toISOString()
+  await setDoc(titleRegistryRef(uid), {
+    ...current,
+    releasedAt: now,
+    releasedByOrgId: byOrgId,
+    updatedAt: now,
+    updatedByOrgId: byOrgId,
+  } satisfies TitleRegistryDoc)
+
+  await recordAudit({
+    organizationId: byOrgId,
+    action: 'foster_released',
+    ...actorFields(audit.actor),
+    subject: { kind: 'fosterPerson', id: uid, label: audit.fosterLabel },
+    detail: 'Potvrzeno vypořádání. Pěstoun může uzavřít Dohodu s jinou organizací.',
+  })
 }
 
 /**

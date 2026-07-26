@@ -20,6 +20,7 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     label: 'Organizace',
     items: [
       { to: '/nastaveni/organizace', label: 'Organizace' },
+      { to: '/nastaveni/vizitka', label: 'Vizitka pro předávání' },
       { to: '/nastaveni/sablony-dokumentu', label: 'Šablony dokumentů' },
       { to: '/nastaveni/nazvoslovi', label: 'Vlastní názvosloví' },
       { to: '/nastaveni/externi-pristup', label: 'Externí přístup — šablony' },

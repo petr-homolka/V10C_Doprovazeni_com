@@ -32,6 +32,7 @@ const BackupSettingsPage = lazy(() => import('@/routes/settings/BackupSettingsPa
 const ArchivePage = lazy(() => import('@/routes/ArchivePage'))
 const AuditLogPage = lazy(() => import('@/routes/settings/AuditLogPage'))
 const RetentionSettingsPage = lazy(() => import('@/routes/settings/RetentionSettingsPage'))
+const OrgDirectorySettingsPage = lazy(() => import('@/routes/settings/OrgDirectorySettingsPage'))
 const OrganizationSettingsPage = lazy(() => import('@/routes/settings/OrganizationSettingsPage'))
 const MojeLoginPage = lazy(() => import('@/routes/moje/MojeLoginPage'))
 const MojeDashboardPage = lazy(() => import('@/routes/moje/MojeDashboardPage'))
@@ -148,6 +149,7 @@ export default function App() {
                 <Route path="/archiv" element={<ArchivePage />} />
                 <Route path="/nastaveni/audit" element={<AuditLogPage />} />
                 <Route path="/nastaveni/retence" element={<RetentionSettingsPage />} />
+                <Route path="/nastaveni/vizitka" element={<OrgDirectorySettingsPage />} />
                 <Route path="/nastaveni/organizace" element={<OrganizationSettingsPage />} />
                 <Route path="/platforma" element={<PlatformSettingsPage />} />
                 <Route path="/kvalita" element={<InspectionsPage />} />
