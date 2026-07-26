@@ -150,3 +150,39 @@ describe('plán převzetí', () => {
     expect(plan.allowed).toBe(true)
   })
 })
+
+/**
+ * SPÁNEK U NÁS NENÍ „NIKDO NEDOPROVÁZÍ". Doprovázet může OSPOD, který
+ * vydal správní rozhodnutí a je tím sám doprovázejícím subjektem, nebo
+ * organizace mimo náš systém. Výlučnost titulu tam platí stejně.
+ *
+ * Blokovat to ale nejde: konec cizího titulu u sebe nevidíme, takže by
+ * se spis dal takhle zamknout napořád. Proto varování, ne zákaz.
+ */
+describe('doprovázení mimo náš systém', () => {
+  it('bez informace o cizím subjektu se nevaruje', () => {
+    expect(planTakeover([archived], true, NOW).warning).toBeUndefined()
+  })
+
+  it('při známém doprovázení OSPODem se varuje, ale podepsat jde', () => {
+    const plan = planTakeover([archived], true, NOW, { subjectName: 'OSPOD Praha 4' })
+    expect(plan.allowed).toBe(true)
+    expect(plan.warning).toContain('OSPOD Praha 4')
+    expect(plan.warning).toContain('datum konce u sebe nemáme')
+  })
+
+  it('když konec cizího titulu známe, řekne se v jaký den', () => {
+    const plan = planTakeover([archived], true, NOW, {
+      subjectName: 'OSPOD Praha 4',
+      knownEndsAt: '2026-06-30T00:00:00.000Z',
+    })
+    expect(plan.warning).toContain('2026-06-30')
+  })
+
+  /** Varování nesmí přebít blokaci — kdo nemá zájemce, stejně nepodepíše. */
+  it('varování neobchází povinné zavedení jako zájemce', () => {
+    const plan = planTakeover([archived], false, NOW, { subjectName: 'OSPOD Praha 4' })
+    expect(plan.allowed).toBe(false)
+    expect(plan.blockedReason).toContain('zájemce')
+  })
+})

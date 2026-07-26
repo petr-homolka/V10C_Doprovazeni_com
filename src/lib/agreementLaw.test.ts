@@ -113,6 +113,49 @@ describe('nejvýš jeden aktivní právní titul', () => {
   it('výjimka se neuplatní sama od sebe', () => {
     expect(canOpenNewTitle([bezici], false, NOW).ok).toBe(false)
   })
+
+  /**
+   * OSPOD náš systém nepoužívá, ale když vydá správní rozhodnutí, doprovází
+   * SÁM — a výlučnost blokuje stejně jako kterákoli jiná organizace. Kdyby
+   * se externí titul neuvažoval, systém by dovolil podepsat s pěstounem,
+   * kterého už doprovází OSPOD.
+   */
+  it('titul u OSPODu blokuje stejně jako dohoda s organizací', () => {
+    const ospod: LegalTitleState = {
+      organizationId: null,
+      externalSubjectName: 'OSPOD Praha 4',
+      validFrom: '2025-01-01T00:00:00.000Z',
+      validTo: null,
+    }
+    const check = canOpenNewTitle([ospod], false, NOW)
+    expect(check.ok).toBe(false)
+    expect(check.conflictIsExternal).toBe(true)
+    expect(check.conflictingSubject).toBe('OSPOD Praha 4')
+    expect(check.conflictingOrgId).toBeNull()
+    expect(check.reason).toContain('nevidíme')
+  })
+
+  it('konflikt s naší organizací má přednost — o něm umíme říct víc', () => {
+    const ospod: LegalTitleState = {
+      organizationId: null,
+      externalSubjectName: 'OSPOD Praha 4',
+      validFrom: '2025-01-01T00:00:00.000Z',
+      validTo: null,
+    }
+    const check = canOpenNewTitle([ospod, bezici], false, NOW)
+    expect(check.conflictingOrgId).toBe('org-A')
+    expect(check.conflictIsExternal).toBe(false)
+  })
+
+  it('skončený titul u OSPODu už neblokuje', () => {
+    const ospod: LegalTitleState = {
+      organizationId: null,
+      externalSubjectName: 'OSPOD Praha 4',
+      validFrom: '2024-01-01T00:00:00.000Z',
+      validTo: '2025-12-31T00:00:00.000Z',
+    }
+    expect(canOpenNewTitle([ospod], false, NOW).ok).toBe(true)
+  })
 })
 
 /**
