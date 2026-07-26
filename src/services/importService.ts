@@ -449,6 +449,12 @@ export async function commitImportJob(
         // jinak by jeden import vyrobil stovky řádků v auditu.
         audit: null,
         createdByImportJobRef: jobId,
+            // Import nese HISTORICKÉ Dohody, včetně zaniklých a včetně
+            // těch, které vznikly ještě před tím, než rejstřík existoval.
+            // Kontrola výlučnosti by je odmítla jako konflikt — a odmítla
+            // by tím pravdivá data o minulosti. Aktuální stav rejstříku
+            // srovná `scripts/backfill-title-registry.mjs`.
+            skipExclusivityCheck: true,
           })
           manifest.agreementFamilyDocIds.push(familyDocId)
         }

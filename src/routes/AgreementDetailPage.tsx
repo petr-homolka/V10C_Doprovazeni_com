@@ -4,6 +4,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { PageHead } from '@/components/spis/PageBody'
 import { SpisSection } from '@/components/spis/SpisSection'
 import { auditActor } from '@/services/auditLogService'
+import { TitleConflictError } from '@/services/titleRegistryService'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
@@ -193,8 +194,16 @@ export default function AgreementDetailPage() {
       })
       setShowAgreementForm(false)
       setCapacityNote(null)
-    } catch {
-      setError('Založení Dohody se nezdařilo.')
+    } catch (err) {
+      // Konflikt právního titulu se MUSÍ vypsat celý. Je to blokace ze
+      // zákona, ne technická chyba — kdo ji dostane, potřebuje vědět proč
+      // a co s tím, jinak to bude zkoušet znovu a bude si myslet, že je
+      // rozbitá appka.
+      setError(
+        err instanceof TitleConflictError
+          ? err.message
+          : 'Založení Dohody se nezdařilo.',
+      )
     }
   }
 

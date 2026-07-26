@@ -425,6 +425,57 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ---- titleRegistry/{uid} — REJSTŘÍK OBSAZENÝCH UID -------------------
+    //
+    // Metodika MPSV: osoba pečující smí mít v daném čase jen jeden právní
+    // titul doprovázení. Vynutit se to jinde nedá — Dohodu cizí organizace
+    // NEPŘEČTE (`sameOrg` níž u `agreements`), takže bez tohohle rejstříku
+    // systém o cizím titulu neví a "zablokovat" znamená blokovat naslepo.
+    //
+    // Čte KAŽDÝ zaměstnanec, i z organizace bez jakéhokoli vztahu k té
+    // osobě — o to právě jde, ptá se ten, kdo zatím nic nemá. Proto
+    // v dokumentu NEJSOU ŽÁDNÉ OSOBNÍ ÚDAJE (viz types/titleRegistry.ts):
+    // odpověď zní "obsazeno/volno, kým a dokdy", nic víc.
+    //
+    // `list` je ZAKÁZANÝ. Bez toho by šel rejstřík stáhnout celý a z něj
+    // odvodit, kolik případů která organizace vede — to nikomu nepřísluší.
+    // Sáhnout jde jen na konkrétní UID, které se tazatel dozvěděl jinde.
+    //
+    // ZÁPIS: založit smí kdokoli (první organizace, co UID zavede), ale
+    // PŘEPSAT jen držitel — nebo kdokoli, když je titul označený za
+    // ukončený (`validTo != null`). Tím je strukturálně vyloučené, že si
+    // organizace přetáhne UID, u kterého běží OTEVŘENÝ titul někoho jiného.
+    //
+    // ČEHO SE TOHLE PRAVIDLO NEDOTKNE, ať to není překvapení: `validTo`
+    // v budoucnosti se tu od `validTo` v minulosti odlišit nedá (uložené
+    // je ISO string, `request.time` je timestamp — nesrovnatelné typy).
+    // Titul s naplánovaným koncem tedy jde přepsat i před tím koncem.
+    // Časovou platnost hlídá `isTitleRunning` v aplikaci; pravidla drží tu
+    // podstatnou část — otevřený titul je nedotknutelný.
+    //
+    // `delete` je zakázaný pro všechny kromě superadmina: smazaný záznam
+    // vypadá stejně jako "tohle UID jsme nikdy neviděli".
+
+    match /titleRegistry/{uid} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create: if isStaff() &&
+        request.resource.data.uid == uid &&
+        request.resource.data.updatedByOrgId == userDoc().organizationId;
+
+      allow update: if isSuperadmin() || (
+        isStaff() &&
+        request.resource.data.uid == uid &&
+        request.resource.data.updatedByOrgId == userDoc().organizationId && (
+          resource.data.holderOrgId == userDoc().organizationId ||
+          resource.data.validTo != null
+        )
+      );
+
+      allow delete: if isSuperadmin();
+    }
+
     // ---- organizations/{orgId}/backupRestoreTests/{id} — §5.5 gate, M1.5 -
     //
     // POVINNÝ GATE před produkčním nasazením zálohy/obnovení (§5.5) —
