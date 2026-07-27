@@ -1,6 +1,37 @@
 /**
  * families/{familyId} — SPIS (rodinná složka), ZADANI §3/§4.1/§4.5.
  *
+ * ─── K ČEMU SPIS JE A K ČEMU UŽ NE, 2026-07-26 ────────────────────────
+ *
+ * Za jeden den se pod Spisem vyměnilo skoro všechno, co ho dřív dělalo
+ * důležitým. Stojí za to napsat, co mu zbylo, než ho někdo začne
+ * považovat za víc, než je.
+ *
+ * UŽ NENÍ IDENTITA. Identitu má ČLOVĚK — pěstoun i dítě mají vlastní
+ * náhodné UID, které je jejich napořád a putuje s nimi mezi organizacemi.
+ * Právní rovinu drží rozhodnutí soudu a svěření (`types/custody.ts`),
+ * výlučnost titulu se hlídá na OSOBĚ PEČUJÍCÍ (`titleRegistry`), ne na
+ * domácnosti. „Rodina není jednotka" — to je celý důvod, proč custody
+ * model vznikl.
+ *
+ * POŘÁD JE TO SCHRÁNKA A ROZSAH PŘÍSTUPU. A to je práce, kterou nic
+ * jiného nedělá:
+ *
+ *   • Visí na něm PĚT podkolekcí — agreements, timeline, documents,
+ *     historyDigest, messages. Návštěva v rodině, dokument o domácnosti
+ *     nebo chat nepatří jednomu člověku, patří domácnosti.
+ *   • `orgAccessList` je kotva přístupových práv. Celá §4.5 segmentace
+ *     v `firestore.rules` stojí na cestě `families/{familyId}/…` —
+ *     pravidla neumí join, takže bez společné cesty by se „kdo smí číst
+ *     čí historii" nedalo napsat.
+ *   • Je to pracovní plocha. Klíčová osoba otevírá „Novákovy", ne tři
+ *     nezávislé lidi.
+ *
+ * ČEHO SE VYVAROVAT: `uid` níž je číslo SLOŽKY, ne identita. Nikdo si
+ * domácnost mezi organizacemi nepřenáší — přenáší se ČLOVĚK. Kdo by začal
+ * s UID Spisu zacházet jako s UID pěstouna, narazí u první rozvedené
+ * rodiny nebo u pěstouna, který se přestěhuje do jiné domácnosti.
+ *
  * `orgAccessList` (M2) NAHRAZUJE M1 dočasné `createdByOrgId` — je to
  * denormalizovaný seznam VŠECH organizací, které kdy měly s rodinou
  * Dohodu (aktivní i skončenou), aktualizovaný `agreementService.ts` při
