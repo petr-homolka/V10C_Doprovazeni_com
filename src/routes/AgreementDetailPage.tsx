@@ -4,7 +4,7 @@ import { AppShell } from '@/components/shell/AppShell'
 import { PageHead } from '@/components/spis/PageBody'
 import { SpisSection } from '@/components/spis/SpisSection'
 import { auditActor } from '@/services/auditLogService'
-import { TitleConflictError } from '@/services/titleRegistryService'
+import { TitleConflictError, releaseFosterParent } from '@/services/titleRegistryService'
 import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Select } from '@/components/ui/select'
@@ -83,6 +83,9 @@ export default function AgreementDetailPage() {
   const [validTo, setValidTo] = useState('')
   const [validToTouched, setValidToTouched] = useState(false)
   const [durationMonths, setDurationMonths] = useState(DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS)
+
+  const [releasing, setReleasing] = useState<string | null>(null)
+  const [releasedUids, setReleasedUids] = useState<string[]>([])
 
   const [endDateDraft, setEndDateDraft] = useState('')
   const { loading: endSubmitting, success: endSuccess, run: runEnd } = useAsyncSubmit()
@@ -167,6 +170,20 @@ export default function AgreementDetailPage() {
       setAgreement(await getActiveAgreement(docId, organizationId))
     } catch {
       setError(archive ? 'Archivaci se nepodařilo provést.' : 'Vrácení z archivu se nezdařilo.')
+    }
+  }
+
+  async function handleRelease(fosterUid: string, fosterLabel: string) {
+    if (!organizationId || !userDoc) return
+    setError(null)
+    setReleasing(fosterUid)
+    try {
+      await releaseFosterParent(fosterUid, organizationId, { actor: auditActor(userDoc), fosterLabel })
+      setReleasedUids((prev) => [...prev, fosterUid])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Uvolnění se nezdařilo.')
+    } finally {
+      setReleasing(null)
     }
   }
 
@@ -466,6 +483,63 @@ export default function AgreementDetailPage() {
                 </Button>
               </>
             )}
+          </div>
+        </SpisSection>
+      )}
+
+      {/*
+        UVOLNĚNÍ PĚSTOUNA — to jedno kliknutí, o kterém je celý telefonát.
+        Bez něj byla tvrdá blokace zámek bez klíče: jiná organizace nesmí
+        podepsat, dokud pěstouna neuvolníme, a uvolnit nešlo z aplikace
+        vůbec. První skutečné předání by se zaseklo a muselo se řešit
+        zásahem do databáze.
+
+        Sekce je vidět jen u UKONČENÉ Dohody. Uvolnit pěstouna, se kterým
+        se ještě pracuje, nedává smysl a byla by to nejrychlejší cesta, jak
+        si omylem pustit klienta.
+      */}
+      {agreement?.status === 'ended' && (
+        <SpisSection
+          id="uvolneni"
+          title="Uvolnění pěstouna"
+          description="Potvrzení, že s pěstounem nemáme nic nedořešeného a může uzavřít Dohodu jinde."
+          padded
+        >
+          <div className="max-w-[560px]">
+            <p className="text-sm text-text-secondary">
+              Dokud pěstouna neuvolníte, žádná jiná organizace s ním nemůže uzavřít Dohodu — uvidí
+              jen to, že ho vedete vy, a kontakt na vás. Uvolněte ho, až budou hotové předávací
+              protokoly, odhlášení pro OSPOD a vyúčtování.
+            </p>
+            <p className="mt-1 text-sm text-text-tertiary">
+              Zpět to vzít nejde. Pěstoun tím u vás nic neztrácí — spis i historie zůstávají.
+            </p>
+
+            <div className="mt-4 flex flex-col gap-3">
+              {fosterPersons.map(({ docId, fosterPerson }) => {
+                const done = releasedUids.includes(fosterPerson.uid)
+                return (
+                  <div key={docId} className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="text-sm text-text-primary">
+                      {fosterPerson.firstName} {fosterPerson.lastName}
+                      <span className="ml-2 text-xs text-text-faint">{fosterPerson.uid}</span>
+                    </span>
+                    {done ? (
+                      <span className="text-sm text-success">Uvolněn</span>
+                    ) : (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={releasing === fosterPerson.uid}
+                        onClick={() => handleRelease(fosterPerson.uid, `${fosterPerson.firstName} ${fosterPerson.lastName}`)}
+                      >
+                        {releasing === fosterPerson.uid ? 'Uvolňuji…' : 'Uvolnit'}
+                      </Button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </SpisSection>
       )}

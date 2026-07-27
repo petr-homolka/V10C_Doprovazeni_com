@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, runTransaction, setDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { isAvailableForTakeover, titleState, type TitleRegistryDoc } from '@/types/titleRegistry'
 import { canOpenNewTitle, type LegalTitleState } from '@/lib/agreementLaw'
@@ -111,15 +111,77 @@ export async function claimTitle(input: {
   validFrom: string
   validTo?: string | null
 }): Promise<void> {
-  const entry: TitleRegistryDoc = {
+  await setDoc(titleRegistryRef(input.uid), buildClaim(input))
+}
+
+function buildClaim(input: {
+  uid: string
+  holderOrgId: string
+  validFrom: string
+  validTo?: string | null
+}): TitleRegistryDoc {
+  return {
     uid: input.uid,
     holderOrgId: input.holderOrgId,
     validFrom: input.validFrom,
     validTo: input.validTo ?? null,
+    // VŽDY vypsat, i když je to null. Chybějící pole a pole s hodnotou
+    // `null` jsou ve Firestore dvě různé věci a v pravidlech se chovají
+    // úplně jinak: sáhnutí na neexistující klíč je CHYBA VYHODNOCENÍ, ne
+    // `false`. Přesně na tom 26. 7. spadlo dvacet testů u `disabledAt`.
+    releasedAt: null,
+    releasedByOrgId: null,
     updatedAt: new Date().toISOString(),
     updatedByOrgId: input.holderOrgId,
   }
-  await setDoc(titleRegistryRef(input.uid), entry)
+}
+
+/**
+ * ZABRÁNÍ UID PRO CELOU SKUPINU PĚSTOUNŮ NAJEDNOU — TRANSAKČNĚ.
+ *
+ * `assertCanOpenTitle` je jen předkontrola pro slušnou hlášku. Mezi jejím
+ * čtením a zápisem je okno, ve kterém můžou dvě organizace projít obě —
+ * a pak by v rejstříku zůstala jen ta druhá, zatímco Dohody by existovaly
+ * dvě. Blokace, kterou jde obejít načasováním, není blokace.
+ *
+ * Tady se čte a zapisuje v JEDNÉ transakci, takže druhý souběžný pokus
+ * spadne. Manželé se navíc zabírají SPOLEČNĚ: kdyby se claimovalo po
+ * jednom, mohl by první projít, druhý spadnout a zůstal by zabraný pěstoun
+ * bez Dohody.
+ */
+export async function claimTitlesExclusively(
+  uids: string[],
+  input: { holderOrgId: string; validFrom: string; validTo?: string | null; spousesLivingApart: boolean },
+  now: Date = new Date(),
+): Promise<void> {
+  if (uids.length === 0) return
+
+  await runTransaction(db, async (tx) => {
+    // VŠECHNA čtení před VŠEMI zápisy — Firestore transakce to vyžaduje.
+    const refs = uids.map((uid) => titleRegistryRef(uid))
+    const snaps = await Promise.all(refs.map((ref) => tx.get(ref)))
+
+    snaps.forEach((snap, i) => {
+      const uid = uids[i]
+      const entry = snap.exists() ? (snap.data() as TitleRegistryDoc) : null
+      if (isAvailableForTakeover(entry, now)) return
+      if (!entry) return
+      if (entry.holderOrgId === input.holderOrgId) return
+      if (input.spousesLivingApart) return
+
+      const subject = entry.holderOrgId ?? 'jiná organizace'
+      throw new TitleConflictError(
+        uid,
+        entry.holderOrgId,
+        subject,
+        `UID ${uid}: pěstouna vede organizace ${subject} a není uvolněný. Dohodu nelze uzavřít.`,
+      )
+    })
+
+    refs.forEach((ref, i) => {
+      tx.set(ref, buildClaim({ uid: uids[i], ...input }))
+    })
+  })
 }
 
 /**

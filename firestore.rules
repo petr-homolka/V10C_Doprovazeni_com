@@ -521,7 +521,7 @@ service cloud.firestore {
         request.resource.data.uid == uid &&
         request.resource.data.updatedByOrgId == userDoc().organizationId && (
           resource.data.holderOrgId == userDoc().organizationId ||
-          resource.data.releasedAt != null
+          resource.data.get('releasedAt', null) != null
         )
       );
 

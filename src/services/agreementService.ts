@@ -28,7 +28,7 @@ import {
   type CareType,
 } from '@/types/agreement'
 import { resetEducationWindowForNewAgreement } from '@/services/courseService'
-import { assertCanOpenTitle, claimTitle, setTitleEnd } from '@/services/titleRegistryService'
+import { assertCanOpenTitle, claimTitle, claimTitlesExclusively, setTitleEnd } from '@/services/titleRegistryService'
 
 /**
  * Barrel service (ZADANI §11 bod 3) pro Dohodu — M2. Dohoda má
@@ -321,7 +321,25 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
     createdAt: new Date().toISOString(),
     ...(createdByImportJobRef ? { createdByImportJobRef } : {}),
   }
-  // 0b) ODLOŽENÍ PŘEDCHOZÍ DOHODY DO HISTORIE.
+  // 0b) TRANSAKČNÍ ZÁBOR UID — TEPRVE TOHLE JE TA ZÁRUKA.
+  //
+  // Kontrola výš je jen předkontrola pro slušnou hlášku. Mezi jejím čtením
+  // a zápisem bylo okno, ve kterém mohly dvě organizace projít obě —
+  // a v rejstříku by zůstala jen ta druhá, zatímco Dohody by existovaly
+  // dvě. Blokace, kterou jde obejít načasováním, není blokace.
+  //
+  // Zábor je PŘED zápisem Dohody schválně: když spadne, nevznikne nic.
+  // Opačné pořadí (jak to bylo do 27. 7.) nechávalo Dohodu bez záboru.
+  if (!input.skipExclusivityCheck) {
+    await claimTitlesExclusively(fosterUids, {
+      holderOrgId: organizationId,
+      validFrom: validFrom ?? new Date().toISOString(),
+      validTo: validTo ?? null,
+      spousesLivingApart: input.spousesLivingApart ?? false,
+    })
+  }
+
+  // 0c) ODLOŽENÍ PŘEDCHOZÍ DOHODY DO HISTORIE.
   //
   // Dohoda má deterministické ID = `organizationId`, takže druhá Dohoda
   // mezi TOUTÉŽ rodinou a TOUTÉŽ organizací zapisuje na stejnou cestu
@@ -348,15 +366,6 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
   // 1) Dohoda VŽDY první — firestore.rules na její existenci staví
   // rozšíření orgAccessList níž (hasOwnAgreementFor).
   await setDoc(agreementRef(familyDocId, organizationId), data)
-
-  // 1b) Rejstřík obsazených UID — hned po Dohodě, aby další organizace
-  // konflikt uviděla. Kdyby se to odložilo, vznikne okno, ve kterém dvě
-  // organizace projdou kontrolou obě.
-  await Promise.all(
-    fosterUids.map((fosterUid) =>
-      claimTitle({ uid: fosterUid, holderOrgId: organizationId, validFrom: data.validFrom, validTo: data.validTo }),
-    ),
-  )
 
   // 2) Family + fosterPersons orgAccessList — teprve TEĎ, kdy Dohoda už
   // existuje a rules ji uznají jako důkaz oprávněnosti.

@@ -11,6 +11,8 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { allocateUid } from '@/lib/uidAllocator'
+import { upsertUidHolderCard } from '@/services/uidHolderCardService'
+import { indexPerson } from '@/services/personIndexService'
 import type { FamilyDoc } from '@/types/family'
 import type { FosterPersonDoc } from '@/types/fosterPerson'
 import type { ChildDoc } from '@/types/child'
@@ -183,7 +185,48 @@ export async function addFosterPersonToFamily(
   await updateDoc(doc(db, 'families', familyId), {
     fosterPersonRefs: arrayUnion(ref.id),
   })
+
+  // OVĚŘOVACÍ KARTA A VYHLEDÁVACÍ OTISKY — bez tohohle je předávání
+  // pěstounů mezi organizacemi TICHÁ ATRAPA.
+  //
+  // Do 27. 7. tady tenhle zápis chyběl. Karty existovaly jen ze zpětného
+  // naplnění, takže průvodce zájemcem fungoval na 453 stávajících lidech
+  // a na každém nově založeném mlčky odpovídal „nikoho takového nevedeme".
+  // Nová organizace by pak podepsala s pěstounem, kterého někdo vede —
+  // přesně to, co má celá výlučnost titulu zastavit. A poznalo by se to až
+  // za rok, protože „nenalezeno" vypadá stejně jako „opravdu tam není".
+  //
+  // Chyby se ZÁMĚRNĚ NEPOLYKAJÍ. Pěstoun bez karty je přesně ta neviditelná
+  // vada, kterou tady opravuju — hlasitý pád je horší zážitek, ale je vidět.
+  const familySnap = await getDoc(doc(db, 'families', familyId))
+  const municipality = municipalityFromAddress(familySnap.data()?.address as string | undefined)
+
+  await upsertUidHolderCard({
+    uid,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    municipality,
+    holderOrgId: organizationId,
+  })
+  await indexPerson(
+    uid,
+    { firstName: input.firstName, lastName: input.lastName, address: familySnap.data()?.address as string | undefined },
+    organizationId,
+  )
+
   return { docId: ref.id, fosterPerson: data }
+}
+
+/**
+ * Obec z adresy rodiny — POSLEDNÍ část za čárkou.
+ *
+ * Bez čárky radši nic. Hádat z volného textu, co je ulice a co obec, by
+ * znamenalo občas poslat do sdílené karty ulici s číslem popisným, a ta
+ * karta je čitelná napříč organizacemi.
+ */
+function municipalityFromAddress(address: string | undefined): string {
+  if (!address || !address.includes(',')) return ''
+  return address.split(',').pop()!.trim()
 }
 
 /** Datum narození se dřív u pěstounů nedalo zadat vůbec (žádné pole) —
