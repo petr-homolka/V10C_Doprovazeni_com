@@ -257,7 +257,27 @@ service cloud.firestore {
          resource.data.role != 'superadmin' && request.resource.data.role != 'superadmin' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
            ['role', 'disabledAt', 'displayName', 'fte', 'capacityThresholdOverride', 'collaboratorModules', 'avatarUrl']
-         ));
+         )) ||
+
+        // PŘESTĚHOVÁNÍ PĚSTOUNA DO JINÉ DOMÁCNOSTI (27. 7.).
+        //
+        // `fosterFamilyId` řídí přístup pěstouna k jeho portálu na JEDENÁCTI
+        // místech těchhle pravidel — a do dneška ho nešlo změnit VŮBEC
+        // NIKOMU. Přesun pěstouna do jiné domácnosti by mu tedy nechal
+        // přístup ke STARÉ rodině a k nové by se nedostal. To není
+        // nepohodlí, to je únik dat.
+        //
+        // Vlastní disjunkt s vlastní podmínkou, ne přidání do seznamu výš:
+        // musí se ověřit, že CÍLOVÁ rodina patří téže organizaci. Kdyby se
+        // `fosterFamilyId` jen přihodilo mezi ostatní pole, mohl by
+        // org_admin namířit pěstouna na rodinu CIZÍ organizace a ten by ji
+        // pak legálně přečetl — povýšení oprávnění na jeden řádek.
+        (isStaff() && userDoc().role == 'org_admin' &&
+         sameOrg(resource.data.organizationId) &&
+         resource.data.role == 'pestoun' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fosterFamilyId']) &&
+         userDoc().organizationId in
+           get(/databases/$(database)/documents/families/$(request.resource.data.fosterFamilyId)).data.orgAccessList);
 
       // Žádný hard delete profilu — jen `disabledAt` (viz update výše).
       allow delete: if false;
@@ -1103,6 +1123,22 @@ service cloud.firestore {
     }
 
     // ---- fosterPersons/{fosterId}/rateOverrides + policyOverrides — §B.5/B.5.1
+
+    // ---- fosterPersons/{id}/householdHistory/{entryId} — STĚHOVÁNÍ ------
+    //
+    // Pěstoun může přejít do jiné domácnosti (ovdoví, znovu se ožení).
+    // `familyId` na osobě drží AKTUÁLNÍ domácnost; kde bydlel předtím a
+    // odkdy dokdy, je tady. Bez toho by se přesunem ztratilo, že k té staré
+    // rodině kdy patřil — a přitom v jejím spisu zůstávají zápisy o něm.
+    //
+    // Append-only. Přepsat minulé bydliště by znamenalo přepsat kontext
+    // cizích zápisů.
+
+    match /fosterPersons/{fosterPersonId}/householdHistory/{entryId} {
+      allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
+      allow create: if hasFosterPersonAccess(fosterPersonId);
+      allow update, delete: if false;
+    }
 
     match /fosterPersons/{fosterPersonId}/rateOverrides/{key}/history/{entryId} {
       allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);

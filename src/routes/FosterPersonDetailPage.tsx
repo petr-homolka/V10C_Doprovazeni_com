@@ -17,9 +17,14 @@ import {
   getFamilyByUid,
   getFosterPerson,
   listChildrenForFamily,
+  listFamiliesWithDocIds,
   listFosterPersonsByRefs,
+  moveFosterPersonToFamily,
   updateFosterPersonBirthDate,
 } from '@/services/familyService'
+import { auditActor, recordAudit, actorFields } from '@/services/auditLogService'
+import { Select } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { sendFosterInvitation } from '@/services/fosterInvitationService'
 import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import type { FamilyDoc } from '@/types/family'
@@ -49,6 +54,13 @@ export default function FosterPersonDetailPage() {
   const [invitingFoster, setInvitingFoster] = useState(false)
   const [inviteMessage, setInviteMessage] = useState<string | null>(null)
 
+  // Přestěhování do jiné domácnosti — viz `moveFosterPersonToFamily`.
+  const [moveTargets, setMoveTargets] = useState<Array<{ docId: string; family: FamilyDoc }>>([])
+  const [moveTarget, setMoveTarget] = useState('')
+  const [moveReason, setMoveReason] = useState('')
+  const [moving, setMoving] = useState(false)
+  const [moveNotice, setMoveNotice] = useState<string | null>(null)
+
   const [primaryFosterName, setPrimaryFosterName] = useState<string | null>(null)
   const familyName = family ? resolveFamilyDisplayName(family, primaryFosterName) : ''
   const [birthDate, setBirthDate] = useState('')
@@ -74,6 +86,40 @@ export default function FosterPersonDetailPage() {
       setPrimaryFosterName(fosters[0] ? `${fosters[0].fosterPerson.firstName} ${fosters[0].fosterPerson.lastName}` : null)
     } catch {
       setError('Profil pěstouna se nepodařilo načíst.')
+    }
+  }
+
+  async function handleMove() {
+    if (!fosterPersonId || !organizationId || !userDoc || !moveTarget) return
+    setError(null)
+    setMoveNotice(null)
+    setMoving(true)
+    try {
+      await moveFosterPersonToFamily({
+        fosterPersonId,
+        targetFamilyId: moveTarget,
+        organizationId,
+        reason: moveReason.trim() || undefined,
+      })
+      // Stopa je POVINNÁ, ne hezká: přesun mění, kdo se na koho smí dívat.
+      await recordAudit({
+        organizationId,
+        action: 'foster_household_moved',
+        ...actorFields(auditActor(userDoc)),
+        subject: {
+          kind: 'fosterPerson',
+          id: fosterPersonId,
+          label: fosterPerson ? `${fosterPerson.firstName} ${fosterPerson.lastName}` : fosterPersonId,
+        },
+        detail: moveReason.trim() ? `Důvod: ${moveReason.trim()}` : 'Bez uvedeného důvodu.',
+      })
+      setMoveNotice('Přesunuto. Pěstoun je teď v nové domácnosti.')
+      setMoveTarget('')
+      setMoveReason('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Přesun se nezdařil.')
+    } finally {
+      setMoving(false)
     }
   }
 
@@ -268,6 +314,72 @@ export default function FosterPersonDetailPage() {
               {fosterPersonId && organizationId && (
                 <EntityTasks organizationId={organizationId} subjectKind="fosterPerson" subjectId={fosterPersonId} />
               )}
+            </SpisSection>
+
+            {/*
+              Pěstoun ovdoví, znovu se ožení, připojí se k jiné pěstounské
+              rodině. Do 27. 7. to systém neuměl vůbec — byl navázaný na
+              jednu domácnost napevno.
+            */}
+            <SpisSection
+              id="stehovani"
+              title="Přestěhování"
+              description="Přesun pěstouna do jiné domácnosti — beze změny UID a bez ztráty historie."
+              lazy
+              padded
+            >
+              <div className="max-w-[560px]">
+                <p className="text-sm text-text-secondary">
+                  Zápisy, dokumenty a chaty zůstávají u dosavadní rodiny — patří k tomu, co se tam
+                  tehdy dělo. Že tam pěstoun patřil, zůstane zaznamenané.
+                </p>
+                <p className="mt-1 text-sm text-text-tertiary">
+                  Nabízí se jen domácnosti, které vede vaše organizace. Přesun k jiné organizaci není
+                  stěhování, ale předání — a to má vlastní postup.
+                </p>
+
+                {moveNotice && <p className="mt-3 text-sm text-success">{moveNotice}</p>}
+
+                <div className="sp__group mt-4">
+                  <label className="sp__grouplabel" htmlFor="cilova-rodina">
+                    Cílová domácnost
+                  </label>
+                  <Select
+                    id="cilova-rodina"
+                    value={moveTarget}
+                    onChange={(e) => setMoveTarget(e.target.value)}
+                    onFocus={async () => {
+                      if (moveTargets.length || !organizationId) return
+                      setMoveTargets(await listFamiliesWithDocIds(organizationId))
+                    }}
+                  >
+                    <option value="">— vyberte —</option>
+                    {moveTargets
+                      .filter((f) => f.docId !== fosterPerson?.familyId)
+                      .map((f) => (
+                        <option key={f.docId} value={f.docId}>
+                          {resolveFamilyDisplayName(f.family, null)} · {f.family.uid}
+                        </option>
+                      ))}
+                  </Select>
+                </div>
+
+                <div className="sp__group">
+                  <label className="sp__grouplabel" htmlFor="duvod-stehovani">
+                    Důvod (volitelně)
+                  </label>
+                  <Input
+                    id="duvod-stehovani"
+                    value={moveReason}
+                    onChange={(e) => setMoveReason(e.target.value)}
+                    placeholder="Sňatek, ovdovění…"
+                  />
+                </div>
+
+                <Button className="mt-3" variant="secondary" size="sm" disabled={!moveTarget || moving} onClick={handleMove}>
+                  {moving ? 'Přesouvám…' : 'Přesunout'}
+                </Button>
+              </div>
             </SpisSection>
           </>
         )}

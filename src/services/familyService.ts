@@ -1,10 +1,12 @@
 import {
+  arrayRemove,
   arrayUnion,
   collection,
   doc,
   getDoc,
   getDocs,
   query,
+  runTransaction,
   setDoc,
   updateDoc,
   where,
@@ -215,6 +217,105 @@ export async function addFosterPersonToFamily(
   )
 
   return { docId: ref.id, fosterPerson: data }
+}
+
+/**
+ * PŘESTĚHOVÁNÍ PĚSTOUNA DO JINÉ DOMÁCNOSTI.
+ *
+ * Poslední místo, kde zbývala stará představa „člověk = jeho rodina".
+ * Pěstoun ovdoví, znovu se ožení, připojí se k jiné pěstounské rodině —
+ * a systém to do 27. 7. neuměl vůbec.
+ *
+ * ─── PROČ TRANSAKCE ───────────────────────────────────────────────────
+ *
+ * Přesun sahá na TŘI dokumenty: osobu, starou rodinu a novou. Napůl
+ * provedený přesun by znamenal pěstouna ve dvou domácnostech naráz, nebo
+ * v žádné. Obojí je horší než neúspěch.
+ *
+ * ─── PROČ JEN V RÁMCI JEDNÉ ORGANIZACE ────────────────────────────────
+ *
+ * Přesun do domácnosti, kterou vede JINÁ organizace, není stěhování — to
+ * je předání a má vlastní postup (rejstřík titulů, telefonát, uvolnění).
+ * Kdyby to šlo obejít „přesunem", obešla by se tím celá výlučnost titulu.
+ *
+ * ─── CO SE NEPŘENÁŠÍ, A JE TO SPRÁVNĚ ─────────────────────────────────
+ *
+ * Zápisy, dokumenty a chaty zůstávají u STARÉ rodiny. Patří k tomu, co se
+ * tam tehdy dělo, ne k člověku. Že tam pěstoun tehdy patřil, se dohledá
+ * v `householdHistory`.
+ */
+export async function moveFosterPersonToFamily(input: {
+  fosterPersonId: string
+  targetFamilyId: string
+  organizationId: string
+  reason?: string
+}): Promise<void> {
+  const personRef = doc(db, 'fosterPersons', input.fosterPersonId)
+  const targetRef = doc(db, 'families', input.targetFamilyId)
+  const now = new Date().toISOString()
+
+  const moved = await runTransaction(db, async (tx) => {
+    const personSnap = await tx.get(personRef)
+    if (!personSnap.exists()) throw new Error('Pěstoun neexistuje.')
+    const person = personSnap.data() as FosterPersonDoc
+
+    if (person.familyId === input.targetFamilyId) {
+      throw new Error('Pěstoun v téhle domácnosti už je.')
+    }
+    if (!person.orgAccessList.includes(input.organizationId)) {
+      throw new Error('K tomuhle pěstounovi nemáte přístup.')
+    }
+
+    const targetSnap = await tx.get(targetRef)
+    if (!targetSnap.exists()) throw new Error('Cílová domácnost neexistuje.')
+    const target = targetSnap.data() as FamilyDoc
+    if (!target.orgAccessList.includes(input.organizationId)) {
+      // Viz hlavička: přesun k cizí organizaci je předání, ne stěhování.
+      throw new Error('Cílovou domácnost vede jiná organizace. Použijte předání pěstouna, ne přesun.')
+    }
+
+    const oldFamilyRef = person.familyId ? doc(db, 'families', person.familyId) : null
+
+    tx.update(personRef, { familyId: input.targetFamilyId })
+    if (oldFamilyRef) tx.update(oldFamilyRef, { fosterPersonRefs: arrayRemove(input.fosterPersonId) })
+    tx.update(targetRef, { fosterPersonRefs: arrayUnion(input.fosterPersonId) })
+    tx.set(doc(collection(personRef, 'householdHistory')), {
+      fromFamilyId: person.familyId ?? null,
+      toFamilyId: input.targetFamilyId,
+      movedAt: now,
+      movedByOrgId: input.organizationId,
+      ...(input.reason ? { reason: input.reason } : {}),
+    })
+
+    return { person, targetAddress: target.address }
+  })
+
+  // ── Návaznosti, které se snadno zapomenou a tiše shnijí ──────────────
+
+  // 1) OVĚŘOVACÍ KARTA nese OBEC, a ta se stěhováním mění. Kdyby zůstala
+  //    stará, ptala by se druhá organizace na „Nováková, Kolín" a našla by
+  //    člověka, který je rok v Brně — nebo spíš nenašla vůbec, protože klíč
+  //    karty je otisk UID a PŘÍJMENÍ (příjmení se nemění, takže karta se
+  //    najde, jen bude tvrdit nesmysl).
+  await upsertUidHolderCard({
+    uid: moved.person.uid,
+    firstName: moved.person.firstName,
+    lastName: moved.person.lastName,
+    municipality: municipalityFromAddress(moved.targetAddress),
+    holderOrgId: input.organizationId,
+  })
+
+  // 2) NOVÝ VYHLEDÁVACÍ OTISK pro novou adresu. Starý se schválně NEMAŽE:
+  //    ukazuje na totéž UID, takže nikam nesvádí, a organizace, která zná
+  //    jen starou adresu, díky němu člověka pořád najde. (Mazat by stejně
+  //    směl jen superadmin — viz pravidla `personIndex`.)
+  if (moved.targetAddress) {
+    await indexPerson(
+      moved.person.uid,
+      { firstName: moved.person.firstName, lastName: moved.person.lastName, address: moved.targetAddress },
+      input.organizationId,
+    )
+  }
 }
 
 /**
