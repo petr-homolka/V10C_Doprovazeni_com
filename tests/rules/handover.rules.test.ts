@@ -361,3 +361,66 @@ describe('uidRegistry — rejstřík vydaných čísel', () => {
     await assertFails(setDoc(doc(db, 'uidRegistry', UID), entry))
   })
 })
+
+/**
+ * Historie Dohod. Deterministické ID (= organizationId) znamená, že druhá
+ * Dohoda mezi toutéž rodinou a organizací zapisuje na stejnou cestu. Před
+ * přepisem se ta předchozí odloží sem — jinak by pěstoun, který se po
+ * letech vrátí k původní organizaci, smazal vlastní historii.
+ */
+describe('history — odložené předchozí Dohody', () => {
+  const FAM = 'rodina-1'
+  const prev = {
+    uid: '9000000001',
+    familyId: FAM,
+    organizationId: ORG_A,
+    careType: 'zprostredkovana',
+    status: 'ended',
+    validFrom: '2020-01-01T00:00:00.000Z',
+    validTo: '2024-06-30T00:00:00.000Z',
+    supersededAt: '2026-07-26T10:00:00.000Z',
+  }
+
+  function histRef(db: ReturnType<ReturnType<typeof testEnv.authenticatedContext>['firestore']>) {
+    return doc(db, 'families', FAM, 'agreements', ORG_A, 'history', prev.uid)
+  }
+
+  async function seedHistory() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(histRef(ctx.firestore()), prev)
+    })
+  }
+
+  it('organizace svou odloženou Dohodu zapíše', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(setDoc(histRef(db), prev))
+  })
+
+  it('a přečte ji', async () => {
+    await seedHistory()
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(getDoc(histRef(db)))
+  })
+
+  it('cizí organizace do cizí historie nevidí', async () => {
+    await seedHistory()
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertFails(getDoc(histRef(db)))
+  })
+
+  /** Uzavřená minulost. Na ní visí třicetiletá archivační lhůta. */
+  it('odloženou Dohodu NEJDE přepsat ani smazat — ani superadminem', async () => {
+    await seedHistory()
+    for (const who of ['ko-a', 'super']) {
+      const db = testEnv.authenticatedContext(who).firestore()
+      await assertFails(updateDoc(histRef(db), { validTo: '2030-01-01T00:00:00.000Z' }))
+      await assertFails(deleteDoc(histRef(db)))
+    }
+  })
+
+  it('pěstoun do historie nevidí', async () => {
+    await seedHistory()
+    const db = testEnv.authenticatedContext('foster-a').firestore()
+    await assertFails(getDoc(histRef(db)))
+  })
+})

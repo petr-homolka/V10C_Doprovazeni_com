@@ -321,6 +321,30 @@ export async function createAgreement(input: CreateAgreementInput): Promise<Agre
     createdAt: new Date().toISOString(),
     ...(createdByImportJobRef ? { createdByImportJobRef } : {}),
   }
+  // 0b) ODLOŽENÍ PŘEDCHOZÍ DOHODY DO HISTORIE.
+  //
+  // Dohoda má deterministické ID = `organizationId`, takže druhá Dohoda
+  // mezi TOUTÉŽ rodinou a TOUTÉŽ organizací zapisuje na stejnou cestu
+  // a `setDoc` bez merge tu první BEZE STOPY PŘEPÍŠE.
+  //
+  // Není to teoretický případ: pěstoun odejde od organizace A k B a po
+  // dvou letech se k A vrátí — metodika to připouští a UID je věčné, takže
+  // se to stane. Přepsáním by zmizel celý předchozí právní titul, včetně
+  // dat, na kterých visí třicetiletá archivační lhůta.
+  //
+  // Řešení je záměrně to nudné: stará Dohoda se před přepisem zkopíruje
+  // do `history/{uid}`. Nemění se cesta ani deterministické ID — na tom
+  // stojí celá §4.5 v `firestore.rules` a přepisovat pravidla kvůli
+  // vzácnému případu by bylo dražší než jeden zápis navíc.
+  const existingSnap = await getDoc(agreementRef(familyDocId, organizationId))
+  if (existingSnap.exists()) {
+    const previous = existingSnap.data() as AgreementDoc
+    await setDoc(
+      doc(db, 'families', familyDocId, 'agreements', organizationId, 'history', previous.uid),
+      { ...previous, supersededAt: new Date().toISOString() },
+    )
+  }
+
   // 1) Dohoda VŽDY první — firestore.rules na její existenci staví
   // rozšíření orgAccessList níž (hasOwnAgreementFor).
   await setDoc(agreementRef(familyDocId, organizationId), data)

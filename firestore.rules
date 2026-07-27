@@ -827,6 +827,27 @@ service cloud.firestore {
       );
     }
 
+    // ---- .../agreements/{orgId}/history/{uid} — PŘEDCHOZÍ DOHODY -------
+    //
+    // Dohoda má deterministické ID = `organizationId`, takže druhá Dohoda
+    // mezi toutéž rodinou a toutéž organizací zapisuje na stejnou cestu.
+    // Než se přepíše, uloží se ta předchozí sem (viz `createAgreement`) —
+    // jinak by pěstoun, který se po letech vrátí k původní organizaci,
+    // svým návratem smazal vlastní historii.
+    //
+    // Čte a zakládá VÝHRADNĚ organizace, které ty Dohody patřily. Měnit
+    // ani mazat nesmí nikdo: je to uzavřená minulost a na ní visí
+    // třicetiletá archivační lhůta. Superadmin tu výjimku nemá schválně —
+    // kdo smí historii přepsat, ten ji vlastně nemá.
+
+    match /{path=**}/agreements/{agreementId}/history/{historyId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        agreementId == userDoc().organizationId;
+      allow update, delete: if false;
+    }
+
     // ---- families/{familyId}/timeline/{id} — ZADANI §4.1/§7/§4.5, M2 -----
     //
     // Plný záznam čte VÝHRADNĚ organizace, co ho vytvořila — NIKDY cizí
