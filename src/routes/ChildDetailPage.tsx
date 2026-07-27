@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ChildSupportSection } from '@/components/family/ChildSupportSection'
 import { ChildHandoversSection } from '@/components/family/ChildHandoversSection'
+import { CustodySection } from '@/components/family/CustodySection'
 import { EntityAgenda } from '@/components/calendar/EntityAgenda'
 import { EntityTasks } from '@/components/tasks/EntityTasks'
 import { useAuth } from '@/hooks/useAuth'
@@ -18,6 +19,7 @@ import { resolveFamilyDisplayName } from '@/lib/familyDisplayName'
 import { birthDateFromBirthNumber } from '@/lib/birthNumber'
 import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
+import type { FosterPersonDoc } from '@/types/fosterPerson'
 import { Baby, UserSquare2 } from '@/components/ui/icons'
 
 
@@ -40,7 +42,13 @@ export default function ChildDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [notFound, setNotFound] = useState(false)
 
-  const [primaryFosterName, setPrimaryFosterName] = useState<string | null>(null)
+  // Pěstouni domácnosti se načítají už kvůli názvu rodiny; drží se celý
+  // seznam, protože svěření do péče se zapisuje konkrétním osobám a
+  // načítat je podruhé jen kvůli tomu by byl zbytečný dotaz navíc.
+  const [fosterPersons, setFosterPersons] = useState<Array<{ docId: string; fosterPerson: FosterPersonDoc }>>([])
+  const primaryFosterName = fosterPersons[0]
+    ? `${fosterPersons[0].fosterPerson.firstName} ${fosterPersons[0].fosterPerson.lastName}`
+    : null
   const familyName = family ? resolveFamilyDisplayName(family, primaryFosterName) : ''
   const [birthDate, setBirthDate] = useState('')
   // Datum narození není ručně vyplněné, ale JDE dopočítat z rodného čísla
@@ -80,7 +88,7 @@ export default function ChildDetailPage() {
           listFosterPersonsByRefs(found.family.fosterPersonRefs),
         ])
         setRespitDays(days)
-        setPrimaryFosterName(fosters[0] ? `${fosters[0].fosterPerson.firstName} ${fosters[0].fosterPerson.lastName}` : null)
+        setFosterPersons(fosters)
       } catch {
         setError('Profil dítěte se nepodařilo načíst.')
       }
@@ -187,6 +195,27 @@ export default function ChildDetailPage() {
                   <span className="ml-1 text-text-tertiary">(zaznamenává se na profilu rodiny)</span>
                 </PropertyRow>
               </PropertyList>
+            </SpisSection>
+
+            {/* Svěření stojí hned za přehledem schválně: je to PRÁVNÍ TITUL,
+                od kterého se odvíjí všechno ostatní. Dohoda, podpora ani
+                předání nedávají smysl u dítěte, o kterém nevíme, komu bylo
+                soudem svěřeno. */}
+            <SpisSection
+              id="svereni"
+              title="Svěření do péče"
+              description="Komu je dítě svěřené a jakým rozhodnutím soudu."
+              lazy
+              padded
+            >
+              {childId && organizationId && userDoc && (
+                <CustodySection
+                  childId={childId}
+                  organizationId={organizationId}
+                  userUid={userDoc.uid}
+                  fosterPersons={fosterPersons}
+                />
+              )}
             </SpisSection>
 
             <SpisSection

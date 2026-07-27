@@ -28,6 +28,12 @@ import {
   type CareType,
 } from '@/types/agreement'
 import { resetEducationWindowForNewAgreement } from '@/services/courseService'
+import {
+  AGREEMENT_END_REASON_LABELS,
+  planAgreementEnd,
+  type AgreementEndPlan,
+  type AgreementEndReason,
+} from '@/lib/agreementLaw'
 import { assertCanOpenTitle, claimTitle, claimTitlesExclusively, setTitleEnd } from '@/services/titleRegistryService'
 
 /**
@@ -156,17 +162,20 @@ export async function unarchiveSegment(
 export async function scheduleAgreementEndAudited(
   familyDocId: string,
   organizationId: string,
-  pendingEndDate: string,
+  input: { reason: AgreementEndReason; noticeDeliveredAt?: string; chosenDate?: string },
   audit: { actor: AuditActor; familyLabel: string },
-): Promise<void> {
-  await scheduleAgreementEnd(familyDocId, organizationId, pendingEndDate)
+): Promise<AgreementEndPlan> {
+  const plan = await scheduleAgreementEnd(familyDocId, organizationId, input)
   await recordAudit({
     organizationId,
     action: 'agreement_end_scheduled',
     ...actorFields(audit.actor),
     subject: { kind: 'family', id: familyDocId, label: audit.familyLabel },
-    detail: `Ukončení naplánováno na ${pendingEndDate.slice(0, 10)}.`,
+    detail:
+      `Způsob zániku: ${AGREEMENT_END_REASON_LABELS[input.reason]}. ` +
+      `Zaniká ${plan.effectiveDate.slice(0, 10)}.`,
   })
+  return plan
 }
 
 export async function cancelPendingAgreementEndAudited(
@@ -183,12 +192,36 @@ export async function cancelPendingAgreementEndAudited(
   })
 }
 
+/**
+ * NAPLÁNUJE ZÁNIK DOHODY. Datum se u výpovědi POČÍTÁ, nezadává.
+ *
+ * Do 27. 7. tahle funkce brala libovolné datum z kalendáře. Zákonná lhůta
+ * (§ 47c odst. 5, 6 — zánik jen k 30. 6. nebo 31. 12., výpověď aspoň
+ * 30 dnů předem) byla spočítaná a otestovaná v `agreementLaw.ts`, ale
+ * NIKDO JI NEVOLAL. Právo v souboru, který se nikdy nespustí, je jen
+ * komentář.
+ *
+ * Teď se způsob zániku musí uvést a `planAgreementEnd` z něj datum
+ * odvodí. Dohodou stran se pořád dá skončit kdykoli — pololetní kalendář
+ * platí VÝHRADNĚ u výpovědi a splácnout to do jednoho pravidla by buď
+ * zakázalo zákonný postup, nebo pustilo nezákonný.
+ */
 export async function scheduleAgreementEnd(
   familyDocId: string,
   organizationId: string,
-  endDate: string,
-): Promise<void> {
-  await updateDoc(agreementRef(familyDocId, organizationId), { pendingEndDate: endDate })
+  input: { reason: AgreementEndReason; noticeDeliveredAt?: string; chosenDate?: string },
+): Promise<AgreementEndPlan> {
+  const plan = planAgreementEnd(input)
+  const endDate = plan.effectiveDate
+
+  await updateDoc(agreementRef(familyDocId, organizationId), {
+    pendingEndDate: endDate,
+    // Způsob zániku se UKLÁDÁ. Bez něj by za rok nešlo poznat, jestli
+    // datum plyne ze zákona, nebo si ho strany sjednaly — a to je rozdíl,
+    // na který se při kontrole ptá jako první.
+    endReason: input.reason,
+    ...(input.noticeDeliveredAt ? { noticeDeliveredAt: input.noticeDeliveredAt } : {}),
+  })
 
   // Konec se PROMÍTNE DO REJSTŘÍKU hned při naplánování, ne až při ukončení.
   //
@@ -200,6 +233,7 @@ export async function scheduleAgreementEnd(
   // zápisu, jeden zapomenutý by UID zablokoval napořád.
   const uids = await fosterUidsOfFamily(familyDocId)
   await Promise.all(uids.map((uid) => setTitleEnd(uid, endDate, organizationId)))
+  return plan
 }
 
 /** Zruší naplánované ukončení (dostupné, dokud naplánované datum

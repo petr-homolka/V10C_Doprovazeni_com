@@ -194,3 +194,79 @@ export function windDownEnd(terminationDate: Date): Date {
 export function isWithinWindDown(terminationDate: Date, now: Date = new Date()): boolean {
   return now <= windDownEnd(terminationDate)
 }
+
+// ─── ZPŮSOBY ZÁNIKU DOHODY ─────────────────────────────────────────────
+//
+// § 47c odst. 4: dohoda zaniká uplynutím doby, dohodou stran, výpovědí,
+// nebo rozhodnutím. To NENÍ jedna věc se čtyřmi jmény — každý způsob má
+// jiné datum a jen u JEDNOHO platí pololetní kalendář.
+//
+// Do 27. 7. appka nabízela prostý výběr data v kalendáři. Zákonná lhůta
+// byla sice v kódu spočítaná a otestovaná, ale nikdo ji nevolal — takže
+// šlo ukončit Dohodu k libovolnému dni. Právo v souboru, který se nikdy
+// nespustí, je jen komentář.
+
+export type AgreementEndReason =
+  /** Výpověď. Datum NEURČUJE uživatel — plyne ze zákona. */
+  | 'vypoved'
+  /** Dohoda obou stran. Datum si strany zvolí, zákon je neomezuje. */
+  | 'dohodou'
+  /** Uplynutím sjednané doby. Datum je `validTo` samotné Dohody. */
+  | 'uplynuti_doby'
+
+export const AGREEMENT_END_REASON_LABELS: Record<AgreementEndReason, string> = {
+  vypoved: 'Výpovědí',
+  dohodou: 'Dohodou obou stran',
+  uplynuti_doby: 'Uplynutím sjednané doby',
+}
+
+export interface AgreementEndPlan {
+  /** Ke kterému dni Dohoda skutečně zanikne. */
+  effectiveDate: string
+  /** Věta pro obrazovku — proč zrovna tenhle den. */
+  explanation: string
+  /** Uživatel zadal jiné datum, než jaké plyne ze zákona. */
+  overriddenByLaw: boolean
+}
+
+/**
+ * SPOČÍTÁ, KE KTERÉMU DNI DOHODA ZANIKNE.
+ *
+ * U výpovědi se zadané datum IGNORUJE a nahradí zákonným — proto
+ * `overriddenByLaw`, aby obrazovka mohla říct proč. Tiše přepsat datum,
+ * které někdo zadal, by bylo horší než ho odmítnout.
+ */
+export function planAgreementEnd(input: {
+  reason: AgreementEndReason
+  /** U výpovědi: kdy byla DORUČENA. U ostatních se nepoužije. */
+  noticeDeliveredAt?: string
+  /** U dohody stran: sjednaný den. U uplynutí doby: `validTo` Dohody. */
+  chosenDate?: string
+}): AgreementEndPlan {
+  if (input.reason === 'vypoved') {
+    const delivered = input.noticeDeliveredAt ? new Date(input.noticeDeliveredAt) : new Date()
+    const effective = terminationEffectiveDate(delivered)
+    const iso = effective.toISOString()
+    return {
+      effectiveDate: iso,
+      explanation:
+        `Výpověď doručená ${delivered.toISOString().slice(0, 10)} ukončí Dohodu k ${iso.slice(0, 10)}. ` +
+        'Dohoda zaniká jen k 30. 6. nebo 31. 12. a výpověď musí dorazit aspoň ' +
+        `${NOTICE_DAYS_BEFORE_HALF_YEAR_END} dnů předem — jinak se konec posouvá o celé pololetí.`,
+      overriddenByLaw: !!input.chosenDate && input.chosenDate.slice(0, 10) !== iso.slice(0, 10),
+    }
+  }
+
+  if (!input.chosenDate) {
+    throw new Error('U tohohle způsobu zániku je datum povinné.')
+  }
+
+  return {
+    effectiveDate: input.chosenDate,
+    explanation:
+      input.reason === 'dohodou'
+        ? 'Dohodou stran lze ukončit k libovolnému dni — pololetní lhůta se neuplatní.'
+        : 'Dohoda zanikne uplynutím sjednané doby.',
+    overriddenByLaw: false,
+  }
+}

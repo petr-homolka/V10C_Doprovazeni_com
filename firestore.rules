@@ -665,6 +665,51 @@ service cloud.firestore {
     // co má rejstřík vyloučit. Kdyby to bylo někdy opravdu potřeba, řeší se
     // to migrací, ne pravidlem.
 
+    // ---- PRÁVNÍ ROVINA: rozsudek → svěření → předmět dohody -------------
+    //
+    // Do 27. 7. tyhle tři kolekce v pravidlech NEBYLY VŮBEC — tedy zakázané
+    // pro všechny. Typy a čisté funkce existovaly s 21 testy, ale vrstva
+    // byla nepoužitelná. Navržený model, který nemá pravidla, je papír.
+    //
+    // Přístup jde přes denormalizovaný `orgAccessList`, ne přes join — viz
+    // úprava 3 v hlavičce `types/custody.ts`. Rozsudek i svěření jsou
+    // entity PLATFORMY (soud rozhodl bez ohledu na to, kdo doprovází),
+    // takže seznam se rozšiřuje, nikdy nezužuje: organizace, která případ
+    // vedla, musí svou minulost číst i potom.
+    //
+    // MAZAT NEJDE NIKOMU. Rozsudek se nemaže, ruší se novým rozhodnutím
+    // (`endedByCourtDecisionId`) — na tom stojí čitelnost příběhu „tímhle
+    // to začalo, tímhle skončilo".
+
+    match /courtDecisions/{decisionId} {
+      allow read: if isSuperadmin() || (isStaff() && userDoc().organizationId in resource.data.orgAccessList);
+      allow create: if isStaff() && request.resource.data.orgAccessList == [userDoc().organizationId];
+      allow update: if isStaff() &&
+        userDoc().organizationId in resource.data.orgAccessList &&
+        resource.data.orgAccessList.toSet().difference(request.resource.data.orgAccessList.toSet()).size() == 0;
+      allow delete: if false;
+    }
+
+    match /custodyAssignments/{assignmentId} {
+      allow read: if isSuperadmin() || (isStaff() && userDoc().organizationId in resource.data.orgAccessList);
+      allow create: if isStaff() &&
+        request.resource.data.orgAccessList == [userDoc().organizationId] &&
+        request.resource.data.id == assignmentId;
+      allow update: if isStaff() &&
+        userDoc().organizationId in resource.data.orgAccessList &&
+        resource.data.orgAccessList.toSet().difference(request.resource.data.orgAccessList.toSet()).size() == 0;
+      allow delete: if false;
+    }
+
+    // Předmět dohody patří JEDNÉ Dohodě, tedy jedné organizaci — žádný
+    // sdílený seznam, prostý `sameOrg`.
+    match /agreementSubjects/{subjectId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() && request.resource.data.organizationId == userDoc().organizationId;
+      allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow delete: if false;
+    }
+
     match /uidRegistry/{uid} {
       allow get: if isSuperadmin() || isStaff();
       allow list: if false;

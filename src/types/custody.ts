@@ -20,9 +20,16 @@ import type { DataClassed } from '@/types/dataClass'
  *    Relační návrh měl `pestoun_1_id` / `pestoun_2_id`. Ve Firestore je
  *    to past: dotaz „kde je tahle osoba pěstounem" by musel běžet dvakrát
  *    (jednou na každý sloupec) a výsledky se slučovat, protože OR napříč
- *    poli neexistuje. `array-contains` nad jedním polem je jeden dotaz,
- *    jeden index. Zákonný strop dva (společnými pěstouny mohou být jen
+ *    poli neexistuje. Zákonný strop dva (společnými pěstouny mohou být jen
  *    manželé) hlídá validace, ne tvar dat.
+ *
+ *    OPRAVA 27. 7.: původně tu stálo, že `array-contains` nad tímhle polem
+ *    bude „jeden dotaz, jeden index". Nebude. Pravidla u `list` vyžadují,
+ *    aby dotaz sám dokazoval oprávnění, a jediný přípustný důkaz je
+ *    `array-contains` nad `orgAccessList` — dotaz nad `fosterPersonIds`
+ *    skončí na `permission-denied`. Pole je pořád správný tvar (dva
+ *    sloupce by byly horší), ale hledá se přes něj až v paměti; viz
+ *    `listAssignmentsForFoster` v `services/custodyService.ts`.
  *
  * 2. OSOBA ZŮSTÁVÁ ROZDĚLENÁ NA PĚSTOUNA A DÍTĚ.
  *    Sloučit je do jedné tabulky `Osoba` je normalizačně čistší, ale naše
@@ -63,6 +70,12 @@ export const COURT_DECISION_KIND_LABELS: Record<CourtDecisionKind, string> = {
  * která organizace zrovna doprovází, a přežije všechny jejich výměny.
  */
 export interface CourtDecisionDoc extends DataClassed {
+  /**
+   * Organizace, které rozhodnutí vidí. Denormalizované ze stejného důvodu
+   * jako u rodiny — pravidla Firestore neumí join (viz úprava 3 v hlavičce).
+   */
+  orgAccessList: string[]
+
   /** Spisová značka, např. „12 P 45/2023". Lidský identifikátor. */
   fileNumber: string
   courtName: string
@@ -108,7 +121,20 @@ export const CUSTODY_FORM_LABELS: Record<CustodyForm, string> = {
 export interface CustodyAssignmentDoc extends DataClassed {
   /** Vlastní id — nese se i uvnitř dokumentu, aby šlo pracovat s polem bez snapshotů. */
   id: string
-  courtDecisionId: string
+
+  /** Viz `CourtDecisionDoc.orgAccessList`. */
+  orgAccessList: string[]
+
+  /**
+   * Rozhodnutí, kterým bylo dítě svěřeno. `null` = SVĚŘENÍ VÍME, ROZSUDEK NE.
+   *
+   * Je to stav 282 spisů převedených 27. 7.: z existujících dat se dá
+   * spolehlivě odvodit, KDO o koho pečuje, ale číslo jednací ani soud
+   * v systému nikdy nebyly. Vymyslet je nesmím, a zahodit svěření kvůli
+   * chybějícímu rozsudku by bylo horší — pak by právní vrstva neznala
+   * nikoho. `null` je proto poctivé „doplnit" a UI to hlásí.
+   */
+  courtDecisionId: string | null
   childId: string
 
   /**
@@ -120,6 +146,19 @@ export interface CustodyAssignmentDoc extends DataClassed {
 
   form: CustodyForm
   validFrom: string
+
+  /**
+   * `true` = DATUM JE ODHAD, ne zjištěný údaj.
+   *
+   * Vzniklo převodem 282 spisů 27. 7.: kdy soud dítě svěřil, systém nikdy
+   * neevidoval. Odhad je začátek nejstarší Dohody rodiny — svěření muselo
+   * být dřív nebo současně, protože doprovázet se dá jen péče, která už
+   * běží. Je to tedy nejzazší možný začátek, ne skutečný.
+   *
+   * Bez téhle značky by odhad po pár měsících nikdo nerozeznal od údaje
+   * z rozsudku. UI ho hlásí a po doplnění rozhodnutí soudu se pole maže.
+   */
+  validFromIsEstimate?: boolean
   /** `null` = trvá. Vyplní se, když soud rozhodne jinak. */
   validTo: string | null
   status: CustodyStatus
@@ -160,6 +199,17 @@ export interface CustodyAssignmentDoc extends DataClassed {
  * Hlídá to `canOpenNewTitle()` v `lib/agreementLaw.ts`.
  */
 export interface AgreementSubjectDoc extends DataClassed {
+  /** Organizace Dohody. Předmět patří jedné Dohodě, tedy jedné organizaci. */
+  organizationId: string
+
+  /**
+   * UID Dohody (`AgreementDoc.uid`), NE její document ID.
+   *
+   * Document ID Dohody je `organizationId` (viz hlavička `types/agreement.ts`)
+   * a je jedinečné jen v rámci jedné rodiny. `agreementSubjects` je ale
+   * kolekce nejvyšší úrovně — kdyby se sem ukládalo document ID, měly by
+   * dvě rodiny doprovázené touž organizací nerozlišitelné předměty.
+   */
   agreementId: string
   custodyAssignmentId: string
 

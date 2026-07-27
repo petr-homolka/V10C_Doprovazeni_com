@@ -20,6 +20,7 @@ import { DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS } from '@/types/platformDefa
 import { listStaff } from '@/services/staffService'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
 import { RETENTION_CHILD_CARE_YEARS } from '@/lib/retentionPolicy'
+import { AGREEMENT_END_REASON_LABELS, planAgreementEnd, type AgreementEndReason } from '@/lib/agreementLaw'
 import {
   archiveSegment,
   unarchiveSegment,
@@ -88,6 +89,8 @@ export default function AgreementDetailPage() {
   const [releasedUids, setReleasedUids] = useState<string[]>([])
 
   const [endDateDraft, setEndDateDraft] = useState('')
+  const [endReason, setEndReason] = useState<AgreementEndReason>('vypoved')
+  const [noticeDate, setNoticeDate] = useState('')
   const { loading: endSubmitting, success: endSuccess, run: runEnd } = useAsyncSubmit()
 
   const primaryFosterName = fosterPersons[0]
@@ -224,16 +227,21 @@ export default function AgreementDetailPage() {
   }
 
   async function handleScheduleEnd() {
-    if (!docId || !organizationId || !endDateDraft) return
+    if (!docId || !organizationId) return
     setError(null)
     try {
       await runEnd(async () => {
-        await scheduleAgreementEnd(docId, organizationId, new Date(endDateDraft).toISOString())
+        await scheduleAgreementEnd(docId, organizationId, {
+          reason: endReason,
+          noticeDeliveredAt: noticeDate ? new Date(noticeDate).toISOString() : undefined,
+          chosenDate: endDateDraft ? new Date(endDateDraft).toISOString() : undefined,
+        })
         await reload()
       })
       setEndDateDraft('')
-    } catch {
-      setError('Naplánování ukončení se nezdařilo.')
+      setNoticeDate('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Naplánování ukončení se nezdařilo.')
     }
   }
 
@@ -416,30 +424,71 @@ export default function AgreementDetailPage() {
             </div>
           ) : (
             <DangerZone>
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-3">
                 <p className="text-sm text-text-primary">Ukončit Dohodu</p>
-                <p className="text-xs text-text-secondary">
-                  Dohoda se neukončí okamžitě — vyberte datum v budoucnosti. Do tohoto data půjde naplánované
-                  ukončení kdykoli zrušit.
-                </p>
-                <div className="mt-1 flex items-center gap-2">
-                  <DatePicker
-                    min={tomorrowIsoDate()}
-                    value={endDateDraft}
-                    onChange={setEndDateDraft}
+
+                {/*
+                  ZPŮSOB ZÁNIKU NEJDŘÍV, DATUM AŽ POTOM. Do 27. 7. tu byl
+                  prostý výběr data — jenže u výpovědi datum NEURČUJE
+                  uživatel, plyne ze zákona (§ 47c: jen k 30. 6. nebo
+                  31. 12., výpověď aspoň 30 dnů předem). Dohodou stran se
+                  naopak dá skončit kdykoli. Jeden kalendář pro obojí byl
+                  buď zákaz zákonného postupu, nebo tichý průchod
+                  nezákonného.
+                */}
+                <label className="flex flex-col gap-1">
+                  <span className="text-xs text-text-secondary">Jak Dohoda zaniká</span>
+                  <Select
+                    value={endReason}
+                    onChange={(e) => setEndReason(e.target.value as AgreementEndReason)}
                     className="w-auto"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleScheduleEnd}
-                    disabled={!endDateDraft}
-                    loading={endSubmitting}
-                    success={endSuccess}
                   >
-                    Naplánovat ukončení
-                  </Button>
-                </div>
+                    {(Object.keys(AGREEMENT_END_REASON_LABELS) as AgreementEndReason[]).map((r) => (
+                      <option key={r} value={r}>
+                        {AGREEMENT_END_REASON_LABELS[r]}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+
+                {endReason === 'vypoved' ? (
+                  <>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-text-secondary">Datum doručení výpovědi</span>
+                      <DatePicker value={noticeDate} onChange={setNoticeDate} className="w-auto" />
+                    </label>
+                    {noticeDate && (
+                      <p className="text-xs text-text-primary">
+                        {planAgreementEnd({
+                          reason: 'vypoved',
+                          noticeDeliveredAt: new Date(noticeDate).toISOString(),
+                        }).explanation}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-text-secondary">Datum zániku</span>
+                    <DatePicker
+                      min={tomorrowIsoDate()}
+                      value={endDateDraft}
+                      onChange={setEndDateDraft}
+                      className="w-auto"
+                    />
+                  </label>
+                )}
+
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="self-start"
+                  onClick={handleScheduleEnd}
+                  disabled={endReason === 'vypoved' ? !noticeDate : !endDateDraft}
+                  loading={endSubmitting}
+                  success={endSuccess}
+                >
+                  Naplánovat ukončení
+                </Button>
               </div>
             </DangerZone>
           )}

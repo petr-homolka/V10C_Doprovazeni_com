@@ -3,6 +3,7 @@ import {
   AGREEMENT_DEADLINE_DAYS,
   WIND_DOWN_DAYS,
   canOpenNewTitle,
+  planAgreementEnd,
   daysToTitleDeadline,
   halfYearEnd,
   isWithinWindDown,
@@ -133,5 +134,44 @@ describe('dokončovací lhůta po zániku dohody', () => {
 
   it('po ní už ne', () => {
     expect(isWithinWindDown(d('2026-06-30'), d('2026-10-01'))).toBe(false)
+  })
+})
+
+/**
+ * ZPŮSOBY ZÁNIKU. Pololetní kalendář platí JEN u výpovědi — dohodou stran
+ * se dá skončit kdykoli. Splácnout to do jednoho pravidla by buď zakázalo
+ * zákonný postup, nebo pustilo nezákonný.
+ */
+describe('plán zániku dohody', () => {
+  it('u výpovědi rozhoduje zákon, ne zadané datum', () => {
+    const plan = planAgreementEnd({
+      reason: 'vypoved',
+      noticeDeliveredAt: '2026-06-15T00:00:00.000Z',
+      chosenDate: '2026-07-01T00:00:00.000Z',
+    })
+    expect(plan.effectiveDate.slice(0, 10)).toBe('2026-12-31')
+    expect(plan.overriddenByLaw).toBe(true)
+    expect(plan.explanation).toContain('30. 6. nebo 31. 12.')
+  })
+
+  it('včasná výpověď končí týmž pololetím a nic nepřepisuje', () => {
+    const plan = planAgreementEnd({
+      reason: 'vypoved',
+      noticeDeliveredAt: '2026-03-01T00:00:00.000Z',
+      chosenDate: '2026-06-30T00:00:00.000Z',
+    })
+    expect(plan.effectiveDate.slice(0, 10)).toBe('2026-06-30')
+    expect(plan.overriddenByLaw).toBe(false)
+  })
+
+  it('dohodou stran jde skončit kdykoli', () => {
+    const plan = planAgreementEnd({ reason: 'dohodou', chosenDate: '2026-08-15T00:00:00.000Z' })
+    expect(plan.effectiveDate.slice(0, 10)).toBe('2026-08-15')
+    expect(plan.overriddenByLaw).toBe(false)
+    expect(plan.explanation).toContain('neuplatní')
+  })
+
+  it('bez data to u dohody stran neprojde', () => {
+    expect(() => planAgreementEnd({ reason: 'dohodou' })).toThrow()
   })
 })
