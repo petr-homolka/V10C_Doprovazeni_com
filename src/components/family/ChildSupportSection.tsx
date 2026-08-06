@@ -285,7 +285,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
                 <label
                   key={day}
                   className={cn(
-                    'flex size-9 cursor-pointer items-center justify-center rounded-md border border-border-subtle text-xs',
+                    'flex size-9 cursor-pointer items-center justify-center rounded-md shadow-border text-xs',
                     daysOfWeek.has(day) && 'border-accent bg-primary text-primary-foreground',
                   )}
                 >

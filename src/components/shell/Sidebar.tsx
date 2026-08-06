@@ -105,12 +105,12 @@ export function Sidebar() {
               type="button"
               onClick={openSearch}
               title="Hledat (Ctrl+K)"
-              className="flex h-8 w-full items-center gap-2 rounded-md border border-border-default bg-surface px-2.5 text-left text-sm text-text-tertiary transition-colors duration-150 hover:border-border-strong"
+              className="flex h-8 w-full items-center gap-2 rounded-md shadow-border bg-surface px-2.5 text-left text-sm text-text-tertiary transition-colors duration-150 hover:border-border-strong"
             >
               <Search size={15} className="shrink-0" />
               <span className="flex-1 truncate">Hledat…</span>
               {/* Zkratka je vidět schválně — takhle se ji lidé naučí. */}
-              <span className="shrink-0 rounded-sm border border-border-default px-1 text-2xs text-text-faint">
+              <span className="shrink-0 rounded-sm shadow-border px-1 text-2xs text-text-faint">
                 ⌘K
               </span>
             </button>

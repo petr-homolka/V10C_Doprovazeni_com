@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
  */
 export function GroupedList({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('overflow-hidden rounded-lg border border-border-subtle bg-surface', className)}>
+    <div className={cn('overflow-hidden rounded-lg shadow-border bg-surface', className)}>
       {children}
     </div>
   )

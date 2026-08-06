@@ -215,7 +215,7 @@ export default function InspectionsPage() {
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium leading-relaxed text-text-primary">Kritéria</p>
             {findingDrafts.map((draft, idx) => (
-              <div key={idx} className="flex flex-col gap-2 rounded-md border border-border-subtle p-3">
+              <div key={idx} className="flex flex-col gap-2 rounded-md shadow-border p-3">
                 <div className="flex gap-3">
                   <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
                     Kód kritéria

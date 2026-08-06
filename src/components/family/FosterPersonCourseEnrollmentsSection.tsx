@@ -284,7 +284,7 @@ export function FosterPersonCourseEnrollmentsSection({
         )
       }
       return (
-        <div className="flex flex-col gap-2 rounded-md border border-border-subtle p-3">
+        <div className="flex flex-col gap-2 rounded-md shadow-border p-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-text-secondary">Název kurzu</span>
             <Input value={completeTitle} onChange={(e) => setCompleteTitle(e.target.value)} />
@@ -337,7 +337,7 @@ export function FosterPersonCourseEnrollmentsSection({
         )
       }
       return (
-        <div className="flex flex-col gap-2 rounded-md border border-border-subtle p-3">
+        <div className="flex flex-col gap-2 rounded-md shadow-border p-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-text-secondary">Číslo/odkaz faktury</span>
             <Input value={invoiceRef} onChange={(e) => setInvoiceRef(e.target.value)} placeholder="číslo/odkaz faktury" />

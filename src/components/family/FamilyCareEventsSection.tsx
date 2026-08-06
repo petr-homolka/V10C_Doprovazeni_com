@@ -255,7 +255,7 @@ function RespitSubsection({
             <p className="text-sm text-text-secondary">Děti</p>
             <div className="flex flex-wrap gap-2">
               {children.map((c) => (
-                <label key={c.docId} className="flex items-center gap-2 rounded-md border border-border-subtle px-2.5 py-1.5 text-sm">
+                <label key={c.docId} className="flex items-center gap-2 rounded-md shadow-border px-2.5 py-1.5 text-sm">
                   <input type="checkbox" checked={selectedChildIds.has(c.docId)} onChange={() => toggleChild(c.docId)} />
                   {c.child.firstName} {c.child.lastName}
                 </label>

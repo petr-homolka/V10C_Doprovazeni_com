@@ -83,7 +83,16 @@ export default {
         lg: 'var(--radius-lg)',
         full: 'var(--radius-full)',
       },
+      /*
+        CESTA E — `border` je taky stín.
+
+        Geist kreslí obrys jako `box-shadow: 0 0 0 1px`, ne jako `border`.
+        Nezabírá to místo v layoutu, takže se prvek při zvýraznění
+        neposune o pixel, a obrys se dá vrstvit s vyvýšením v jedné
+        vlastnosti. Proto přibyl `shadow-border`.
+      */
       boxShadow: {
+        border: 'var(--shadow-border)',
         xs: 'var(--shadow-xs)',
         raised: 'var(--shadow-raised)',
         md: 'var(--shadow-md)',
@@ -110,15 +119,27 @@ export default {
         `text-xs` 127×) bez zásahu do komponent. Jinak by to byla změna na
         pět set místech a rozešlo by se to do týdne.
       */
+      /*
+        CESTA E — ZÁPORNÉ PROSTRKÁNÍ JE SOUČÁST STUPNICE.
+
+        Nejnápadnější typografický rys Vercelu: čím větší písmo, tím
+        těsněji. Změřeno na jejich vlastních stylech — nadpis 48 px má
+        −2,28 px (−4,75 %), 32 px má −1,28 px (−4 %), popisek 14 px má
+        −0,28 px (−2 %). Bez toho vypadá i správný font rozsypaně.
+
+        Velikosti zůstávají z cesty D (základ 15 px), protože o nich už
+        padlo rozhodnutí — 13 px bylo „titěrné". Mění se tedy PROSTRKÁNÍ,
+        ne měřítko; jinak by se posunula hustota všech seznamů.
+      */
       fontSize: {
-        '2xs': ['11px', '16px'],
-        xs: ['12px', '18px'],
-        sm: ['14px', '21px'],
-        base: ['15px', '23px'],
-        lg: ['17px', '25px'],
-        xl: ['21px', '30px'],
-        '2xl': ['26px', '34px'],
-        '3xl': ['34px', '42px'],
+        '2xs': ['11px', { lineHeight: '16px', letterSpacing: '-0.005em' }],
+        xs: ['12px', { lineHeight: '18px', letterSpacing: '-0.01em' }],
+        sm: ['14px', { lineHeight: '21px', letterSpacing: '-0.02em' }],
+        base: ['15px', { lineHeight: '23px', letterSpacing: '-0.011em' }],
+        lg: ['17px', { lineHeight: '25px', letterSpacing: '-0.025em' }],
+        xl: ['21px', { lineHeight: '30px', letterSpacing: '-0.032em' }],
+        '2xl': ['26px', { lineHeight: '34px', letterSpacing: '-0.04em' }],
+        '3xl': ['34px', { lineHeight: '42px', letterSpacing: '-0.045em' }],
       },
 
       /*
@@ -142,21 +163,25 @@ export default {
         extrabold: '600',
       },
 
+      /*
+        CESTA E — GEIST SANS + GEIST MONO.
+        Jeden font na všechno; `font-heading` míří na tentýž rodinný
+        název, aby 13 míst s nadpisy nemluvilo jiným hlasem než zbytek.
+        Mono je Geist Mono, ne systémové — rodná čísla a UID se v něm
+        zarovnají a patří vizuálně k témuž písmu.
+      */
       fontFamily: {
         sans: [
-          'Inter', '-apple-system', 'system-ui', 'BlinkMacSystemFont',
+          'Geist', '-apple-system', 'system-ui', 'BlinkMacSystemFont',
           'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif',
         ],
-        // Routine používá JEDEN font na všechno. Druhý řez pro nadpisy dělal
-        // z každého titulku jiný hlas; `font-heading` teď kreslí Inter, takže
-        // 13 míst, kde se používá, se srovnalo se zbytkem.
         heading: [
-          'Inter', '-apple-system', 'system-ui', 'BlinkMacSystemFont',
+          'Geist', '-apple-system', 'system-ui', 'BlinkMacSystemFont',
           'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif',
         ],
         mono: [
-          'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas',
-          '"Liberation Mono"', '"Courier New"', 'monospace',
+          '"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco',
+          'Consolas', '"Liberation Mono"', '"Courier New"', 'monospace',
         ],
       },
       transitionDuration: {

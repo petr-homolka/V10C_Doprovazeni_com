@@ -361,7 +361,7 @@ export default function RegisterPage() {
             </p>
 
             {created.length > 0 && (
-              <div className="rounded-md border border-border-subtle p-3">
+              <div className="rounded-md shadow-border p-3">
                 <p className="text-sm text-text-primary">Založeno ({created.length}):</p>
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {created.map((c) => (

@@ -4,6 +4,11 @@ import { cn } from '@/lib/utils'
 /**
  * POLE — jedna definice pro celou platformu.
  *
+ * CESTA E (Geist): rám je STÍN `0 0 0 1px`, ne `border`, a text je 14 px.
+ * Zaměření nekreslí tmavší rám, ale MODRÝ DVOJKROUŽEK — nejnápadnější
+ * interaktivní prvek Vercelu a jediné místo, kde se v rozhraní objeví
+ * sytá barva.
+ *
  * Od 2026-07-25 má pole VLASOVÝ RÁM. Předtím bylo jen tónované (Lumo styl,
  * bez obrysu) — což fungovalo na šedé ploše, ale jakmile se obsah přesunul
  * do BÍLÝCH KARET, tónované pole z karty zmizelo: hledání na seznamu
@@ -19,9 +24,9 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
     <input
       ref={ref}
       className={cn(
-        'h-10 w-full rounded-md border border-border-default bg-surface px-3 text-base',
-        'text-text-primary placeholder:text-text-faint transition-[border-color,box-shadow] duration-150',
-        'hover:border-border-strong focus:border-border-strong focus:outline-none focus:shadow-focus',
+        'h-10 w-full rounded-md bg-field px-3 text-sm shadow-border',
+        'text-text-primary placeholder:text-text-faint transition-shadow duration-150',
+        'focus:outline-none focus:shadow-focus',
         'disabled:opacity-50',
         className,
       )}

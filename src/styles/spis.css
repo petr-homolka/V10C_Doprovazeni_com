@@ -167,9 +167,13 @@
   padding-top: 4px;
 }
 
+/* CESTA E (Geist): hranu karty dělá STÍN `0 0 0 1px`, ne `border`.
+   Nezabírá místo v layoutu, takže se obsah karty nemusí posouvat o pixel,
+   a v tmavém režimu se týmž tokenem přepne na světlý obrys — na černém
+   pozadí by černý `border` nebyl vidět. */
 .sp__card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-border);
   border-radius: var(--radius-lg);
   padding: 8px 24px 16px;
   /* Sloupce se ubírají podle šířky KARTY, ne okna — viz `@container` níž. */
@@ -429,7 +433,7 @@
 }
 
 .sp__sub {
-  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-border);
   border-radius: var(--radius-md);
   padding: 12px;
 }
@@ -447,7 +451,7 @@
   height: 24px;
   padding: 0 10px;
   border: 1px solid var(--border-default);
-  border-radius: 100px;
+  border-radius: var(--radius-full);
   font-size: 12px;
   line-height: 18px;
   color: var(--text-secondary);
@@ -459,7 +463,7 @@
 .sp__meter {
   position: relative;
   height: 4px;
-  border-radius: 100px;
+  border-radius: var(--radius-full);
   background: var(--border-default);
   overflow: hidden;
 }
@@ -467,7 +471,7 @@
 .sp__meterfill {
   position: absolute;
   inset: 0 auto 0 0;
-  border-radius: 100px;
+  border-radius: var(--radius-full);
   background: var(--text-primary);
 }
 

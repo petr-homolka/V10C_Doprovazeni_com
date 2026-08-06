@@ -181,7 +181,7 @@ export default function MessengerPage() {
           {/* Seznam konverzací */}
           <div className="sp__card flex w-[320px] shrink-0 flex-col p-0">
             <div className="shrink-0 border-b border-border-subtle p-3">
-              <div className="flex items-center gap-2 rounded-md border border-border-default px-3 py-2">
+              <div className="flex items-center gap-2 rounded-md shadow-border px-3 py-2">
                 <Search size={16} className="shrink-0 text-text-tertiary" />
                 <input
                   value={search}
@@ -332,7 +332,7 @@ export default function MessengerPage() {
                 </div>
 
                 <form onSubmit={handleSend} className="shrink-0 border-t border-border-subtle p-3">
-                  <div className="rounded-md border border-border-default p-2 transition-colors duration-150 focus-within:border-border-strong">
+                  <div className="rounded-md shadow-border p-2 transition-colors duration-150 focus-within:border-border-strong">
                     <Textarea
                       value={body}
                       onChange={(e) => setBody(e.target.value)}

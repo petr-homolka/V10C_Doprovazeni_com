@@ -24,25 +24,36 @@ import { cn } from '@/lib/utils'
  * hlaviček bloků, `icon` čtverec na samotnou ikonu. Nižší už ne — na
  * dotykovém displeji se pod 36 px nedá spolehlivě trefit.
  */
+/*
+ * CESTA E — Geist. Tři věci se proti cestě D změnily:
+ *
+ *   1. Písmo tlačítka je 14 px, ne 15. Vercel má tlačítka a popisky
+ *      o stupeň menší než běžný text; drží to ovládací prvky vzadu za
+ *      obsahem, což je u nástroje správně.
+ *   2. Rám sekundárního tlačítka je STÍN, ne `border`. Nezabírá místo
+ *      v layoutu, takže se sousedi při hoveru neposunou.
+ *   3. Primární plocha se převrací s režimem (černá / bílá) — `--primary`
+ *      i `--primary-foreground` se v tmavém režimu prohodí samy.
+ */
 const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-base font-medium ' +
-    'transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-none ' +
+  'inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium ' +
+    'transition-[background-color,color,box-shadow] duration-150 focus-visible:outline-none ' +
     'focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         primary: 'bg-primary text-primary-foreground hover:bg-primary-hover',
         secondary:
-          'border border-border-default bg-surface text-text-primary hover:border-border-strong hover:bg-overlay-active',
+          'bg-surface text-text-primary shadow-border hover:bg-overlay-active hover:text-text-primary',
         /** Historické jméno pro `secondary` — ať se nemusí přepisovat volající. */
         outline:
-          'border border-border-default bg-surface text-text-primary hover:border-border-strong hover:bg-overlay-active',
+          'bg-surface text-text-primary shadow-border hover:bg-overlay-active hover:text-text-primary',
         ghost: 'text-text-secondary hover:bg-overlay-active hover:text-text-primary',
         destructive: 'bg-danger-solid text-white hover:opacity-90',
       },
       size: {
         default: 'h-10 px-4',
-        sm: 'h-9 px-3 text-sm',
+        sm: 'h-9 px-3',
         icon: 'h-10 w-10',
       },
     },

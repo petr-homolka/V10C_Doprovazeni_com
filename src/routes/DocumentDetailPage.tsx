@@ -309,7 +309,7 @@ export default function DocumentDetailPage() {
         actions={
           qrDataUrl && (
             <div className="shrink-0 text-center">
-              <img src={qrDataUrl} alt="QR ověřovací kód dokumentu" className="rounded-sm border border-border-default" />
+              <img src={qrDataUrl} alt="QR ověřovací kód dokumentu" className="rounded-sm shadow-border" />
               <p className="mt-1 text-2xs text-text-faint">hash {document.hash.slice(0, 12)}…</p>
             </div>
           )

@@ -12,7 +12,7 @@ const gridStyle = (columns: string): CSSProperties => ({ gridTemplateColumns: co
 
 export function Table({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('overflow-hidden rounded-md border border-border-default', className)}>{children}</div>
+    <div className={cn('overflow-hidden rounded-md shadow-border', className)}>{children}</div>
   )
 }
 

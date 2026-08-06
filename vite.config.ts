@@ -27,11 +27,10 @@ export default defineConfig({
         lang: 'cs',
         // DESIGN_SYSTEM.md §9.1 — theme/background = --bg-app, NIKDY bílá,
         // jinak instalační splash screen vypadá jako prázdný bílý blesk.
-        // Cesta B (2026-07-23): --bg-app tady je #F7F9FC (Lumo paleta), ne
-        // Cesty A #FAF9F5 — jinak by nainstalovaná PWA bleskla špatnou
-        // barvou splash screenu, co nesedí k modrému designu.
-        theme_color: '#F7F9FC',
-        background_color: '#F7F9FC',
+        // Cesta E: --bg-app je Geist `background-200`, tedy #FAFAFA. Musí
+        // sedět s tokenem, jinak nainstalovaná PWA blikne cizí barvou.
+        theme_color: '#FAFAFA',
+        background_color: '#FAFAFA',
         display: 'standalone',
         // TODO(M9.5): nahradit skutečným logem organizace Doprovázení.com —
         // toto je jen placeholder tvar (teal kruh na --bg-app), ne finální

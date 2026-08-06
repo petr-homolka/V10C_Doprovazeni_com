@@ -22,10 +22,10 @@ export const Textarea = React.forwardRef<
   <textarea
     ref={ref}
     className={cn(
-      'w-full resize-y rounded-md border border-border-default bg-surface px-3 py-2',
-      'text-base leading-relaxed text-text-primary placeholder:text-text-faint',
-      'transition-[border-color,box-shadow] duration-150',
-      'hover:border-border-strong focus:border-border-strong focus:outline-none focus:shadow-focus',
+      'w-full resize-y rounded-md bg-field px-3 py-2 shadow-border',
+      'text-sm leading-relaxed text-text-primary placeholder:text-text-faint',
+      'transition-shadow duration-150',
+      'focus:outline-none focus:shadow-focus',
       'disabled:opacity-50',
       className,
     )}

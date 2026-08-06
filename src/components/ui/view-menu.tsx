@@ -67,7 +67,7 @@ export function ViewMenu({ groups }: { groups: ViewMenuGroup[] }): ReactElement 
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         className={cn(
-          'flex h-8 items-center gap-2 rounded-md border border-border-default px-2.5 text-sm transition-colors duration-150',
+          'flex h-8 items-center gap-2 rounded-md shadow-border px-2.5 text-sm transition-colors duration-150',
           open ? 'border-border-strong text-text-primary' : 'text-text-secondary hover:border-border-strong',
         )}
       >
@@ -77,7 +77,7 @@ export function ViewMenu({ groups }: { groups: ViewMenuGroup[] }): ReactElement 
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-lg border border-border-default bg-surface p-1 shadow-overlay">
+        <div className="absolute left-0 top-full z-50 mt-1.5 w-56 rounded-lg bg-surface p-1 shadow-overlay">
           {groups.map((group, index) => (
             <div key={group.label}>
               {index > 0 && <div className="my-1 border-t border-border-subtle" />}

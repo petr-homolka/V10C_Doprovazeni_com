@@ -690,7 +690,7 @@ export function LabSpis() {
                         — patří proto NAD seznam a ne za tlačítko. */}
                     <button
                       type="button"
-                      className="mt-3 flex h-9 w-full items-center gap-2 rounded-md border border-border-default px-2.5 text-left text-sm text-text-faint transition-colors duration-150 hover:border-border-strong"
+                      className="mt-3 flex h-9 w-full items-center gap-2 rounded-md shadow-border px-2.5 text-left text-sm text-text-faint transition-colors duration-150 hover:border-border-strong"
                     >
                       <Plus size={15} className="shrink-0" />
                       <span className="flex-1">Napsat zápis…</span>

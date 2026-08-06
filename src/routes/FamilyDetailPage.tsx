@@ -1086,7 +1086,7 @@ export default function FamilyDetailPage() {
                 onClick={() => docId && openRecorderFor({ kind: 'family', id: docId })}
                 disabled={noActiveAgreement}
                 title={noActiveAgreement ? NO_ACTIVE_AGREEMENT_REASON : undefined}
-                className="mt-3 flex h-11 w-full items-center gap-2 rounded-md border border-border-default px-3 text-left text-sm text-text-faint transition-colors duration-150 hover:border-border-strong disabled:opacity-50"
+                className="mt-3 flex h-11 w-full items-center gap-2 rounded-md shadow-border px-3 text-left text-sm text-text-faint transition-colors duration-150 hover:border-border-strong disabled:opacity-50"
               >
                 <Mic size={16} className="shrink-0" />
                 <span className="flex-1">Napsat nebo nadiktovat zápis…</span>
@@ -1270,7 +1270,7 @@ export default function FamilyDetailPage() {
                               className={
                                 checked
                                   ? 'inline-flex h-8 items-center rounded-md bg-primary px-3 text-sm text-primary-foreground'
-                                  : 'inline-flex h-8 items-center rounded-md border border-border-default px-3 text-sm text-text-secondary hover:border-border-strong'
+                                  : 'inline-flex h-8 items-center rounded-md shadow-border px-3 text-sm text-text-secondary hover:border-border-strong'
                               }
                             >
                               {p.label}

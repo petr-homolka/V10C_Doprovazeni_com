@@ -9,6 +9,42 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * GEIST — Vercelí písmo, ne náhražka.
+ *
+ * Soubory v `public/fonts/` pocházejí z npm balíčku `geist` verze 1.7.2,
+ * který vydává Vercel (licence SIL Open Font License). Nejsou načtené
+ * přímo z `node_modules`, protože balíček má v `exports` zamčené cesty
+ * k souborům a build na tom padá; a jako závislost už tam není, protože
+ * by se instaloval kvůli dvěma souborům, které se stejně nemění.
+ * Obnovení: `npm pack geist` a přepsat oba `*-Variable.woff2`.
+ *
+ * Variabilní řez — jeden soubor pokrývá celou váhovou osu 100–900
+ * a stahuje se jednou místo čtyřikrát. `font-display: swap`: text je
+ * čitelný okamžitě systémovým fontem a Geist ho vystřídá, jakmile
+ * dorazí. U nástroje, ve kterém se pracuje, je horší prázdná obrazovka
+ * než jedno přeskočení.
+ *
+ * Proti Interu je Geist užší a má výrazně zápornější prostrkání, což je
+ * přesně to, čím vercel.com působí „vysázeně" — viz `fontSize`
+ * v `tailwind.config.js`, kde je záporné prostrkání součástí stupnice.
+ */
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('/fonts/GeistMono-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 html {
   background: var(--bg-void);
 }
@@ -27,16 +63,20 @@ body {
   margin: 0;
   background: var(--bg-void);
   color: var(--text-primary);
-  font-family: 'Inter', -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto,
+  font-family: 'Geist', -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto,
     'Helvetica Neue', Arial, sans-serif;
   font-size: 15px;
   line-height: 23px;
-  /* Při 15px už stahovat proklad není potřeba — na 13px to text zpevňovalo,
-     tady by ho jen zúžilo. */
-  letter-spacing: -0.05px;
+  /* Záporné prostrkání je u Geistu podstatou, ne kosmetikou — Vercel ho
+     má i v běžném textu a s velikostí ho stupňuje (viz `fontSize`
+     v tailwind.config.js). */
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: 'cv11', 'ss01', 'tnum';
+  /* `cv11`/`ss01` byly alternativní tvary Interu a Geist je nezná —
+     zůstává jen `tnum`, tabulkové číslice, aby se čísla v seznamech
+     a součtech svisle zarovnala. */
+  font-feature-settings: 'tnum';
 }
 
 /* §9.3 — input text nikdy pod 16px, jinak iOS Safari zoomuje po focusu */

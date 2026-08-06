@@ -72,7 +72,7 @@ export function UpdatePrompt() {
   return (
     <div
       role="status"
-      className="fixed bottom-4 right-4 z-[100] flex items-center gap-3 rounded-xl border border-border-subtle bg-surface px-4 py-3 shadow-lg"
+      className="fixed bottom-4 right-4 z-[100] flex items-center gap-3 rounded-xl bg-surface px-4 py-3 shadow-overlay"
     >
       <p className="text-sm text-text-primary">
         Je tu nová verze aplikace.
