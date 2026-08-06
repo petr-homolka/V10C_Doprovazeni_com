@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-pwa/react" />
 
 interface ImportMetaEnv {
   readonly VITE_FIREBASE_API_KEY: string
@@ -8,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string
   readonly VITE_FIREBASE_APP_ID: string
   readonly VITE_USE_FIREBASE_EMULATORS?: string
+  /** Bez klíče běží AI Logic bez App Check — funkční, nechráněné (viz lib/ai.ts). */
+  readonly VITE_RECAPTCHA_SITE_KEY?: string
 }
 
 interface ImportMeta {

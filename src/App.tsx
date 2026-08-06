@@ -5,6 +5,7 @@ import RequireAuth from '@/routes/RequireAuth'
 import RequireFosterAuth from '@/routes/moje/RequireFosterAuth'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { UpdatePrompt } from '@/components/UpdatePrompt'
 
 // Code-split lazy routes — §10 provozní úspornost (statická SPA, code-split
 // lazy routes). Přidávej sem novou stránku pro každý modul (M1+), ne do
@@ -166,6 +167,9 @@ export default function App() {
             </Routes>
           </Suspense>
         </BrowserRouter>
+        {/* Mimo router schválně: nabídka nové verze platí na každé obrazovce
+            včetně přihlašování a portálu pěstouna. */}
+        <UpdatePrompt />
       </AuthProvider>
     </ErrorBoundary>
   )

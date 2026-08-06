@@ -13,7 +13,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', ne 'autoUpdate' (změna 27. 7.). `autoUpdate` novou verzi
+      // stáhne na pozadí, ale otevřená stránka dál běží na starých souborech
+      // — nasazená změna se tak tvářila jako nenasazená. Teď se uživatel
+      // zeptá a obnoví sám; obsluhuje to `components/UpdatePrompt.tsx`,
+      // kde je i vysvětlení, proč se neobnovuje automaticky.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'pwa-icon.svg'],
       manifest: {
         name: 'Doprovázení.com',
