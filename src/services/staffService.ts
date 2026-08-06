@@ -1,5 +1,7 @@
 import { doc, collection, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { actorFields, recordAudit } from '@/services/auditLogService'
+import type { AuditActor } from '@/types/auditLog'
 import { createStaffAuthAccount } from '@/lib/secondaryAuth'
 import { STAFF_ROLES, type StaffRole, type UserDoc } from '@/types/user'
 
@@ -45,12 +47,46 @@ export async function createStaffMember(input: CreateStaffMemberInput): Promise<
     organizationId: input.organizationId,
     fte: 1, // §6 A9 — výchozí plný úvazek, org_admin může upravit později
     createdAt: new Date().toISOString(),
+    // M9 — `spolupracovnik` MUSÍ mít `collaboratorModules` nastavené hned
+    // od začátku (i prázdné `{}`), jinak `firestore.rules`
+    // `collaboratorModuleEnabled()` sahá na `null` pole. Výchozí = vše
+    // vypnuté, org_admin zapíná moduly zvlášť (viz StaffPage.tsx).
+    ...(input.role === 'spolupracovnik' ? { collaboratorModules: {} } : {}),
   }
   await setDoc(doc(db, 'users', uid), userData)
   return userData
 }
 
 /** Soft-delete (§5 append-only/audit princip — nikdy hard delete profilu). */
+export async function setStaffMemberDisabledAudited(
+  uid: string,
+  disabled: boolean,
+  audit: { organizationId: string; actor: AuditActor; targetName: string },
+): Promise<void> {
+  await setStaffMemberDisabled(uid, disabled)
+  await recordAudit({
+    organizationId: audit.organizationId,
+    action: disabled ? 'staff_access_disabled' : 'staff_access_enabled',
+    ...actorFields(audit.actor),
+    target: { kind: 'user', id: uid, label: audit.targetName },
+  })
+}
+
+export async function updateStaffMemberRoleAudited(
+  uid: string,
+  role: StaffRole,
+  audit: { organizationId: string; actor: AuditActor; targetName: string; previousRole: string },
+): Promise<void> {
+  await updateStaffMemberRole(uid, role)
+  await recordAudit({
+    organizationId: audit.organizationId,
+    action: 'staff_role_changed',
+    ...actorFields(audit.actor),
+    target: { kind: 'user', id: uid, label: audit.targetName },
+    detail: `${audit.previousRole} → ${role}`,
+  })
+}
+
 export async function setStaffMemberDisabled(uid: string, disabled: boolean): Promise<void> {
   await updateDoc(doc(db, 'users', uid), {
     disabledAt: disabled ? new Date().toISOString() : null,
@@ -75,4 +111,17 @@ export async function updateStaffCapacitySettings(
   capacityThresholdOverride: number | null,
 ): Promise<void> {
   await updateDoc(doc(db, 'users', uid), { fte, capacityThresholdOverride })
+}
+
+/** Dvě z mála funkcí v tomhle souboru, co uživatel volá SÁM NA SEBE (zbytek
+ * je org_admin nad kolegy) — Nastavení/Kalendář nezávislé přepínače
+ * narozeninových a jmeninových upozornění (2026-07-23/24). `firestore.
+ * rules` sebeúpravu omezuje jen na `displayName`+`notifyBirthdays`+
+ * `notifyNameDays`, žádné jiné pole. */
+export async function updateNotifyBirthdays(uid: string, notifyBirthdays: boolean): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { notifyBirthdays })
+}
+
+export async function updateNotifyNameDays(uid: string, notifyNameDays: boolean): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), { notifyNameDays })
 }

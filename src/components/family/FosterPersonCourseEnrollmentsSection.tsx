@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { GraduationCap, Plus } from 'lucide-react'
+import { GraduationCap, Plus } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Textarea } from '@/components/ui/textarea'
 import {
   approveCourseEnrollment,
   closeCourseEnrollment,
@@ -52,9 +54,6 @@ const COURSE_TYPE_LABELS: Record<CourseDoc['type'], string> = {
   online: 'Online',
   hybrid: 'Hybridně',
 }
-
-const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none'
 
 type Enrollment = { docId: string; enrollment: CourseEnrollmentDoc }
 
@@ -225,12 +224,11 @@ export function FosterPersonCourseEnrollmentsSection({
           </div>
           {rejectingDocId === docId && (
             <div className="flex flex-col gap-2">
-              <textarea
+              <Textarea
                 value={rejectionNote}
                 onChange={(e) => setRejectionNote(e.target.value)}
                 placeholder="Důvod zamítnutí"
                 rows={2}
-                className={TEXTAREA_CLASSNAME}
               />
               <div className="flex gap-2">
                 <Button
@@ -312,7 +310,7 @@ export function FosterPersonCourseEnrollmentsSection({
           </div>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-text-secondary">Datum konání</span>
-            <Input type="date" value={completeOccurredAt} onChange={(e) => setCompleteOccurredAt(e.target.value)} />
+            <DatePicker value={completeOccurredAt} onChange={setCompleteOccurredAt} />
           </label>
           <div className="flex gap-2">
             <Button
@@ -386,9 +384,8 @@ export function FosterPersonCourseEnrollmentsSection({
   }
 
   return (
-    <section className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Přihlášky na kurzy</h2>
+    <div>
+      <div className="flex items-center justify-end gap-4">
         <Button variant="secondary" size="sm" onClick={() => setShowNewForm((v) => !v)}>
           {showNewForm ? (
             'Zrušit'
@@ -407,7 +404,7 @@ export function FosterPersonCourseEnrollmentsSection({
       )}
 
       {showNewForm && (
-        <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleCreate} className="mt-4 flex max-w-[560px] flex-col gap-4 sp__sub">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Podnět</span>
             <Select
@@ -432,10 +429,10 @@ export function FosterPersonCourseEnrollmentsSection({
         ) : (
           <div className="flex flex-col gap-3">
             {enrollments.map(({ docId, enrollment }) => (
-              <div key={docId} className="rounded-lg border border-border-subtle bg-surface p-4">
+              <div key={docId} className="sp__sub">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm text-text-secondary">{INITIATED_BY_LABELS[enrollment.initiatedBy]}</span>
-                  <span className="inline-flex h-6 items-center rounded-full bg-surface-soft px-2.5 text-xs font-medium text-text-primary">
+                  <span className="sp__chip">
                     {STATUS_LABELS[enrollment.status]}
                   </span>
                 </div>
@@ -449,6 +446,6 @@ export function FosterPersonCourseEnrollmentsSection({
           </div>
         )}
       </div>
-    </section>
+    </div>
   )
 }

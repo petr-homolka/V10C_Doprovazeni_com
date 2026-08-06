@@ -1,0 +1,628 @@
+/*
+  PROFIL („spis") — struktura stránky, ne barvy.
+
+  Kreslí se TOKENY APPKY (`src/tokens.css`), takže tmavý režim funguje sám.
+  Vlastní CSS je tu jen na to, co Tailwind neumí bez ohýbání: lepivé prvky,
+  mřížky řádků „databáze", odhalování akcí při hover a přechod na telefon.
+  Jeden soubor pro appku i pro designový náhled — kdyby byly dva, rozejdou
+  se do týdne.
+
+  Rozvržení 176 + 32 + 912 = 1120 px není náhoda: 912 px je šířka, na které
+  má řádek s pěti sloupci ještě rytmus a nadpis 32 px nevypadá ztraceně,
+  a 176 px stačí na nejdelší jméno bloku („Lhůty a limity") na jeden řádek.
+*/
+
+.sp {
+  --sp-rail: 176px;
+  --sp-gap: 32px;
+  --sp-canvas: 912px;
+}
+
+/* ---------- lepivá lišta stránky ---------- */
+
+.sp__bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  background: color-mix(in srgb, var(--bg-app) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid transparent;
+  transition: border-color 150ms ease;
+}
+
+/* Linka se objeví AŽ při odjezdu stránky. Dokud je člověk na začátku,
+   nemá lišta co oddělovat a linka by dělala z hlavičky rám. */
+.sp__bar--stuck {
+  border-bottom-color: var(--border-subtle);
+}
+
+/* Kontext, který v liště přiroste, když nadpis odjede z obrazovky. */
+.sp__grown {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(3px);
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+  pointer-events: none;
+}
+
+.sp__bar--stuck .sp__grown {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+/* ---------- osnova + plátno ---------- */
+
+.sp__wrap {
+  display: grid;
+  grid-template-columns: var(--sp-rail) minmax(0, var(--sp-canvas));
+  gap: var(--sp-gap);
+  justify-content: center;
+  padding: 40px 24px 160px;
+}
+
+.sp__rail {
+  position: sticky;
+  top: 84px;
+  align-self: start;
+  display: grid;
+  gap: 2px;
+}
+
+.sp__raillink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding-right: 8px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: left;
+  transition: color 150ms ease;
+}
+
+.sp__raillink::before {
+  content: '';
+  width: 10px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+  transition: width 150ms ease;
+}
+
+.sp__raillink:hover {
+  color: var(--text-secondary);
+}
+
+.sp__raillink--active {
+  color: var(--text-primary);
+}
+
+.sp__raillink--active::before {
+  width: 18px;
+  opacity: 1;
+}
+
+/* Osnova se pod 1120 px nezmenšuje, mizí — zúžená by brala místo obsahu
+   a nic by nepřidala. */
+@media (max-width: 1180px) {
+  .sp__wrap {
+    grid-template-columns: minmax(0, var(--sp-canvas));
+  }
+  .sp__rail {
+    display: none;
+  }
+}
+
+/* ---------- SEKCE: popis vlevo, obsah v kartě vpravo ---------- */
+
+/*
+  Tohle je sazba z referenční stránky, kterou poslal Petr 2026-07-25 (výpis
+  o autě — a je to přesně profil jako u nás): STRANA JE ŠEDÁ, obsah jsou
+  BÍLÉ KARTY, a každá sekce má VLEVO V OKRAJI svůj název a jednu vysvětlující
+  větu. Předchozí verze měla všechno na bílé ploše pod sebou a Petr o ní
+  napsal, že je „nepřehledná" — právem: nadpisy sekcí splývaly s obsahem,
+  protože byly ze stejné plochy, stejné barvy a jen o dva pixely větší.
+
+  Proč to funguje: levý okraj se dá skenovat očima svisle („kde je Lhůty
+  a limity?") a karta jasně říká, kde sekce začíná a končí. Zároveň tím
+  vypadl nav rail — název sekce v okraji dělá jeho práci a nezabírá další
+  sloupec.
+
+  Popis vlevo je LEPIVÝ: u dlouhé sekce (dvacet zápisů) je pořád vidět,
+  co se to vlastně čte.
+*/
+.sp__page {
+  background: var(--bg-void);
+}
+
+.sp__sections {
+  display: grid;
+  gap: 40px;
+  max-width: calc(216px + 32px + 880px);
+  margin: 0 auto;
+  padding: 32px 24px 160px;
+}
+
+.sp__sec {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  gap: 32px;
+  scroll-margin-top: 24px;
+}
+
+.sp__seclabel {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  padding-top: 4px;
+}
+
+.sp__card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 8px 24px 16px;
+  /* Sloupce se ubírají podle šířky KARTY, ne okna — viz `@container` níž. */
+  container-type: inline-size;
+}
+
+/* Karta s běžným obsahem (ne seznamem řádků) potřebuje odsazení nahoře. */
+.sp__card--pad {
+  padding: 20px 24px;
+}
+
+/* Pod 1100 px se popis sekce nevejde do okraje — jde nad kartu. Nezmenšuje
+   se, protože zúžený sloupec s textem je horší než žádný. */
+@media (max-width: 1100px) {
+  .sp__sec {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+  .sp__seclabel {
+    position: static;
+    padding-top: 0;
+  }
+}
+
+/* ---------- souhrnný pás „stav spisu" ---------- */
+
+/*
+  Z reference: hned pod jménem je řada kontrolních bodů, každý s ikonou
+  a jednou hodnotou. Je to nejcennější prvek celé té stránky, protože
+  odpovídá na „je něco v nepořádku?" bez rolování — a u spisu rodiny je ta
+  otázka ještě důležitější než u auta.
+*/
+.sp__checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: 2px 28px;
+}
+
+.sp__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  min-width: 0;
+}
+
+/* ---------- blok („inline databáze") ---------- */
+
+.sp__block {
+  margin-top: 52px;
+  scroll-margin-top: 76px;
+}
+
+.sp__blockhead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+
+/*
+  Řádek se štítky sloupců. NENÍ lepivý: zkoušel jsem to a v sazbě s kartami
+  se štítky odlepily od karty a vznášely se přes obsah nad sebou. Karta má
+  hranu, takže je pořád vidět, ke které sekci sloupce patří — lepivý řádek
+  by řešil problém, který tady není.
+*/
+.sp__labels {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-faint);
+  padding: 8px 0;
+}
+
+/* ---------- řádky ---------- */
+
+/*
+  Řádek NENÍ karta a NENÍ tlačítko. Je to řádek tabulky: jediná linka dole,
+  žádný rám, žádné vlastní pozadí. Akce se ukazují až při hover — dokud na
+  ně člověk nemíří, jsou to sloupce dat, ne rozhraní.
+*/
+.sp__row {
+  display: grid;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  /* 44 px je výška, na kterou se dá mířit prstem a která u 15px textu
+     nevypadá zmáčknutě. Dřív tu bylo 34 px, což byl ten „titěrný" dojem. */
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.sp__row:hover {
+  background: var(--overlay-active);
+}
+
+.sp__row--lide {
+  /* Poslední sloupec je 48 px, ne 24: vedle šipky se tam při hover ukáže
+     ještě „přiřadit spolupracovníkovi". Obojí je vidět jen na řádku, na
+     kterém člověk je. */
+  grid-template-columns: minmax(0, 1fr) 88px minmax(0, 176px) 168px 52px;
+}
+
+.sp__row--zapis {
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 208px) 28px 28px;
+}
+
+.sp__row--blizi {
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 164px) 28px;
+}
+
+/*
+  SLOUPCE SE UBÍRAJÍ PODLE ŠÍŘKY PLÁTNA, NE PODLE ŠÍŘKY OKNA.
+
+  Otevřený náhled záznamu ubere z plátna 380 px — okno je pořád 1440, takže
+  na `@media` se to nepozná a jména by se začala krájet („Jana Novo…").
+  `@container` měří to, co je opravdu k dispozici, takže se sloupec radši
+  SKRYJE, než aby se obsah zmáčkl. Zmizí vždycky ten nejméně důležitý:
+  kontakt (je v profilu člověka) → věk → koho se týká → autor.
+*/
+.sp__canvas {
+  container-type: inline-size;
+}
+
+@container (max-width: 760px) {
+  .sp__row--lide {
+    grid-template-columns: minmax(0, 1fr) 88px 168px 52px;
+  }
+  .sp__row--zapis {
+    grid-template-columns: 72px minmax(0, 1fr) 28px 28px;
+  }
+  /* Bez tohohle by po skrytí „koho se týká" zůstal v řádku prázdný sloupec
+     a datum by odplulo doprostřed. */
+  .sp__row--blizi {
+    grid-template-columns: 72px minmax(0, 1fr) 28px;
+  }
+  .sp__col--kontakt,
+  .sp__col--subjects {
+    display: none;
+  }
+}
+
+@container (max-width: 600px) {
+  .sp__row--lide {
+    grid-template-columns: minmax(0, 1fr) 150px;
+  }
+  .sp__row--zapis,
+  .sp__row--blizi {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .sp__col--vek,
+  .sp__col--author,
+  .sp__col--rev {
+    display: none;
+  }
+}
+
+/*
+  Lhůta má tři části a dvě sazby: na šířku „popisek + pruh vlevo, stav
+  vpravo", na telefonu „popisek vlevo / stav vpravo, pruh pod tím". Řeší to
+  pojmenované oblasti, ne dvě různá značkování — jinak by se to rozešlo.
+*/
+.sp__row--lhuta {
+  grid-template-columns: minmax(0, 1fr) 176px;
+  grid-template-areas:
+    'label state'
+    'bar   bar';
+  align-items: start;
+  min-height: 64px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.sp__lim-label {
+  grid-area: label;
+  min-width: 0;
+}
+
+.sp__lim-state {
+  grid-area: state;
+  text-align: right;
+}
+
+.sp__lim-bar {
+  grid-area: bar;
+  margin-top: 8px;
+}
+
+/* „Otevřít" se ukáže až na řádku, na kterém člověk je. Trvale viditelné
+   tlačítko na každém řádku je přesně to, co dělalo ze staré verze rozcestník
+   plný tlačítek. */
+.sp__reveal {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.sp__row:hover .sp__reveal,
+.sp__row:focus-visible .sp__reveal {
+  opacity: 1;
+}
+
+/* Poslední řádek bloku: přidání. Celý šířkou, tiše — dokud na něj člověk
+   nenajede, je to jen popisek. */
+.sp__add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  font-size: 14px;
+  color: var(--text-faint);
+  transition: color 120ms ease;
+}
+
+.sp__add:hover {
+  color: var(--text-secondary);
+}
+
+/* ---------- co smí být UVNITŘ karty ---------- */
+
+/*
+  Karta je jediná plocha, která má rám a stín. Do 2026-07-25 se ale uvnitř
+  karet stavěly další rámečky a tónované kachlíky (`bg-inset`,
+  `bg-surface-soft`, `shadow-raised`) — na šedé ploše to fungovalo, v bílé
+  kartě z toho byla „krabice v krabici v krabici". Petrovo slovo pro to
+  bylo „nepřehlednost".
+
+  Uvnitř karty existují právě tři stavební prvky, všechny bez vlastního
+  pozadí:
+    .sp__group  — skupina polí ve formuláři/panelu, oddělená linkou
+    .sp__sub    — vnořený záznam (série, cíl, položka plánu) s vlasovým rámem
+    .sp__empty  — obal prázdného stavu
+*/
+.sp__group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sp__group:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+/* Popisek skupiny: velikostí, ne verzálkami. Uppercase tracking-wide byl
+   z jiného slovníku než zbytek appky. */
+.sp__grouplabel {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-faint);
+}
+
+.sp__sub {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.sp__empty {
+  padding: 24px 0;
+}
+
+/* Neutrální pilulka (stav série, počet hodin, typ kurzu). Barevná pilulka
+   je `Badge` a nese SUBJEKT; tahle nenese nic než slovo, takže má jen
+   vlasový rám — plocha navíc uvnitř bílé karty ruší. */
+.sp__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 100px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ---------- pruh lhůty ---------- */
+
+.sp__meter {
+  position: relative;
+  height: 4px;
+  border-radius: 100px;
+  background: var(--border-default);
+  overflow: hidden;
+}
+
+.sp__meterfill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 100px;
+  background: var(--text-primary);
+}
+
+/* Tón, ne délka: splněné je světlé, blížící se tmavé, propadlé červené. */
+.sp__meterfill--ok {
+  background: var(--border-strong);
+}
+
+.sp__meterfill--blizko {
+  background: var(--text-primary);
+}
+
+.sp__meterfill--po {
+  background: var(--accent);
+}
+
+/* ---------- náhled záznamu (peek) ---------- */
+
+/*
+  Kliknutí na řádek NEODNAVIGUJE. Otevře náhled vedle seznamu, takže se dá
+  projít deset zápisů za sebou bez ztráty místa v seznamu — a kdo chce
+  celou stránku, klikne na „Otevřít jako stránku".
+*/
+.sp__peek {
+  width: 420px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-default);
+  background: var(--bg-surface);
+  animation: sp-peek-in 160ms ease;
+}
+
+@keyframes sp-peek-in {
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .sp__peek {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: auto;
+    height: 84vh;
+    border-left: 0;
+    border-top: 1px solid var(--border-default);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-xl);
+    animation: sp-sheet-in 200ms ease;
+    z-index: 60;
+  }
+  @keyframes sp-sheet-in {
+    from {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+  }
+}
+
+/* ---------- vlastnosti („popisek → hodnota") ---------- */
+
+.sp__prop {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  min-height: 44px;
+  padding: 10px 0;
+}
+
+.sp__proplabel {
+  width: 176px;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: var(--text-tertiary);
+}
+
+.sp__propvalue {
+  min-width: 0;
+  flex: 1;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+/* ---------- telefon ---------- */
+
+/*
+  SAZBA JAKO ZÁPIS V APP STORU (Petr, 2026-07-25): co je vlevo, je
+  zarovnané DOLEVA; co je vpravo, DOPRAVA. Na telefonu je tím z každého
+  řádku jeden čitelný pár „věc → hodnota" a obě hrany stránky jsou čisté —
+  oko sjíždí dva svislé sloupce, ne roztřepený střed.
+
+  Proto se tady NEDĚLÁ nic jiného než zarovnání: sloupce už ubral
+  `@container` výš (plátno je na 390 px úzké samo), lhůty se skládají na
+  dva řádky a mřížka řádků zůstává tatáž.
+*/
+@media (max-width: 720px) {
+  .sp__wrap {
+    padding: 20px 16px 120px;
+  }
+  .sp__sections {
+    gap: 28px;
+    padding: 16px 12px 120px;
+  }
+  /* Karta se na telefonu drží u hran obrazovky — 24 px odsazení uvnitř
+     karty a 16 px venku dělalo z obsahu úzký kanál. */
+  .sp__card {
+    padding: 4px 14px 10px;
+    border-radius: 10px;
+  }
+  .sp__card--pad {
+    padding: 14px;
+  }
+  .sp__checks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sp__block {
+    margin-top: 36px;
+  }
+  .sp__labels {
+    display: none;
+  }
+
+  /* Vlastnost: popisek na levou hranu, hodnota na pravou. */
+  .sp__prop {
+    gap: 16px;
+  }
+  .sp__proplabel {
+    width: auto;
+  }
+  .sp__propvalue {
+    text-align: right;
+  }
+  /* Hodnota bývá i řádek s avatarem nebo čipy — ty se zarovnají na konec,
+     jinak by text šel doprava a obrázek zůstal vlevo. */
+  .sp__propvalue > span,
+  .sp__propvalue > div {
+    justify-content: flex-end;
+  }
+
+  /* Lhůta: popisek vlevo, stav vpravo, pruh přes celou šířku pod nimi. */
+  .sp__row--lhuta {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  /* Zápis a budoucí položka: text vlevo, datum na pravou hranu (v mřížce se
+     dá pořadí obrátit `order`em, takže se nemusí měnit značkování). */
+  .sp__row--zapis,
+  .sp__row--blizi {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .sp__row--zapis > .sp__col--when,
+  .sp__row--blizi > .sp__col--when {
+    order: 2;
+    text-align: right;
+  }
+}

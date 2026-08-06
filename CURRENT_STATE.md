@@ -5,6 +5,914 @@
 > `../nove zadani/` — ty jsou zdroj pravdy pro CO a JAK, tenhle soubor jen
 > říká CO UŽ JE HOTOVO a jaká rozhodnutí padla cestou.
 
+## Druhý průchod revizí: zúžené dotazy, globální hledání, úkoly u entit (2026-07-24)
+
+Petrovo zadání: smazat prázdnou rodinu, opravit `EntityAgenda` "jak to má
+být", a projít každé workflow a navrhnout zlepšení („dopředu s tebou
+souhlasím").
+
+### Dotazy místo skenů: `subjectKeys`
+Firestore neumí filtrovat podle pole uvnitř polí objektů, takže
+`subjectRefs` se dotazovat nedaly — kalendář i úkoly entity se proto
+načítaly stažením VŠECH dokumentů organizace a filtrováním v prohlížeči.
+
+`CalendarEventDoc.subjectKeys` i `TaskDoc.subjectKeys` jsou denormalizace
+do plochých klíčů `"kind:id"` (`buildSubjectKeys` v `lib/eventSubjects.ts`).
+Zdroj pravdy zůstává `subjectRefs` — klíče se z nich VŽDY přepočítávají při
+zápisu, i při úpravě vazeb (jinak by v profilu zůstal viset záznam, ze
+kterého ho někdo odvázal). Rodina z `familyDocId` se do klíčů přidává i
+tehdy, když v `subjectRefs` není: starší události mají vazbu jen tam.
+
+Nové zúžené dotazy: `listCalendarEventsForSubject`/`ForStaff`,
+`listTasksForSubject`/`ForStaff`. Bez `orderBy` záměrně — `array-contains`
++ `orderBy` vyžaduje složený index a řazení pár desítek řádků v prohlížeči
+je zdarma. `subjectDirectoryService.loadSubjectDirectory` dotahuje jména a
+fotky JEN pro entity, které se v načtených záznamech objevily; velký
+kalendář si adresář dál staví z už načtených seznamů, protože je potřebuje
+na filtry i našeptávače.
+
+`scripts/backfill-subject-keys.mjs` (`npm run backfill:subject-keys`) je
+idempotentní a řeší obě kolekce. V produkci doplnil 22 událostí a 9 úkolů;
+ověřeno, že zúžený dotaz dává identický výsledek jako předchozí sken.
+
+### Globální hledání
+Hledání bylo zavřené v kalendáři, i když najít člověka je nejčastější první
+krok práce. Lupa je teď v hlavičce (`TopBar`) na každé stránce, zkratka
+Ctrl/Cmd+K — ta záměrně nereaguje, když se právě píše do pole, ať nekrade
+stisk uprostřed formuláře. Výsledky se ovládají klávesnicí (↑/↓, Enter).
+
+Jedna komponenta (`components/search/EntitySearch.tsx`) obsluhuje hlavičku
+i kalendář: kalendář jí předá `data` (má je stejně načtená), hlavička jen
+`organizationId` a komponenta si je dotáhne sama při otevření.
+
+### Úkoly u entity, ke které patří
+`TaskDoc.subjectRefs` existoval od začátku, ale úkoly šly vidět jen na
+`/ukoly` jako jeden seznam za celou organizaci. Nová záložka **Úkoly**
+v profilu rodiny, pěstouna i dítěte (`components/tasks/EntityTasks.tsx`) a
+sekce v profilu zaměstnance („co má rozdělané", tedy `assignedToUid`, ne
+`subjectRefs`). Odškrtnout jde rovnou tam; "hotovo" je stav, ne mazání.
+Řazení: podle termínu, bez termínu na konec, po termínu červeně.
+
+### Zakládání pěstouna/dítěte ze seznamu
+Šlo to JEN z profilu rodiny, přitom v seznamu Pěstouni/Děti člověk skončí
+právě tehdy, když je má po ruce. Nový panel s výběrem rodiny — datový model
+zůstává nedotčený (`familyId` je povinné, pěstoun i dítě rodinu vždy mají),
+jen se ke stejné operaci dá dojít i odsud. U dítěte panel hned ukazuje
+datum narození dopočtené z rodného čísla, takže se překlep pozná před
+uložením.
+
+### Ostatní
+- `lib/staffColor.ts` — paleta a hash byly zduplikované v obou kalendářích
+  a komentář to sám označoval za dluh. "Eva je zelená" si lidé pamatují,
+  rozejít se ty kopie mohly kdykoli.
+- Smazána prázdná rodina bez jména a bez Dohody (na výslovný pokyn). Před
+  smazáním ověřeno, že na ni neodkazuje žádné dítě, pěstoun, událost ani
+  úkol a nemá podkolekce.
+- Tři události, které dřív neměly avatary, je mají — vazbu nesly ve
+  `familyDocId` a fallback na rodinu teď platí i pro `subjectKeys`.
+
+**Co NEBYLO živě ověřeno (stejný SEAM jako dávka níž):** vizuální kontrola
+v prohlížeči. Ověřeno `tsc -b`, `vitest` (73 testů) a dotazy proti
+produkčním datům.
+
+## Revize + avatary, profil zaměstnance, hledání v kalendáři (2026-07-24, Cesta D)
+
+Petrovo zadání: "projdi co jsme s tvými kolegy udělali, a navrhni zlepšení
+kdekoli je najdeš" → "postupuj podle svého návrhu". Revize se dělala proti
+PRODUKČNÍM DATŮM (`scripts/audit-prod.mjs`), ne jen proti kódu, a to našlo
+čtyři skutečné chyby, které čtení kódu neodhalilo.
+
+### Opravy z revize
+- **Chybějící fotky v produkci** — zaměstnanci 7/7 a rodiny 13/14 žádnou
+  neměly, protože seed, který se reálně spustil, backfill fotek
+  neobsahoval. `scripts/backfill-avatars.mjs` (NOVÝ) je nedestruktivní:
+  dopisuje jen CHYBĚJÍCÍ `avatarUrl`. Rodina dědí fotku primárního
+  pěstouna (stejná logika, jakou už má `resolveFamilyDisplayName` u
+  jména); rodina bez pěstouna se vědomě přeskočí.
+- **`scripts/lib/firestore-rest.mjs`** (NOVÝ) — jedna autentizace pro
+  admin skripty: `GOOGLE_APPLICATION_CREDENTIALS` (service account), jinak
+  `gcloud auth print-access-token`. Dřív existovaly dvě rozcházející se
+  kopie seedu, což tu chybu s fotkami způsobilo.
+- **`UserDoc.photoURL` → `avatarUrl`** — sjednoceno s ostatními entitami
+  (v produkci pod starým názvem žádná data nebyla, takže bez migrace).
+  Pozor: `firestore.rules` allow-list se musel nasadit ZNOVU, jinak by
+  upload fotky zaměstnance selhal.
+- **Čtení fotky zaměstnance zúženo na stejnou organizaci** (`storage.rules`,
+  nový helper `targetUserOrg`) — dřív stačilo být kdokoli přihlášený a
+  znát uid.
+- **`EntityAgenda` u vlastních typů událostí** zobrazovala technický klíč
+  (`navsteva-rodiny`) — teď dotahuje otevřený číselník z
+  `enumOptionsService`.
+
+### Avatary a agenda i na mobilu
+`lib/eventSubjects.ts` (NOVÉ) je jediný zdroj pravdy pro "koho se událost
+týká" — používá ho desktopový kalendář, mobilní agenda i `EntityAgenda`.
+`CalendarItem` dostal `familyDocId`, takže avatar má i připomínka návštěvy
+z Dohody, která žádnou `calendarEvents` událost nemá. Mobilní formulář
+navíc nabízí vlastní typy událostí organizace a umí přidat nový (dřív jen
+zabudované).
+
+### Profil zaměstnance + "jméno je vždy proklik"
+Zadání "kdekoli se objeví jakékoli jméno, je toto jméno vždy proklikem na
+profil. VŽDY!" nešlo u zaměstnanců splnit — profil neexistoval. Nová
+`StaffDetailPage` (`/zamestnanci/:uid`): fotka (mění sám uživatel nebo
+org_admin téže organizace — zrcadlí rules), role, stav, e-mail, kapacita a
+vlastní kalendář (u zaměstnance = události PŘIŘAZENÉ jemu, ne
+`subjectRefs`). Nastavení kapacity/modulů/blokace zůstává na seznamu.
+
+`components/ui/person-link.tsx` (NOVÉ) je jediné místo, kde se rozhoduje,
+kam které jméno vede; když profil složit nejde (neznámý autor zápisu,
+pěstoun bez rodiny), vykreslí prostý text, ať odkaz nikdy nevede do
+prázdna. Zapojeno v seznamu zaměstnanců, widgetu Tým, banneru kapacity,
+u řešitele úkolu, autorů zápisů (seznam i detail), subjektů zápisu, autorů
+zpráv v Messengeru i chatu na Spisu a u autora verze dokumentu. Pěstoun
+v `/moje` prokliky ZÁMĚRNĚ nemá — na staffová rozhraní nemá přístup.
+
+Cestou opraveno: widget Tým vůbec nezobrazoval fotky zaměstnanců (chybějící
+`photoURL`), a řádek časové osy byl `<button>` — `<a>` uvnitř `<button>` je
+nevalidní HTML, řádek je teď `div role="button"` s obsluhou klávesnice.
+
+### Hledání v kalendáři + kalendáře entit na vyžádání
+Lupa otevře hledání (desktop pravý panel, mobil vytažený sheet), pole se
+při psaní roztáhne na výšku a vypíše výsledky napříč kontaktními údaji
+všech entit — jméno, telefon, e-mail, adresa, rodné číslo, UID. Každý
+výsledek = ikona svého druhu + jméno, proklik na profil. `lib/entitySearch.ts`
+ignoruje diakritiku v obou směrech („novotna" najde „Novotná") a u čísel
+formátování („777123" najde „+420 777 123 456"); hledá v datech, která
+kalendář už načtená má, takže nestojí ani jeden dotaz navíc.
+
+Nastavení kalendáře umí zapnout kalendáře konkrétních rodin/pěstounů/dětí.
+Fungují PŘIČTENÍM: události zapnuté entity se zobrazí i tehdy, když je
+jejich řešitel ve filtru zaměstnanců schovaný — jinak by "zapnout kalendář
+rodiny" nešlo použít k tomu vidět jen tu rodinu.
+
+**Co NEBYLO živě ověřeno (SEAM):** vizuální kontrola v prohlížeči — egress
+proxy v tomhle prostředí blokuje `web.app`, lokální emulátor byl nestabilní.
+Ověřeno tedy `tsc -b`, `vitest` (69 testů) a auditem produkčních dat, ne
+očima. **Známý dluh:** `EntityAgenda` načítá VŠECHNY události organizace a
+navíc celé seznamy rodin/pěstounů/dětí kvůli avatarům — správné řešení je
+denormalizace subjektů do události (`subjectKeys`), aby šel dotaz zúžit.
+
+## Narozeniny dětí z rodného čísla + vlastní Nastavení/Kalendář (2026-07-24)
+
+Přímá Petrova zpětná vazba na dávku níž: "narozeniny a jmeniny pro děti
+jsi vyřešil? ... z rodného čísla jde narození poznat" + "POZOR! určitě
+musí existovat speciální nastavení pro kalendáře ... a tam musí být
+možnost zobrazování narozenin a jmenin vypnout". Obojí byla oprávněná
+připomínka — `child.ts` typ dokonce už od M1 měl komentář "odvození z RČ
+NENÍ implementováno" a společný přepínač žil zahrabaný v obecném
+Nastavení/Oznámení, ne u Kalendáře.
+
+- **Dopočet data narození z rodného čísla** (`lib/birthNumber.ts`, NOVÉ) —
+  `birthDateFromBirthNumber()` parsuje RRMMDD(/)XXXX (měsíc +50 u žen,
+  +20/+70 navíc u čísel vyčerpaných po roce 2004), zkouší 2000+RR i
+  1900+RR a vybere platné datum NEJPOZDĚJI v minulosti (appka eviduje
+  DĚTI, ne stoleté lidi) — kontrolní číslice se neověřuje (historické
+  výjimky). `resolveChildBirthDate()` = explicitní `birthDate` > dopočet
+  z `birthNumber` > `null`. POUŽITO NA DVOU MÍSTECH:
+  1. `dashboardService.listBirthdayAlerts()` — narozeninová upozornění
+     teď fungují pro VŠECHNY děti s rodným číslem, ne jen ty, kde někdo
+     ručně vyplnil datum.
+  2. `ChildDetailPage.tsx` — pole "Datum narození" se zobrazí PŘEDVYPLNĚNÉ
+     dopočtenou hodnotou (s popiskem "Odvozeno z rodného čísla — lze ručně
+     opravit"), BEZ nutnosti cokoli ukládat/migrovat — uloží se jen pokud
+     ho někdo skutečně ručně změní (např. oprava u cizího rodného čísla).
+  Pěstouni rodné číslo v appce nemají (appka ho nesbírá), tam zůstává jen
+  ruční `birthDate` jako dřív. 13 jednotkových testů
+  (`lib/birthNumber.test.ts`) pokrývá muže/ženy/přetečení/needitovatelné
+  vstupy/century-výběr/budoucí-datum-guard.
+- **Nezávislé přepínače narozeniny/jmeniny** — `UserDoc.notifyBirthdays`
+  byl PŮVODNĚ jeden společný boolean pro obojí; teď `notifyNameDays`
+  VLASTNÍ nezávislé pole (`firestore.rules` self-update `hasOnly`
+  rozšířeno, `staffService.updateNotifyNameDays()`, `listBirthdayAlerts()`
+  přijímá `{includeBirthdays, includeNameDays}` misto jednoho společného
+  gatingu). Rules test doplněn (`m1.rules.test.ts`).
+- **Nastavení / Kalendář** (`routes/settings/CalendarSettingsPage.tsx`,
+  NOVÁ stránka, `/nastaveni/kalendar`) — DVA přepínače (Narozeniny/
+  Svátky), PŘESUNUTO sem z `/nastaveni/oznameni` (logicky patří ke
+  Kalendáři, ne k obecným e-mailovým Oznámením — Petr to výslovně chtěl
+  jako "speciální nastavení pro kalendáře", ne schované v Oznámeních).
+  Nová položka v `settingsNavGroups.ts`.
+- **Rychlý přístup přímo z Kalendáře** — gear ikona na desktopové
+  `CalendarPage.tsx` (odkaz na `/nastaveni/kalendar`) I na mobilní
+  `MobileCalendarPage.tsx`. Mobil NEODKAZUJE na desktopovou `/nastaveni/
+  kalendar` stránku (ta žije v desktopovém `AppShell`u se sidebarem — na
+  390px by byla nepoužitelná, stejný důvod jako `MobileAccountPage`
+  historicky nikam do Nastavení neediruje) — místo toho VLASTNÍ
+  `BottomSheet` se stejnými dvěma přepínači, volající STEJNÉ
+  `updateNotifyBirthdays`/`updateNotifyNameDays` funkce.
+
+Živě ověřeno (Playwright, emulátor, čerstvá organizace): dítě založené jen
+s rodným číslem (bez ručního data narození) → profil dítěte ukazuje
+předvyplněné datum narození s "Odvozeno z rodného čísla" popiskem →
+narozeninové upozornění na Dnes stránce se zobrazí SPRÁVNĚ i bez ručního
+zásahu → vypnutí "Narozeniny" na `/nastaveni/kalendar` upozornění
+okamžitě odstraní (přetrvá i po znovunačtení stránky) → gear ikona na
+`/kalendar` vede na tu samou stránku. Mobilní `BottomSheet` s oběma
+přepínači ověřen na 390px viewportu, nula konzolových chyb. `npx tsc -b`,
+`npx oxlint src/`, `npm run test:rules` (138 testů), `npx vitest run`
+(50 testů, +13 nových pro `birthNumber.ts`) a `npm run build` všechny čisté.
+
+## Kalendář: Úkoly, opakování, vazba na víc entit, narozeniny/svátky (2026-07-23)
+
+Navazuje na "Výzkum k širším bodům zpětné vazby" níž — Petr zvolil
+nejambicióznější variantu na všechny čtyři otázky ("Navrhni a rovnou
+postav" / "Stejný vzor jako jinde v appce" / "Mobil i desktop najednou" /
+"Přidej pole a pak upozornění"), celé postaveno a živě ověřeno v jedné
+dávce (desktop + mobil, PWA vždy zahrnuto per Petrovo obecné zadání "vždy
+mysli i na to, že to musí fungovat i na pwa").
+
+- **Opakování** (`EventRecurrence` — `types/calendarEvent.ts`) — sdílený
+  typ `{interval, unit, seriesId}`, STEJNÝ princip jako
+  `scheduledActivity`/`assistedContactSeries` (materializace, ne on-the-fly
+  RRULE): `createRecurringCalendarEvents()` založí KAŽDÝ výskyt jako
+  VLASTNÍ `CalendarEventDoc` se sdíleným `seriesId` (max 104 výskytů/2 roky
+  dopředu — appka nemá cron na dogenerování, §10, SEAM zdokumentovaný
+  přímo ve formuláři). `cancelCalendarEventSeries()` hromadně zruší
+  VŠECHNY dosud neproběhlé výskyty (minulé zůstávají, "zrušeno" je stav ne
+  mazání). UI (desktop `CalendarPage.tsx` i mobil `MobileCalendarPage.tsx`,
+  stejný vzor): přepínač "Opakovat" (jen v `new` režimu) + interval/
+  jednotka (den/týden/měsíc/rok, `czechPlural()` pro skloňování) + počet
+  výskytů; v `edit` režimu tlačítko "Zrušit celou řadu" navíc k "Zrušit
+  událost", zobrazené jen má-li výskyt `recurrence.seriesId`.
+- **Úkoly** (`types/task.ts`, `services/taskService.ts`,
+  `routes/TaskListPage.tsx` + `routes/mobile/MobileTaskListPage.tsx`) —
+  VLASTNÍ kolekce `organizations/{orgId}/tasks`, ne varianta kalendářní
+  události (`dueDate` je volitelné ČISTÉ datum, žádný čas). Zprovoznilo
+  `/ukoly` nav položku (`Sidebar.tsx`), co byla mrtvý odkaz od M0. Stejný
+  sdílený-staff-seznam princip jako Kalendář (kdokoli ze stejné
+  organizace smí založit/upravit/dokončit ČÍKOLIV úkol), stejné opakování
+  (`createRecurringTasks`/`cancelTaskSeries`), stejná `subjectRefs`
+  vazba. Desktop: tabulka s checkbox-ikonou pro rychlé
+  dokončení/znovuotevření přímo v řádku (bez otevření modálu), přepínač
+  "Zobrazit i dokončené/zrušené" (výchozí pohled = jen otevřené). Mobil:
+  `IosList` + `BottomSheet` formulář, dostupné přes novou "Zkratky" sekci
+  na `MobileAccountPage` (viz níž).
+- **Vazba na víc entit** (`subjectRefs?: SubjectRef[]` na
+  `CalendarEventDoc` I `TaskDoc`) — znovupoužit STEJNÝ `SubjectRef`/`kind`
+  pattern jako `timelineEntry.ts` (hlasové zápisy), ne nový vynález.
+  Nová sdílená komponenta `SubjectRefsPicker`
+  (`components/calendar/SubjectRefsPicker.tsx`, desktop i mobil) —
+  `Combobox` pro přidání (rodina/dítě/pěstoun v jednom seznamu, štítek
+  "Typ: Jméno") + odebíratelné "čipy" pod tím. `familyDocId`/`familyUid`
+  na obou typech ZŮSTÁVAJÍ (zpětná kompatibilita s
+  `calendarAggregation.ts` deep-linkem a Google sync popisem) — vždy
+  odvozené od PRVNÍ `family` položky v `subjectRefs`, počítané volající UI
+  vrstvou (`CalendarPage.tsx`/`MobileCalendarPage.tsx`/`TaskListPage.tsx`/
+  `MobileTaskListPage.tsx`), ne servisní vrstvou.
+- **Narozeniny/svátky** — `birthDate?: string` doplněno na
+  `FosterPersonDoc` (nové pole, nikdy dřív neexistovalo) a skutečně
+  editovatelné na `ChildDetailPage.tsx`/`FosterPersonDetailPage.tsx`
+  (`ChildDoc.birthDate` v typu existoval, ale ŽÁDNÝ formulář ho nikdy
+  nesbíral — Petrova premisa "systém ví, kdy mají děti narozeniny" byla
+  fakticky nepravdivá, dokud tahle dávka pole nezpřístupnila). Český
+  svátkový (jmeninový) kalendář `data/nameDays.ts` — komunitně udržovaný
+  dataset (`OzzyCzech/namedays-cs`, MIT), 365 dní, zdroj uveden v
+  komentáři. `listBirthdayAlerts()` (`dashboardService.ts`) — SAMOSTATNÁ
+  funkce vedle `listOperationalAlerts()` (ne sloučeno), protože je to
+  JEDINÝ druh upozornění gatovaný osobní preferencí
+  (`UserDoc.notifyBirthdays`), volající kód rozhoduje, zda ji vůbec
+  zavolat. Lookahead 7 dní, jmeniny porovnávané bez diakritiky. Zobrazeno
+  na desktopu (`TodaySections.tsx`, sekce "Provozní upozornění", 🎂/🎉
+  ikona místo výstražného stylu) i na mobilu (`MobileHomePage.tsx`,
+  sekce "Narozeniny a svátky", zobrazená jen když je co ukázat). Přepínač
+  v Nastavení → Oznámení (`NotificationsSettingsPage.tsx`) — PRVNÍ
+  skutečně persistovaný/funkční toggle v týhle sekci (starší "E-mailová
+  upozornění" je čistě lokální UI stav, žádná e-mailová infrastruktura
+  neexistuje, zdokumentováno jako SEAM). `firestore.rules` `users/{uid}`
+  self-update rozšířeno o `notifyBirthdays` vedle `displayName`.
+- **Mobilní "Zkratky"** (`MobileAccountPage.tsx`) — Pěstouni/Děti (z
+  předchozí dávky) i nové Úkoly nemají vlastní tab (dolní lišta má jen 4
+  pevné sloty), a Pěstouni/Děti dřív neměly na mobilu ŽÁDNÝ vstupní bod
+  vůbec (jen skryté routy bez odkazu odkudkoli) — živě odhaleno při
+  ověřování týhle dávky, ne teoreticky. Nová sekce na "Účet" tuhle díru
+  zavírá pro všechny tři najednou.
+- **Bonus oprava (živě odhaleno při ověřování, nesouvisí přímo s výš)** —
+  `firestore.rules` `agreements` read pravidlo (`allow read: if
+  isSuperadmin() || sameOrg(resource.data.organizationId)`) padalo s
+  chybou vyhodnocení pravidel při čtení Dohody, co JEŠTĚ NEEXISTUJE
+  (běžný, UI podporovaný stav pro novou rodinu — "Zatím žádná Dohoda…
+  založit →") — `resource.data` na neexistujícím dokumentu je `null`,
+  přístup na `.organizationId` shodil CELÝ `getDoc` namísto vrácení
+  "neexistuje". Opraveno stejným `resource == null ||` idiomem, co už
+  appka používá jinde (`orgCodeCounters`). Bez týhle opravy nešlo založit
+  rodinu a hned k ní přidat pěstouna/dítě bez první založení Dohody —
+  reálně blokovalo běžný onboarding flow. Rules test doplněn
+  (`m2.rules.test.ts`).
+
+Živě ověřeno (Playwright, čerstvě zaregistrovaná organizace, emulátor,
+desktop 1280px I mobil 390px viewport): založení rodiny → pěstoun → dítě
+→ datum narození "zítra" → narozeninové upozornění na Dnes stránce;
+opakující se událost s vazbou na rodinu (týdně, 4×) → obě viditelné
+v měsíčním pohledu → editace jednoho výskytu ukáže vyplněnou vazbu →
+"Zrušit celou řadu" funguje; Úkol s vazbou na dítě → zobrazí se v
+seznamu → zaškrtnutí zmizí z výchozího pohledu → přepínač
+"Zobrazit i dokončené" ho vrátí přeškrtnutý. Nula konzolových/
+JS chyb během celého průchodu na obou viewportech. `npx tsc -b`,
+`npx oxlint src/`, `npm run test:rules` (136 testů), `npx vitest run`
+(37 testů) a `npm run build` všechny čisté.
+
+### Nevyřešeno (Petrovo zadání bod 7, vědomě odloženo)
+
+"Kde jsou ostatní náhledy na kalendář než den… např 3 dny, týden, měsíc,
+rok, agenda?" — desktop `CalendarPage.tsx` už Měsíc/Týden/Den/Agendu MÁ
+(`react-big-calendar` `views` prop). Mobil (`MobileCalendarPage.tsx`) má
+jen jednodenní agendu s vodorovným pásem dnů — žádný přepínač na
+týden/měsíc zatím nepřidán (mimo rozsah týhle dávky, návrh na
+mobilní vícepohledový kalendář vyžaduje vlastní diskusi/rozhodnutí o UX,
+ne jen mechanické přidání).
+
+## Kalendář (PWA): animovaný přechod dne + oprava chybějícího data (2026-07-23)
+
+Petrova zpětná vazba měla 7 bodů; dva z nich šlo hned a bezpečně opravit,
+zbytek (Úkoly, opakování, vazba na více entit, narozeniny/svátky, další
+zobrazení) je návrhové rozhodnutí většího rozsahu — probráno v chatu,
+neimplementováno naslepo (viz "Výzkum k širším bodům zpětné vazby" níže
+pro proč).
+
+- **Animovaný přechod dne** — `direction` stav (1/-1) nastavovaný při
+  každé změně `selectedDate` (den-pás, šipky, swipe), obsah dne (nadpis +
+  seznam událostí) teď při každé změně nabíhá zprava/zleva
+  (`animate-day-in-forward`/`-backward`, nové keyframy v
+  `tailwind.config.js`, `cubic-bezier(0.32,0.72,0,1)` — stejná křivka
+  jako `BottomSheet`) místo tichého okamžitého nahrazení obsahu.
+- **Chybějící datum ve formuláři** (regrese z předchozí dávky) — přidání
+  Konec/Přiřazeno/Poznámky formulář nikde needitovalo ANI nezobrazovalo,
+  KTERÉHO dne se událost týká (tiše se přebíralo z aktuálně zobrazeného
+  dne agendy). Přidáno pole "Datum" (`DatePicker` — STEJNÁ komponenta
+  jako desktopová `CalendarPage.tsx`, záměrně ne nativní
+  `<input type="date">`, viz komentář u `Select`/`type="time"` výš). Po
+  uložení agenda navíc přeskočí na den události (uložíte na jiný den, než
+  zrovna prohlížíte → hned ho uvidíte).
+
+Živě ověřeno (Playwright, emulátor): `animate-day-in-forward`/`-backward`
+třída se aplikuje správně podle směru, pole Datum se otevře předvyplněné
+aktuálně zobrazeným dnem a `DatePicker` popover se vejde do sheetu beze
+střihu.
+
+### Výzkum k širším bodům zpětné vazby (2026-07-23, nezapočato)
+
+Petr se ptal i na Úkoly (bez vazby na čas/jen deadline), opakování
+událostí (týdně/měsíčně/vlastní), vazbu na dítě/pěstouna/víc entit
+najednou, a automatické upozornění na narozeniny/svátky dětí. Výzkum
+před rozhodnutím (žádný kód nezměněn):
+
+- **Úkoly** — `Sidebar.tsx` má nav položku `/ukoly` už od M0 jako
+  zástupný nápad, ale ŽÁDNÝ `TaskDoc`/service/route neexistuje. Úplně
+  zelená louka.
+- **Opakování** — `CalendarEventDoc` nemá ŽÁDNÉ opakovací pole. Existují
+  dva DOMÉNOVĚ ÚZKÉ precedenty jinde (`scheduledActivity.ts`,
+  `assistedContactSeries.ts` — frekvence pole + MATERIALIZOVANÉ
+  jednotlivé výskyty jako samostatné dokumenty, ne on-the-fly RRULE) —
+  použitelný vzor, ale nikde sdílený/obecný.
+- **Vazba na víc entit** — `SubjectRef`/`subjectRefs[]`
+  (`timelineEntry.ts`) už přesně tohle řeší pro hlasové zápisy (kind:
+  family/fosterPerson/child/agreement, pole). `CalendarEventDoc` má jen
+  singulární `familyDocId`/`familyUid` — rozšíření o `subjectRefs[]` by
+  bylo přirozené, ale zasahuje `calendarAggregation.ts` i Google sync
+  (čte `familyDocId`), tedy víc než jen mobilní formulář.
+- **Narozeniny/svátky** — `ChildDoc.birthDate` existuje v typu, ale
+  NIKDY se v praxi nevyplňuje (žádný formulář pro založení/editaci
+  dítěte ho nesbírá, jen `firstName`/`lastName`/`birthNumber` — sám typ
+  komentář přiznává "odvození z RČ NENÍ v M1 implementováno"). U
+  `FosterPersonDoc` neexistuje ŽÁDNÉ datové pole narození. Svátky
+  (jmeniny) — nulová existující infrastruktura (žádný dataset, žádná
+  logika). Petrova premisa "systém ví, kdy mají děti narozeniny" tedy
+  dnes neplatí v datech, i když typ pole existuje.
+
+## Mobilní formulář události: doplněna pole (2026-07-23)
+
+Petr poslal screenshot Google Kalendáře jako inspiraci s poznámkou "málo
+kolonek/informací se mi tam vejde" — mobilní formulář měl jen Název/Typ/
+Začátek/Rodinu, zatímco desktopová `CalendarPage.tsx` (a datový model
+`CalendarEventDoc`) měly navíc KONEC (samostatný, ne napevno start+1h),
+PŘIŘAZENO (`assignedToUid` — kdo v týmu je za událost odpovědný) a
+POZNÁMKY (`notes`) — tahle pole na mobilu prostě chyběla, i když appka je
+uměla ukládat/číst už dřív. Google-specifické koncepty bez opory v našem
+datovém modelu (hosté, videokonference, místo, barva, celodenní) záměrně
+NEpřidány — appka je interní nástroj pro klíčové pracovníky, ne obecný
+kalendář, a přidávat pole bez datové opory by bylo jen kosmetické.
+
+- `EMPTY_FORM` rozšířen o `endTime`/`assignedToUid`/`notes`.
+- Konec — stejný pár `<Select>` (hodina/minuta) jako Začátek, vedle sebe
+  (`flex gap-3`) — živě ověřeno, že se i tak vejdou do 390px (Select je
+  bezpečně zmenšitelný, na rozdíl od nativního `<input type="time">`
+  z minulé opravy).
+- Přiřazeno — `<Select>` ze STEJNÉHO `staffList`, co už stránka načítala
+  pro filtr nahoře (žádné nové volání služby), zobrazeno jen když je
+  víc než 1 zaměstnanec (stejná podmínka jako u filtr-čipů).
+- Poznámky — `<textarea>`, volitelné, stejný styl jako `Input`.
+
+Živě ověřeno (Playwright, emulátor): nová i editovaná událost obě pole
+zobrazí/uloží správně (event s koncem 10:30 a poznámkou "Poznámka k
+události" se po otevření k editaci zobrazí přesně tak), založení nové
+události se všemi poli projde bez chyby a objeví se v seznamu dne.
+
+## Druhé kolo oprav z reálného iPhone testu (2026-07-23)
+
+Předchozí oprava pole Čas (Typ/Čas na vlastním řádku) fungovala jen v
+Chromium testu, ne na SKUTEČNÉM iOS Safari — Petr poslal screenshot z
+telefonu, pole Čas bylo poořád useknuté i na vlastním řádku. Skutečná
+příčina: WebKitův `<input type="time">` má vlastní ovládací prvek s
+minimální šířkou, kterou CSS `width` nedokáže zmenšit pod jeho
+"přirozený" obsah — žádné množství přeskupení řádků to nevyřeší, dokud je
+to pořád nativní time input. **Řešení: nahrazeno dvěma `<Select>`
+(hodina/minuta)** — stejná komponenta jako Typ/Rodina, garantovaně stejné
+bezpečné chování ve všech prohlížečích, žádné hádání s nativním
+ovládacím prvkem. Minuty v PLNÉM rozsahu 00–59 (ne po 5), aby needitovaly
+nepřesně existující události s "lichým" časem (živě ověřeno úpravou
+události s časem 09:07 — zůstalo přesně 09:07, ne zaokrouhleno).
+
+**"Zrušit" → "Smazat"** — Petrova zpětná vazba: ikona `Ban` (kruh se
+škrtem, "zakázáno") vedle textu "Zrušit" nekomunikovala jasně, že tlačítko
+maže/ruší událost. Nahrazeno `Trash2` ikonou + textem "Smazat" (mobilní
+verze — desktopová `CalendarPage.tsx` zůstává "Zrušit událost", protože
+podkladová akce je technicky jen změna stavu na `zruseno`, ne fyzický
+delete, a mobilní/desktopová terminologie se už jinde v appce vědomě
+liší dle kontextu použití).
+
+Živě ověřeno (Playwright, mobilní viewport 390×844): oba `<Select>`
+(hodina/minuta) měří jen ~72px, daleko od přetečení; "Smazat" tlačítko
+přítomné, "Zrušit" beze stopy; úprava existující události s časem 09:07
+zobrazí přesně 09/07 v selectech.
+
+## PWA vizuál: styl aktuálního iOS + oprava formuláře + swipe (2026-07-22)
+
+Petrovo zadání se 3 body: (1) "Nová událost" má pole mimo formát
+(screenshot: pole Čas useknuté mimo viewport), (2) mezi dny Kalendáře by
+mělo jít swipovat, (3) obecně appka "se trhá", chybí "mobile app feeling",
+"nastuduj iOS a udělej appku do jeho stylu".
+
+**Oprava formuláře** (`MobileCalendarPage.tsx`) — Typ+Čas byly vedle sebe
+(`flex gap-3`, Čas `w-28`=112px); nativní `<input type="time">` má na iOS
+Safari vlastní minimální šířku ovládacího prvku větší než 112px, takže
+pole přeteklo mimo viewport. Opraveno tak, že Typ a Čas mají teď KAŽDÝ
+vlastní řádek (žádné dvousloupcové vměstnávání) — živě ověřeno
+(`boundingBox` pole Čas teď celé uvnitř 390px šířky).
+
+**Swipe mezi dny** (`MobileCalendarPage.tsx`) — `onTouchStart`/`onTouchEnd`
+na oblasti seznamu událostí (NE na pásu dnů výš, ten už scrolluje sám
+vodorovně), práh 40px + poměr vodorovný/svislý pohyb 1.5:1 (ať nekoliduje
+se svislým scrollem seznamu). Živě ověřeno syntetickými `TouchEvent`
+(swipe vlevo/vpravo mění vybraný den správným směrem).
+
+**Styl aktuálního iOS** — napříč VŠEMI mobilními stránkami:
+- `IosList`/`IosListRow` (NOVÝ, `components/mobile/IosList.tsx`) —
+  "seskupený seznam" (iOS Nastavení/Kontakty vzor): JEDEN zaoblený
+  kontejner s tenkými dělítky mezi řádky a okamžitou dotykovou odezvou
+  (`active:bg-overlay-active`), NAHRAZUJE dřívější samostatné orámované
+  karty pro každou položku (to působilo víc Android/Material). Nasazeno
+  v `MobileHomePage`, `MobileFamiliesPage`, `MobileFosterPersonListPage`,
+  `MobileChildListPage`, `MobileFamilyDetailPage`, `MobileCalendarPage`,
+  `MobileAccountPage`.
+- Velké tučné nadpisy stránek (`text-[32px] font-bold tracking-tight`,
+  iOS "Large Title" princip) místo `text-2xl font-normal` — konzistentní
+  napříč všemi mobilními stránkami, nahrazuje dřívější nesourodou směsici
+  velikostí písma (Petrovo "některá písma jsou malá a některá velká").
+  Sekční nadpisy ("Dnes máte", "Pěstouni", "Děti" v profilu rodiny)
+  sjednoceny na `text-[13px] font-semibold uppercase` (iOS "Section
+  Header"), nadpisy vyjížděcích panelů na `text-[17px] font-semibold`
+  (iOS "Headline").
+- `BottomSheet.tsx` — vyjíždění/zavírání teď používá `cubic-bezier(0.32,
+  0.72,0,1)` (stejná "spring" křivka jako iOS modální panely) místo
+  mechaničtějšího `ease-out`, POZADÍ se prolíná (fade in/out) souběžně se
+  slide animací, a zavření přes klik na pozadí/Escape si přehraje
+  ZPĚTNOU animaci (`requestClose` → 320ms → teprve pak skutečné
+  `onClose`), ne okamžité zmizení — živě ověřeno screenshotem uprostřed
+  zavírací animace.
+- Dotyková odezva (`active:scale-*`/`active:opacity-*`) přidána na
+  tab bar položky, den-pásu čipy, zaměstnanecké filtr-čipy, šipky
+  prev/next den, FAB tlačítka, telefonní odznaky — dřív jen barevný
+  přechod bez okamžité vizuální odezvy na dotyk, což přispívalo k pocitu
+  "trhavosti".
+- `MobileShell.tsx` — dolní tab bar má teď `backdrop-blur-lg` +
+  poloprůhledné pozadí (iOS "frosted glass" tab bar) místo plné barvy.
+- `MobileAccountPage.tsx` — "Odhlásit se" přestavěno na VLASTNÍ červenou
+  sekci seznamu (iOS Nastavení konvence — Sign Out je vždy samostatná
+  skupina dole), ne sekundární tlačítko vedle textu.
+
+Živě ověřeno (Playwright, mobilní viewport 390×844, emulátor): všech 7
+mobilních stránek screenshotováno a vizuálně zkontrolováno, swipe funguje
+oběma směry, pole Čas se vejde do viewportu, otevírací/zavírací animace
+sheetu běží plynule (zachyceno uprostřed animace), žádné JS chyby.
+
+## Hlasový záznam v terénu: oprava scrollu + zarovnání textu (2026-07-22)
+
+Petrovo nahlášení: dlouhý živý přepis během nahrávání nešel scrollovat,
+a "Zastavit"/"Odeslat do osy" se dostaly mimo viditelnou oblast a nešlo
+na ně kliknout — `BottomSheet.tsx` měl `max-h-[88vh]` bez `overflow-y-auto`,
+takže obsah delší než 88vh jen "protekl" mimo box místo aby scrolloval
+(`overflow: visible` default). Opraveno na dvou úrovních:
+
+- `BottomSheet.tsx` — přidán `overflow-y-auto`+`min-h-0` na kontejner
+  jako obecná pojistka pro JAKÝKOLI dlouhý obsah v libovolném sheetu
+  (i budoucím, ne jen `VoiceCaptureSheet`).
+- `VoiceCaptureSheet.tsx` — živý přepis (krok "recording") má VLASTNÍ
+  ohraničenou scrollovatelnou oblast (`min-h-0 flex-1 overflow-y-auto`),
+  zatímco mikrofon + "Zastavit" zůstávají `shrink-0` (vždy na dohled, bez
+  nutnosti scrollovat celý sheet). Stejně ošetřen textarea v review kroku
+  (`min-h-[120px]` misto neomezeného `flex-1`).
+- Na Petrovo přání živý přepis teď vypadá jako bublina zarovnaná
+  DOPRAVA (`ml-auto max-w-[85%]`) s textem zarovnaným DO BLOKU
+  (`text-justify`) — místo prostého centrovaného odstavce.
+
+Živě ověřeno (Playwright, mokovaný `window.SpeechRecognition` s ~40 vět
+dlouhým textem): `Zastavit`/`Odeslat do osy` zůstávají uvnitř viewportu
+(`boundingBox().y + height <= 844`) i s velmi dlouhým přepisem, přepis
+scrolluje uvnitř svého boxu, `ml-auto`/`text-justify` potvrzeno přes
+computed styly (`marginLeft: 52.5px`, `textAlign: justify`).
+
+## Pěstouni/Děti — mobilní varianta doplněna (2026-07-22, stejný den)
+
+Petrovo zadání ("vždy mysli i na to, že to musí fungovat i na PWA") —
+živě ověřeno na 390px viewportu: `FosterPersonListPage`/`ChildListPage`
+(`AppShell` + `Sidebar`) byly na mobilu STEJNĚ nepoužitelné, jako
+`FamilyListPage`/`CalendarPage` byly před M11 (sidebar zabíral polovinu
+displeje, tabulka byla oříznutá) — desktopová stránka se prostě
+nezmenšuje sama, musí se vyměnit celá (stejný princip jako zbytek M11).
+
+- `MobileFosterPersonListPage.tsx`/`MobileChildListPage.tsx` — karty
+  místo tabulky (stejný vzor jako `MobileFamiliesPage`), ťuknutí na
+  telefon u pěstouna rovnou VOLÁ. Ťuknutí na kartu naviguje na mobilní
+  profil RODINY (`/mobil/rodiny/:uid`) — VĚDOMĚ žádný samostatný mobilní
+  profil pěstouna/dítěte: v terénu je cíl dohledat kontakt/rodinu, ne
+  procházet vzdělávací sekce pěstouna nebo rodné číslo dítěte samotné.
+- `FosterPersonsRoute`/`ChildrenRoute` (`App.tsx`) — stejný `useIsMobile`
+  přepínací vzor jako `HomeRoute`/`FamiliesRoute`/`CalendarRoute`.
+- Živě ověřeno (Playwright, 390×844): obě stránky se vykreslí jako karty
+  (ne tabulka), ťuknutí správně naviguje na `/mobil/rodiny/:uid`, žádné
+  JS chyby.
+
+## Nové položky menu: Pěstouni, Děti (2026-07-22)
+
+Petrovo zadání: hlavní menu má i plochý seznam pěstounů a dětí napříč
+rodinami (dřív dostupní jen přes profil konkrétní rodiny, viz
+`AppShell.tsx` komentář, co tohle už dopředu předpokládal).
+
+- `FosterPersonListPage.tsx` (`/pestouni`), `ChildListPage.tsx` (`/deti`)
+  — read-only tabulka (`Table`/`TableRow`, stejný vzor jako `StaffPage.tsx`),
+  vyhledávání podle jména, klik na řádek naviguje na existující detail
+  (`/rodiny/:uid/pestoun/:id` resp. `/rodiny/:uid/dite/:id`) — žádná nová
+  detailní stránka, jen nový vstupní bod k té stávající.
+- Data: `listFosterPersonsForOrg`/`listChildrenForOrg` (`familyService.ts`)
+  — obě funkce UŽ existovaly (použité v `ExternalParticipantsPage`), žádná
+  změna služby/rules nebyla potřeba. `familyId` (Firestore doc ID) → rodina
+  (`uid`+popisek) mapováno přes `listFamiliesWithDocIds`, stejně jako
+  `MobileFamiliesPage`.
+- `Sidebar.tsx` (`NAV_ITEMS`) — dvě nové položky mezi "Rodiny" a
+  "Zaměstnanci", `staffOnly: false` (viditelné pro všechny role stejně
+  jako Rodiny/Kalendář).
+- Živě ověřeno (Playwright, emulátor): obě stránky načtou seznam, klik na
+  řádek naviguje na existující profil pěstouna/dítěte. Cestou odhalen a
+  opravený jen testovací artefakt (ne appka) — seed skript používal jiné
+  `projectId` než klientská `.env.local` konfigurace, takže `userDoc`
+  appky neviděl `organizationId` (Firestore emulator `singleProjectMode`
+  requestům nevadí, ale je nutné použít STEJNÝ projectId ve všech
+  testovacích skriptech kvůli konzistenci).
+
+## M11 rozšířeno na CELOU PWA appku (2026-07-22): Rodiny + Kalendář mobil, ErrorBoundary
+
+Petrovo zadání po prvním kole M11 (viz sekce níže): "asi udělej celou pwa
+app... raději vymazlená pwa aplikace než rychlý hnus" — mobilní verze měla
+zatím jen `/` (domů), ale `/rodiny` a `/kalendar` zůstávaly desktopové
+tabulky/mřížka, na 390px šířky prakticky nepoužitelné (`react-big-calendar`
+tam byl "prázdný"/nefunkční). Doplněno tak, aby ŽÁDNÁ z hlavních čtyř
+záložek (Domů/Rodiny/Kalendář/Účet) nekončila na desktopové stránce.
+
+- `FamiliesRoute`/`CalendarRoute` (`App.tsx`) — stejný `useIsMobile`
+  přepínací vzor jako `HomeRoute`, teď i pro `/rodiny` a `/kalendar`.
+- `MobileFamiliesPage.tsx` — vyhledatelný seznam s velkými dotykovými cíli
+  (ne zmenšenina `FamilyListPage` s checkboxy/hvězdičkami/segmentací).
+  Živě nalezená chyba: bez per-rodinu lookupu primárního pěstouna
+  (`resolveFamilyDisplayName(family, null)`) se u rodin bez ručně
+  nastaveného `displayName` zobrazovala adresa DVAKRÁT (jednou jako
+  "název" karty, jednou jako podtitulek) — opraveno doplněním
+  `listFosterPersonsByRefs` (stejný vzor jako desktop `FamilyListPage`) +
+  obrannou podmínkou `family.address !== label` v renderu.
+- `MobileFamilyDetailPage.tsx` — zjednodušený profil na VLASTNÍ cestě
+  `/mobil/rodiny/:uid` (ne stejná cesta jako desktop — profil rodiny má
+  příliš mnoho desktopových sekcí, aby dávalo smysl je přepínat na jedné
+  routě): jméno, adresa, pěstouni s `tel:` odkazy, děti, a FAB "Nadiktovat
+  zápis" rovnou s předvyplněnou rodinou (`VoiceCaptureSheet`
+  `initialFamilyDocId` prop).
+- `MobileCalendarPage.tsx` — agenda styl (Things/Routine inspirace), NE
+  zmenšenina mřížky: vodorovný pás dnů (±10 kolem "dnes") + svislý seznam
+  událostí vybraného dne, filtr zaměstnanců jako chipy (jen když
+  `staffList.length > 1`), plovoucí "+" FAB, ťuknutí na událost otevře
+  `BottomSheet` formulář (znovupoužívá `createCalendarEvent`/
+  `updateCalendarEvent`/`cancelCalendarEvent` — stejná služba jako
+  desktop). Živě nalezená chyba: pás dnů se neposouval na vybraný den při
+  prvním vykreslení (vybraný den byl mimo viditelnou oblast, žádný chip
+  nesvítil) — opraveno `ref`+`useEffect(() => scrollIntoView(...), [selectedDate])`
+  na vybraném dni.
+- `calendarAggregation.ts` (`calendarEventToItem`/`agreementToNextVisitItem`)
+  zpřísněno — vrací `null` místo `Invalid Date` objektu, když chybí/je
+  neparsovatelné `start`/`end`/`validFrom`/`lastVisitAt`. Živé produkční
+  data mohou mít historické nekonzistence, které čisté testovací fixtures
+  nereprodukují, a `react-big-calendar` na `Invalid Date` uvnitř může
+  spadnout layout engine. Volající (`CalendarPage.tsx`,
+  `MobileCalendarPage.tsx`) filtrují `null` před dalším zpracováním.
+- `ErrorBoundary.tsx` — JEDNA hranice nahoře kolem celého `<App>` stromu
+  (appka je malá, není potřeba izolace po widgetech), zobrazuje přímo
+  `error.message` (ne obecnou hlášku) — aktivně vyvíjená interní appka, kde
+  konkrétní chyba pomůže rychleji diagnostikovat.
+
+**Živě ověřeno** (Playwright, mobilní viewport 390×844, emulátor, skripty
+smazány po testu): 6 kroků přes všechny 4 záložky (Domů → mikrofon,
+Rodiny → detail s `tel:` odkazem, Kalendář → agenda → úprava události
+sheetem, Účet) — bez JS chyb, den ve vybraném datu teď správně svítí v
+pásu dnů.
+
+## M11 hotové — mobil/PWA odlišení + layout oprava + Kalendář vizuál (2026-07-22, přes noc)
+
+Petrovo přímé zadání s referenčními screenshoty (Routine.co kalendář,
+Things 3 mobil): oprava globálního layout bugu, vizuální přestavba
+Kalendáře, a hlavně skutečné postavení M11 (dřív jen SEAM "mobil/PWA
+odlišení, patří do M11" — teď konkrétně zadané a postavené).
+
+**Layout bug (`AppShell.tsx`)** — hlavní scrollovatelná oblast (varianta
+BEZ `secondaryPanel`, používá ji většina appky) měla `px-8 pb-8`, ale
+ŽÁDNÉ `pt-*` — obsah stránky proto začínal přesně pod 6px fade
+gradientem, cítil se "nalepený" hned pod TopBarem. Přidáno `pt-6`.
+
+**Kalendář — vizuální přestavba** (`calendar-overrides.css`,
+`CalendarToolbar.tsx`) — `react-big-calendar` je záměrně nenastylovaná
+knihovna ("bring your own CSS"), dřívější default vzhled byl PŘESNĚ tenhle
+neupravený stav ("vypadá to jako z roku 1999"). Vlastní `Toolbar`
+(znovupoužívá `Button`/`SegmentedTabs`, appka má tenhle pattern
+konzistentně jinde), pastelové pozadí událostí + barevný levý okraj
+(`lightenHex` helper) místo plné saturované barvy s bílým textem, tenčí
+gridlines, měkčí "Dnes" zvýraznění, červená "teď" linka
+(`.rbc-current-time-indicator`), zaoblené rohy + jemný stín na událostech.
+Inspirace Routine.co (routine.co/solutions/individuals/calendaring),
+neokopírováno 1:1 — react-big-calendar má jiné technické možnosti než
+custom-built kalendář, tohle je nejlepší přiblížení v rámci knihovny.
+
+**M11 — mobil/PWA odlišení, KONEČNĚ konkrétně zadané a postavené.**
+Petrovo zadání: KO v terénu "nezajímá seznam klientů", hlavní potřeba je
+nadiktovat zápis → AI souhrn → poslat do osy, inspirace Things 3 (velká
+tlačítka, vyjížděcí panely odspoda, NENÍ to responzivní zmenšenina
+desktopu).
+
+- `useIsMobile.ts` — `matchMedia(max-width:768px)`, ne User-Agent sniffing
+  (appka musí fungovat i v mobilním prohlížeči bez instalace PWA).
+- `HomeRoute` (`App.tsx`) — na `/` rozhoduje šířka okna mezi `DashboardPage`
+  (desktop) a novou `MobileHomePage` — VĚDOMĚ zúžený rozsah: JEN domovská
+  obrazovka je mobil-first přestavěná, `/rodiny`/`/kalendar`/atd. zůstávají
+  desktopové i na mobilu (SEAM pro budoucí rozšíření, ne zapomenuté —
+  kompletní mobilní redesign celé appky je mnohem větší, samostatná dávka).
+- `BottomSheet.tsx` — NOVÝ primitiv (odspoda, mobil) vedle `Drawer`u
+  (zprava, desktop) a `Modal`u (centrovaný, desktop) — tři různé vzory pro
+  tři různé kontexty, ne jeden univerzální komponent.
+- `MobileShell.tsx` — dolní tab bar (Domů/Rodiny/Kalendář/Účet),
+  `env(safe-area-inset-bottom)`, ŽÁDNÝ sidebar/TopBar.
+- `MobileHomePage.tsx` — velké červené kolo s mikrofonem je VIZUÁLNĚ
+  DOMINANTNÍ prvek obrazovky (ne malé tlačítko v rohu), dnešní vlastní
+  naplánované události pod tím jako kontext, ne hlavní obsah.
+- `VoiceCaptureSheet.tsx` — jádro celé mobilní appky: otevře se VŽDY už
+  nahrávající (stejná konvence jako `VoiceRecorderPanel.tsx` §7.1),
+  "Zastavit" → editovatelný přepis + "AI souhrn" (ZNOVUPOUŽÍVÁ
+  `lib/ai.ts`, žádná duplicitní logika) + výběr rodiny (`Combobox`) →
+  "Odeslat do osy" (`createNoteTimelineEntry`, `sharingLevel:'internal'`
+  napevno — sdílení s pěstounem je rozhodnutí pro desktop s rozvahou, ne
+  za jízdy mezi návštěvami). ZJEDNODUŠENO oproti desktopové verzi (žádné
+  partner-sharing přepínače, žádné "Zařadit k" osobám zvlášť) — pole pro
+  terén potřebuje rychlost, ne kompletní formulář.
+
+**Živě ověřeno** (Playwright, mobilní viewport 390×844, emulátor, skripty
+smazány po testu): mobilní tab bar + velké mikrofonní tlačítko se
+vykreslí, ťuknutí otevře nahrávací sheet (grafické animace/chybové
+hlášky fungují — "not-allowed" chyba je EN očekávaná, headless prohlížeč
+nemá mikrofon), "Zastavit" přejde na review krok, textarea/Combobox
+fungují, "Odeslat do osy" SKUTEČNĚ zapsal `timeline` dokument do Firestore
+(ověřeno přímým čtením emulátoru po odeslání — `type:'note'`,
+`sharingLevel:'internal'`, správný `subjectRefs`/`body`). Layout oprava a
+Kalendář vizuál ověřeny screenshoty na desktop viewportu.
+
+## Drobná oprava (2026-07-21, přes noc): nested `<a>` na seznamu Rodin
+
+Úkol byl dohledat starou konzolovou hlášku "Encountered two children with
+the same key" (zmíněnou u M4) — živě přes Playwright/emulátor NEreprodukováno
+na žádné stránce (`/zamestnanci`, `/rodiny`, `/rodiny/:uid`, `/`) — nejspíš
+už tichem opravená některým z pozdějších refaktorů (M5–M9, Kalendář).
+
+Místo toho živě odhalena JINÁ, skutečná a reprodukovatelná chyba: řádek
+seznamu Rodin (`FamilyListPage.tsx`) byl `<Link className="contents">`
+(kliknutelný `<a>`), a uvnitř něj od UX dávky 2026-07-21 přibyl
+`AddressLink` (taky `<a>`) — `<a>` uvnitř `<a>` je neplatné HTML, React na
+to hlásí "cannot be a descendant of" (browser DOM tiše "opraví"
+nepředvídatelně). Opraveno: řádek teď `<div onClick={() => navigate(...)}>`
+místo `<Link>` (`useNavigate`), `AddressLink`ovo stávající
+`stopPropagation` funguje beze změny. Živě ověřeno — varování zmizelo, klik
+na řádek pořád naviguje na detail, klik na adresu pořád otevírá Mapy.
+
+## Kalendář hotový (2026-07-21) — mimo dosud číslovanou M-řadu
+
+Přímý požadavek 2026-07-21 ("skvěle udělaný kalendář s mnoha pohledy včetně
+agendy a s možností přetahování… a s napojením na Google Kalendář"), NENÍ
+to číslované M — sidebar odkaz `/kalendar` (`Sidebar.tsx`) byl od M0 mrtvý
+(žádná routa, žádná stránka).
+
+**Rozsah agregace (vědomě zúžený, viz `calendarAggregation.ts` pro plné
+zdůvodnění):** kalendář agreguje ze DVOU zdrojů — vlastní
+`organizations/{orgId}/calendarEvents` (nová kolekce, plně editovatelná
+staff událost) a "další návštěva splatná" připomínky z aktivních Dohod
+(READ-ONLY, počítáno stejnou logikou jako štítek na seznamu Rodin,
+`familyAlertStatus.ts`, ne duplikováno). `scheduledActivities`/
+`assistedContactSeries`/respit/předání dítěte VYNECHÁNY — jejich výskyty
+nemají `organizationId` na samotném dokumentu (jen na rodiči), agregace
+napříč celou organizací by vyžadovala buď N+1 dotazy, nebo denormalizaci
+do už otestovaných kolekcí (schema změna se skutečným rizikem regrese) —
+mimo rozsah týhle dávky, SEAM pro budoucí rozšíření.
+
+**`firestore.rules`** — `organizations/{orgId}/calendarEvents/{id}`, jediná
+kolekce v appce (mimo M1.5 importJobs rollback výjimku) se SKUTEČNÝM
+`update` (na rozdíl od většiny appky, append-only) — potřebné pro
+přetažení na jiný čas/den. `delete: if false` zůstává (§5 audit stopa),
+"zrušit" v UI nastaví `status:'zruseno'`. Sdílený týmový kalendář —
+KTERÝKOLI staff stejné organizace smí přesunout/upravit cizí událost.
+`tests/rules/m9.calendarEvents.rules.test.ts`, 12 testů (119/119 celkem).
+
+**UI (`CalendarPage.tsx`)** — `react-big-calendar` + `date-fns` (nové
+závislosti, appka dřív neměla žádnou datumovou knihovnu) + drag-and-drop
+addon, 4 pohledy (Měsíc/Týden/Den/Agenda), plně česká lokalizace,
+barevné odlišení podle zaměstnance (deterministický hash uid→paleta) s
+klikacím legend-přepínačem viditelnosti. Klik na volný slot = rychlé
+založení (Modal), klik na vlastní událost = úprava/zrušení, klik na
+agreement připomínku = deep-link na rodinu.
+
+Živě odhalený a opravený bug: `withDragAndDrop` (CJS-only addon, žádný ESM
+build) se přes Vite dev-server dep-optimizer importoval jako dvojitě
+zabalený `{default:{default: fn}}` místo funkce — `unwrapDefault` helper
+v `CalendarPage.tsx` odbaluje, dokud nenarazí na funkci. Druhý bug: pohledy
+(Měsíc/Týden/Den/Agenda) se neuncontrolled `defaultView` nepřepínaly vůbec
+(kliknutí na "Agenda" nic nedělalo) — opraveno na plně controlled `view`/
+`onView`+`date`/`onNavigate`.
+
+**Živě ověřeno** (Playwright, emulátor, skripty smazány po testu):
+založení/úprava/zrušení události, přepínač viditelnosti podle zaměstnance
+(skrytí správně schová událost), přepínání všech 4 pohledů. **NEOVĚŘENO
+end-to-end**: samotné myší tažení (drag) v prohlížeči — tři pokusy
+nasimulovat skutečné mouse down/move/up nespustily knihovnino vnitřní
+rozpoznání gesta (headless Playwright vs. tahle konkrétní non-React
+event-listener knihovna je známý třecí bod). Zapojení (`draggableAccessor`,
+`onEventDrop`/`onEventResize` → `rescheduleCalendarEvent`) je podle kódu
+správné a `.rbc-addons-dnd-resizable` wrapper se na události skutečně
+vykresluje (potvrzuje funkční `draggableAccessor`) — ale samotné tažení
+myší v reálném prohlížeči Petr sám ještě neověřil.
+
+**"Synchronizovat s Google Kalendářem"** — dodatečně doplněno (viz níž,
+"M10 + Google Kalendář sync") — teď skutečně funkční, ne jen SEAM tlačítko.
+
+**Nedeployováno** (produkce zatím běží beze změny) — čeká na uživatelovo
+"deploy asi necháme až po M10 a nebo i dál".
+
+## M10 + Google Kalendář sync hotové (2026-07-21, přes noc)
+
+Petr povolil Gemini Developer API + App Check (reCAPTCHA v3) ve Firebase
+Console a dal Google OAuth Client ID — obojí umožnilo dokončit oba dřívější
+SEAMy beze změny architektury (§10 "žádný vlastní backend").
+
+**AI souhrn** (`lib/ai.ts`, `VoiceRecorderPanel.tsx`) — Firebase AI Logic,
+`GoogleAIBackend` (Gemini Developer API), model `gemini-2.5-flash`. Tlačítko
+vezme aktuální text zápisníku, pošle ho s českým promptem "učesat mluvenou
+řeč, nic nevymýšlet" a nahradí `body` výsledkem — surový text PŘED úpravou
+se uloží do `originalTranscript` (pole bylo v `TimelineEntryDoc` už
+připravené od M3, nikdy nepoužité). Druhé kliknutí učeše aktuální (i ručně
+doupravený) text znovu, ale `originalTranscript` zůstává PRVNÍ surová verze.
+
+**Živě odhalený a opravený bug (vážný — týkal se přihlášení, ne jen AI):**
+`initializeAppCheck` na SDÍLENÉ primární `FirebaseApp` instanci (`firebase.ts`)
+způsobil, že Auth SDK na téže instanci začal ke KAŽDÉMU požadavku (i
+přihlášení) čekat na App Check token — když reCAPTCHA skript nešel načíst
+(pomalá/blokovaná síť ke `google.com`), přihlášení VISELO/PADALO, ne jen AI
+tlačítko. Oprava: App Check teď běží na VLASTNÍ, druhé `FirebaseApp`
+instanci (`lib/ai.ts`, `initializeApp(firebaseConfig, 'ai-logic')`) — stejný
+izolační vzor jako `secondaryAuth.ts` (tam kvůli Auth session, tady kvůli
+App Checku). Primární app (Auth/Firestore/Storage) se App Checku vůbec
+nedotkne. Živě ověřeno v obou stavech (s bugem přihlášení viselo, po opravě
+funguje) přes emulátor.
+
+**Google Kalendář sync** (`lib/googleCalendar.ts`, `CalendarPage.tsx`
+`handleGoogleSync`) — VÝHRADNĚ klientský tok, Google Identity Services
+"token client" (`initTokenClient`/`requestAccessToken`), ŽÁDNÁ Cloud
+Function, ŽÁDNÝ uložený refresh token. Vědomé rozhodnutí: GIS token client
+dává jen krátkodobý (~1h) access token, ne refresh token (ten vyžaduje
+Authorization Code flow s client secretem = server na výměnu) — token proto
+žije JEN v paměti modulu, nikdy ve Firestore (nulová nová security
+expozice). Sync je push-only, VÝHRADNĚ vlastní naplánované události
+(`assignedToUid === userDoc.uid`) do VLASTNÍHO Google Kalendáře
+přihlášeného uživatele — appka nikdy nepíše do cizího kalendáře. Nové pole
+`CalendarEventDoc.googleEventId` (insert vs. update rozlišení, ať
+opakovaný sync nezaloží duplicitní událost) — ŽÁDNÉ nové `firestore.rules`
+nebylo potřeba (existující `update` pravidlo pole nijak neomezuje), ověřeno
+2 novými regresními testy v `m9.calendarEvents.rules.test.ts` (121/121
+celkem). Mazání/"zrušeno" se na Google stranu zatím nepropaguje (SEAM).
+
+**Živě ověřeno** (emulátor, Playwright, skripty smazány po testu):
+přihlášení funguje s App Checkem zapnutým i vypnutým (potvrzuje opravu),
+kalendář a tlačítko "Synchronizovat" reagují správně, chybová hláška při
+nedostupnosti Google skriptu se zobrazí čitelně a appka nespadne.
+**NEOVĚŘENO**: skutečný OAuth popup + zápis do reálného Google Kalendáře —
+tahle sandboxová session nemá výstup na `google.com`/`googleapis.com`
+(potvrzeno i obyčejným `curl`), takže první opravdový test bude muset
+udělat Petr live kliknutím na "Synchronizovat".
+
+## M9 hotové — Chat (2026-07-21)
+
+Navazuje přímo na `sharing.ts` §7.4 doc komentář ("budoucím chatem
+(`messages.audience`, M9)") a `/moje` placeholder ("Chat zatím
+připravujeme"). Nová podkolekce `families/{familyId}/messages/{id}`
+(`types/message.ts`) — na rozdíl od `timeline` (VÝHRADNĚ staff zakládá) je
+tohle OBOUSMĚRNÉ vlákno, jedno na rodinu (ne per dítě/pěstoun).
+
+**`audience` pole** (`SharingLevel`, jiné jméno než `timeline.sharingLevel`,
+stejný typ — "jeden mentální model sdílení" per §7.4): staff smí zapsat
+`'foster'` (skutečná zpráva) i `'internal'` (poznámka k vláknu, kterou
+pěstoun nikdy neuvidí — HelpScout/Intercom "note vs. reply" vzor, přepínač
+"Jen interní poznámka" v composeru). Pěstoun smí VÝHRADNĚ `'foster'`.
+`'private'`/`'ospod'` v chatu nedávají smysl (dvoustranná konverzace, OSPOD
+nemá portál) a nikde se nepoužívají, i když typ je sdílený.
+
+**`firestore.rules`** — nový blok `{path=**}/messages/{messageId}`, DVA
+disjunkty na `create` (staff/`sameOrg`+aktivní Dohoda, pěstoun/vlastní
+rodina), staff čte celé vlákno, pěstoun jen `audience=='foster'` (musí
+zrcadlit `mojeService.listFosterVisibleMessages` dotaz, §5 "List dotaz vs.
+pole v pravidle"). `update`/`delete` `if false` (append-only). Spolupracovník
+(M9 Spolupracovník, `isStaff()` vyloučen) NEMÁ k chatu přístup vůbec — není
+v seznamu jeho modulů, žádný carve-out. Nová sada
+`tests/rules/m9.messages.rules.test.ts` (15 testů, 107/107 celkem zeleně).
+
+**Žádný `onSnapshot`** (§10 "jediný listener v appce = vlastní profil") —
+manuální reload-po-akci stejně jako zbytek appky, doplněné tlačítkem
+"Obnovit" na staffové straně pro ruční kontrolu nových zpráv.
+
+**UI** — nová záložka "Chat" na `FamilyDetailPage`
+(`FamilyChatSection.tsx`), a plně funkční "Chat s klíčovou osobou" karta na
+`/moje` (`MojeDashboardPage.tsx`, dřív jen "připravujeme" placeholder).
+Bubliny rozlišené zarovnáním (pěstoun vlevo, staff vpravo) a stylem
+(interní poznámka = přerušovaný okraj + žlutý štítek "Jen tým"). Pěstoun
+vidí autora staff zpráv jako generickou "Klíčová osoba" (M4 vzor — nemá
+čtecí právo na `users/{staffUid}`).
+
+**Živě ověřeno end-to-end** proti lokálnímu emulátoru (Playwright, dočasný
+skript smazán po testu) — staff odeslal zprávu pěstounovi + internal
+poznámku, pěstoun (přes SKUTEČNÝ magic-link tok, `sendSignInLinkToEmail` +
+emulátorový `oobCodes` endpoint, ne obchvat) viděl foster zprávu a NEviděl
+internal poznámku, odeslal odpověď, staff ji po "Obnovit" uviděl. Mimochodem
+tím poprvé živě ověřen i samotný M4 magic-link klik, dřív vedený jako
+neověřený SEAM.
+
+## M8 hotové — plný grant/permission engine (2026-07-21)
+
+Navazuje na M6+M7 seam ("`externalParticipantService.ts` má jen minimální
+CRUD, plný engine je M8"). Datový model (`GrantDoc`, `PERMISSION_KEYS`,
+`SENSITIVE_PERMISSIONS`, `ExternalRoleTemplateDoc`) byl už navržený v
+`types/externalParticipant.ts` z dřívějška, jen nepoužitý — M8 ho
+doimplementoval, nemusel se vymýšlet od nuly.
+
+**Grant lifecycle** (`externalParticipantService.ts`): necitlivé oprávnění
+= `grantDirect` (1 krok, rovnou `active`). Citlivé (`viewMedical`,
+`signDocuments`, `chatWith`, `videoCalls`) = `requestGrant→approveGrant→
+activateGrant`, 3 KROKY/3 ROLE (ne nutně 3 různí lidé — čteme "3 aktéři"
+jako 3 role v řetězci): KO/asistent/org_admin žádá → org_admin/vedoucí
+pobočky/teamleader schvaluje → **jen org_admin** aktivuje (samostatný, užší
+gate). `revokeGrant` vždy nastavuje `validTo`, nikdy delete — grant dokument
+nejde smazat vůbec (`allow delete: if false` na serveru, viz níž).
+
+**firestore.rules** — nový blok `external_participants/{epId}/access/
+{childId}/grants/{grantId}` (žádný vlastní `organizationId`, scoping se
+čte z rodičovského externisty přes `get()`, stejná "list/rules musí
+zrcadlit scoping" past jako u M1.5 importJobs). Rules vynucují přesně tytéž
+přechody jako service vrstva — klient nemůže sensitivní grant zapsat rovnou
+jako `active`, ani přeskočit roli u schválení/aktivace/revoke. Nový blok
+`organizations/{orgId}/externalRoleTemplates/{id}` — jen zkratka pro
+vyplnění formuláře, NE pro obejití schvalování.
+
+**§5.1 povinná rules test sada** (`tests/rules/m8.rules.test.ts`, 13
+testů) — na rozdíl od M6+M7 (kde emulátor na tehdejším stroji nešel
+spustit) tentokrát **skutečně spuštěno a zeleně prošlo** (77/77 včetně
+m0-m2/m1.5), protože emulátor v aktuálním prostředí běží bez potíží. Zároveň
+opraven skrytý config bug: `vitest.config.ts`'s `include: ['src/**/*.test.ts']`
+dělal `npm run test:rules` mrtvý ("No test files found") bez ohledu na
+emulátor — vyčleněna `vitest.rules.config.ts` (`fileParallelism: false`,
+protože všechny rules test soubory sdílí jeden Firestore emulátor a
+souběžné `clearFirestore()` volání si navzájem mazaly rozdělaná data).
+
+**UI** (`/externiste`, `ExternalParticipantsPage.tsx`) — seznam
+externistů + přidání + správa přístupů. **SEAM, vědomě zjednodušeno**:
+dítě se vybírá zadáním ID ručně (zkopírovaného z URL `/rodiny/:uid/
+dite/:childId`), ne přes rodina→dítě picker — pořádný picker je mimo
+rozsah týhle dávky, appka jinak dítě podle ID už umí zobrazit. Šablony
+rolí (`externalRoleTemplates`) mají hotový backend+rules, ale ŽÁDNÉ UI
+zatím (čistě zkratka pro vyplnění formuláře, není blokující pro funkční
+grant engine — případně M9+).
+
+**Nasazeno:** `deploy:rules` (nový rules blok) + `deploy:hosting`
+(nová stránka/routa) na `production` (`v10c-doprovazeni-com`) přes
+dedikovaný `claude-deploy` service account (role Firebase Admin, jen
+tenhle projekt).
+
 ## UX přestavba profilových stránek (2026-07-20): rodina/Dohoda/pěstoun/dítě
 
 Po ověření M6+M7 dávky poslal Petr ostrou zpětnou vazbu se 4 body a dvěma

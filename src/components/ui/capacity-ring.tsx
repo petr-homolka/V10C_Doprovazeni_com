@@ -59,7 +59,7 @@ export function CapacityRing({
           className={cn('transition-all duration-300', overThreshold ? 'stroke-danger-solid' : 'stroke-primary')}
         />
       </svg>
-      <span className="absolute text-[9px] font-medium leading-none text-text-secondary">{value}</span>
+      <span className="absolute text-2xs font-medium leading-none text-text-secondary">{value}</span>
     </div>
   )
 }

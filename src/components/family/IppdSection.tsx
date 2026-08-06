@@ -1,11 +1,14 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ClipboardList, Plus } from 'lucide-react'
+import { ClipboardList, Plus } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DateRangePicker } from '@/components/ui/date-range-picker'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { closeIppd, createIppd, evaluateIppd, listIppds } from '@/services/ippdService'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import type { IppdDoc, IppdGoal } from '@/types/ippd'
 
 export interface IppdSectionProps {
@@ -49,15 +52,11 @@ function defaultPeriod(): { from: string; to: string } {
 
 function StatusBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex h-6 items-center rounded-full bg-surface-soft px-2.5 text-xs font-medium text-text-primary">
+    <span className="sp__chip">
       {label}
     </span>
   )
 }
-
-const TEXTAREA_CLASSNAME =
-  'w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-[16px] leading-relaxed ' +
-  'text-text-primary placeholder:text-text-tertiary focus:border-2 focus:border-accent focus:outline-none'
 
 /**
  * M7 §B.4 — IPPD je per Dohoda (agreementId=organizationId, M2), ne per
@@ -71,12 +70,12 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
   const [period, setPeriod] = useState(defaultPeriod)
   const [goalDrafts, setGoalDrafts] = useState<GoalDraft[]>([emptyGoalDraft()])
   const [formError, setFormError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   const [evaluatingDocId, setEvaluatingDocId] = useState<string | null>(null)
   const [evaluationSummary, setEvaluationSummary] = useState('')
   const [actionError, setActionError] = useState<string | null>(null)
-  const [actionSubmitting, setActionSubmitting] = useState(false)
+  const { loading: actionSubmitting, success: actionSuccess, run: runAction } = useAsyncSubmit()
 
   async function reload() {
     setListError(null)
@@ -132,24 +131,23 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
       setFormError('Zadejte aspoň jeden cíl s popisem.')
       return
     }
-    setSubmitting(true)
     try {
-      await createIppd(
-        familyDocId,
-        organizationId,
-        new Date(period.from).toISOString(),
-        new Date(period.to).toISOString(),
-        goals,
-        currentUid,
-      )
+      await run(async () => {
+        await createIppd(
+          familyDocId,
+          organizationId,
+          new Date(period.from).toISOString(),
+          new Date(period.to).toISOString(),
+          goals,
+          currentUid,
+        )
+        await reload()
+      })
       setShowForm(false)
       setPeriod(defaultPeriod())
       setGoalDrafts([emptyGoalDraft()])
-      await reload()
     } catch {
       setFormError('Založení IPPD se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -162,36 +160,33 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
   async function handleEvaluateSubmit(e: FormEvent, docId: string) {
     e.preventDefault()
     setActionError(null)
-    setActionSubmitting(true)
     try {
-      await evaluateIppd(familyDocId, organizationId, docId, currentUid, evaluationSummary.trim())
+      await runAction(async () => {
+        await evaluateIppd(familyDocId, organizationId, docId, currentUid, evaluationSummary.trim())
+        await reload()
+      })
       setEvaluatingDocId(null)
       setEvaluationSummary('')
-      await reload()
     } catch {
       setActionError('Vyhodnocení se nepodařilo uložit.')
-    } finally {
-      setActionSubmitting(false)
     }
   }
 
   async function handleClose(docId: string) {
     setActionError(null)
-    setActionSubmitting(true)
     try {
-      await closeIppd(familyDocId, organizationId, docId)
-      await reload()
+      await runAction(async () => {
+        await closeIppd(familyDocId, organizationId, docId)
+        await reload()
+      })
     } catch {
       setActionError('Uzavření IPPD se nezdařilo.')
-    } finally {
-      setActionSubmitting(false)
     }
   }
 
   return (
-    <section className="mt-8">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">IPPD — individuální plán ochrany dítěte</h2>
+    <div>
+      <div className="flex items-center justify-end gap-4">
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? (
             'Zrušit'
@@ -206,28 +201,12 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
       {showForm && (
         <form
           onSubmit={handleCreateSubmit}
-          className="mt-3 flex flex-col gap-4 rounded-lg border border-border-subtle bg-surface p-4"
+          className="mt-3 flex max-w-[560px] flex-col gap-4 sp__sub"
         >
-          <div className="flex gap-3">
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Období od
-              <Input
-                type="date"
-                required
-                value={period.from}
-                onChange={(e) => setPeriod((p) => ({ ...p, from: e.target.value }))}
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
-              Období do
-              <Input
-                type="date"
-                required
-                value={period.to}
-                onChange={(e) => setPeriod((p) => ({ ...p, to: e.target.value }))}
-              />
-            </label>
-          </div>
+          <label className="flex flex-col gap-1 text-sm text-text-secondary">
+            Období
+            <DateRangePicker from={period.from} to={period.to} onChange={setPeriod} />
+          </label>
 
           <div className="flex flex-col gap-3">
             <p className="text-sm font-medium leading-relaxed text-text-primary">Cíle</p>
@@ -299,8 +278,8 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Zakládám…' : 'Založit IPPD'}
+            <Button type="submit" loading={submitting} success={success}>
+              Založit IPPD
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -319,11 +298,11 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
         ) : ippds.length === 0 ? (
           <EmptyState icon={ClipboardList} text="Zatím žádný IPPD." />
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex max-w-[928px] flex-col gap-3">
             {ippds.map(({ docId, ippd }) => {
               const overdue = ippd.status === 'aktivni' && !!ippd.evaluation && new Date(ippd.evaluation.dueDate) < new Date()
               return (
-                <div key={docId} className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+                <div key={docId} className="sp__sub flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-3">
                     <p className="text-sm text-text-primary">
                       {new Date(ippd.periodFrom).toLocaleDateString('cs-CZ')} –{' '}
@@ -345,7 +324,7 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
 
                   <div className="flex flex-col gap-2">
                     {ippd.goals.map((goal) => (
-                      <div key={goal.id} className="rounded-md border border-border-subtle bg-surface-soft p-3">
+                      <div key={goal.id} className="sp__sub">
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-sm text-text-primary">{goal.description}</p>
                           <StatusBadge label={GOAL_STATUS_LABELS[goal.status]} />
@@ -384,17 +363,16 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
                       <form onSubmit={(e) => handleEvaluateSubmit(e, docId)} className="flex flex-col gap-2">
                         <label className="flex flex-col gap-1 text-sm text-text-secondary">
                           Shrnutí vyhodnocení
-                          <textarea
+                          <Textarea
                             required
                             value={evaluationSummary}
                             onChange={(e) => setEvaluationSummary(e.target.value)}
                             rows={4}
-                            className={TEXTAREA_CLASSNAME}
                           />
                         </label>
                         <div className="flex gap-2">
-                          <Button type="submit" size="sm" disabled={actionSubmitting}>
-                            {actionSubmitting ? 'Ukládám…' : 'Uložit vyhodnocení'}
+                          <Button type="submit" size="sm" loading={actionSubmitting} success={actionSuccess}>
+                            Uložit vyhodnocení
                           </Button>
                           <Button
                             type="button"
@@ -418,7 +396,8 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
                       variant="secondary"
                       size="sm"
                       className="w-fit"
-                      disabled={actionSubmitting}
+                      loading={actionSubmitting}
+                      success={actionSuccess}
                       onClick={() => handleClose(docId)}
                     >
                       Uzavřít
@@ -430,6 +409,6 @@ export function IppdSection({ familyDocId, organizationId, currentUid, fosterPer
           </div>
         )}
       </div>
-    </section>
+    </div>
   )
 }

@@ -1,9 +1,32 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { FirebaseError } from 'firebase/app'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+/**
+ * Rozlišené chybové hlášky (2026-07-23) — dřív JEDNA obecná hláška pro
+ * úplně cokoli (špatné heslo i výpadek sítě/nedostupný Firebase), což
+ * živě zmátlo uživatele hledajícího chybu ve svém heslu, i když šlo o
+ * síťový/konfigurační problém appky samotné. `auth/network-request-failed`
+ * a spol. potřebují vlastní text, ne "zkontrolujte heslo".
+ */
+function loginErrorMessage(e: unknown): string {
+  if (e instanceof FirebaseError) {
+    if (e.code === 'auth/network-request-failed') {
+      return 'Přihlášení se nepodařilo — appka se nemohla spojit se serverem. Zkontrolujte připojení k internetu a zkuste to znovu.'
+    }
+    if (e.code === 'auth/too-many-requests') {
+      return 'Příliš mnoho pokusů o přihlášení. Zkuste to prosím za chvíli znovu.'
+    }
+    if (e.code === 'auth/user-disabled') {
+      return 'Tenhle účet byl deaktivován. Obraťte se na správce organizace.'
+    }
+  }
+  return 'Přihlášení se nezdařilo. Zkontrolujte e-mail a heslo.'
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -17,10 +40,10 @@ export default function LoginPage() {
     setError(null)
     setSubmitting(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password)
       navigate('/', { replace: true })
-    } catch {
-      setError('Přihlášení se nezdařilo. Zkontrolujte e-mail a heslo.')
+    } catch (err) {
+      setError(loginErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -29,7 +52,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-app px-4">
       <div className="w-full max-w-[380px] rounded-lg border border-border bg-surface p-6 shadow-raised">
-        <h1 className="mb-1 text-lg font-normal leading-normal text-text-primary">
+        <h1 className="mb-1 text-2xl text-text-primary">
           Doprovázení.com
         </h1>
         <p className="mb-6 text-sm text-text-secondary">

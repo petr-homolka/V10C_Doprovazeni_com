@@ -13,6 +13,8 @@ import { db } from './firebase'
  */
 const ORG_CODE_MAX = 9999
 
+
+
 export async function allocateOrgCode(): Promise<string> {
   const counterRef = doc(db, 'systemCounters', 'orgCode')
 

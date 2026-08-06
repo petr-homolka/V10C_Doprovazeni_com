@@ -1,235 +1,42 @@
+/* Tokeny první: `@import` musí předcházet ostatním pravidlům, jinak si
+   postcss-import stěžuje. Jsou ve vlastním souboru, protože jich je hodně
+   a jsou ODEČTENÉ z konkrétního zdroje — komentář u nich říká z čeho. */
+@import './tokens.css';
+@import './editor.css';
+@import './styles/spis.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/*
-  Design tokeny — v5 (2026-07-19). Hodnoty vychází z přímo NAMĚŘENÝCH
-  computed styles živé referenční appky (lokální statická kopie, otevřená
-  přes `getComputedStyle`/`getBoundingClientRect` na skutečných
-  elementech) — v dark módu (void pozadí, sidebar panel, hlavní panel, nav
-  položky, header) i teď nově ve SVĚTLÉM módu (dřív jen odhad z CSS textu,
-  teď přepnuto přímo v živém DOMu a přeměřeno na reálně vykreslených
-  plochách). Klíčové zjištění: škála je mnohem JEMNĚJŠÍ v obou režimech
-  (void → app → surface-soft je jen ~5-11 bodů RGB rozdíl na krok, ne naše
-  dřívější velké skoky) a POŘADÍ jasu je STEJNÉ v obou režimech
-  (surface-soft je vždy nejsvětlejší plocha, pak app, pak void nejtmavší/
-  nejtemnější) — světlý blok předtím měl toto pořadí obráceně (app byl
-  nejsvětlejší), opraveno.
-
-  BAREVNÉ zůstávají výhradně subjektové/sémantické tokeny (badge, výstrahy)
-  PLUS jeden nový `--accent` (modrá) — vyhrazený pro interaktivní stavy
-  formulářových prvků (focus border, zapnutý switch, tučné inline odkazy),
-  konstantní přes obě témata, viz komentář u definice níže.
-
-  Světlý režim = výchozí :root. Tmavý režim = @media (prefers-color-scheme:
-  dark) NEBO explicitní [data-theme="dark"] (přepínač v TopBaru,
-  useTheme.ts — dočasně přes localStorage, dokud §5.6/M9.5 nepřinese
-  per-uživatel uložené nastavení). [data-theme="light"] vynucuje světlý
-  i když OS preferuje tmavý.
-*/
-:root {
-  /* Pozadí a plochy — přeměřeno přímo na živém DOMu (přepnutím tématu a
-     čtením computed background na skutečných panelech), ne odhadem z CSS
-     textu. Pořadí jasu: void < app < surface-soft (stejné v obou režimech). */
-  --bg-app: #FAFAFA;
-  --bg-surface: #F5F5F5;
-  --bg-surface-soft: #FFFFFF;
-  --bg-inset: #FFFFFF;
-  /* "Void" za plovoucími panely (sidebar/hlavní obsah). */
-  --bg-void: #F5F5F5;
-  /* Aktivní položka navigace — jemný alpha overlay, NE plná barva
-     (dark: rgba(255,255,255,.15), tohle je symetrický odhad pro light —
-     nebyl přímo naměřen, na rozdíl od --toggle-off níž). */
-  --overlay-active: rgba(0, 0, 0, .06);
-  /* Vypnutý stav přepínače (Switch) — přeměřeno NEZÁVISLE na --overlay-active
-     (jiný podkladový odstín, ne černá) — dvě rozdílné role, co v dark módu
-     náhodou vycházejí na stejné číslo. */
-  --toggle-off: rgba(115, 115, 115, .15);
-  /* Jediná barevná akcentní hodnota mimo subjektové tokeny — vyhrazená pro
-     interaktivní stav formulářových prvků: focus border inputu, zapnutý
-     Switch, tučné inline odkazy (viz §9 do budoucna: až M9.5 přinese per-
-     organizaci branding, tohle je kandidát na konfigurovatelnou barvu
-     místo pevné hodnoty). Konstantní přes obě témata. */
-  --accent: #4F69F2;
-  /* Switch thumb — přeměřeno jako KONSTANTNÍ #FAFAFA v obou režimech
-     (na rozdíl od --primary-foreground, který se mezi tématy obrací) —
-     drží se stínem (shadow-raised), ne kontrastem barvy vůči tracku. */
-  --toggle-thumb: #FAFAFA;
-
-  /* Text — přeměřeno na živé referenční appce (light blok) */
-  --text-primary: #1A1A1A;
-  --text-secondary: #616161;
-  --text-tertiary: #737373;
-  --text-inverse: #FFFFFF;
-
-  /* Čáry — alpha-black. 4 úrovně teď podložené opakovaným měřením napříč
-     komponentami (Dodatek 11): subtle (Plugins list border, surface-
-     border-alpha-0), default (beze změny), medium (Input/URL box border —
-     stejná hodnota naměřena na DVOU nezávislých komponentách), strong
-     (table/card divider, surface-border-alpha-2/surface-3). */
-  --border-subtle: rgba(16, 16, 16, .05);
-  --border-default: rgba(16, 16, 16, .10);
-  --border-medium: rgba(16, 16, 16, .15);
-  --border-strong: rgba(16, 16, 16, .20);
-
-  /* Primární akcent — monochromní (skoro černá v light, skoro bílá v
-     dark), NE barevná. Barva je vyhrazená výhradně subjektovým/
-     sémantickým tokenům níže. */
-  --primary: #1A1A1A;
-  --primary-hover: #353535;
-  --primary-foreground: #FAFAFA;
-  --primary-soft: #E3E3E3;
-  --primary-soft-hover: #DBDBDB;
-  --ring: #1A1A1A;
-
-  /* Sémantika subjektů/stavů — JEDINÉ místo s barvou v celé appce (badge/
-     tečka/proužek, nikdy plochy). Foreground konstantní přes obě témata,
-     jen -bg se mění v dark bloku níže. */
-  --subject-foster: #14A372;
-  --subject-foster-bg: #E7F5F0;
-  --subject-ospod: #4F69F2;
-  --subject-ospod-bg: #EDF0FD;
-  --subject-court: #6B7280;
-  --subject-court-bg: #F0F1F3;
-  --subject-bio: #E7AD16;
-  --subject-bio-bg: #FDF8EA;
-  --crisis: #F66950;
-  --crisis-bg: #FEF0ED;
-
-  --success: #14A372;
-  --success-bg: #E7F5F0;
-  --warning: #E7AD16;
-  --warning-bg: #FDF8EA;
-  --danger: #F66950;
-  --danger-bg: #FEF0ED;
-  /* Konstantní přes obě témata — destruktivní tlačítko (§6.1) potřebuje
-     vždy dost sytou plochu pro bílý text. */
-  --danger-solid: #DA2A0B;
-
-  /* Úrovňový/tier tag (§5.8 základní/prémiové) — přeměřeno na živé
-     referenční appce ("Business"/"New" pilulky, Settings nav), konstantní přes obě témata
-     (alpha pozadí se přizpůsobí libovolné ploše samo). Zatím nikde
-     nepoužito ve funkčním kódu — token je připravený pro M9.5/entitlementy. */
-  --tier-accent: #FF58AE;
-  --tier-accent-bg: rgba(255, 88, 174, .15);
-
-  /* Radiusy */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-full: 9999px;
-
-  /* Stíny — jen dvě úrovně, vždy měkké */
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, .06), 0 4px 12px rgba(0, 0, 0, .05);
-  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .14);
-
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    /* Naměřeno přímo (getComputedStyle) na skutečných elementech:
-       void rgb(16,16,16), hlavní panel rgb(22,22,22), sidebar/nav panel
-       rgb(26,26,26) — velmi těsná škála. --bg-inset teď overlay (5% bílá
-       přes podklad), ne plochá barva — přesně jak se formulářové pole
-       reálně skládá (viz komentář u --accent v :root). */
-    --bg-void: #101010;
-    --bg-app: #161616;
-    --bg-surface-soft: #1A1A1A;
-    --bg-surface: #202020;
-    --bg-inset: rgba(255, 255, 255, .05);
-    --overlay-active: rgba(255, 255, 255, .15);
-    --toggle-off: rgba(255, 255, 255, .15);
-
-    --text-primary: #F5F5F5;
-    --text-secondary: #AAAAAA;
-    --text-tertiary: #737373;
-    --text-inverse: #101010;
-
-    --border-subtle: rgba(255, 255, 255, .05);
-    --border-default: rgba(255, 255, 255, .10);
-    --border-medium: rgba(255, 255, 255, .15);
-    --border-strong: rgba(255, 255, 255, .20);
-
-    --primary: #F5F5F5;
-    --primary-hover: #E3E3E3;
-    --primary-foreground: #101010;
-    --primary-soft: #353535;
-    --primary-soft-hover: #424242;
-    --ring: #F5F5F5;
-
-    --subject-foster-bg: #112E24;
-    --subject-ospod-bg: #1D223D;
-    --subject-court-bg: #26292E;
-    --subject-bio-bg: #3D3623;
-    --crisis-bg: #2F1410;
-
-    --success-bg: #112E24;
-    --warning-bg: #3D3623;
-    --danger-bg: #2F1410;
-
-    --shadow-raised: 0 1px 3px rgba(0, 0, 0, .40), 0 4px 12px rgba(0, 0, 0, .32);
-    --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .55);
-
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --bg-void: #101010;
-  --bg-app: #161616;
-  --bg-surface-soft: #1A1A1A;
-  --bg-surface: #202020;
-  --bg-inset: rgba(255, 255, 255, .05);
-  --overlay-active: rgba(255, 255, 255, .15);
-  --toggle-off: rgba(255, 255, 255, .15);
-
-  --text-primary: #F5F5F5;
-  --text-secondary: #AAAAAA;
-  --text-tertiary: #737373;
-  --text-inverse: #101010;
-
-  --border-subtle: rgba(255, 255, 255, .05);
-  --border-default: rgba(255, 255, 255, .10);
-  --border-medium: rgba(255, 255, 255, .15);
-  --border-strong: rgba(255, 255, 255, .20);
-
-  --primary: #F5F5F5;
-  --primary-hover: #E3E3E3;
-  --primary-foreground: #101010;
-  --primary-soft: #353535;
-  --primary-soft-hover: #424242;
-  --ring: #F5F5F5;
-
-  --subject-foster-bg: #112E24;
-  --subject-ospod-bg: #1D223D;
-  --subject-court-bg: #26292E;
-  --subject-bio-bg: #3D3623;
-  --crisis-bg: #2F1410;
-
-  --success-bg: #112E24;
-  --warning-bg: #3D3623;
-  --danger-bg: #2F1410;
-
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, .40), 0 4px 12px rgba(0, 0, 0, .32);
-  --shadow-overlay: 0 8px 30px rgba(0, 0, 0, .55);
-
-  color-scheme: dark;
-}
 
 html {
   background: var(--bg-void);
 }
 
+/*
+ * Základ je 15px/23px. Chvíli tu bylo 13px/19px odečtené z Routine, ale
+ * Petr to 2026-07-25 pojmenoval správně: „titěrné". Rozdíl mezi nástrojem
+ * na osobní úkoly (kde se skenuje dvacet řádků) a spisem (kde se ČTE zápis
+ * a hledá jméno) je právě tady.
+ *
+ * Vzdušnost tím netrpí: prázdné místo mezi věcmi se zvětšilo se stupnicí.
+ * Co se do řádku nevejde, se dnes SKRÝVÁ podle šířky plátna (`@container`,
+ * viz `styles/spis.css`) — nemačká se, takže větší písmo nekrájí obsah.
+ */
 body {
   margin: 0;
   background: var(--bg-void);
   color: var(--text-primary);
-  font-family: 'Geist Sans', system-ui, sans-serif;
+  font-family: 'Inter', -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 23px;
+  /* Při 15px už stahovat proklad není potřeba — na 13px to text zpevňovalo,
+     tady by ho jen zúžilo. */
+  letter-spacing: -0.05px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
 }
 
 /* §9.3 — input text nikdy pod 16px, jinak iOS Safari zoomuje po focusu */
@@ -237,6 +44,108 @@ input,
 textarea,
 select {
   font-size: 16px;
+}
+
+/* SidePanel formuláře (desktop only, žádné mobilní focus-zoom riziko) —
+   menší písmo v polích na přání uživatele. */
+.side-panel-fields input,
+.side-panel-fields textarea,
+.side-panel-fields select {
+  font-size: 14px;
+}
+
+/* Mřížka seznamového řádku (DESIGN_RULES.md §4, `record-card.tsx`).
+
+   Sloupce definuje SEZNAM, ne řádek — jinak se při chybějící hodnotě
+   rozejdou mezi řádky a seznam nejde skenovat svisle. To byl nejhorší
+   nalezený vizuální defekt a nebyl to vkus, byla to konstrukce.
+
+   CONTAINER QUERIES, ne `@media`: rozhoduje šířka, kterou má seznam
+   SKUTEČNĚ k dispozici, ne šířka okna. Rozdíl je podstatný — sidebar bere
+   240 px a otevřený pravý panel dalších 380 px, takže na okně 1440 px může
+   mít seznam k dispozici 820 px. S `@media` by v takové chvíli zůstaly
+   všechny sloupce a ořezala by se jména (přesně tohle se stalo na 900 px
+   a odhalil to až screenshot).
+
+   Buňky jsou seřazené od nejdůležitější a ubývají ZPRAVA, takže
+   `nth-last-child` funguje bez ohledu na jejich počet. Šablona se musí
+   zkrátit spolu s nimi — skrytá buňka by jinak nechala prázdný sloupec. */
+.record-list {
+  container-type: inline-size;
+}
+
+/*
+  ŘÁDEK JE ŘÁDEK, NE KARTA.
+
+  Do 2026-07-24 byl každý záznam bílá karta se stínem na šedé ploše, mezi
+  nimi 8px mezera. Dvanáct rodin tedy bylo dvanáct plovoucích destiček —
+  a plovoucí destičky se nedají skenovat očima svisle, protože každá má
+  vlastní hranu. Routine to řeší tak, že celý seznam je JEDEN list a řádky
+  dělí vlasová linka; oko pak jede po sloupci, ne po dlaždicích.
+
+  Zvýraznění pod kurzorem je jen podbarvení, ne zvednutí stínem — nic se
+  nemá odlepovat od plochy.
+*/
+.record-item {
+  /* 44 px a odsazení stejné jako `.sp__row` — seznam a profil jsou jedna
+     appka, takže řádek musí mít jednu výšku. Zaoblení tu nemá co dělat:
+     řádek není karta (viz komentář výš), a v kartě by kreslilo rám v rámu. */
+  min-height: 44px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.record-item:last-child {
+  border-bottom: none;
+}
+
+.record-item:hover {
+  background: var(--overlay-active);
+}
+
+.record-head {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.record-row {
+  display: grid;
+  grid-template-columns: var(--record-cols-lg);
+  align-items: center;
+  gap: 16px;
+}
+
+/* Dva sloupce metadat.
+
+   `-n + 2`, ne `-n + 1`: poslední dítě mřížky je sloupec AKCÍ (`.record-trail`),
+   ne buňka metadat, takže se počítání zprava posouvá o jedno. */
+@container (max-width: 859px) {
+  .record-row {
+    grid-template-columns: var(--record-cols-md, var(--record-cols-lg));
+  }
+  .record-row > .record-cell:nth-last-child(-n + 2) {
+    display: none;
+  }
+}
+
+/* Jeden sloupec — na tolik místa se dva popisky („KLÍČOVÁ OSOBA",
+   „POSLEDNÍ KONTAKT") vedle sebe nevejdou, aniž by se ořezaly. */
+@container (max-width: 639px) {
+  .record-row {
+    grid-template-columns: var(--record-cols-sm, var(--record-cols-md, var(--record-cols-lg)));
+  }
+  .record-row > .record-cell:nth-last-child(-n + 3) {
+    display: none;
+  }
+}
+
+/* Jen jméno a akce. Mobil má vlastní stránky, tohle je pojistka pro úzké okno
+   nebo otevřený panel na malém displeji. Jméno zůstává vždy (§4). */
+@container (max-width: 439px) {
+  .record-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .record-row > .record-cell {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -248,4 +157,20 @@ select {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* "Naléhavé" stav v seznamu Rodin — pulz patří k "ještě je čas reagovat",
+   ne k "už je pozdě" (na to je statický štítek "Po termínu"). */
+@keyframes pulse-alert {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(226, 29, 18, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(226, 29, 18, 0);
+  }
+}
+
+.animate-pulse-alert {
+  animation: pulse-alert 1.8s ease-in-out infinite;
 }

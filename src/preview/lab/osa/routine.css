@@ -1,0 +1,622 @@
+/*
+ * VARIANTA „CO NEJBLÍŽ ROUTINE".
+ *
+ * Tohle už NENÍ z paměti: uživatel poslal uloženou stránku své vlastní
+ * Routine aplikace včetně CSS, takže hodnoty níž jsou ODEČTENÉ z jejich
+ * `main-*.css` a `useJournalEntry-*.css`, ne odhadnuté.
+ *
+ * Co jsem měl předtím špatně a co z toho plyne:
+ *   1. PRIMÁRNÍ TLAČÍTKO NENÍ ČERVENÉ. Je tmavě grafitové (#2a3038) s
+ *      mikrostínem `0 1px 1px #00000026`. Červená #f96359 je vyhrazená pro
+ *      „teď" a stav — kdyby byla i na tlačítku, přestala by znamenat
+ *      naléhavost. To je přesně ta disciplína, kterou jsem chtěl, jen jsem
+ *      ji provedl obráceně.
+ *   2. RADIUS JE MALÝ: 3px (čipy, kompaktní řádky) a 7px (bloky, tlačítka),
+ *      10px jen u kontejnerů. Já měl 6–10px všude, což bylo měkčí a
+ *      „dashboardovější".
+ *   3. ŽÁDNÉ PŮLHODINOVÉ LINKY — `.fc-timegrid-slot-minor{border-top-style:
+ *      none}`. Jen celé hodiny. Já je přidal a udělal z mřížky mříž.
+ *
+ * Odečtené hodnoty:
+ *   - slot 15px, tedy HODINA 30px v týdenním pohledu (velmi hustě)
+ *   - osa hodin 49px (`--planner-axis-width`)
+ *   - popisek hodiny 11px/400, line-height 17px, barva #a9a9a9, posazený
+ *     NAD linku (`top:-17px`)
+ *   - „teď": linka 2px #f96359, radius 100px, před ní tečka 6px
+ *   - plochy #f5f4f1 (teplá), bílá karta, linky #f2f2f2 / #e5e5e5 / #e1dddd
+ *   - text #47505d sekundární, #79818c a #a9a9a9 tercierní
+ *   - stín karty `0 1px 2px #00000008` — na hranici viditelnosti
+ *   - font Inter, velikosti 11 / 12 / 13 / 14 / 16 / 20
+ *
+ * Naše odchylky (vědomé, ne nedopatření):
+ *   - hodina 44px místo 30px: Routine má 30px pro SEDM sloupců týdne, my
+ *     kreslíme JEDEN den vedle úkolů, kde je na výšku místo.
+ *   - čipy nesou TVÁŘ. U Routine jsou to projekty a labely, u nás lidé.
+ *   - celodenní pás nese LHŮTY (návštěva po termínu) — Routine nic takového
+ *     nemá, protože nikoho nedoprovází.
+ */
+
+.rt {
+  /* Plochy a linky — odečteno z jejich `theme--default`. */
+  --paper: #ffffff;
+  --warm: #f5f4f1;
+  --hair: #f2f2f2;
+  --hair-2: #e5e5e5;
+  --hair-3: #e1dddd;
+  --hover: #f4f4f4;
+
+  /* Inkoust */
+  --ink: #181a1b;
+  --ink-slate: #2a3038;
+  --ink-2: #47505d;
+  --ink-3: #79818c;
+  --ink-4: #a9a9a9;
+
+  /* Akcent VÝHRADNĚ pro „teď" a stav, nikdy pro tlačítko. */
+  --accent: #f96359;
+  --accent-ink: #c73c10;
+  --accent-soft: #fbefee;
+  --accent-soft-2: #f9e7e6;
+  --amber: #a4691a;
+  --amber-soft: #fbf1e2;
+
+  --hour: 44px;
+  --axis: 49px;
+
+  display: flex;
+  min-height: 900px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, -apple-system, system-ui, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Dvoupanel -------------------------------------------------- */
+
+.rt__split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.02fr);
+  width: 100%;
+  min-height: 0;
+}
+
+.rt__pane {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rt__pane + .rt__pane {
+  border-left: 1px solid var(--hair);
+}
+
+.rt__panehead {
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--hair);
+}
+
+.rt__panetitle {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.rt__panemeta {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.rt__panetools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Tlačítka podle jejich `base-button`: primární tmavě grafitové
+   s mikrostínem, sekundární bílé s tichým textem. */
+.rt__btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--hair-2);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.rt__btn:hover {
+  background: var(--hover);
+}
+
+.rt__btn--primary {
+  background: var(--ink-slate);
+  border-color: var(--ink-slate);
+  color: #fff;
+  box-shadow: 0 1px 1px #00000026;
+}
+
+.rt__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+.rt__icon:hover {
+  background: var(--hair);
+}
+
+.rt__panebody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 14px 18px;
+}
+
+/* Mřížka dne sahá k hranám panelu — osa hodin je vlevo místo odsazení. */
+.rt__panebody--day {
+  padding: 0 0 20px;
+}
+
+/* ---------- Rychlé zadání --------------------------------------------- */
+
+.rt__capture {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  margin-bottom: 6px;
+  border: 1px solid var(--hair-2);
+  border-radius: 7px;
+  color: var(--ink-4);
+  font-size: 13px;
+}
+
+.rt__capture--focus {
+  border-color: var(--ink-3);
+  color: var(--ink-2);
+}
+
+.rt__enter {
+  margin-left: auto;
+  border: 1px solid var(--hair-2);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 10.5px;
+  color: var(--ink-4);
+}
+
+/* ---------- Úkoly ------------------------------------------------------ */
+
+.rt__group {
+  padding: 13px 0 3px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Počet po termínu je jediné místo v seznamu, kde smí být červená plocha —
+   jejich `.task-count--overdue` má radius 7px a drobný padding. */
+.rt__groupcount {
+  padding: 1px 6px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.rt__task {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  min-height: 28px;
+  border: 1px solid transparent;
+}
+
+.rt__task:hover {
+  background: var(--hover);
+}
+
+/* Kolečko 14px, přesně jako jejich `.task-check`. */
+.rt__check {
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  border: 1.5px solid var(--hair-3);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rt__check--done {
+  border-color: var(--ink-4);
+  background: var(--ink-4);
+}
+
+.rt__taskbody {
+  min-width: 0;
+  flex: 1;
+}
+
+.rt__tasktitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.rt__taskmeta {
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Jejich `.task-project` má radius 3px a padding 2px 6px. U nás je to
+   člověk, takže čip navíc nese tvář. */
+.rt__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 6px 2px 2px;
+  border-radius: 3px;
+  background: var(--hair);
+  color: var(--ink-2);
+  font-size: 11px;
+}
+
+.rt__tag img,
+.rt__tag span.rt__tagface {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--hair-3);
+  font-size: 7px;
+  font-weight: 700;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt__due {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-4);
+}
+
+.rt__due--hot {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.rt__est {
+  margin-left: auto;
+  color: var(--ink-4);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- Den jako časová mřížka ------------------------------------ */
+
+.rt__day {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--axis) minmax(0, 1fr);
+}
+
+.rt__hours {
+  position: relative;
+}
+
+/* Popisek hodiny sedí NAD linkou (jejich `top:-17px`), ne vedle ní. */
+.rt__hourlabel {
+  height: var(--hour);
+  padding-right: 8px;
+  text-align: right;
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+  transform: translateY(-8px);
+}
+
+.rt__track {
+  position: relative;
+  border-left: 1px solid var(--hair);
+}
+
+/* JEN celé hodiny. Půlhodinové linky Routine vypíná
+   (`.fc-timegrid-slot-minor{border-top-style:none}`). */
+.rt__hourline {
+  height: var(--hour);
+  border-bottom: 1px solid var(--hair);
+}
+
+/* „TEĎ" — 2px, radius 100px, tečka 6px. */
+.rt__now {
+  position: absolute;
+  left: calc(-1 * var(--axis));
+  /* Stejný pravý okraj jako bloky — linka nesmí vybíhat z panelu. */
+  right: 12px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 100px;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.rt__nowtime {
+  position: absolute;
+  left: 0;
+  top: -8px;
+  width: 41px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  background: var(--paper);
+}
+
+.rt__nowdot {
+  position: absolute;
+  left: var(--axis);
+  top: -2px;
+  width: 6px;
+  height: 6px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Blok v plánovači: radius 7px. Barevný pruh vlevo je samostatný prvek
+   3×20px s radiusem 10px — jejich `.calendar-border`. */
+.rt__ev {
+  position: absolute;
+  left: 6px;
+  right: 12px;
+  border-radius: 7px;
+  background: var(--paper);
+  border: 1px solid var(--hair-2);
+  box-shadow: 0 1px 2px #00000008;
+  padding: 4px 8px 4px 13px;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.rt__evstripe {
+  position: absolute;
+  left: 4px;
+  top: 6px;
+  width: 3px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--ink-3);
+}
+
+.rt__ev--hot .rt__evstripe {
+  background: var(--accent);
+}
+
+.rt__ev--warm .rt__evstripe {
+  background: var(--amber);
+}
+
+/* Naplánovaný úkol vs. dohodnutá schůzka: čárkovaně = „jen můj plán".
+   Routine tenhle rozdíl řeší jinak (blok úkolu má checkbox), ale rozlišit
+   to potřebujeme — jinak kalendáři nikdo nevěří. */
+.rt__ev--plan {
+  border-style: dashed;
+  background: var(--warm);
+  box-shadow: none;
+}
+
+/* Blok kratší než hodina nemá místo na dvě řádky — čas jde vedle názvu.
+   Bez tohohle se u 30–45min bloku název ustřihl v půlce (odhaleno na
+   screenshotu). */
+.rt__ev--short {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-top: 3px;
+}
+
+.rt__ev--short .rt__evtime {
+  flex-shrink: 0;
+}
+
+.rt__evtime {
+  font-size: 10.5px;
+  color: var(--ink-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.rt__evtitle {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rt__evsub {
+  font-size: 11px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rt__evfaces {
+  display: flex;
+  margin-top: 3px;
+}
+
+.rt__evfaces img,
+.rt__evfaces span {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.5px solid var(--paper);
+  object-fit: cover;
+  background: var(--hair);
+  margin-left: -4px;
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt__evfaces > :first-child {
+  margin-left: 0;
+}
+
+/* Celodenní pás — u nás nese LHŮTY, což Routine nemá. */
+.rt__allday {
+  display: grid;
+  grid-template-columns: var(--axis) minmax(0, 1fr);
+  border-bottom: 1px solid var(--hair);
+}
+
+.rt__alldaylabel {
+  padding: 7px 8px 7px 0;
+  text-align: right;
+  font-size: 11px;
+  color: var(--ink-4);
+}
+
+.rt__alldayitems {
+  border-left: 1px solid var(--hair);
+  padding: 6px 12px 6px 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* Kompaktní čip: radius 3px, výška 20px — jejich `.event` v seznamu. */
+.rt__pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 3px;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: var(--hair);
+  color: var(--ink-2);
+}
+
+.rt__pill--hot {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.rt__pill--warm {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+
+/* ---------- Užší okna ------------------------------------------------- */
+
+/* Dvoupanel se vejde do 900px, ale odhad času už ne — na 900px se metadata
+   úkolu zlomila do druhé řádky a řádky přestaly být stejně vysoké. Odhad je
+   z metadat to nejmenší, takže padá první. */
+@media (max-width: 1099px) {
+  .rt__est {
+    display: none;
+  }
+}
+
+/* Na mobilu dvoupanel nemá smysl: dva sloupce po 190px nejsou dva panely,
+   je to dvakrát nic. Skládá se pod sebe a DEN JDE PRVNÍ — ráno na telefonu
+   je otázka „kde mám teď být", ne „co všechno mě čeká". */
+@media (max-width: 719px) {
+  .rt {
+    min-height: 0;
+  }
+
+  .rt--bleed {
+    margin: -14px -12px -24px;
+  }
+
+  .rt__split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rt__pane:nth-child(2) {
+    order: -1;
+  }
+
+  .rt__pane + .rt__pane {
+    border-left: none;
+  }
+
+  /* Linka mezi panely je teď vodorovná, a silnější — odděluje dvě různé
+     věci, ne dva řádky téhož seznamu. */
+  .rt__pane:nth-child(1) {
+    border-top: 1px solid var(--hair-2);
+  }
+
+  .rt__panehead {
+    height: 40px;
+    padding: 0 12px;
+  }
+
+  .rt__panebody {
+    padding: 8px 12px 16px;
+  }
+
+  /* Mřížka dostane okno místo celé délky dne a doskroluje se na „teď"
+     (viz `RoutineToday`). Jinak jsou úkoly 676 px pod prstem. */
+  .rt__panebody--day {
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 0 0 8px;
+    scrollbar-width: none;
+  }
+
+  /* Hodina se na telefonu roztáhne — prst není myš. */
+  .rt {
+    --hour: 52px;
+    --axis: 44px;
+  }
+
+  /* Delší popisky lhůt se na 390px nevejdou vedle sebe; pás se posouvá
+     vodorovně místo aby narostl do pěti řádek. */
+  .rt__alldayitems {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .rt__pill {
+    flex-shrink: 0;
+  }
+}

@@ -13,17 +13,21 @@ export const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
       { to: '/nastaveni/ucet', label: 'Účet' },
       { to: '/nastaveni/vzhled', label: 'Vzhled' },
       { to: '/nastaveni/oznameni', label: 'Oznámení' },
+      { to: '/nastaveni/kalendar', label: 'Kalendář' },
     ],
   },
   {
     label: 'Organizace',
     items: [
       { to: '/nastaveni/organizace', label: 'Organizace' },
+      { to: '/nastaveni/vizitka', label: 'Vizitka pro předávání' },
       { to: '/nastaveni/sablony-dokumentu', label: 'Šablony dokumentů' },
       { to: '/nastaveni/nazvoslovi', label: 'Vlastní názvosloví' },
       { to: '/nastaveni/externi-pristup', label: 'Externí přístup — šablony' },
       { to: '/nastaveni/zalohy', label: 'Zálohy' },
       { to: '/nastaveni/import', label: 'Import dat' },
+      { to: '/nastaveni/audit', label: 'Auditní stopa' },
+      { to: '/nastaveni/retence', label: 'Doba uchování' },
     ],
   },
 ]

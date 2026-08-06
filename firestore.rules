@@ -19,16 +19,49 @@ service cloud.firestore {
     // §5: role se čte VÝHRADNĚ z Firestore users/{uid}, NIKDY z Custom Claims.
     // Pozn.: rules jazyk nepodporuje top-level const — seznamy rolí jsou
     // proto inline v každé funkci (drž obě definice synchronní se
-    // src/types/user.ts STAFF_ROLES / READ_ONLY_MANAGER_ROLES).
+    // src/types/user.ts STAFF_ROLES / READ_ONLY_MANAGER_ROLES) — S JEDNOU
+    // VĚDOMOU VÝJIMKOU: 'spolupracovnik' JE v STAFF_ROLES (M9, UX zpětná
+    // vazba 2026-07-21 — má normální staff login/účet), ale záměrně NENÍ
+    // tady v `isStaff()`. `isStaff()`/`sameOrg()` dávají ŠIROKÝ přístup
+    // (celá organizace) — spolupracovník má dostat jen to, co mu KO/vedení
+    // výslovně přiřadí (`collaboratorAssignments`), ne totéž, co
+    // `zamestnanec`. Viz `isCollaborator()`/`hasCollaboratorAssignment()`
+    // níž pro jeho VLASTNÍ, úzký gate.
+    // ZABLOKOVANÝ ÚČET SKUTEČNĚ NIC NESMÍ — oprava 2026-07-26.
+    //
+    // `disabledAt` se od M9 zapisovalo (StaffPage „Zablokovat"), zobrazovalo
+    // se v seznamu a v profilu — ale PRAVIDLA HO NIKDY NEČETLA. Zablokovaný
+    // člověk tím pádem jen zmizel z výpisu a jeho přihlášení dál mělo plný
+    // přístup k celé organizaci. Blokace, která neblokuje.
+    //
+    // Odhaleno při zadání „podezřelé chování zablokuje účet": bez tohohle
+    // by automatické zablokování bylo jen kosmetika.
+    //
+    // POZOR NA `.get()` — bez něj to shodí CELOU appku.
+    //
+    // `disabledAt` na účtech založených dřív vůbec neexistuje. Napsal jsem
+    // sem nejdřív `userDoc().disabledAt != null` s poznámkou, že chybějící
+    // pole se vyhodnotí jako `false`. NEVYHODNOTÍ — sáhnutí na neexistující
+    // klíč mapy je v pravidlech CHYBA VYHODNOCENÍ a shodí celý výraz, takže
+    // pravidlo zamítne. Odhalila to sada testů: spadlo 20 testů napříč
+    // moduly, které s blokací nemají nic společného.
+    //
+    // `.get('disabledAt', null)` je ta správná forma: chybějící pole vrátí
+    // výchozí hodnotu místo chyby. Stejná past jako `path[1]` vs `.split()`
+    // popsaná níž.
+    function isDisabled() {
+      return isSignedIn() && userDoc().get('disabledAt', null) != null;
+    }
+
     function isStaff() {
-      return isSignedIn() && userDoc().role in [
+      return isSignedIn() && !isDisabled() && userDoc().role in [
         'superadmin', 'org_admin', 'vedouci_pobocky', 'teamleader',
         'klicova_osoba', 'asistent_ko', 'zamestnanec'
       ];
     }
 
     function isReadOnlyManager() {
-      return isSignedIn() && userDoc().role in ['vedouci_pobocky', 'teamleader'];
+      return isSignedIn() && !isDisabled() && userDoc().role in ['vedouci_pobocky', 'teamleader'];
     }
 
     // M4 (§6 A6): pěstoun má VLASTNÍ, úzký profil (role 'pestoun', mimo
@@ -38,11 +71,36 @@ service cloud.firestore {
     // viz "Klíčová past" komentář výš) — pěstounovo scoping jde vždy přes
     // tuhle funkci + přímé porovnání `familyId`.
     function isFoster() {
-      return isSignedIn() && userDoc().role == 'pestoun';
+      return isSignedIn() && !isDisabled() && userDoc().role == 'pestoun';
     }
 
     function isSuperadmin() {
-      return isSignedIn() && userDoc().role == 'superadmin';
+      return isSignedIn() && !isDisabled() && userDoc().role == 'superadmin';
+    }
+
+    // M9 (UX zpětná vazba 2026-07-21) — Spolupracovník: STAFF_ROLES, ale
+    // NE `isStaff()` (viz komentář tam). Přístup jde VÝHRADNĚ přes
+    // konkrétní `collaboratorAssignments/{uid}_{entityType}_{entityId}`
+    // dokument (deterministické ID, stejný vzor jako Dohoda) — žádné
+    // `sameOrg()`, žádný obecný organizační přístup.
+    function isCollaborator() {
+      return isSignedIn() && !isDisabled() && userDoc().role == 'spolupracovnik';
+    }
+
+    function hasCollaboratorAssignment(entityType, entityId) {
+      let assignmentPath = /databases/$(database)/documents/collaboratorAssignments/$(request.auth.uid + '_' + entityType + '_' + entityId);
+      return isCollaborator() &&
+        exists(assignmentPath) &&
+        get(assignmentPath).data.organizationId == userDoc().organizationId;
+    }
+
+    // Bezpečné čtení mapy — `collaboratorModules` chybí, dokud ho org_admin
+    // poprvé nenastaví (i prázdné `{}` při založení role, viz StaffPage.tsx);
+    // `!= null` guard napřed zabraňuje "property na null" chybě.
+    function collaboratorModuleEnabled(key) {
+      return isCollaborator() &&
+        userDoc().collaboratorModules != null &&
+        userDoc().collaboratorModules[key] == true;
     }
 
     // §5 "Klíčová past": sameOrg() musí být VŽDY gated za isStaff() — pěstoun
@@ -155,7 +213,7 @@ service cloud.firestore {
          request.resource.data.organizationId == userDoc().organizationId &&
          request.resource.data.role in [
            'org_admin', 'vedouci_pobocky', 'teamleader',
-           'klicova_osoba', 'asistent_ko', 'zamestnanec'
+           'klicova_osoba', 'asistent_ko', 'zamestnanec', 'spolupracovnik'
          ]) ||
         (request.auth.uid == uid && request.resource.data.role == 'pestoun' &&
          request.auth.token.email == request.resource.data.email &&
@@ -165,23 +223,73 @@ service cloud.firestore {
          get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.familyId == request.resource.data.fosterFamilyId &&
          get(/databases/$(database)/documents/foster_invitations/$(request.resource.data.email)).data.fosterPersonRef == request.resource.data.fosterPersonRef);
 
-      // Sebeúprava: jen `displayName` (žádná cesta k vlastnímu povýšení role).
+      // Sebeúprava: `displayName` + `notifyBirthdays`/`notifyNameDays`
+      // (2026-07-23/24, nezávislé přepínače narozeninových a jmeninových
+      // upozornění na `/nastaveni/kalendar` — ryze osobní preference,
+      // žádná cesta k vlastnímu povýšení role).
       // Org_admin nad zaměstnancem své organizace: `role`/`disabledAt`
       // (soft-delete přes `disabledAt`, nikdy hard delete — audit stopa),
       // nikdy nesahá na `superadmin` roli žádným směrem. DOPLNENI_ZADANI-
       // DO-M5 §1: `fte`/`capacityThresholdOverride` přidány do stejného
       // org_admin disjunktu (kapacita KO, žádný nový bezpečnostní vzor).
+      // M9: `collaboratorModules` stejně — jen org_admin smí spolupracovníkovi
+      // zapínat/vypínat moduly, NIKDY on sám sobě (nesměl by si sám rozšířit rozsah).
+      // SEBEZABLOKOVÁNÍ (2026-07-26) — jediná cesta, jak si účet může
+      // ublížit, a to je záměr. Když překročí denní limit dotazů na cizí
+      // UID, klient si sám zapíše `disabledAt` a tím se zamkne;
+      // odblokovat ho může UŽ JEN org_admin nebo provozovatel.
+      //
+      // Bezpečné je to proto, že podmínka je JEDNOSMĚRNÁ: nastavit
+      // `disabledAt` na neprázdnou hodnotu ano, vynulovat ne. Kdo se
+      // zamkne, sám se neodemkne.
+      //
+      // Poctivě: tohle zastaví klienta aplikace, ne někoho, kdo si napíše
+      // vlastní. Skutečnou zábranou proti hádání je tvar klíče
+      // `uidHolderCard` (bez příjmení se dokument nenajde) — tohle je
+      // druhá vrstva pro běžný případ, ne pro útočníka.
       allow update: if
         (request.auth.uid == uid &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName'])) ||
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['disabledAt']) &&
+         request.resource.data.disabledAt != null) ||
+        (request.auth.uid == uid &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'notifyBirthdays', 'notifyNameDays', 'avatarUrl'])) ||
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(resource.data.organizationId) &&
          resource.data.role != 'superadmin' && request.resource.data.role != 'superadmin' &&
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
-           ['role', 'disabledAt', 'displayName', 'fte', 'capacityThresholdOverride']
-         ));
+           ['role', 'disabledAt', 'displayName', 'fte', 'capacityThresholdOverride', 'collaboratorModules', 'avatarUrl']
+         )) ||
+
+        // PŘESTĚHOVÁNÍ PĚSTOUNA DO JINÉ DOMÁCNOSTI (27. 7.).
+        //
+        // `fosterFamilyId` řídí přístup pěstouna k jeho portálu na JEDENÁCTI
+        // místech těchhle pravidel — a do dneška ho nešlo změnit VŮBEC
+        // NIKOMU. Přesun pěstouna do jiné domácnosti by mu tedy nechal
+        // přístup ke STARÉ rodině a k nové by se nedostal. To není
+        // nepohodlí, to je únik dat.
+        //
+        // Vlastní disjunkt s vlastní podmínkou, ne přidání do seznamu výš:
+        // musí se ověřit, že CÍLOVÁ rodina patří téže organizaci. Kdyby se
+        // `fosterFamilyId` jen přihodilo mezi ostatní pole, mohl by
+        // org_admin namířit pěstouna na rodinu CIZÍ organizace a ten by ji
+        // pak legálně přečetl — povýšení oprávnění na jeden řádek.
+        (isStaff() && userDoc().role == 'org_admin' &&
+         sameOrg(resource.data.organizationId) &&
+         resource.data.role == 'pestoun' &&
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fosterFamilyId']) &&
+         userDoc().organizationId in
+           get(/databases/$(database)/documents/families/$(request.resource.data.fosterFamilyId)).data.orgAccessList);
 
       // Žádný hard delete profilu — jen `disabledAt` (viz update výše).
       allow delete: if false;
+    }
+
+    // ---- users/{uid}/starredFamilies/{familyId} — hvězdička, UX 2026-07-21
+    //
+    // Ryze osobní záložka ("vidí ji jen ten, kdo si ji udělal") — proto
+    // JEN vlastník `uid`, žádný `sameOrg`/staff výjimka jako u ostatních
+    // `users/{uid}` podkolekcí (ty jsou organizační nastavení, tohle ne).
+    match /users/{uid}/starredFamilies/{familyId} {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
     }
 
     // ---- foster_invitations/{email} — §6 A6, M4 ------------------------
@@ -268,6 +376,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- organizations/{orgId}/enumOptions/{listId} — Cesta B 2026-07-23 -
+    //
+    // Vlastní (org-scoped) položky "otevřených" číselníků (typ události…) —
+    // ZÁMĚRNĚ volnější než `organizations/{orgId}` samotný: KTERÝKOLI
+    // zaměstnanec organizace smí přidat novou položku (ne jen org_admin),
+    // protože jde o nízko-rizikovou popisnou taxonomii bez byznys logiky
+    // navázané na konkrétní hodnotu (na rozdíl od `role`/`careType`, které
+    // ZŮSTÁVAJÍ pevné enumy — na těch je postavená autorizace/§47a výpočet
+    // hodin). Delete zatím záměrně není (žádná položka se nemaže, jen
+    // přibývají — nejjednodušší bezpečné chování, stejný vzor jako
+    // `importJobs`).
+    match /organizations/{orgId}/enumOptions/{listId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create, update: if isStaff() && sameOrg(orgId);
+      allow delete: if false;
+    }
+
     // ---- platformDefaults/{docId} — DOPLNENI_ZADANI-DO-M5 §1 bod 3 -----
     //
     // Jediný globální singleton (`global`), nejnižší úroveň kaskády prahu
@@ -322,6 +447,289 @@ service cloud.firestore {
       allow update: if isSuperadmin() ||
         (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
       allow delete: if false;
+    }
+
+    // ---- organizations/{orgId}/auditLog/{entryId} — NEMĚNITELNÁ stopa ----
+    //
+    // Viz src/types/auditLog.ts pro to, PROČ log existuje a co nezaručuje.
+    // Tady je jeho jediná skutečná záruka, a proto stojí za přesné čtení:
+    //
+    // 1. NEJDE ZMĚNIT ANI SMAZAT. `update`/`delete` jsou `false` pro
+    //    VŠECHNY, superadmina včetně. Log, který umí smazat ten, koho
+    //    zaznamenává, není log. Když bude potřeba záznamy odstranit
+    //    (retenční lhůta), udělá se to mimo klienta — vědomým zásahem
+    //    přes admin SDK, ne funkcí v aplikaci.
+    // 2. NEJDE PODEPSAT CIZÍM JMÉNEM. `actorUid == request.auth.uid`.
+    // 3. ČAS JE SERVEROVÝ. `serverAt == request.time` — klient si nemůže
+    //    záznam antedatovat. Pole `at` (klientské) slouží jen k řazení a
+    //    zobrazení; při sporu platí `serverAt`.
+    // 4. ZŮSTÁVÁ VE SVÉ ORGANIZACI. `sameOrg(orgId)` — přenos spisu mezi
+    //    organizacemi proto zapisuje DVA záznamy, každý u sebe. Obojí je
+    //    pravdivé tvrzení o tom, co ta která organizace udělala.
+    //
+    // Čte vedení a správce organizace (log je nástroj kontroly NAD
+    // pracovníky, ne pracovní pomůcka) — plus superadmin.
+
+    match /organizations/{orgId}/auditLog/{entryId} {
+      allow read: if isSuperadmin() ||
+        (sameOrg(orgId) && userDoc().role in ['org_admin', 'vedouci_pobocky', 'teamleader']);
+
+      allow create: if isStaff() && sameOrg(orgId) &&
+        request.resource.data.organizationId == orgId &&
+        request.resource.data.actorUid == request.auth.uid &&
+        request.resource.data.serverAt == request.time &&
+        request.resource.data.action is string &&
+        request.resource.data.category is string &&
+        request.resource.data.actorName is string &&
+        request.resource.data.actorRole is string &&
+        request.resource.data.at is string;
+
+      allow update, delete: if false;
+    }
+
+    // ---- titleRegistry/{uid} — REJSTŘÍK OBSAZENÝCH UID -------------------
+    //
+    // Metodika MPSV: osoba pečující smí mít v daném čase jen jeden právní
+    // titul doprovázení. Vynutit se to jinde nedá — Dohodu cizí organizace
+    // NEPŘEČTE (`sameOrg` níž u `agreements`), takže bez tohohle rejstříku
+    // systém o cizím titulu neví a "zablokovat" znamená blokovat naslepo.
+    //
+    // Čte KAŽDÝ zaměstnanec, i z organizace bez jakéhokoli vztahu k té
+    // osobě — o to právě jde, ptá se ten, kdo zatím nic nemá. Proto
+    // v dokumentu NEJSOU ŽÁDNÉ OSOBNÍ ÚDAJE (viz types/titleRegistry.ts):
+    // odpověď zní "obsazeno/volno, kým a dokdy", nic víc.
+    //
+    // `list` je ZAKÁZANÝ. Bez toho by šel rejstřík stáhnout celý a z něj
+    // odvodit, kolik případů která organizace vede — to nikomu nepřísluší.
+    // Sáhnout jde jen na konkrétní UID, které se tazatel dozvěděl jinde.
+    //
+    // ZÁPIS: založit smí kdokoli (první organizace, co UID zavede), ale
+    // PŘEPSAT jen držitel — nebo kdokoli, když je titul označený za
+    // ukončený (`validTo != null`). Tím je strukturálně vyloučené, že si
+    // organizace přetáhne UID, u kterého běží OTEVŘENÝ titul někoho jiného.
+    //
+    // ČEHO SE TOHLE PRAVIDLO NEDOTKNE, ať to není překvapení: `validTo`
+    // v budoucnosti se tu od `validTo` v minulosti odlišit nedá (uložené
+    // je ISO string, `request.time` je timestamp — nesrovnatelné typy).
+    // Titul s naplánovaným koncem tedy jde přepsat i před tím koncem.
+    // Časovou platnost hlídá `isTitleRunning` v aplikaci; pravidla drží tu
+    // podstatnou část — otevřený titul je nedotknutelný.
+    //
+    // `delete` je zakázaný pro všechny kromě superadmina: smazaný záznam
+    // vypadá stejně jako "tohle UID jsme nikdy neviděli".
+
+    match /titleRegistry/{uid} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create: if isStaff() &&
+        request.resource.data.uid == uid &&
+        request.resource.data.updatedByOrgId == userDoc().organizationId;
+
+      // PŘEPSAT smí jen držitel — nebo kdokoli, když je pěstoun UVOLNĚNÝ.
+      //
+      // Pozor na rozdíl, který je jádrem celého předávání: „Dohoda
+      // skončila" (`validTo` v minulosti) NESTAČÍ. Dokud stará organizace
+      // nezapsala `releasedAt`, je pěstoun pořád její — může s ním mít
+      // nedořešené předávací protokoly nebo odhlášení pro OSPOD. Uvolnit
+      // ho musí ČLOVĚK po telefonátu, ne kalendář.
+      //
+      // Dřív tu stálo `resource.data.validTo != null`, což znamenalo, že
+      // naplánovaný konec Dohody stačil k převzetí. To bylo špatně.
+      allow update: if isSuperadmin() || (
+        isStaff() &&
+        request.resource.data.uid == uid &&
+        request.resource.data.updatedByOrgId == userDoc().organizationId && (
+          resource.data.holderOrgId == userDoc().organizationId ||
+          resource.data.get('releasedAt', null) != null
+        )
+      );
+
+      allow delete: if isSuperadmin();
+    }
+
+    // ---- orgDirectory/{orgId} — VEŘEJNÁ VIZITKA ORGANIZACE --------------
+    //
+    // Předání pěstouna stojí na telefonátu: nová organizace uvidí, že
+    // pěstoun pravděpodobně patří jinam, a musí se mít kam obrátit.
+    // `organizations/{orgId}` na to použít nejde — čte ho jen ta
+    // organizace sama a jsou v něm i kapacitní prahy a tarif.
+    //
+    // Obsah je PRACOVNÍ KONTAKT (název, jméno vedení, firemní telefon
+    // a e-mail), ne osobní údaj a nikdy nic o klientech. Čte každý
+    // zaměstnanec; `list` je zakázaný stejně jako u rejstříku, aby se
+    // z toho nedal stáhnout seznam organizací na trhu. Sáhne se přímo na
+    // orgId, které volající zná z rejstříku.
+    //
+    // Píše VÝHRADNĚ org_admin své vlastní vizitky — vizitka je vyjádření
+    // organizace o sobě, ne provozní údaj, který mění kdokoli.
+
+    match /orgDirectory/{orgId} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create, update: if isSuperadmin() || (
+        sameOrg(orgId) &&
+        userDoc().role == 'org_admin' &&
+        request.resource.data.organizationId == orgId
+      );
+
+      allow delete: if isSuperadmin();
+    }
+
+    // ---- personIndex/{hash} — VYHLEDÁVACÍ OTISKY ------------------------
+    //
+    // Klíčem je SHA-256 otisk identifikátoru (rodné číslo, občanka, pas,
+    // číslo rozsudku, jméno s adresou) — viz src/lib/personMatch.ts.
+    // Najít někoho tedy znamená znát jeho údaj předem; nová organizace ho
+    // má proto, že jí pěstoun sedí naproti a ukazuje doklad.
+    //
+    // V dokumentu je JEN UID a druh klíče. Žádná jména, žádné hodnoty.
+    // Kdyby tu byly, byla by tahle kolekce nejcennějším cílem v databázi.
+    //
+    // `list` zakázaný — jinak by šel index stáhnout celý a spárovat
+    // s čímkoli dalším. Mazat nesmí nikdo kromě superadmina: smazaný otisk
+    // znamená, že se osoba přestane nacházet a systém ji povolí založit
+    // podruhé.
+    //
+    // ČEHO SE TÍMHLE NEDOSÁHNE: pravidla neumí omezit POČET dotazů, takže
+    // hádání po jednom tohle nezastaví. Zábranou je zatím jen povinný
+    // auditní zápis u každého dotazu (personIndexService) — odstrašení,
+    // ne prevence. Skutečné omezení chce serverovou funkci a musí přibýt
+    // před ostrým provozem.
+
+    // ---- uidHolderCard/{uid} — OVĚŘOVACÍ KARTA K UID -------------------
+    //
+    // POZOR: JEDINÁ kolekce v celé databázi, kde osobní údaj překračuje
+    // hranici organizace. Zadání 26. 7.: po zadání UID se má ukázat jméno,
+    // příjmení a místo, aby pracovník poznal, že opsal správné číslo.
+    //
+    // Obsah je omezený na to a nic víc — jméno, příjmení, OBEC (ne ulice
+    // s číslem popisným), a která organizace osobu vede. Rodné číslo,
+    // datum narození ani cokoli o dětech sem nepatří a nikdy nesmí.
+    //
+    // `list` zakázaný. Zápis jen za vlastní organizaci. Čtení je navíc
+    // povinně auditované v `uidHolderCardService` — pravidla to vynutit
+    // neumí, ale služba nemá jinou cestu.
+    //
+    // ZNÁMÁ SLABINA, ať to nikdo neobjeví až za rok: UID má kontrolní
+    // číslici, takže platné je zhruba každé desáté třináctimístné číslo
+    // a prefix se dá uhodnout. Kdo bude zkoušet čísla po řadě, bude
+    // dostávat jména. Omezit počet dotazů pravidla neumí — chce to
+    // serverovou funkci a musí přibýt před ostrým provozem.
+
+    match /uidHolderCard/{key} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      // `key` je OTISK UID + příjmení, ne UID — proto se s `data.uid`
+      // porovnávat nedá ani nemá. Zaručuje se jen to, že kartu zapisuje
+      // organizace, která osobu vede.
+      allow create, update: if isStaff() &&
+        request.resource.data.holderOrgId == userDoc().organizationId;
+
+      allow delete: if isSuperadmin();
+    }
+
+    // ---- lookupQuota/{userUid} — denní počítadlo dotazů na cizí UID ----
+    //
+    // Druhá vrstva k tvaru klíče `uidHolderCard`: při překročení limitu si
+    // klient sám zapíše `disabledAt` na svůj profil a zamkne se (viz
+    // `users` update pravidlo, jednosměrné).
+    //
+    // Poctivě: počítadlo si vede sám uživatel, takže vlastní klient by ho
+    // zvyšovat nemusel. Skutečnou zábranou proti hádání je to, že karta
+    // se bez příjmení nenajde; tohle chytá zvědavost, ne útok.
+
+    match /lookupQuota/{userUid} {
+      allow read: if isSuperadmin() || request.auth.uid == userUid;
+      allow create, update: if request.auth.uid == userUid &&
+        request.resource.data.userUid == userUid;
+      allow delete: if isSuperadmin();
+    }
+
+    // ---- uidRegistry/{uid} — VŠECHNA VYDANÁ ČÍSLA ----------------------
+    //
+    // Od 26. 7. je UID NÁHODNÉ číslo bez struktury (viz lib/uidAllocator.ts).
+    // Tahle kolekce je jediné místo, kde je vidět, že číslo už je vydané —
+    // a proto se do ní zapisuje TRANSAKCÍ při každém přidělení.
+    //
+    // Obsah: UID, typ entity, kdy a kým vydáno. ŽÁDNÉ osobní údaje a nic
+    // o obsahu té entity — jen „tohle číslo je obsazené a je to dítě".
+    //
+    // Čte každý zaměstnanec (alokátor musí ověřit srážku). `list` zakázaný:
+    // vylistovaný rejstřík by prozradil, kolik čeho v systému je.
+    //
+    // PŘEPSAT ANI SMAZAT NEJDE NIKOMU, ani superadminovi. Uvolněné číslo by
+    // šlo přidělit podruhé a dva různí lidé by měli totéž UID — přesně to,
+    // co má rejstřík vyloučit. Kdyby to bylo někdy opravdu potřeba, řeší se
+    // to migrací, ne pravidlem.
+
+    // ---- PRÁVNÍ ROVINA: rozsudek → svěření → předmět dohody -------------
+    //
+    // Do 27. 7. tyhle tři kolekce v pravidlech NEBYLY VŮBEC — tedy zakázané
+    // pro všechny. Typy a čisté funkce existovaly s 21 testy, ale vrstva
+    // byla nepoužitelná. Navržený model, který nemá pravidla, je papír.
+    //
+    // Přístup jde přes denormalizovaný `orgAccessList`, ne přes join — viz
+    // úprava 3 v hlavičce `types/custody.ts`. Rozsudek i svěření jsou
+    // entity PLATFORMY (soud rozhodl bez ohledu na to, kdo doprovází),
+    // takže seznam se rozšiřuje, nikdy nezužuje: organizace, která případ
+    // vedla, musí svou minulost číst i potom.
+    //
+    // MAZAT NEJDE NIKOMU. Rozsudek se nemaže, ruší se novým rozhodnutím
+    // (`endedByCourtDecisionId`) — na tom stojí čitelnost příběhu „tímhle
+    // to začalo, tímhle skončilo".
+
+    match /courtDecisions/{decisionId} {
+      allow read: if isSuperadmin() || (isStaff() && userDoc().organizationId in resource.data.orgAccessList);
+      allow create: if isStaff() && request.resource.data.orgAccessList == [userDoc().organizationId];
+      allow update: if isStaff() &&
+        userDoc().organizationId in resource.data.orgAccessList &&
+        resource.data.orgAccessList.toSet().difference(request.resource.data.orgAccessList.toSet()).size() == 0;
+      allow delete: if false;
+    }
+
+    match /custodyAssignments/{assignmentId} {
+      allow read: if isSuperadmin() || (isStaff() && userDoc().organizationId in resource.data.orgAccessList);
+      allow create: if isStaff() &&
+        request.resource.data.orgAccessList == [userDoc().organizationId] &&
+        request.resource.data.id == assignmentId;
+      allow update: if isStaff() &&
+        userDoc().organizationId in resource.data.orgAccessList &&
+        resource.data.orgAccessList.toSet().difference(request.resource.data.orgAccessList.toSet()).size() == 0;
+      allow delete: if false;
+    }
+
+    // Předmět dohody patří JEDNÉ Dohodě, tedy jedné organizaci — žádný
+    // sdílený seznam, prostý `sameOrg`.
+    match /agreementSubjects/{subjectId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() && request.resource.data.organizationId == userDoc().organizationId;
+      allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow delete: if false;
+    }
+
+    match /uidRegistry/{uid} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create: if isStaff() &&
+        request.resource.data.uid == uid &&
+        request.resource.data.entityType is string;
+
+      allow update, delete: if false;
+    }
+
+    match /personIndex/{hash} {
+      allow get: if isSuperadmin() || isStaff();
+      allow list: if false;
+
+      allow create, update: if isStaff() &&
+        request.resource.data.uid is string &&
+        request.resource.data.createdByOrgId == userDoc().organizationId;
+
+      allow delete: if isSuperadmin();
     }
 
     // ---- organizations/{orgId}/backupRestoreTests/{id} — §5.5 gate, M1.5 -
@@ -399,7 +807,8 @@ service cloud.firestore {
       // (dítě může mít jinou aktuální `organizationId` než pěstounův
       // vlastní vztah, viz §4.2 bod 7 denormalizace, ale rodina zůstává).
       allow read: if isSuperadmin() || sameOrg(resource.data.organizationId) ||
-        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId);
+        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId) ||
+        hasCollaboratorAssignment('child', childId);
       allow create: if isStaff() &&
         request.resource.data.organizationId == userDoc().organizationId;
       allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
@@ -424,7 +833,8 @@ service cloud.firestore {
       // rodiny (stejné `familyId`) — ne cizí rodiny.
       allow read: if isSuperadmin() ||
         (isStaff() && userDoc().organizationId in resource.data.orgAccessList) ||
-        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId);
+        (isFoster() && resource.data.familyId == userDoc().fosterFamilyId) ||
+        hasCollaboratorAssignment('fosterPerson', fosterId);
 
       allow create: if isStaff() &&
         request.resource.data.orgAccessList == [userDoc().organizationId];
@@ -462,7 +872,14 @@ service cloud.firestore {
     // kontrolou.
 
     match /{path=**}/agreements/{agreementId} {
-      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      // `resource == null` — rodina bez Dohody zatím vůbec (běžný, UI
+      // podporovaný stav, `FamilyDetailPage.tsx` "Zatím žádná Dohoda…"),
+      // `agreementId == organizationId` znamená `getActiveAgreement` čte
+      // dokument, co ještě neexistuje — bez týhle pojistky `resource.data`
+      // na `null` shodí CELÝ `getDoc` chybou vyhodnocení pravidel (živě
+      // odhaleno 2026-07-23, ne teoreticky), místo aby vrátil "neexistuje"
+      // (stejný idiom už používá `orgCodeCounters` výš).
+      allow read: if resource == null || isSuperadmin() || sameOrg(resource.data.organizationId);
 
       allow create: if isStaff() &&
         request.resource.data.organizationId == userDoc().organizationId &&
@@ -473,6 +890,27 @@ service cloud.firestore {
         sameOrg(resource.data.organizationId) &&
         canRollbackImportEntity(resource.data.createdByImportJobRef)
       );
+    }
+
+    // ---- .../agreements/{orgId}/history/{uid} — PŘEDCHOZÍ DOHODY -------
+    //
+    // Dohoda má deterministické ID = `organizationId`, takže druhá Dohoda
+    // mezi toutéž rodinou a toutéž organizací zapisuje na stejnou cestu.
+    // Než se přepíše, uloží se ta předchozí sem (viz `createAgreement`) —
+    // jinak by pěstoun, který se po letech vrátí k původní organizaci,
+    // svým návratem smazal vlastní historii.
+    //
+    // Čte a zakládá VÝHRADNĚ organizace, které ty Dohody patřily. Měnit
+    // ani mazat nesmí nikdo: je to uzavřená minulost a na ní visí
+    // třicetiletá archivační lhůta. Superadmin tu výjimku nemá schválně —
+    // kdo smí historii přepsat, ten ji vlastně nemá.
+
+    match /{path=**}/agreements/{agreementId}/history/{historyId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        agreementId == userDoc().organizationId;
+      allow update, delete: if false;
     }
 
     // ---- families/{familyId}/timeline/{id} — ZADANI §4.1/§7/§4.5, M2 -----
@@ -539,6 +977,51 @@ service cloud.firestore {
         request.resource.data.createdByOrgId == userDoc().organizationId &&
         hasActiveAgreementFor(path[1]);
       allow update, delete: if false; // append-only, §5
+    }
+
+    // ---- families/{familyId}/messages/{id} — Chat, M9 --------------------
+    //
+    // Na rozdíl od `timeline` výš (jen staff zakládá) je tohle OBOUSMĚRNÉ
+    // vlákno — pěstoun i staff zakládají zápisy do STEJNÉ podkolekce.
+    // `audience` (sharing.ts §7.4 "messages.audience") — staff smí zapsat
+    // 'foster' (skutečná zpráva) i 'internal' (interní poznámka k vláknu,
+    // pěstoun ji nikdy neuvidí); pěstoun VÝHRADNĚ 'foster' (jediná úroveň,
+    // kterou sám vidí — nemá smysl mu dovolit zapsat cokoli jiného).
+    // `private`/`ospod` nemají v chatu smysl (dvoustranná konverzace, OSPOD
+    // nemá portál), proto je ani jeden disjunkt níž nepovoluje, i když typ
+    // (`SharingLevel`) je sdílený se `sharing.ts`.
+    //
+    // Čtení: staff vidí CELÉ vlákno (`sameOrg`, stejně jako timeline),
+    // pěstoun jen `audience == 'foster'` zápisy vlastní rodiny — musí
+    // přesně zrcadlit `mojeService.listFosterVisibleMessages` dotaz (§5
+    // "List dotaz vs. pole v pravidle", stejná past jako u timeline výš).
+    //
+    // Spolupracovník (M9) NEMÁ přístup — chat je KO↔pěstoun věc, není v
+    // seznamu jeho modulů (`collaborator.ts`), a `isCollaborator()` tu
+    // záměrně není použité, stejně jako `isStaff()` ho jinde vylučuje.
+    match /{path=**}/messages/{messageId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.createdByOrgId) ||
+        (
+          isFoster() && path[1] == userDoc().fosterFamilyId &&
+          resource.data.audience == 'foster'
+        );
+      allow create: if isSuperadmin() ||
+        (
+          isStaff() &&
+          request.resource.data.createdByOrgId == userDoc().organizationId &&
+          request.resource.data.authorRole == 'staff' &&
+          request.resource.data.createdByUid == request.auth.uid &&
+          request.resource.data.audience in ['foster', 'internal'] &&
+          hasActiveAgreementFor(path[1])
+        ) ||
+        (
+          isFoster() && path[1] == userDoc().fosterFamilyId &&
+          request.resource.data.createdByOrgId == userDoc().organizationId &&
+          request.resource.data.authorRole == 'foster' &&
+          request.resource.data.createdByUid == request.auth.uid &&
+          request.resource.data.audience == 'foster'
+        );
+      allow update, delete: if false; // append-only, stejně jako timeline
     }
 
     // ---- families/{familyId}/documents/{docId} — ZADANI §6 A1, M5 --------
@@ -686,6 +1169,22 @@ service cloud.firestore {
 
     // ---- fosterPersons/{fosterId}/rateOverrides + policyOverrides — §B.5/B.5.1
 
+    // ---- fosterPersons/{id}/householdHistory/{entryId} — STĚHOVÁNÍ ------
+    //
+    // Pěstoun může přejít do jiné domácnosti (ovdoví, znovu se ožení).
+    // `familyId` na osobě drží AKTUÁLNÍ domácnost; kde bydlel předtím a
+    // odkdy dokdy, je tady. Bez toho by se přesunem ztratilo, že k té staré
+    // rodině kdy patřil — a přitom v jejím spisu zůstávají zápisy o něm.
+    //
+    // Append-only. Přepsat minulé bydliště by znamenalo přepsat kontext
+    // cizích zápisů.
+
+    match /fosterPersons/{fosterPersonId}/householdHistory/{entryId} {
+      allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
+      allow create: if hasFosterPersonAccess(fosterPersonId);
+      allow update, delete: if false;
+    }
+
     match /fosterPersons/{fosterPersonId}/rateOverrides/{key}/history/{entryId} {
       allow read: if isSuperadmin() || hasFosterPersonAccess(fosterPersonId);
       allow create: if hasFosterPersonAccess(fosterPersonId);
@@ -815,7 +1314,16 @@ service cloud.firestore {
       allow create: if isStaff() &&
         request.resource.data.organizationId == userDoc().organizationId &&
         hasActiveAgreementFor(familyId);
-      allow update, delete: if false;
+      // UX zpětná vazba 2026-07-21 — editace povolena (dřív `if false`,
+      // takže nešel opravit ani překlep). Vlastní organizace smí měnit
+      // obsah, ale NE "přeadresovat" záznam jinam (organizationId/childRef
+      // musí zůstat). Delete pořád zakázaný — audit stopa.
+      allow update: if isSuperadmin() || (
+        sameOrg(resource.data.organizationId) &&
+        request.resource.data.organizationId == resource.data.organizationId &&
+        request.resource.data.childRef == resource.data.childRef
+      );
+      allow delete: if false;
     }
 
     // ---- families/{familyId}/agreements/{agreementId}/ippd — §B.4
@@ -848,6 +1356,57 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---- organizations/{orgId}/calendarEvents/{id} — Kalendář ------------
+    //
+    // Sdílený týmový kalendář — na rozdíl od skoro celé appky (append-only)
+    // se tenhle typ SKUTEČNĚ upravuje (přetažení na jiný čas/den v
+    // `CalendarPage.tsx`), ne jen zakládá. `update` nesmí měnit
+    // `organizationId`/`createdByUid` (identita záznamu), cokoli jiného
+    // (čas, název, komu je přiřazená, status) smí přepsat KTERÝKOLI staff
+    // stejné organizace — sdílený kalendář, ne soukromé silo (stejná
+    // důvěra napříč staff rolemi jako jinde v appce). `delete: if false`
+    // zůstává i tady (§5 audit stopa přesně jako všude jinde) — "zrušit"
+    // v UI nastaví `status:'zruseno'`, nikdy nemaže dokument.
+    match /organizations/{orgId}/calendarEvents/{eventId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isSuperadmin() ||
+        (
+          isStaff() && sameOrg(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.createdByUid == request.auth.uid
+        );
+      allow update: if isSuperadmin() ||
+        (
+          isStaff() && sameOrg(orgId) &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          request.resource.data.createdByUid == resource.data.createdByUid
+        );
+      allow delete: if false;
+    }
+
+    // ---- organizations/{orgId}/tasks/{id} — Úkoly ------------------------
+    //
+    // Stejná pravidla jako `calendarEvents` výš (viz tam komentář pro plné
+    // zdůvodnění) — sdílený staff seznam úkolů, `update` nesmí měnit
+    // identitu záznamu (`organizationId`/`createdByUid`), `delete: if
+    // false` (§5 audit stopa — "hotovo"/"zrušeno" je stav, ne mazání).
+    match /organizations/{orgId}/tasks/{taskId} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow create: if isSuperadmin() ||
+        (
+          isStaff() && sameOrg(orgId) &&
+          request.resource.data.organizationId == orgId &&
+          request.resource.data.createdByUid == request.auth.uid
+        );
+      allow update: if isSuperadmin() ||
+        (
+          isStaff() && sameOrg(orgId) &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          request.resource.data.createdByUid == resource.data.createdByUid
+        );
+      allow delete: if false;
+    }
+
     // ---- fosterProspects/{id} — TOP-LEVEL, obyčejné Firestore ID, §B.7
 
     match /fosterProspects/{id} {
@@ -867,11 +1426,119 @@ service cloud.firestore {
     // ---- external_participants/{id} — TOP-LEVEL, §5.1 základ (jen CRUD;
     // plný 3-krokový grant engine je M8, samostatný modul)
 
-    match /external_participants/{id} {
+    match /external_participants/{epId} {
       allow read: if isSuperadmin() || sameOrg(resource.data.organizationId);
       allow create: if isStaff() && request.resource.data.organizationId == userDoc().organizationId;
       allow update: if isSuperadmin() || sameOrg(resource.data.organizationId);
       allow delete: if false;
+
+      // ---- external_participants/{epId}/access/{entityId}/grants/{grantId} — M8, §5.1
+      //
+      // Plný grant/permission engine. `entityId` je docId DÍTĚTE NEBO
+      // PĚSTOUNA (viz `ExternalEntityType` v src/types/externalParticipant.ts)
+      // — `access/{entityId}` je jen cesta, žádný vlastní dokument (grants
+      // scoping se čte z rodičovského externisty, stejná "žádné vlastní
+      // organizationId" past jako u M1.5 importJobs/stagingRecords). Citlivá
+      // oprávnění (viz PERMISSION_KEYS v src/types/externalParticipant.ts —
+      // drž seznam SYNCHRONNÍ) MUSÍ projít `requested→approved→active` (3
+      // role, ne nutně 3 různí lidé — "3 aktéři" čteme jako 3 ROLE v
+      // řetězci, ne vynucení tří odlišných uid). Necitlivá = `grantDirect`,
+      // rovnou `active`, jeden krok. `revoke` = update na status 'revoked'
+      // (nastavuje `validTo` v service vrstvě), NIKDY delete — proto
+      // `allow delete: if false` napořád.
+      match /access/{entityId}/grants/{grantId} {
+        function participantOrgId() {
+          return get(/databases/$(database)/documents/external_participants/$(epId)).data.organizationId;
+        }
+        function isSensitive(key) {
+          return key in ['viewMedical', 'signDocuments', 'chatWith', 'videoCalls'];
+        }
+        // request (citlivé) i grantDirect (necitlivé): KO/asistent/org_admin.
+        function canRequest() {
+          return isStaff() && userDoc().role in ['klicova_osoba', 'asistent_ko', 'org_admin'] && sameOrg(participantOrgId());
+        }
+        // schválení a zamítnutí: vedení organizace.
+        function canApprove() {
+          return isStaff() && userDoc().role in ['org_admin', 'vedouci_pobocky', 'teamleader'] && sameOrg(participantOrgId());
+        }
+        // aktivace: samostatný, užší krok — jen org_admin.
+        function canActivate() {
+          return isStaff() && userDoc().role == 'org_admin' && sameOrg(participantOrgId());
+        }
+        function canRevoke() {
+          return isStaff() && userDoc().role in ['org_admin', 'vedouci_pobocky', 'teamleader'] && sameOrg(participantOrgId());
+        }
+        // update nesmí "cestou" změnit, KOMU/ČEMU grant patří — jen status/audit pole.
+        function sameGrantIdentity() {
+          return request.resource.data.permissionKey == resource.data.permissionKey;
+        }
+
+        allow read: if isSuperadmin() || sameOrg(participantOrgId());
+
+        allow create: if isSuperadmin() ||
+          (canRequest() && !isSensitive(request.resource.data.permissionKey) && request.resource.data.status == 'active') ||
+          (canRequest() && isSensitive(request.resource.data.permissionKey) && request.resource.data.status == 'requested');
+
+        allow update: if isSuperadmin() || (sameGrantIdentity() && (
+          (canApprove() && resource.data.status == 'requested' && request.resource.data.status == 'approved') ||
+          (canApprove() && resource.data.status == 'requested' && request.resource.data.status == 'rejected') ||
+          (canActivate() && resource.data.status == 'approved' && request.resource.data.status == 'active') ||
+          (canRevoke() && resource.data.status in ['requested', 'approved', 'active'] && request.resource.data.status == 'revoked')
+        ));
+
+        allow delete: if false;
+      }
+    }
+
+    // ---- organizations/{orgId}/externalRoleTemplates/{id} — M8, §5.1 -----
+    //
+    // Jen zkratka pro VYPLNĚNÍ formuláře (předvyplní defaultPermissions),
+    // NE pro obejití schvalování — citlivá oprávnění pořád projdou celým
+    // `requestGrant→approveGrant→activateGrant` řetězcem výš, ať pochází
+    // odkudkoli. Nízká citlivost dat → čtení všem ve staffu, zápis jen org_admin.
+
+    match /organizations/{orgId}/externalRoleTemplates/{id} {
+      allow read: if isSuperadmin() || sameOrg(orgId);
+      allow write: if isSuperadmin() || (isStaff() && userDoc().role == 'org_admin' && sameOrg(orgId));
+    }
+
+    // ---- collaboratorAssignments/{collaboratorUid}_{entityType}_{entityId} — M9, Spolupracovník
+    //
+    // Deterministické ID (stejný vzor jako Dohoda, viz AgreementDoc) —
+    // umožňuje `children`/`fosterPersons` pravidlům výš ověřit "má tenhle
+    // spolupracovník přiřazenou tuhle osobu" přímým `exists()`, bez dotazu.
+    // Zakládá/ruší KO/vedení (isStaff() téhle organizace) — NIKDY sám
+    // spolupracovník (nesměl by si sám rozšířit rozsah). Žádný update —
+    // přeřazení je smazat + založit nový záznam.
+    match /collaboratorAssignments/{assignmentId} {
+      allow read: if isSuperadmin() || sameOrg(resource.data.organizationId) ||
+        (isCollaborator() && request.auth.uid == resource.data.collaboratorUid);
+
+      allow create: if isStaff() &&
+        request.resource.data.organizationId == userDoc().organizationId &&
+        assignmentId == request.resource.data.collaboratorUid + '_' + request.resource.data.entityType + '_' + request.resource.data.entityId;
+
+      allow update: if false;
+      allow delete: if isSuperadmin() || sameOrg(resource.data.organizationId);
+
+      // ---- .../entries/{entryId} — spolupracovníkův VLASTNÍ pracovní zápis
+      // (výkaz práce), ZÁMĚRNĚ oddělený od families/{id}/timeline — viz
+      // CollaboratorEntryDoc doc komentář (src/types/collaborator.ts) pro
+      // proč. Append-only, stejně jako zbytek historie v appce.
+      match /entries/{entryId} {
+        function parentAssignment() {
+          return get(/databases/$(database)/documents/collaboratorAssignments/$(assignmentId)).data;
+        }
+        allow read: if isSuperadmin() || sameOrg(parentAssignment().organizationId) ||
+          (isCollaborator() && request.auth.uid == parentAssignment().collaboratorUid);
+
+        allow create: if isCollaborator() &&
+          request.auth.uid == parentAssignment().collaboratorUid &&
+          request.resource.data.createdByUid == request.auth.uid &&
+          collaboratorModuleEnabled('writeTimeline');
+
+        allow update, delete: if false;
+      }
     }
 
     // ---- Vše ostatní: default deny, dokud modul nepřidá vlastní match ---

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHead } from '@/components/spis/PageBody'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import { downloadBlob } from '@/lib/utils'
 import { exportOrganizationDataToBlob } from '@/services/exportService'
+import { actorFields, auditActor, recordAudit } from '@/services/auditLogService'
 import {
   getBackupConfig,
   saveBackupConfig,
@@ -18,7 +20,7 @@ import {
   runManualBackup,
 } from '@/services/backupService'
 import type { BackupConfigDoc, BackupDestinationType, BackupJobDoc, BackupJobStatus } from '@/types/backup'
-import { ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from '@/components/ui/icons'
 
 const DEFAULT_CONFIG: BackupConfigDoc = {
   schedule: { enabled: false, dayOfWeek: 'ne', time: '02:00' },
@@ -117,6 +119,16 @@ export default function BackupSettingsPage() {
     try {
       const { blob, filename } = await runManualBackup(organizationId, password)
       downloadBlob(blob, filename)
+      // Záloha obsahuje kompletní data organizace a opouští systém do
+      // počítače člověka — patří do stopy stejně jako odeslání úřadu.
+      if (userDoc) {
+        await recordAudit({
+          organizationId,
+          action: 'backup_created',
+          ...actorFields(auditActor(userDoc)),
+          detail: `Soubor ${filename}`,
+        })
+      }
       setPassword('')
       setNotice('Záloha stažena. Heslo je potřeba i k obnovení — systém si ho nikde neukládá.')
       await reload()
@@ -134,6 +146,14 @@ export default function BackupSettingsPage() {
     try {
       const { blob, filename } = await exportOrganizationDataToBlob(organizationId)
       downloadBlob(blob, filename)
+      if (userDoc) {
+        await recordAudit({
+          organizationId,
+          action: 'export_generated',
+          ...actorFields(auditActor(userDoc)),
+          detail: `Soubor ${filename}`,
+        })
+      }
     } catch {
       setError('Export se nepodařilo vytvořit.')
     } finally {
@@ -143,34 +163,36 @@ export default function BackupSettingsPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Zálohy' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Zálohy</h1>
-        <p className="mt-4 text-sm text-text-secondary">
-          Tahle stránka je pro zaměstnance konkrétní organizace.
-        </p>
+      <AppShell>
+        <PageHead title="Zálohy" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
+        </section>
       </AppShell>
     )
   }
 
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Zálohy' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Zálohy a export</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Data organizace nejsou uzamčená u dodavatele — export i záloha jsou vždy k dispozici.
-      </p>
+      <PageHead
+        title="Zálohy a export"
+        description="Data organizace nejsou uzamčená u dodavatele — export i záloha jsou vždy k dispozici."
+      >
+        {(error || notice) && (
+          <>
+            {error && (
+              <p className="text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+            {notice && <p className="text-sm text-success">{notice}</p>}
+          </>
+        )}
+      </PageHead>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-      {notice && <p className="mt-3 text-sm text-success">{notice}</p>}
-
-      <div className="mt-6 max-w-[560px] space-y-6">
-        <section className="rounded-lg border border-border bg-surface p-5">
+      <section className="sp__card sp__card--pad">
           <p className="text-sm font-medium text-text-primary">Export všech dat organizace</p>
           <p className="mt-1 text-sm text-text-secondary">
             Nešifrovaná .xlsx tabulka rodin, pěstounů, dětí a Dohod — pro vlastní evidenci nebo
@@ -181,7 +203,7 @@ export default function BackupSettingsPage() {
           </Button>
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5">
+        <section className="sp__card sp__card--pad">
           <p className="text-sm font-medium text-text-primary">Zálohovat teď</p>
           <p className="mt-1 text-sm text-text-secondary">
             Záloha se zašifruje heslem, které zadáte — systém si ho NEUKLÁDÁ. Bez něj nejde záloha
@@ -209,7 +231,7 @@ export default function BackupSettingsPage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-surface p-5">
+        <section className="sp__card sp__card--pad">
           <p className="text-sm font-medium text-text-primary">Naplánovaná záloha</p>
           <p className="mt-1 text-sm text-text-secondary">
             Nastavení se uloží, ale sama se zatím nespustí — potřebuje naplánovanou úlohu na
@@ -284,14 +306,13 @@ export default function BackupSettingsPage() {
               {savingConfig ? 'Ukládám…' : 'Uložit nastavení'}
             </Button>
           )}
-        </section>
-      </div>
+      </section>
 
-      <div className="mt-6">
-        <h2 className="text-sm font-medium text-text-primary">Historie záloh</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Historie záloh</h2>
         <div className="mt-3">
           {jobs === null ? (
-            <p className="text-sm text-text-secondary">Načítám…</p>
+            <p className="text-sm text-text-tertiary">Načítám…</p>
           ) : jobs.length === 0 ? (
             <EmptyState icon={ShieldCheck} text="Zatím žádná záloha." />
           ) : (
@@ -323,7 +344,7 @@ export default function BackupSettingsPage() {
             </Table>
           )}
         </div>
-      </div>
+      </section>
     </AppShell>
   )
 }

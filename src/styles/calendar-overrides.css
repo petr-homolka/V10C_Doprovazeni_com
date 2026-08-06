@@ -1,0 +1,371 @@
+/**
+ * KALENDÁŘ — vizuální jazyk podle Routine, odečtený z jejich CSS.
+ *
+ * `react-big-calendar` je záměrně nenastylovaná knihovna („bring your own
+ * CSS"). Přetahování a měnění délky událostí už appka umí (DnD addon),
+ * takže se tady nemění chování, ale VZHLED.
+ *
+ * Odečtené hodnoty (jejich FullCalendar v `useJournalEntry-*.css`):
+ *   .fc-timegrid-slot { height:15px }            → hodina 30 px (velmi hustě)
+ *   .fc-timegrid-slot-minor { border-top:none }  → ŽÁDNÉ půlhodinové linky
+ *   .fc-timegrid-slot-label-cushion { 11px/17px, #a9a9a9 }
+ *   .fc-day-today { background-color: transparent }  → dnešek se NEPODBARVUJE
+ *   .fc-timegrid-now-indicator-line { height:2px; radius:100px; #f96359 }
+ *   .fc-timegrid-now-indicator-line::before { 6px tečka }
+ *   .fc-daygrid-day-number { min-width:22px; height:22px; radius:50% }
+ *   celodenní pás: šrafa 4×4 px z `linear-gradient(45deg, …)`
+ *   .fc-event { border-radius:3px; border:none; box-shadow:none }
+ *
+ * TŘI ZMĚNY, KTERÉ ROZHODUJÍ:
+ *
+ * 1. UDÁLOST NENÍ BAREVNÁ PLOCHA. Byla to pastelová výplň podle barvy
+ *    zaměstnance; sedm dní plných pastelových bloků je patchwork, ve kterém
+ *    nic nevystoupí a naléhavost se nedá poznat. Teď je událost bílá karta
+ *    s vlasovou linkou a barevný je jen 3px pruh vlevo. Barva se tím
+ *    z výplně stává ZNAČKOU — pořád se pozná, čí událost to je, ale kalendář
+ *    zůstane černobílý.
+ *
+ * 2. DNEŠEK SE NEPODBARVUJE. Podbarvený sloupec soupeří s událostmi v něm.
+ *    Dnešek nese kolečko u čísla, nic víc.
+ *
+ * 3. ŽÁDNÉ PŮLHODINOVÉ LINKY. Z mřížky dělají mříž.
+ *
+ * Vlastní `Toolbar` (`CalendarToolbar.tsx`) nahrazuje defaultní
+ * `.rbc-toolbar` úplně, proto se tu neřeší.
+ */
+
+.rbc-calendar {
+  --cal-hour: 40px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* ---------- Mřížka a linky --------------------------------------------- */
+
+.rbc-time-view,
+.rbc-time-header-content,
+.rbc-time-content,
+.rbc-time-header.rbc-overflowing,
+.rbc-month-view,
+.rbc-header,
+.rbc-day-bg + .rbc-day-bg,
+.rbc-timeslot-group,
+.rbc-time-content > * + * > *,
+.rbc-month-row + .rbc-month-row,
+.rbc-month-row,
+.rbc-agenda-view table.rbc-agenda-table {
+  border-color: var(--border-subtle) !important;
+}
+
+.rbc-time-view,
+.rbc-month-view {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Hodina 40 px. Routine má 30 px pro sedm sloupců týdne; my kreslíme méně
+   událostí a potřebujeme, aby se do bloku vešel název — 40 px je kompromis,
+   ne nedopatření. */
+.rbc-timeslot-group {
+  min-height: var(--cal-hour);
+}
+
+/* Půlhodinová linka pryč (jejich `.fc-timegrid-slot-minor`). */
+.rbc-time-slot {
+  border-top: none !important;
+}
+
+.rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: none;
+}
+
+.rbc-time-gutter .rbc-label {
+  padding: 0 8px 0 4px;
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Hlavička dne ----------------------------------------------- */
+
+.rbc-header {
+  padding: 10px 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-faint);
+  text-transform: none;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.rbc-header > a,
+.rbc-header > span {
+  font-weight: 400;
+  color: inherit;
+}
+
+/* Dnešek: akcent v hlavičce, žádné podbarvení sloupce. */
+.rbc-header.rbc-today {
+  color: var(--accent);
+}
+
+.rbc-today {
+  background-color: transparent !important;
+}
+
+.rbc-off-range-bg {
+  background: transparent;
+}
+
+.rbc-off-range {
+  color: var(--border-strong);
+}
+
+/* ---------- Celodenní pás ---------------------------------------------- */
+
+/* Šrafa 4×4 px — jejich `.fc-daygrid-body` v týdenním pohledu. Říká „tenhle
+   pruh není hodinová mřížka", aniž by na to musel být popisek. */
+.rbc-time-header-content .rbc-allday-cell {
+  background-image: linear-gradient(45deg, rgba(0, 0, 0, 0.05) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.05) 75%),
+    linear-gradient(45deg, transparent 75%, rgba(0, 0, 0, 0.05) 75%),
+    linear-gradient(45deg, rgba(0, 0, 0, 0.05) 25%, transparent 25%);
+  background-size: 4px 4px;
+  background-position: 0 0, 0 0, -2px -2px, 2px 2px;
+}
+
+:root[data-theme='dark'] .rbc-time-header-content .rbc-allday-cell {
+  background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.05) 75%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.05) 75%),
+    linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .rbc-time-header-content .rbc-allday-cell {
+    background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.05) 75%),
+      linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.05) 75%),
+      linear-gradient(45deg, rgba(255, 255, 255, 0.05) 25%, transparent 25%);
+  }
+}
+
+/* ---------- Událost ---------------------------------------------------- */
+
+/* Bílá karta s vlasovou linkou. Barvu nese jen pruh vlevo; `--event-color`
+   nastavuje `eventPropGetter` v `CalendarPage.tsx`. */
+.rbc-event {
+  position: relative;
+  border: 1px solid var(--border-default) !important;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  box-shadow: none;
+  padding: 3px 6px 3px 11px;
+  font-size: 12px;
+  font-weight: 400;
+  overflow: hidden;
+  transition: background-color 120ms ease;
+}
+
+.rbc-event::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 5px;
+  width: 3px;
+  height: 18px;
+  border-radius: 10px;
+  background: var(--event-color, var(--text-tertiary));
+}
+
+.rbc-event:hover,
+.rbc-event:focus {
+  background: var(--overlay-active) !important;
+  box-shadow: none;
+  transform: none;
+}
+
+.rbc-event.rbc-selected {
+  border-color: var(--border-strong) !important;
+  box-shadow: var(--shadow-xs);
+}
+
+.rbc-event-label {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  opacity: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rbc-event-content {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* V týdenním a denním pohledu se název ZALAMUJE. Blok od 9 do 15 je 240 px
+   vysoký a text v něm byl na jednom řádku ustřižený — místo tam bylo,
+   jen ho nikdo nevyužil. */
+.rbc-time-view .rbc-event-content {
+  white-space: normal;
+}
+
+.rbc-event-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* V měsíčním pohledu má řádek jen 20 px, tam se zalamovat nesmí. */
+.rbc-month-view .rbc-event-title {
+  white-space: nowrap;
+}
+
+/* V měsíčním pohledu je událost jen tečka + text (jejich
+   `.fc-daygrid-dot-event`), ne pruh přes celý den. */
+.rbc-month-view .rbc-event {
+  border: none !important;
+  background: transparent !important;
+  padding: 1px 4px 1px 12px;
+}
+
+.rbc-month-view .rbc-event::before {
+  top: 6px;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.rbc-month-view .rbc-event:hover {
+  background: var(--overlay-active) !important;
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- Měsíc ------------------------------------------------------ */
+
+.rbc-date-cell {
+  padding: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.rbc-date-cell > a,
+.rbc-date-cell > .rbc-button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 2px;
+  border-radius: 50%;
+  font-weight: 400;
+}
+
+.rbc-date-cell > a:hover,
+.rbc-date-cell > .rbc-button-link:hover {
+  background: var(--overlay-active);
+}
+
+.rbc-date-cell.rbc-now > a,
+.rbc-date-cell.rbc-now > .rbc-button-link {
+  background: var(--danger-bg);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.rbc-show-more {
+  padding: 0 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  background: transparent;
+}
+
+.rbc-show-more:hover {
+  color: var(--text-primary);
+  background: transparent;
+}
+
+/* Avatary v měsíčním pohledu ne — řádek události má 20 px a druhá řádka
+   s tvářemi z měsíce dělá seznam. Měsíc je na orientaci, detail je v týdnu. */
+.rbc-month-view .calendar-event-faces {
+  display: none;
+}
+
+/* ---------- „Teď" ------------------------------------------------------ */
+
+/* 2 px, radius 100px, tečka 6 px na levém okraji. */
+.rbc-current-time-indicator {
+  height: 2px;
+  border-radius: 100px;
+  background-color: var(--accent);
+  opacity: 1;
+  z-index: 4;
+}
+
+.rbc-current-time-indicator::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.rbc-time-content {
+  position: relative;
+}
+
+/* ---------- Výběr a přetahování ---------------------------------------- */
+
+.rbc-selected-cell,
+.rbc-slot-selection {
+  background-color: var(--danger-bg);
+  border-radius: var(--radius-sm);
+}
+
+.rbc-addons-dnd .rbc-addons-dnd-drag-preview,
+.rbc-addons-dnd-dragged-event {
+  opacity: 0.55;
+}
+
+/* Úchyt pro změnu délky se ukáže až na kurzoru — trvale viditelný pruh
+   na každé události je šum, a na dotykovém displeji stejně nefunguje. */
+.rbc-addons-dnd .rbc-addons-dnd-resize-ns-anchor,
+.rbc-addons-dnd .rbc-addons-dnd-resize-ew-anchor {
+  opacity: 0;
+}
+
+.rbc-event:hover .rbc-addons-dnd-resize-ns-anchor,
+.rbc-event:hover .rbc-addons-dnd-resize-ew-anchor {
+  opacity: 1;
+}
+
+/* ---------- Agenda ----------------------------------------------------- */
+
+.rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.rbc-agenda-date-cell,
+.rbc-agenda-time-cell {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}

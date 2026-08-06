@@ -2,5 +2,40 @@
   "projects": {
     "default": "demo-doprovazeni",
     "production": "v10c-doprovazeni-com"
-  }
+  },
+  "targets": {
+    "v10c-doprovazeni-com": {
+      "hosting": {
+        "path-a": [
+          "v10c-doprovazeni-com"
+        ],
+        "design-b": [
+          "v10c-design-b"
+        ],
+        "design-c": [
+          "v10c-design-c"
+        ],
+        "design-d": [
+          "v10c-design-d"
+        ]
+      }
+    },
+    "demo-doprovazeni": {
+      "hosting": {
+        "path-a": [
+          "demo-doprovazeni"
+        ],
+        "design-b": [
+          "demo-doprovazeni"
+        ],
+        "design-c": [
+          "demo-doprovazeni"
+        ],
+        "design-d": [
+          "demo-doprovazeni"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

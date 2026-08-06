@@ -1,10 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHead } from '@/components/spis/PageBody'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/useAuth'
-import { getPlatformDefaults, setPlatformKoCapacityThreshold } from '@/services/organizationService'
-import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
+import {
+  getPlatformDefaults,
+  setPlatformAgreementDefaultDurationMonths,
+  setPlatformKoCapacityThreshold,
+} from '@/services/organizationService'
+import { DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS, DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults'
 
 /**
  * /platforma — DOPLNENI_ZADANI-DO-M5 §1 bod 3. PRVNÍ superadmin-only
@@ -15,71 +21,89 @@ import { DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD } from '@/types/platformDefaults
 export default function PlatformSettingsPage() {
   const { userDoc } = useAuth()
   const [threshold, setThreshold] = useState('')
+  const [agreementDuration, setAgreementDuration] = useState('')
   const [loaded, setLoaded] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
 
   const isSuperadmin = userDoc?.role === 'superadmin'
 
   useEffect(() => {
     if (!isSuperadmin) return
     getPlatformDefaults()
-      .then((defaults) => setThreshold(String(defaults?.koCapacityThreshold ?? DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD)))
+      .then((defaults) => {
+        setThreshold(String(defaults?.koCapacityThreshold ?? DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD))
+        setAgreementDuration(String(defaults?.agreementDefaultDurationMonths ?? DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS))
+      })
       .catch(() => setError('Platformní nastavení se nepodařilo načíst.'))
       .finally(() => setLoaded(true))
   }, [isSuperadmin])
 
   async function handleSave(e: FormEvent) {
     e.preventDefault()
-    setSubmitting(true)
     setError(null)
-    setSaved(false)
     try {
-      await setPlatformKoCapacityThreshold(Math.max(1, Number(threshold) || DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD))
-      setSaved(true)
+      await run(async () => {
+        await Promise.all([
+          setPlatformKoCapacityThreshold(Math.max(1, Number(threshold) || DEFAULT_PLATFORM_KO_CAPACITY_THRESHOLD)),
+          setPlatformAgreementDefaultDurationMonths(
+            Math.max(1, Number(agreementDuration) || DEFAULT_PLATFORM_AGREEMENT_DURATION_MONTHS),
+          ),
+        ])
+      })
     } catch {
       setError('Uložení se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
   if (!isSuperadmin) {
     return (
-      <AppShell breadcrumb={[{ label: 'Platforma' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Platforma</h1>
-        <p className="mt-4 text-sm text-text-secondary">Tahle stránka je jen pro superadmina.</p>
+      <AppShell>
+        <PageHead title="Platforma" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tahle stránka je jen pro superadmina.</p>
+        </section>
       </AppShell>
     )
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Platforma' }]}>
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Platforma</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Výchozí hodnoty pro všechny organizace, dokud si je organizace sama nepřepíše.
-      </p>
-
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+    <AppShell>
+      <PageHead
+        title="Platforma"
+        description="Výchozí hodnoty pro všechny organizace, dokud si je organizace sama nepřepíše."
+      >
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
       {loaded && (
-        <form onSubmit={handleSave} className="mt-6 max-w-[420px] space-y-5">
+        <form onSubmit={handleSave} className="sp__card sp__card--pad max-w-[560px] space-y-5">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">
               Výchozí práh kapacity klíčové osoby
             </span>
             <Input type="number" min={1} value={threshold} onChange={(e) => setThreshold(e.target.value)} />
           </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm font-medium leading-relaxed text-text-primary">
+              Výchozí délka Dohody (měsíce)
+            </span>
+            <Input
+              type="number"
+              min={1}
+              value={agreementDuration}
+              onChange={(e) => setAgreementDuration(e.target.value)}
+            />
+          </label>
           <div className="flex items-center gap-3">
-            <Button type="submit" variant="secondary" size="sm" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" variant="secondary" size="sm" loading={submitting} success={success}>
+              Uložit
             </Button>
-            {saved && <span className="text-sm text-success">Uloženo.</span>}
+            {success && <span className="text-sm text-success">Uloženo.</span>}
           </div>
         </form>
       )}

@@ -11,7 +11,9 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { allocateUid } from '@/lib/counters'
+import { actorFields, auditWriteInto } from '@/services/auditLogService'
+import type { AuditActor } from '@/types/auditLog'
+import { allocateUid } from '@/lib/uidAllocator'
 import type { DocumentVersionDoc, FamilyDocumentDoc, FamilyDocumentStatus } from '@/types/familyDocument'
 import type { SubjectRef } from '@/types/timelineEntry'
 import type { HistoryDigestDoc } from '@/types/historyDigest'
@@ -48,7 +50,6 @@ function versionsCollection(familyDocId: string, docId: string) {
 export interface CreateDocumentInput {
   familyDocId: string
   organizationId: string
-  orgCode: string
   createdByUid: string
   title: string
   body: string
@@ -59,7 +60,7 @@ export async function createDocument(
   input: CreateDocumentInput,
 ): Promise<{ docId: string; document: FamilyDocumentDoc }> {
   const ref = doc(collection(db, 'families', input.familyDocId, 'documents'))
-  const uid = await allocateUid(input.organizationId, input.orgCode, 'document')
+  const uid = await allocateUid('document', input.organizationId)
   const hash = await sha256Hex(input.body)
   const now = new Date().toISOString()
 
@@ -301,6 +302,10 @@ export interface SendToAuthorityInput {
   organizationId: string
   title: string
   sentTo: 'ospod' | 'soud'
+  /** Kdo odesílá — jde do auditní stopy v TÉŽE dávce. */
+  actor: AuditActor
+  /** Popisek rodiny do logu (log musí zůstat čitelný, i když rodina zmizí). */
+  familyLabel: string
 }
 
 /**
@@ -329,6 +334,17 @@ export async function sendDocumentToAuthority(input: SendToAuthorityInput): Prom
     updatedAt: now,
   })
   batch.set(doc(collection(db, 'families', input.familyDocId, 'historyDigest')), digestData)
+  // Auditní záznam je součástí TÉŽE dávky, ne zápis navíc po ní: tohle je
+  // okamžik, kdy údaje o dítěti opouštějí organizaci. Nesmí nastat stav
+  // „odesláno, ale v logu nic".
+  auditWriteInto(batch, {
+    organizationId: input.organizationId,
+    action: 'document_sent_authority',
+    ...actorFields(input.actor),
+    subject: { kind: 'family', id: input.familyDocId, label: input.familyLabel },
+    target: { kind: 'document', id: input.docId, label: input.title },
+    detail: `Odesláno na ${input.sentTo === 'soud' ? 'soud' : 'OSPOD'}.`,
+  })
   await batch.commit()
 }
 

@@ -1,76 +1,74 @@
-import { Bell, Moon, Settings, Sun } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { useTheme } from '@/hooks/useTheme'
-import { Breadcrumb, type BreadcrumbItem } from '@/components/ui/breadcrumb'
-import { AccountMenu } from './AccountMenu'
+import type { ReactNode } from 'react'
+import { ChevronLeft, ChevronRight } from '@/components/ui/icons'
+import { useHistoryArrows } from '@/hooks/useHistoryArrows'
+import { cn } from '@/lib/utils'
 
 /**
- * Header řádek — přeměřeno 2026-07-19 přímo na živé referenční appce
- * (getComputedStyle): výška 56px (h-14), padding px-4 (ne px-8), ikonová
- * tlačítka 32px (size-8) s radius-sm (8px), hover = jemný alpha overlay
- * (`--overlay-active`), STEJNÁ jasnost textu/ikony jako zbytek chrome
- * appky (žádné ztlumení pro "neaktivní" stav).
+ * HLAVIČKA — dvě šipky. Nic víc.
  *
- * Breadcrumb (pokud stránka nějaký má) žije VLEVO ve STEJNÉM řádku jako
- * ikonový cluster vpravo — přesně stejná struktura headeru (breadcrumb
- * a ikony jsou sourozenci v jednom flex řádku, ne breadcrumb v obsahu pod
- * headerem). Bez breadcrumbu (stránky bez drill-down navigace, např.
- * "Dnes") zůstává levá strana prázdná.
+ * Vývoj v krocích, každý na Petrův podnět:
+ *   1. Byl tu cluster pěti ovládacích prvků (hledání, motiv, nastavení,
+ *      oznámení, účet). Hledání je první krok práce, ale bylo na konci
+ *      cesty oka; zbytek se použije jednou za den. Všechno šlo do
+ *      postranního panelu — hledání nahoru pod značku, účet dolů.
+ *   2. Zůstala drobečková navigace. Sama o sobě už nic neřešila: na
+ *      seznamech vypisovala jediné slovo, které je zároveň v levém panelu
+ *      zvýrazněné a v nadpisu stránky pod ní. Tři místa, jedna informace.
  *
- * Nastavení a přepínač Světlý/Tmavý žijí tady, jen ikony (bez textového
- * labelu), v tomhle pořadí před avatarem: motiv/téma → nastavení →
- * oznámení → účet. Ikona Nastavení vede na /nastaveni/vzhled (Nastavení
- * = celá stránka s breadcrumbem, ne modál — viz CURRENT_STATE.md
- * Dodatek 9).
+ * Teď tu jsou šipky zpět/vpřed, jak to má Routine. Ty dělají něco, co
+ * drobečková navigace neumí: vrátí se PO CESTĚ, kterou člověk skutečně
+ * prošel. V téhle práci se chodí do strany — z rodiny na dítě, z dítěte na
+ * jeho školu, ze školy zpátky — a to není hierarchie, kterou by drobečky
+ * dokázaly popsat.
  *
- * DŮLEŽITÝ PRINCIP pro budoucí stavové ikony (zapsáno na žádost uživatele):
- * pokud ikona představuje zapnutou/vypnutou "službu" (např. ztlumená
- * oznámení), MUSÍ vizuálně odlišit stav (přeškrtnutá/jiná ikona jako
- * BellOff), ne stejná ikona bez ohledu na stav. Zvonek tady zatím jen
- * OTEVÍRÁ panel oznámení (není to on/off přepínač), takže se ho princip
- * netýká — až M9 přinese možnost oznámení ztlumit, doplnit BellOff stav.
- * Theme toggle princip už splňuje (ikona = cílový stav, Moon/Sun).
+ * Šipka, kterou nejde použít, je ZTLUMENÁ a nekliká (viz `useHistoryArrows`).
+ * Dvě vždy aktivní šipky, které někdy nedělají nic, jsou horší než žádné.
+ *
+ * Kontext „kde jsem" nezmizel — nese ho zvýrazněná položka v levém panelu
+ * a nadpis stránky, kde byl vždycky.
+ *
+ *   3. Detailní stránky (profil rodiny) dostaly slot: `context` vedle šipek
+ *      a `actions` vpravo. Je to tatáž lišta, ne druhá — kdyby si profil
+ *      kreslil vlastní lištu pod tuhle, byly by nad obsahem dvě vodorovné
+ *      linky a 88 px chromu. Slot je prázdný na všech stránkách, které nic
+ *      takového nemají, takže hlavička zůstává tichá.
  */
-export function TopBar({ breadcrumb }: { breadcrumb?: BreadcrumbItem[] }) {
-  const { resolvedTheme, toggleTheme } = useTheme()
-  const themeLabel =
-    resolvedTheme === 'light' ? 'Přepnout na tmavý režim' : 'Přepnout na světlý režim'
+export function TopBar({ context, actions }: { context?: ReactNode; actions?: ReactNode }) {
+  const { canGoBack, canGoForward, goBack, goForward } = useHistoryArrows()
+
+  const arrow = (enabled: boolean) =>
+    cn(
+      'flex size-7 items-center justify-center rounded-md transition-colors duration-150',
+      enabled
+        ? 'text-text-tertiary hover:bg-overlay-active hover:text-text-primary'
+        : 'cursor-default text-border-strong',
+    )
 
   return (
-    <div className="flex h-14 items-center justify-between gap-4 px-4">
-      <div className="min-w-0 flex-1">{breadcrumb && <Breadcrumb items={breadcrumb} />}</div>
+    <div className="flex h-12 shrink-0 items-center gap-0.5 border-b border-border-subtle bg-app px-4">
+      <button
+        type="button"
+        onClick={canGoBack ? goBack : undefined}
+        disabled={!canGoBack}
+        aria-label="Zpět"
+        title="Zpět"
+        className={arrow(canGoBack)}
+      >
+        <ChevronLeft size={17} />
+      </button>
+      <button
+        type="button"
+        onClick={canGoForward ? goForward : undefined}
+        disabled={!canGoForward}
+        aria-label="Vpřed"
+        title="Vpřed"
+        className={arrow(canGoForward)}
+      >
+        <ChevronRight size={17} />
+      </button>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={toggleTheme}
-          aria-label={themeLabel}
-          title={themeLabel}
-          className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
-        >
-          {resolvedTheme === 'light' ? <Moon size={18} strokeWidth={1.75} /> : <Sun size={18} strokeWidth={1.75} />}
-        </button>
-
-        <Link
-          to="/nastaveni/vzhled"
-          aria-label="Nastavení"
-          title="Nastavení"
-          className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
-        >
-          <Settings size={18} strokeWidth={1.75} />
-        </Link>
-
-        <button
-          type="button"
-          aria-label="Oznámení"
-          title="Oznámení"
-          className="flex size-8 items-center justify-center rounded-sm text-text-primary transition-colors duration-150 hover:bg-overlay-active"
-        >
-          <Bell size={18} strokeWidth={1.75} />
-        </button>
-
-        <AccountMenu />
-      </div>
+      {context && <div className="ml-1.5 flex min-w-0 items-center">{context}</div>}
+      {actions && <div className="ml-auto flex shrink-0 items-center gap-1">{actions}</div>}
     </div>
   )
 }

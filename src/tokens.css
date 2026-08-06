@@ -1,0 +1,268 @@
+/*
+ * DESIGNOVÉ TOKENY — odečtené z Routine, ne vymyšlené.
+ *
+ * Uživatel poslal uloženou stránku své vlastní Routine aplikace včetně CSS.
+ * Hodnoty níž jsou POČÍTANÉ z jejich `main-*.css`, `useJournalEntry-*.css`
+ * a `Editor-*.css` — u každé skupiny je uvedeno, co přesně z toho plyne.
+ *
+ * Tři měření, která rozhodla o všem ostatním:
+ *
+ *   1. TUČNOST. V jejich CSS je `font-weight:500` 329×, `400` 311×, ale
+ *      `600` jen 26× a `700` čtyřikrát. Hierarchii nedělá tučnost, dělá ji
+ *      VELIKOST a BARVA. Proto `font-semibold` mapujeme na 500 a
+ *      `font-bold` na 600 (viz `tailwind.config.js`) — jedním tahem to
+ *      spraví celou appku, kde bylo 53× semibold a 35× bold.
+ *
+ *   2. BARVA. Nejčastější hodnoty jsou #c9c2c2, #79818c, #2a3038, #f5f4f1,
+ *      #f2f2f2 — všechno šedá. Červená #f96359 je 195× z ~5000, tedy 4 %.
+ *      Barva je vyhrazená pro „teď" a pro stav; primární tlačítko je
+ *      GRAFITOVÉ, ne barevné. Kdyby bylo barevné, přestala by barva
+ *      znamenat naléhavost.
+ *
+ *   3. VELIKOST A PROKLAD. 13px/19px, 14px/20px, 11px/17px, 16px/120 %,
+ *      20px, 24px/32px. Základ je 13px, ne 15px — nástroj, ve kterém se
+ *      bydlí osm hodin denně, není plakát. Vzdušnost dělá PRÁZDNÉ MÍSTO
+ *      (gap 8px 132×, 4px 79×, 12px 77×), ne velké písmo.
+ *
+ * Proměnné mají STEJNÁ JMÉNA jako předtím, takže `tailwind.config.js` je
+ * rozvede do celé appky bez zásahu do komponent.
+ */
+
+:root {
+  /* ---- Plochy -------------------------------------------------------
+     Obal je teplý (#f5f4f1), obsah čistě bílý. Hrany dělá VLASOVÁ LINKA,
+     ne stín: stín znamená „tohle pluje nad ostatním", a v hustém
+     pracovním nástroji nepluje nic. */
+  --bg-void: #f5f4f1;
+  --bg-app: #ffffff;
+  --bg-surface: #ffffff;
+  --bg-surface-soft: #fbfbfa;
+  --bg-inset: #f5f4f1;
+  --overlay-active: #f4f4f4;
+  --field-bg: #ffffff;
+  --toggle-off: #e1dddd;
+  --toggle-thumb: #ffffff;
+
+  /* Akcent = „teď" a naléhavost. NIKDY plocha tlačítka. */
+  --accent: #f96359;
+
+  /* ---- Inkoust ------------------------------------------------------
+     Čtyři stupně, ne tři: #2a3038 nadpis, #47505d text, #79818c vedlejší,
+     #a9a9a9 tiché. Ten čtvrtý je to, čím se hierarchie dělá místo tučnosti. */
+  --text-primary: #2a3038;
+  --text-secondary: #47505d;
+  --text-tertiary: #79818c;
+  --text-faint: #a9a9a9;
+  --text-inverse: #ffffff;
+
+  /* ---- Linky --------------------------------------------------------
+     #f2f2f2 uvnitř seznamu, #e5e5e5 obrys prvku, #e1dddd/#d0cbcb důraz. */
+  --border-subtle: #f2f2f2;
+  --border-default: #e5e5e5;
+  --border-medium: #e1dddd;
+  --border-strong: #d0cbcb;
+
+  /* ---- Primární akce = grafit ---------------------------------------
+     Odečteno z jejich `base-button`: #2a3038 s mikrostínem
+     `0 1px 1px #00000026`. */
+  --primary: #2a3038;
+  --primary-hover: #181a1b;
+  --primary-foreground: #ffffff;
+  --primary-soft: #f2f2f2;
+  --primary-soft-hover: #e5e5e5;
+  --ring: #2a3038;
+
+  /* ---- Sémantika ----------------------------------------------------
+     Subjekty (pěstoun / OSPOD / soud / bio rodina) NESOU BARVU JEN
+     V PLOŠE ČIPU, a i ta je odbarvená. Dřív měl každý typ vlastní sytou
+     barvu a seznam vypadal jako patchwork. */
+  --subject-foster: #47505d;
+  --subject-foster-bg: #f2f2f2;
+  --subject-ospod: #47505d;
+  --subject-ospod-bg: #f2f2f2;
+  --subject-court: #79818c;
+  --subject-court-bg: #f5f4f1;
+  --subject-bio: #a4691a;
+  --subject-bio-bg: #fbf1e2;
+
+  --crisis: #c73c10;
+  --crisis-bg: #fbefee;
+
+  /* Zelená JEN pro dokončeno, a i tak spíš tmavá než svítivá. */
+  --success: #3f7355;
+  --success-bg: #eef3ef;
+  --warning: #a4691a;
+  --warning-bg: #fbf1e2;
+  --danger: #c73c10;
+  --danger-bg: #fbefee;
+  --danger-solid: #ef4444;
+
+  --tier-accent: #7d87e5;
+  --tier-accent-bg: #f0f1fb;
+
+  --online: #10b981;
+
+  /* ---- Radiusy ------------------------------------------------------
+     Tři stupně, jedna řada: 4 / 8 / 12. Malý u kompaktních věcí (čip),
+     střední u polí a tlačítek, velký u karet a popupů.
+
+     Dřív to bylo 3 / 7 / 10 (odečteno z referenční appky) a karta v
+     `spis.css` měla vlastních 12 px — tedy čtvrtý stupeň mimo stupnici.
+     Od 2026-07-25 je karta `var(--radius-lg)`, aby „změň zaoblení"
+     znamenalo změnit JEDNO číslo tady, ne dvě na dvou místech. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  /* ---- Stíny --------------------------------------------------------
+     Na hranici viditelnosti. `0 1px 2px #00000008` je jejich stín karty;
+     `0 1px 14px #0000000d` je stín vyskakovacího menu. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-raised: 0 1px 1px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 1px 14px rgba(0, 0, 0, 0.05);
+  --shadow-overlay: 0 1px 14px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --focus-ring: 0 0 0 3px rgba(42, 48, 56, 0.1);
+
+  color-scheme: light;
+}
+
+/*
+ * TMAVÝ REŽIM — také odečtený (`theme--dark`), ne odhadnutý:
+ * #181a1b plocha, #212325 vybrané, #2f3031 hover, #393a3b obrys,
+ * text #f5f4f1 / #e1dddd / #c9c2c2 / #c3baba, tiché #767671.
+ *
+ * Naše jediná odchylka: primární tlačítko se obrací na světlé
+ * (#f5f4f1 plocha, #181a1b text). Grafit na grafitu by nebyl vidět a
+ * barevné být nesmí, protože barva je vyhrazená pro naléhavost.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg-void: #121414;
+    --bg-app: #181a1b;
+    --bg-surface: #181a1b;
+    --bg-surface-soft: #1c1e1f;
+    --bg-inset: #212325;
+    --overlay-active: #212325;
+    --field-bg: #181a1b;
+    --toggle-off: #464849;
+    --accent: #f96359;
+
+    --text-primary: #f5f4f1;
+    --text-secondary: #e1dddd;
+    --text-tertiary: #c9c2c2;
+    --text-faint: #c3baba;
+    --text-inverse: #181a1b;
+
+    --border-subtle: #2f3031;
+    --border-default: #393a3b;
+    --border-medium: #464849;
+    --border-strong: #6a6b67;
+
+    --primary: #f5f4f1;
+    --primary-hover: #ffffff;
+    --primary-foreground: #181a1b;
+    --primary-soft: #2f3031;
+    --primary-soft-hover: #393a3b;
+    --ring: #c9c2c2;
+
+    --subject-foster: #e1dddd;
+    --subject-foster-bg: #2f3031;
+    --subject-ospod: #e1dddd;
+    --subject-ospod-bg: #2f3031;
+    --subject-court: #c9c2c2;
+    --subject-court-bg: #212325;
+    --subject-bio: #d9a35c;
+    --subject-bio-bg: #372f26;
+
+    --crisis: #f96359;
+    --crisis-bg: #372826;
+
+    --success: #7fae91;
+    --success-bg: #1f2a23;
+    --warning: #d9a35c;
+    --warning-bg: #372f26;
+    --danger: #f96359;
+    --danger-bg: #372826;
+    --danger-solid: #ef4444;
+
+    --tier-accent: #9aa2ee;
+    --tier-accent-bg: #24263a;
+
+    --online: #10b981;
+
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-raised: 0 1px 1px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 1px 14px rgba(0, 0, 0, 0.5);
+    --shadow-overlay: 0 1px 14px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.6);
+    --focus-ring: 0 0 0 3px rgba(245, 244, 241, 0.14);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg-void: #121414;
+  --bg-app: #181a1b;
+  --bg-surface: #181a1b;
+  --bg-surface-soft: #1c1e1f;
+  --bg-inset: #212325;
+  --overlay-active: #212325;
+  --field-bg: #181a1b;
+  --toggle-off: #464849;
+  --accent: #f96359;
+
+  --text-primary: #f5f4f1;
+  --text-secondary: #e1dddd;
+  --text-tertiary: #c9c2c2;
+  --text-faint: #c3baba;
+  --text-inverse: #181a1b;
+
+  --border-subtle: #2f3031;
+  --border-default: #393a3b;
+  --border-medium: #464849;
+  --border-strong: #6a6b67;
+
+  --primary: #f5f4f1;
+  --primary-hover: #ffffff;
+  --primary-foreground: #181a1b;
+  --primary-soft: #2f3031;
+  --primary-soft-hover: #393a3b;
+  --ring: #c9c2c2;
+
+  --subject-foster: #e1dddd;
+  --subject-foster-bg: #2f3031;
+  --subject-ospod: #e1dddd;
+  --subject-ospod-bg: #2f3031;
+  --subject-court: #c9c2c2;
+  --subject-court-bg: #212325;
+  --subject-bio: #d9a35c;
+  --subject-bio-bg: #372f26;
+
+  --crisis: #f96359;
+  --crisis-bg: #372826;
+
+  --success: #7fae91;
+  --success-bg: #1f2a23;
+  --warning: #d9a35c;
+  --warning-bg: #372f26;
+  --danger: #f96359;
+  --danger-bg: #372826;
+  --danger-solid: #ef4444;
+
+  --tier-accent: #9aa2ee;
+  --tier-accent-bg: #24263a;
+
+  --online: #10b981;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-raised: 0 1px 1px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 1px 14px rgba(0, 0, 0, 0.5);
+  --shadow-overlay: 0 1px 14px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --focus-ring: 0 0 0 3px rgba(245, 244, 241, 0.14);
+
+  color-scheme: dark;
+}

@@ -1,11 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { CalendarClock, Plus, Receipt } from 'lucide-react'
+import { CalendarClock, Plus, Receipt } from '@/components/ui/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { cn } from '@/lib/utils'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import {
   addOccurrence,
   confirmOccurrence,
@@ -25,7 +27,6 @@ import type { SupportExpenseCategory, SupportExpenseDoc, SupportExpenseSource } 
 
 export interface ChildSupportSectionProps {
   childId: string
-  childName: string
   organizationId: string
   currentUid: string
 }
@@ -63,7 +64,7 @@ const EXPENSE_SOURCE_LABELS: Record<SupportExpenseSource, string> = { interni: '
 
 function StatusBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex h-6 items-center rounded-full bg-surface-soft px-2.5 text-xs font-medium text-text-primary">
+    <span className="sp__chip">
       {label}
     </span>
   )
@@ -96,7 +97,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
   const [durationMinutes, setDurationMinutes] = useState('60')
   const [amountPerHour, setAmountPerHour] = useState('')
   const [rateWasOverridden, setRateWasOverridden] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [formError, setFormError] = useState<string | null>(null)
 
   async function reload() {
@@ -129,29 +130,31 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
-    setSubmitting(true)
     try {
-      await createScheduledActivity(childId, {
-        organizationId,
-        activityType,
-        providerKind,
-        // Žádný výběr zaměstnance tady není k dispozici (mimo rozsah), jen
-        // volný text.
-        internalStaffUid: providerKind === 'interni' ? internalStaffUid || null : null,
-        externalInstitutionRef: null,
-        isRespit,
-        confirmationMode,
-        schedule: {
-          startDate: new Date(startDate).toISOString(),
-          endDate: endDate ? new Date(endDate).toISOString() : null,
-          recurrence: { frequency, daysOfWeek: Array.from(daysOfWeek), durationMinutes: Number(durationMinutes) },
-        },
-        rate: { amountPerHour: Number(amountPerHour) },
-        // Bez napojení na `resolveRate` kaskádu (žádný lookup tady) — pole
-        // přepíná uživatel ručně, jen pokud sazbu sám upravil.
-        rateWasOverridden,
-        osobniPeceDuvod: null,
-        createdBy: currentUid,
+      await run(async () => {
+        await createScheduledActivity(childId, {
+          organizationId,
+          activityType,
+          providerKind,
+          // Žádný výběr zaměstnance tady není k dispozici (mimo rozsah), jen
+          // volný text.
+          internalStaffUid: providerKind === 'interni' ? internalStaffUid || null : null,
+          externalInstitutionRef: null,
+          isRespit,
+          confirmationMode,
+          schedule: {
+            startDate: new Date(startDate).toISOString(),
+            endDate: endDate ? new Date(endDate).toISOString() : null,
+            recurrence: { frequency, daysOfWeek: Array.from(daysOfWeek), durationMinutes: Number(durationMinutes) },
+          },
+          rate: { amountPerHour: Number(amountPerHour) },
+          // Bez napojení na `resolveRate` kaskádu (žádný lookup tady) — pole
+          // přepíná uživatel ručně, jen pokud sazbu sám upravil.
+          rateWasOverridden,
+          osobniPeceDuvod: null,
+          createdBy: currentUid,
+        })
+        await reload()
       })
       setShowForm(false)
       setActivityType('doucovani')
@@ -166,11 +169,8 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
       setDurationMinutes('60')
       setAmountPerHour('')
       setRateWasOverridden(false)
-      await reload()
     } catch {
       setFormError('Naplánování aktivity se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -199,7 +199,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
 
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-end gap-4">
         <h3 className="text-base font-medium text-text-primary">Naplánované aktivity</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Zrušit' : (<><Plus size={16} /> Naplánovat aktivitu</>)}
@@ -207,7 +207,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] sp__sub flex flex-col gap-3">
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Typ aktivity
@@ -262,11 +262,11 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Začátek
-              <Input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <DatePicker value={startDate} onChange={setStartDate} />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Konec (volitelné)
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <DatePicker value={endDate} onChange={setEndDate} />
             </label>
           </div>
 
@@ -318,8 +318,8 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
           )}
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Naplánovat'}
+            <Button type="submit" loading={submitting} success={success}>
+              Naplánovat
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -340,7 +340,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
         ) : (
           <div className="flex flex-col gap-3">
             {rows.map(({ docId: activityId, activity, occurrences }) => (
-              <div key={activityId} className="flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+              <div key={activityId} className="sp__sub flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm text-text-primary">
@@ -362,7 +362,7 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
 
                 <div className="flex flex-col gap-2">
                   {(occurrences ?? []).map(({ docId: occId, occurrence }) => (
-                    <div key={occId} className="flex items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-soft px-3 py-2">
+                    <div key={occId} className="flex items-center justify-between gap-2 sp__sub">
                       <span className="text-sm text-text-primary">{new Date(occurrence.date).toLocaleDateString('cs-CZ')}</span>
                       <div className="flex items-center gap-2">
                         <StatusBadge label={OCCURRENCE_STATUS_LABELS[occurrence.status]} />
@@ -382,10 +382,9 @@ function ScheduledActivitiesSubsection({ childId, organizationId, currentUid }: 
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={newOccurrenceDate[activityId] ?? ''}
-                    onChange={(e) => setNewOccurrenceDate((prev) => ({ ...prev, [activityId]: e.target.value }))}
+                    onChange={(v) => setNewOccurrenceDate((prev) => ({ ...prev, [activityId]: v }))}
                     className="w-auto"
                   />
                   <Button variant="ghost" size="sm" onClick={() => handleAddOccurrence(activityId)}>
@@ -417,7 +416,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
   const [periodTo, setPeriodTo] = useState('')
   const [note, setNote] = useState('')
   const [documentRef, setDocumentRef] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const { loading: submitting, success, run } = useAsyncSubmit()
   const [formError, setFormError] = useState<string | null>(null)
 
   async function reload() {
@@ -442,19 +441,21 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
       setFormError('Ruční výdaj vyžaduje doklad.')
       return
     }
-    setSubmitting(true)
     try {
-      await addSupportExpense(childId, {
-        organizationId,
-        category,
-        source,
-        providerRef: null,
-        amount: Number(amount),
-        periodFrom: new Date(periodFrom).toISOString(),
-        periodTo: new Date(periodTo).toISOString(),
-        documentRef: source === 'rucni' ? documentRef : null,
-        createdBy: currentUid,
-        note: note || undefined,
+      await run(async () => {
+        await addSupportExpense(childId, {
+          organizationId,
+          category,
+          source,
+          providerRef: null,
+          amount: Number(amount),
+          periodFrom: new Date(periodFrom).toISOString(),
+          periodTo: new Date(periodTo).toISOString(),
+          documentRef: source === 'rucni' ? documentRef : null,
+          createdBy: currentUid,
+          ...(note ? { note } : {}),
+        })
+        await reload()
       })
       setShowForm(false)
       setCategory('doucovani')
@@ -464,11 +465,8 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
       setPeriodTo('')
       setNote('')
       setDocumentRef('')
-      await reload()
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Přidání dokladu se nezdařilo.')
-    } finally {
-      setSubmitting(false)
     }
   }
 
@@ -476,7 +474,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
 
   return (
     <div className="mt-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-end gap-4">
         <h3 className="text-base font-medium text-text-primary">Podpůrné výdaje</h3>
         <Button variant="secondary" size="sm" onClick={() => setShowForm((v) => !v)}>
           {showForm ? 'Zrušit' : (<><Plus size={16} /> Přidat doklad</>)}
@@ -485,15 +483,15 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
 
       {summary && (
         <div className="mt-3 flex gap-3">
-          <div className="rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="sp__sub">
             <p className="text-xs text-text-secondary">Posledních 90 dní</p>
             <p className="text-sm text-text-primary">{summary.last90Days} Kč</p>
           </div>
-          <div className="rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="sp__sub">
             <p className="text-xs text-text-secondary">Posledních 182 dní</p>
             <p className="text-sm text-text-primary">{summary.last182Days} Kč</p>
           </div>
-          <div className="rounded-lg border border-border-subtle bg-surface p-3">
+          <div className="sp__sub">
             <p className="text-xs text-text-secondary">Posledních 365 dní</p>
             <p className="text-sm text-text-primary">{summary.last365Days} Kč</p>
           </div>
@@ -501,7 +499,7 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-3 rounded-lg border border-border-subtle bg-surface p-4">
+        <form onSubmit={handleSubmit} className="mt-3 max-w-[560px] sp__sub flex flex-col gap-3">
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Kategorie
@@ -529,11 +527,11 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
           <div className="flex gap-3">
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Období od
-              <Input type="date" required value={periodFrom} onChange={(e) => setPeriodFrom(e.target.value)} />
+              <DatePicker value={periodFrom} onChange={setPeriodFrom} />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-sm text-text-secondary">
               Období do
-              <Input type="date" required value={periodTo} onChange={(e) => setPeriodTo(e.target.value)} />
+              <DatePicker value={periodTo} onChange={setPeriodTo} />
             </label>
           </div>
           <label className="flex flex-col gap-1 text-sm text-text-secondary">
@@ -552,8 +550,8 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
             </p>
           )}
           <div className="flex gap-2">
-            <Button type="submit" disabled={submitting}>
-              {submitting ? 'Ukládám…' : 'Uložit'}
+            <Button type="submit" loading={submitting} success={success}>
+              Uložit
             </Button>
             <Button type="button" variant="ghost" onClick={() => setShowForm(false)} disabled={submitting}>
               Zrušit
@@ -572,20 +570,22 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
         ) : expenses.length === 0 ? (
           <EmptyState icon={Receipt} text="Zatím žádný doklad." />
         ) : (
-          <Table>
-            <TableHeaderRow columns={EXPENSE_COLUMNS} labels={['Kategorie', 'Zdroj', 'Částka', 'Období', 'Poznámka']} />
-            {expenses.map((expense, i) => (
-              <TableRow key={i} columns={EXPENSE_COLUMNS}>
-                <span className="text-sm text-text-primary">{EXPENSE_CATEGORY_LABELS[expense.category]}</span>
-                <span className="text-sm text-text-secondary">{EXPENSE_SOURCE_LABELS[expense.source]}</span>
-                <span className="text-sm text-text-secondary">{expense.amount} Kč</span>
-                <span className="text-sm text-text-secondary">
-                  {new Date(expense.periodFrom).toLocaleDateString('cs-CZ')} – {new Date(expense.periodTo).toLocaleDateString('cs-CZ')}
-                </span>
-                <span className="text-sm text-text-secondary">{expense.note ?? ''}</span>
-              </TableRow>
-            ))}
-          </Table>
+          <div className="max-w-[928px]">
+            <Table>
+              <TableHeaderRow columns={EXPENSE_COLUMNS} labels={['Kategorie', 'Zdroj', 'Částka', 'Období', 'Poznámka']} />
+              {expenses.map((expense, i) => (
+                <TableRow key={i} columns={EXPENSE_COLUMNS}>
+                  <span className="text-sm text-text-primary">{EXPENSE_CATEGORY_LABELS[expense.category]}</span>
+                  <span className="text-sm text-text-secondary">{EXPENSE_SOURCE_LABELS[expense.source]}</span>
+                  <span className="text-sm text-text-secondary">{expense.amount} Kč</span>
+                  <span className="text-sm text-text-secondary">
+                    {new Date(expense.periodFrom).toLocaleDateString('cs-CZ')} – {new Date(expense.periodTo).toLocaleDateString('cs-CZ')}
+                  </span>
+                  <span className="text-sm text-text-secondary">{expense.note ?? ''}</span>
+                </TableRow>
+              ))}
+            </Table>
+          </div>
         )}
       </div>
     </div>
@@ -597,10 +597,9 @@ function SupportExpensesSubsection({ childId, organizationId, currentUid }: Chil
  * dokladů + tři prosté souhrnné částky. */
 export function ChildSupportSection(props: ChildSupportSectionProps) {
   return (
-    <section className="mt-8">
-      <h2 className="text-lg font-normal leading-tight text-text-primary">Podpůrné aktivity a výdaje — {props.childName}</h2>
+    <div>
       <ScheduledActivitiesSubsection {...props} />
       <SupportExpensesSubsection {...props} />
-    </section>
+    </div>
   )
 }

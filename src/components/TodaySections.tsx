@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, CalendarCheck, NotebookPen } from 'lucide-react'
+import { AlertTriangle, CalendarCheck, Cake, NotebookPen, PartyPopper } from '@/components/ui/icons'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FamilyCard } from '@/components/FamilyCard'
+import { SpisSection } from '@/components/spis/SpisSection'
 import { useAuth } from '@/hooks/useAuth'
 import {
+  listBirthdayAlerts,
   listFamiliesAwaitingVisit,
   listOperationalAlerts,
   type FamilyAwaitingVisit,
@@ -47,16 +49,27 @@ export function TodaySections() {
     listFamiliesAwaitingVisit(userDoc.organizationId)
       .then(setFamilies)
       .catch(() => setError('Přehled čekajících návštěv se nepodařilo načíst.'))
-    listOperationalAlerts(userDoc.organizationId)
-      .then(setAlerts)
+    // Narozeninová/jmeninová upozornění jsou OSOBNÍ preference, KAŽDÁ
+    // NEZÁVISLE vypínatelná (`UserDoc.notifyBirthdays`/`notifyNameDays`,
+    // výchozí obě zapnuté — `/nastaveni/kalendar`), proto samostatné
+    // volání vedle `listOperationalAlerts` — ne jeho součást (ta funkce
+    // nezná přihlášeného uživatele, jen organizaci).
+    const includeBirthdays = userDoc.notifyBirthdays !== false
+    const includeNameDays = userDoc.notifyNameDays !== false
+    Promise.all([
+      listOperationalAlerts(userDoc.organizationId),
+      includeBirthdays || includeNameDays
+        ? listBirthdayAlerts(userDoc.organizationId, { includeBirthdays, includeNameDays })
+        : Promise.resolve([]),
+    ])
+      .then(([operational, birthdays]) => setAlerts([...birthdays, ...operational]))
       .catch(() => setAlertsError('Provozní upozornění se nepodařilo načíst.'))
-  }, [userDoc?.organizationId])
+  }, [userDoc?.organizationId, userDoc?.notifyBirthdays, userDoc?.notifyNameDays])
 
   return (
     <>
-      <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Čeká na vás</h2>
-        <div className="mt-3 flex flex-col gap-3">
+      <SpisSection id="ceka" title="Čeká na vás" description="Návštěvy, ke kterým ještě není zápis.">
+        <div className="flex flex-col">
           {error ? (
             <p className="text-sm text-danger" role="alert">
               {error}
@@ -85,10 +98,9 @@ export function TodaySections() {
             ))
           )}
         </div>
-      </section>
+      </SpisSection>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Provozní upozornění</h2>
+      <SpisSection id="provoz" title="Provozní upozornění" description="Co si žádá pozornost napříč organizací.">
         <div className="mt-3 flex flex-col gap-2">
           {alertsError ? (
             <p className="text-sm text-danger" role="alert">
@@ -99,23 +111,29 @@ export function TodaySections() {
           ) : alerts.length === 0 ? (
             <EmptyState icon={AlertTriangle} text="Žádná provozní upozornění." />
           ) : (
-            alerts.map((alert, i) => (
-              <div
-                key={`${alert.kind}-${i}`}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-                  alert.overdue ? 'bg-danger-bg text-danger' : 'bg-warning-bg text-warning'
-                }`}
-              >
-                <AlertTriangle className="size-4 shrink-0" />
-                <span>{alert.text}</span>
-              </div>
-            ))
+            alerts.map((alert, i) => {
+              // Narozeniny/svátek jsou milá připomínka, ne problém — vlastní
+              // ikona a NEUTRÁLNÍ (ne žlutá "warning") barva, ať nepůsobí
+              // jako chyba/prodlení mezi skutečnými provozními upozorněními.
+              const isCelebration = alert.kind === 'birthday' || alert.kind === 'nameDay'
+              const Icon = alert.kind === 'birthday' ? Cake : alert.kind === 'nameDay' ? PartyPopper : AlertTriangle
+              return (
+                <div
+                  key={`${alert.kind}-${i}`}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                    isCelebration ? 'bg-primary-soft text-primary' : alert.overdue ? 'bg-danger-bg text-danger' : 'bg-warning-bg text-warning'
+                  }`}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span>{alert.text}</span>
+                </div>
+              )
+            })
           )}
         </div>
-      </section>
+      </SpisSection>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Poslední zápisy</h2>
+      <SpisSection id="zapisy" title="Poslední zápisy" description="Co se v organizaci naposledy zapsalo.">
         <div className="mt-3">
           <EmptyState
             icon={NotebookPen}
@@ -123,7 +141,7 @@ export function TodaySections() {
             actionLabel="Přidat záznam"
           />
         </div>
-      </section>
+      </SpisSection>
     </>
   )
 }

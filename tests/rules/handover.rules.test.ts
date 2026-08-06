@@ -1,0 +1,526 @@
+import { readFileSync } from 'node:fs'
+import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing'
+import { collection, deleteDoc, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore'
+
+/**
+ * orgDirectory a personIndex — dvě kolekce, na kterých stojí předání
+ * pěstouna mezi organizacemi.
+ *
+ * Obě jsou čitelné napříč organizacemi, což je v týhle appce výjimka —
+ * proto se u obou testuje hlavně to, CO SE Z NICH NEDÁ VYTĚŽIT:
+ * vylistovat celý seznam organizací ani celý index osob.
+ */
+
+let testEnv: RulesTestEnvironment
+
+const ORG_A = 'org-a'
+const ORG_B = 'org-b'
+const HASH = 'a'.repeat(64)
+
+function card(over: Record<string, unknown> = {}) {
+  return {
+    organizationId: ORG_A,
+    name: 'Doprovázení Jih, z. ú.',
+    contactPersonName: 'Jana Nováková',
+    phone: '+420 777 111 222',
+    email: 'vedeni@jih.example',
+    updatedAt: '2026-07-26T10:00:00.000Z',
+    updatedByUid: 'admin-a',
+    ...over,
+  }
+}
+
+function indexEntry(over: Record<string, unknown> = {}) {
+  return {
+    uid: '1000000001',
+    kind: 'rodne_cislo',
+    createdAt: '2026-07-26T10:00:00.000Z',
+    createdByOrgId: ORG_A,
+    ...over,
+  }
+}
+
+beforeAll(async () => {
+  testEnv = await initializeTestEnvironment({
+    projectId: 'demo-doprovazeni',
+    firestore: { rules: readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8080 },
+  })
+})
+
+afterAll(async () => {
+  await testEnv.cleanup()
+})
+
+beforeEach(async () => {
+  await testEnv.clearFirestore()
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore()
+    const base = { createdAt: 'seed' }
+    await setDoc(doc(db, 'users', 'admin-a'), {
+      ...base, uid: 'admin-a', role: 'org_admin', organizationId: ORG_A, displayName: 'Admin A', email: 'a@example.com',
+    })
+    await setDoc(doc(db, 'users', 'ko-a'), {
+      ...base, uid: 'ko-a', role: 'klicova_osoba', organizationId: ORG_A, displayName: 'KO A', email: 'k@example.com',
+    })
+    await setDoc(doc(db, 'users', 'admin-b'), {
+      ...base, uid: 'admin-b', role: 'org_admin', organizationId: ORG_B, displayName: 'Admin B', email: 'b@example.com',
+    })
+    await setDoc(doc(db, 'users', 'super'), {
+      ...base, uid: 'super', role: 'superadmin', organizationId: ORG_A, displayName: 'Super', email: 's@example.com',
+    })
+    await setDoc(doc(db, 'users', 'foster-a'), {
+      ...base, uid: 'foster-a', role: 'pestoun', organizationId: ORG_A, displayName: 'Pěstoun', email: 'p@example.com',
+    })
+    await setDoc(doc(db, 'users', 'ko-blocked'), {
+      ...base, uid: 'ko-blocked', role: 'klicova_osoba', organizationId: ORG_A,
+      displayName: 'Zablokovaná KO', email: 'z@example.com', disabledAt: '2026-07-26T10:00:00.000Z',
+    })
+  })
+})
+
+describe('orgDirectory — vizitka organizace', () => {
+  /** Tohle je celý smysl kolekce: cizí organizace musí mít kam zavolat. */
+  it('cizí organizace vizitku PŘEČTE', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'orgDirectory', ORG_A), card())
+    })
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertSucceeds(getDoc(doc(db, 'orgDirectory', ORG_A)))
+  })
+
+  it('seznam organizací se stáhnout NEDÁ', async () => {
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertFails(getDocs(collection(db, 'orgDirectory')))
+  })
+
+  it('pěstoun do adresáře nevidí', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'orgDirectory', ORG_A), card())
+    })
+    const db = testEnv.authenticatedContext('foster-a').firestore()
+    await assertFails(getDoc(doc(db, 'orgDirectory', ORG_A)))
+  })
+
+  it('org_admin svou vizitku napíše', async () => {
+    const db = testEnv.authenticatedContext('admin-a').firestore()
+    await assertSucceeds(setDoc(doc(db, 'orgDirectory', ORG_A), card()))
+  })
+
+  /** Vizitka je vyjádření organizace o sobě, ne provozní údaj. */
+  it('klíčová osoba vizitku nemění', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(setDoc(doc(db, 'orgDirectory', ORG_A), card()))
+  })
+
+  it('nikdo nenapíše vizitku cizí organizaci', async () => {
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertFails(setDoc(doc(db, 'orgDirectory', ORG_A), card()))
+  })
+})
+
+describe('personIndex — vyhledávací otisky', () => {
+  it('cizí organizace se smí zeptat na konkrétní otisk', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'personIndex', HASH), indexEntry())
+    })
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertSucceeds(getDoc(doc(db, 'personIndex', HASH)))
+  })
+
+  /**
+   * NEJDŮLEŽITĚJŠÍ TEST. Vylistovaný index = seznam všech osob, které
+   * systém vede, spárovatelný s čímkoli dalším.
+   */
+  it('celý index stáhnout NEJDE', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(getDocs(collection(db, 'personIndex')))
+  })
+
+  it('pěstoun do indexu nevidí', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'personIndex', HASH), indexEntry())
+    })
+    const db = testEnv.authenticatedContext('foster-a').firestore()
+    await assertFails(getDoc(doc(db, 'personIndex', HASH)))
+  })
+
+  it('zaměstnanec otisk založí', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(setDoc(doc(db, 'personIndex', HASH), indexEntry()))
+  })
+
+  it('nejde založit jménem cizí organizace', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(setDoc(doc(db, 'personIndex', HASH), indexEntry({ createdByOrgId: ORG_B })))
+  })
+
+  /** Smazaný otisk = osoba se přestane nacházet a jde založit podruhé. */
+  it('mazat smí jen superadmin', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'personIndex', HASH), indexEntry())
+    })
+    const staff = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(deleteDoc(doc(staff, 'personIndex', HASH)))
+    const su = testEnv.authenticatedContext('super').firestore()
+    await assertSucceeds(deleteDoc(doc(su, 'personIndex', HASH)))
+  })
+})
+
+/**
+ * uidHolderCard — jediná kolekce, kde osobní údaj překračuje hranici
+ * organizace. Testuje se hlavně to, že se nedá vytěžit hromadně: bez
+ * `list` musí útočník znát konkrétní UID.
+ */
+describe('uidHolderCard — ověřovací karta k UID', () => {
+  const UID = '1000000001'
+  const holderCard = {
+    uid: UID,
+    firstName: 'Jana',
+    lastName: 'Nováková',
+    municipality: 'Kolín',
+    holderOrgId: ORG_A,
+    updatedAt: '2026-07-26T10:00:00.000Z',
+  }
+
+  async function seedHolder() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'uidHolderCard', UID), holderCard)
+    })
+  }
+
+  it('cizí organizace kartu přečte — na tom stojí ověření opsaného UID', async () => {
+    await seedHolder()
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertSucceeds(getDoc(doc(db, 'uidHolderCard', UID)))
+  })
+
+  /** Bez tohohle by šel stáhnout jmenný seznam všech vedených osob. */
+  it('hromadně se karty stáhnout NEDAJÍ', async () => {
+    await seedHolder()
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertFails(getDocs(collection(db, 'uidHolderCard')))
+  })
+
+  it('pěstoun ani nepřihlášený na kartu nedosáhne', async () => {
+    await seedHolder()
+    await assertFails(getDoc(doc(testEnv.authenticatedContext('foster-a').firestore(), 'uidHolderCard', UID)))
+    await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), 'uidHolderCard', UID)))
+  })
+
+  it('kartu zapíše jen organizace, která osobu vede', async () => {
+    const own = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(setDoc(doc(own, 'uidHolderCard', UID), holderCard))
+
+    const foreign = testEnv.authenticatedContext('ko-b').firestore()
+    await assertFails(setDoc(doc(foreign, 'uidHolderCard', UID), holderCard))
+  })
+
+  it('mazat smí jen superadmin', async () => {
+    await seedHolder()
+    await assertFails(deleteDoc(doc(testEnv.authenticatedContext('ko-a').firestore(), 'uidHolderCard', UID)))
+    await assertSucceeds(deleteDoc(doc(testEnv.authenticatedContext('super').firestore(), 'uidHolderCard', UID)))
+  })
+})
+
+/**
+ * ZABLOKOVANÝ ÚČET. Do 26. 7. se `disabledAt` sice zapisovalo a zobrazovalo,
+ * ale pravidla ho nečetla — zablokovaný člověk jen zmizel ze seznamu a jeho
+ * přihlášení mělo dál plný přístup. Tyhle testy hlídají, aby se to nevrátilo.
+ */
+describe('zablokovaný účet', () => {
+  const UID = '1000000001'
+
+  it('nedostane se k vizitce ani k rejstříku', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'orgDirectory', ORG_A), card())
+      await setDoc(doc(ctx.firestore(), 'personIndex', HASH), indexEntry())
+    })
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(getDoc(doc(db, 'orgDirectory', ORG_A)))
+    await assertFails(getDoc(doc(db, 'personIndex', HASH)))
+  })
+
+  it('nedostane se ani k ověřovací kartě', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'uidHolderCard', HASH), {
+        uid: UID, firstName: 'Jana', lastName: 'Nováková', municipality: 'Kolín',
+        holderOrgId: ORG_A, updatedAt: '2026-07-26T10:00:00.000Z',
+      })
+    })
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(getDoc(doc(db, 'uidHolderCard', HASH)))
+  })
+
+  it('nic nezapíše', async () => {
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(setDoc(doc(db, 'personIndex', HASH), indexEntry()))
+  })
+
+  /** Kdyby šlo, každý automaticky zablokovaný účet se hned odemkne. */
+  it('SÁM SE NEODEMKNE', async () => {
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(updateDoc(doc(db, 'users', 'ko-blocked'), { disabledAt: null }))
+  })
+})
+
+describe('sebezablokování při překročení limitu', () => {
+  it('účet si smí sám zapsat disabledAt', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(updateDoc(doc(db, 'users', 'ko-a'), { disabledAt: '2026-07-26T12:00:00.000Z' }))
+  })
+
+  it('ale nesmí u toho měnit nic jiného — třeba si zvýšit roli', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(
+      updateDoc(doc(db, 'users', 'ko-a'), { disabledAt: '2026-07-26T12:00:00.000Z', role: 'org_admin' }),
+    )
+  })
+
+  it('a nesmí zablokovat kolegu', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(updateDoc(doc(db, 'users', 'admin-a'), { disabledAt: '2026-07-26T12:00:00.000Z' }))
+  })
+
+  it('počítadlo si vede každý své a do cizího nevidí', async () => {
+    const own = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(
+      setDoc(doc(own, 'lookupQuota', 'ko-a'), { userUid: 'ko-a', day: '2026-07-26', count: 1 }),
+    )
+    await assertFails(
+      setDoc(doc(own, 'lookupQuota', 'ko-b'), { userUid: 'ko-b', day: '2026-07-26', count: 1 }),
+    )
+    const other = testEnv.authenticatedContext('admin-b').firestore()
+    await assertFails(getDoc(doc(other, 'lookupQuota', 'ko-a')))
+  })
+})
+
+/**
+ * uidRegistry — všechna vydaná čísla. Od chvíle, kdy je UID náhodné, je
+ * tohle jediné místo, kde se pozná srážka. Testuje se hlavně to, že se
+ * číslo nedá uvolnit a přidělit podruhé.
+ */
+describe('uidRegistry — rejstřík vydaných čísel', () => {
+  const UID = '1000000001'
+  const entry = { uid: UID, entityType: 'fosterPerson', issuedAt: 'x', issuedBy: ORG_A }
+
+  async function seedUid() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'uidRegistry', UID), entry)
+    })
+  }
+
+  it('zaměstnanec číslo vydá', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(setDoc(doc(db, 'uidRegistry', UID), entry))
+  })
+
+  it('document ID musí sedět s uid v dokumentu', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(setDoc(doc(db, 'uidRegistry', UID), { ...entry, uid: '9999999999' }))
+  })
+
+  it('kdokoli se smí zeptat, jestli je číslo obsazené — na tom stojí alokátor', async () => {
+    await seedUid()
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertSucceeds(getDoc(doc(db, 'uidRegistry', UID)))
+  })
+
+  it('celý rejstřík stáhnout NEJDE', async () => {
+    await seedUid()
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(getDocs(collection(db, 'uidRegistry')))
+  })
+
+  /**
+   * NEJDŮLEŽITĚJŠÍ TEST. Uvolněné číslo by šlo přidělit podruhé a dva různí
+   * lidé by měli totéž UID — přesně to, co má rejstřík vyloučit. Nesmí to
+   * jít ani superadminovi.
+   */
+  it('vydané číslo NEJDE přepsat ani smazat — ani superadminem', async () => {
+    await seedUid()
+    for (const who of ['ko-a', 'super']) {
+      const db = testEnv.authenticatedContext(who).firestore()
+      await assertFails(setDoc(doc(db, 'uidRegistry', UID), { ...entry, entityType: 'child' }))
+      await assertFails(deleteDoc(doc(db, 'uidRegistry', UID)))
+    }
+  })
+
+  it('zablokovaný účet číslo nevydá', async () => {
+    const db = testEnv.authenticatedContext('ko-blocked').firestore()
+    await assertFails(setDoc(doc(db, 'uidRegistry', UID), entry))
+  })
+
+  it('pěstoun číslo nevydá', async () => {
+    const db = testEnv.authenticatedContext('foster-a').firestore()
+    await assertFails(setDoc(doc(db, 'uidRegistry', UID), entry))
+  })
+})
+
+/**
+ * Historie Dohod. Deterministické ID (= organizationId) znamená, že druhá
+ * Dohoda mezi toutéž rodinou a organizací zapisuje na stejnou cestu. Před
+ * přepisem se ta předchozí odloží sem — jinak by pěstoun, který se po
+ * letech vrátí k původní organizaci, smazal vlastní historii.
+ */
+describe('history — odložené předchozí Dohody', () => {
+  const FAM = 'rodina-1'
+  const prev = {
+    uid: '9000000001',
+    familyId: FAM,
+    organizationId: ORG_A,
+    careType: 'zprostredkovana',
+    status: 'ended',
+    validFrom: '2020-01-01T00:00:00.000Z',
+    validTo: '2024-06-30T00:00:00.000Z',
+    supersededAt: '2026-07-26T10:00:00.000Z',
+  }
+
+  function histRef(db: ReturnType<ReturnType<typeof testEnv.authenticatedContext>['firestore']>) {
+    return doc(db, 'families', FAM, 'agreements', ORG_A, 'history', prev.uid)
+  }
+
+  async function seedHistory() {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(histRef(ctx.firestore()), prev)
+    })
+  }
+
+  it('organizace svou odloženou Dohodu zapíše', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(setDoc(histRef(db), prev))
+  })
+
+  it('a přečte ji', async () => {
+    await seedHistory()
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertSucceeds(getDoc(histRef(db)))
+  })
+
+  it('cizí organizace do cizí historie nevidí', async () => {
+    await seedHistory()
+    const db = testEnv.authenticatedContext('admin-b').firestore()
+    await assertFails(getDoc(histRef(db)))
+  })
+
+  /** Uzavřená minulost. Na ní visí třicetiletá archivační lhůta. */
+  it('odloženou Dohodu NEJDE přepsat ani smazat — ani superadminem', async () => {
+    await seedHistory()
+    for (const who of ['ko-a', 'super']) {
+      const db = testEnv.authenticatedContext(who).firestore()
+      await assertFails(updateDoc(histRef(db), { validTo: '2030-01-01T00:00:00.000Z' }))
+      await assertFails(deleteDoc(histRef(db)))
+    }
+  })
+
+  it('pěstoun do historie nevidí', async () => {
+    await seedHistory()
+    const db = testEnv.authenticatedContext('foster-a').firestore()
+    await assertFails(getDoc(histRef(db)))
+  })
+})
+
+/**
+ * PŘESTĚHOVÁNÍ PĚSTOUNA. `fosterFamilyId` řídí přístup pěstouna k portálu
+ * na jedenácti místech pravidel a do 27. 7. ho nešlo změnit nikomu — přesun
+ * by mu nechal přístup ke STARÉ rodině.
+ *
+ * Otevření té cesty ale málem přineslo povýšení oprávnění: kdyby šlo pole
+ * nastavit na libovolnou rodinu, org_admin by pěstouna namířil na rodinu
+ * CIZÍ organizace a ten by ji legálně přečetl. Poslední test hlídá právě to.
+ */
+describe('změna domácnosti pěstouna (users.fosterFamilyId)', () => {
+  const FAM_A = 'rodina-org-a'
+  const FAM_B = 'rodina-org-b'
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore()
+      await setDoc(doc(db, 'families', FAM_A), {
+        uid: '9900000001', orgAccessList: [ORG_A], fosterPersonRefs: [], createdAt: 'seed',
+      })
+      await setDoc(doc(db, 'families', FAM_B), {
+        uid: '9900000002', orgAccessList: [ORG_B], fosterPersonRefs: [], createdAt: 'seed',
+      })
+      await setDoc(doc(db, 'users', 'pestoun-a'), {
+        createdAt: 'seed', uid: 'pestoun-a', role: 'pestoun', organizationId: ORG_A,
+        displayName: 'Pěstoun A', email: 'pa@example.com', fosterFamilyId: 'stara-rodina',
+      })
+    })
+  })
+
+  it('org_admin přesune pěstouna do domácnosti své organizace', async () => {
+    const db = testEnv.authenticatedContext('admin-a').firestore()
+    await assertSucceeds(updateDoc(doc(db, 'users', 'pestoun-a'), { fosterFamilyId: FAM_A }))
+  })
+
+  /** NEJDŮLEŽITĚJŠÍ TEST. Jinak je to povýšení oprávnění na jeden řádek. */
+  it('NESMÍ ho namířit na rodinu cizí organizace', async () => {
+    const db = testEnv.authenticatedContext('admin-a').firestore()
+    await assertFails(updateDoc(doc(db, 'users', 'pestoun-a'), { fosterFamilyId: FAM_B }))
+  })
+
+  it('klíčová osoba domácnost nemění — je to věc správce', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    await assertFails(updateDoc(doc(db, 'users', 'pestoun-a'), { fosterFamilyId: FAM_A }))
+  })
+
+  /** Pole se smí měnit SAMO — přibalit k němu roli by byl tichý průlez. */
+  it('nejde přesunout a zároveň si přihodit jiné pole', async () => {
+    const db = testEnv.authenticatedContext('admin-a').firestore()
+    await assertFails(
+      updateDoc(doc(db, 'users', 'pestoun-a'), { fosterFamilyId: FAM_A, role: 'org_admin' }),
+    )
+  })
+
+  it('pěstoun si domácnost nepřepíše sám', async () => {
+    const db = testEnv.authenticatedContext('pestoun-a').firestore()
+    await assertFails(updateDoc(doc(db, 'users', 'pestoun-a'), { fosterFamilyId: FAM_A }))
+  })
+})
+
+describe('householdHistory — kde pěstoun bydlel předtím', () => {
+  const FOSTER = 'foster-1'
+  const entry = { fromFamilyId: 'rodina-1', toFamilyId: 'rodina-2', movedAt: '2026-07-27T00:00:00.000Z', movedByOrgId: ORG_A }
+
+  beforeEach(async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'fosterPersons', FOSTER), {
+        uid: '1000000009', orgAccessList: [ORG_A], familyId: 'rodina-2',
+        firstName: 'Jana', lastName: 'Nováková', createdAt: 'seed',
+      })
+    })
+  })
+
+  it('organizace s přístupem zápis založí a přečte', async () => {
+    const db = testEnv.authenticatedContext('ko-a').firestore()
+    const ref = doc(db, 'fosterPersons', FOSTER, 'householdHistory', 'h1')
+    await assertSucceeds(setDoc(ref, entry))
+    await assertSucceeds(getDoc(ref))
+  })
+
+  it('cizí organizace do historie nevidí', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'fosterPersons', FOSTER, 'householdHistory', 'h1'), entry)
+    })
+    const db = testEnv.authenticatedContext('ko-b').firestore()
+    await assertFails(getDoc(doc(db, 'fosterPersons', FOSTER, 'householdHistory', 'h1')))
+  })
+
+  /** Minulé bydliště je kontext cizích zápisů — přepsat ho nesmí nikdo. */
+  it('zápis NEJDE přepsat ani smazat', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'fosterPersons', FOSTER, 'householdHistory', 'h1'), entry)
+    })
+    for (const who of ['ko-a', 'super']) {
+      const db = testEnv.authenticatedContext(who).firestore()
+      await assertFails(updateDoc(doc(db, 'fosterPersons', FOSTER, 'householdHistory', 'h1'), { toFamilyId: 'x' }))
+      await assertFails(deleteDoc(doc(db, 'fosterPersons', FOSTER, 'householdHistory', 'h1')))
+    }
+  })
+})

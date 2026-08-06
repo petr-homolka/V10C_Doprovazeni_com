@@ -13,7 +13,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', ne 'autoUpdate' (změna 27. 7.). `autoUpdate` novou verzi
+      // stáhne na pozadí, ale otevřená stránka dál běží na starých souborech
+      // — nasazená změna se tak tvářila jako nenasazená. Teď se uživatel
+      // zeptá a obnoví sám; obsluhuje to `components/UpdatePrompt.tsx`,
+      // kde je i vysvětlení, proč se neobnovuje automaticky.
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'pwa-icon.svg'],
       manifest: {
         name: 'Doprovázení.com',
@@ -22,8 +27,11 @@ export default defineConfig({
         lang: 'cs',
         // DESIGN_SYSTEM.md §9.1 — theme/background = --bg-app, NIKDY bílá,
         // jinak instalační splash screen vypadá jako prázdný bílý blesk.
-        theme_color: '#FAF9F5',
-        background_color: '#FAF9F5',
+        // Cesta B (2026-07-23): --bg-app tady je #F7F9FC (Lumo paleta), ne
+        // Cesty A #FAF9F5 — jinak by nainstalovaná PWA bleskla špatnou
+        // barvou splash screenu, co nesedí k modrému designu.
+        theme_color: '#F7F9FC',
+        background_color: '#F7F9FC',
         display: 'standalone',
         // TODO(M9.5): nahradit skutečným logem organizace Doprovázení.com —
         // toto je jen placeholder tvar (teal kruh na --bg-app), ne finální

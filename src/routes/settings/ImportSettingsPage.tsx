@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHead } from '@/components/spis/PageBody'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useAuth } from '@/hooks/useAuth'
 import { downloadBlob } from '@/lib/utils'
-import { getOrganization } from '@/services/organizationService'
 import {
   generateImportTemplate,
   parseImportTemplate,
@@ -21,7 +21,7 @@ import {
 } from '@/services/importService'
 import type { ImportJobDoc, ImportJobStatus } from '@/types/importJob'
 import type { StagingRecordDoc } from '@/types/stagingRecord'
-import { FileSpreadsheet } from 'lucide-react'
+import { FileSpreadsheet } from '@/components/ui/icons'
 
 const STATUS_LABELS: Record<ImportJobStatus, string> = {
   staging: 'Zpracovává se',
@@ -148,9 +148,7 @@ export default function ImportSettingsPage() {
     setBusyJobId(jobId)
     setError(null)
     try {
-      const org = await getOrganization(organizationId)
-      if (!org) throw new Error('org not found')
-      await commitImportJob(organizationId, org.orgCode, jobId)
+      await commitImportJob(organizationId, jobId)
       await reload()
     } catch {
       setError('Spuštění importu se nezdařilo.')
@@ -175,34 +173,32 @@ export default function ImportSettingsPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Nastavení' }, { label: 'Import dat' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Import dat</h1>
-        <p className="mt-4 text-sm text-text-secondary">
-          Tahle stránka je pro zaměstnance konkrétní organizace.
-        </p>
+      <AppShell>
+        <PageHead title="Import dat" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
+        </section>
       </AppShell>
     )
   }
 
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Import dat' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Import dat</h1>
-      <p className="mt-1 text-sm text-text-secondary">
-        Hromadné nahrání rodin, pěstounů, dětí a Dohod ze souboru. Nahrání a náhled nic nezaloží —
-        až po výslovném potvrzení a spuštění, a i pak jde do 30 dnů celé vrátit zpět.
-      </p>
-
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+      <PageHead
+        title="Import dat"
+        description="Hromadné nahrání rodin, pěstounů, dětí a Dohod ze souboru. Nahrání a náhled nic nezaloží — až po výslovném potvrzení a spuštění, a i pak jde do 30 dnů celé vrátit zpět."
+      >
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
       {isOrgAdmin && (
-        <div className="mt-6 max-w-[560px] space-y-4 rounded-lg border border-border bg-surface p-5">
+        <section className="sp__card sp__card--pad space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" size="sm" onClick={handleDownloadTemplate}>
               Stáhnout šablonu (.xlsx)
@@ -225,7 +221,7 @@ export default function ImportSettingsPage() {
           </div>
 
           {parsed && (
-            <div className="space-y-3 rounded-md border border-border-subtle bg-inset p-4">
+            <div className="space-y-3 border-t border-border-subtle pt-4">
               <p className="text-sm font-medium text-text-primary">Náhled před spuštěním</p>
               <p className="text-sm text-text-secondary">
                 Čistých řádků: {parsed.summary.fostersDetected} pěstounů,{' '}
@@ -260,14 +256,14 @@ export default function ImportSettingsPage() {
               </div>
             </div>
           )}
-        </div>
+        </section>
       )}
 
-      <div className="mt-6">
-        <h2 className="text-sm font-medium text-text-primary">Historie importů</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Historie importů</h2>
         <div className="mt-3">
           {jobs === null ? (
-            <p className="text-sm text-text-secondary">Načítám…</p>
+            <p className="text-sm text-text-tertiary">Načítám…</p>
           ) : jobs.length === 0 ? (
             <EmptyState icon={FileSpreadsheet} text="Zatím žádný import." />
           ) : (
@@ -317,7 +313,7 @@ export default function ImportSettingsPage() {
                       </div>
                     </TableRow>
                     {expandedJobId === docId && (
-                      <div className="border-b border-border-strong bg-inset px-4 py-3 last:border-b-0">
+                      <div className="border-b border-border-subtle py-3 last:border-b-0">
                         {stagingRecords === null ? (
                           <p className="text-xs text-text-secondary">Načítám záznamy…</p>
                         ) : (
@@ -351,7 +347,7 @@ export default function ImportSettingsPage() {
             </Table>
           )}
         </div>
-      </div>
+      </section>
     </AppShell>
   )
 }

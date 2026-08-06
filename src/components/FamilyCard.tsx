@@ -36,17 +36,14 @@ export function FamilyCard({
   onClick?: () => void
 }) {
   return (
-    <article
-      onClick={onClick}
-      className="flex cursor-pointer items-center gap-4 rounded-lg border border-border bg-surface p-5 transition-colors duration-150 hover:bg-surface-soft"
-    >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-soft font-semibold text-primary">
+    <article onClick={onClick} className="sp__row cursor-pointer" style={{ gridTemplateColumns: 'auto minmax(0,1fr) auto auto' }}>
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-medium text-primary">
         {initials}
       </div>
-      <div className="min-w-0 flex-1">
-        <h3 className="truncate text-[15px] font-semibold text-text-primary">{name}</h3>
-        <p className="truncate text-[13px] text-text-secondary">{lastContactText}</p>
-        {secondaryWarning && <p className="truncate text-[13px] text-warning">{secondaryWarning}</p>}
+      <div className="min-w-0">
+        <h3 className="truncate text-sm text-text-primary">{name}</h3>
+        <p className="truncate text-xs text-text-tertiary">{lastContactText}</p>
+        {secondaryWarning && <p className="truncate text-xs text-warning">{secondaryWarning}</p>}
       </div>
       {visitStatus === 'crisis' && (
         <span className="inline-flex h-6 shrink-0 items-center rounded-full bg-crisis-bg px-2.5 text-xs font-medium text-crisis">

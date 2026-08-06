@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { Baby, Clock, FileText, MessageCircle, Mic, StickyNote } from 'lucide-react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Baby, Clock, FileText, MessageCircle, Mic, Send, StickyNote } from '@/components/ui/icons'
 import ReactMarkdown from 'react-markdown'
 import { MojeShell } from '@/components/moje/MojeShell'
 import { EntityAvatar } from '@/components/ui/entity-avatar'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import { TimelineEntryDetail } from '@/components/timeline/TimelineEntryDetail'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
@@ -12,13 +13,17 @@ import {
   getFosterFamily,
   listFosterChildren,
   listFosterVisibleDocuments,
+  listFosterVisibleMessages,
   listFosterVisibleTimelineEntries,
 } from '@/services/mojeService'
 import { fosterApproveDocument, fosterCommentDocument } from '@/services/documentService'
+import { sendFosterMessage } from '@/services/messageService'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import type { FamilyDoc } from '@/types/family'
 import type { ChildDoc } from '@/types/child'
 import type { SubjectRef, TimelineEntryDoc, TimelineEntryKind } from '@/types/timelineEntry'
 import type { FamilyDocumentDoc } from '@/types/familyDocument'
+import type { MessageDoc } from '@/types/message'
 
 const TIMELINE_TYPE_LABELS: Record<TimelineEntryKind, string> = {
   note: 'Poznámka',
@@ -37,13 +42,18 @@ const TIMELINE_TYPE_ICONS: Record<TimelineEntryKind, typeof Mic> = {
 
 /**
  * `/moje` — §2 "vlastní omezená appka": vlastní děti (read-only), sdílené
- * zápisy (sharingLevel 'foster'), chat s KO a dokumenty jsou SEAM (M9/M5
- * ještě neexistují vůbec, ani pro staff) — zobrazené jako jasně popsané
- * "připravujeme" karty, ne mlčky vynechané.
+ * zápisy (sharingLevel 'foster'), chat s KO (M9) a dokumenty (M5).
  *
- * Jméno autora zápisu se NEZOBRAZUJE jmenovitě ("Klíčová osoba" místo
- * toho) — pěstoun nemá (a nepotřebuje) čtecí právo na `users/{staffUid}`
- * (rules `users/{uid}` read vyžaduje `sameOrg`, což je jen pro staff).
+ * Chat (`families/{familyId}/messages`, viz `messageService.ts`/
+ * `FamilyChatSection.tsx` pro staff protějšek) — pěstoun vidí a zakládá
+ * VÝHRADNĚ `audience: 'foster'` zápisy, nikdy interní poznámky týmu
+ * (`firestore.rules` to vynucuje, `listFosterVisibleMessages` to zrcadlí
+ * dotazem, stejný §5 vzor jako sdílené zápisy níž).
+ *
+ * Jméno autora zápisu/zprávy se NEZOBRAZUJE jmenovitě ("Klíčová osoba"
+ * místo toho) — pěstoun nemá (a nepotřebuje) čtecí právo na
+ * `users/{staffUid}` (rules `users/{uid}` read vyžaduje `sameOrg`, což je
+ * jen pro staff).
  */
 export default function MojeDashboardPage() {
   const { userDoc } = useAuth()
@@ -53,8 +63,25 @@ export default function MojeDashboardPage() {
   const [selectedEntry, setSelectedEntry] = useState<{ docId: string; entry: TimelineEntryDoc } | null>(null)
   const [documents, setDocuments] = useState<Array<{ docId: string; document: FamilyDocumentDoc }>>([])
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
-  const [submittingDocId, setSubmittingDocId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<Array<{ docId: string; message: MessageDoc }>>([])
+  const [messageBody, setMessageBody] = useState('')
+  const { loading: sendingMessage, run: runSendMessage } = useAsyncSubmit()
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const { loading: docLoading, success: docSuccess, run: runDocAction } = useAsyncSubmit()
+  const [pendingDocId, setPendingDocId] = useState<string | null>(null)
+
+  // Loading/success jsou sdílené pro celou sekci (jeden useAsyncSubmit), proto
+  // teprve až doběhne celý cyklus (loading i success záblesk), uvolníme, na
+  // který dokument se to vztahovalo — jinak by "success" zůstal přilepený na
+  // předchozím docId při dalším kliknutí.
+  useEffect(() => {
+    if (!docLoading && !docSuccess) setPendingDocId(null)
+  }, [docLoading, docSuccess])
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: 'end' })
+  }, [messages])
 
   function reload() {
     const familyId = userDoc?.fosterFamilyId
@@ -64,12 +91,14 @@ export default function MojeDashboardPage() {
       listFosterChildren(familyId),
       listFosterVisibleTimelineEntries(familyId, userDoc?.fosterPersonRef),
       listFosterVisibleDocuments(familyId),
+      listFosterVisibleMessages(familyId),
     ])
-      .then(([f, kids, timelineEntries, docs]) => {
+      .then(([f, kids, timelineEntries, docs, msgs]) => {
         setFamily(f)
         setChildren(kids)
         setEntries(timelineEntries)
         setDocuments(docs)
+        setMessages(msgs)
       })
       .catch(() => setError('Data se nepodařilo načíst.'))
   }
@@ -78,32 +107,57 @@ export default function MojeDashboardPage() {
   useEffect(reload, [userDoc?.fosterFamilyId])
 
   async function handleApproveDocument(docId: string) {
-    if (!userDoc?.fosterFamilyId) return
-    setSubmittingDocId(docId)
+    const familyId = userDoc?.fosterFamilyId
+    const uid = userDoc?.uid
+    if (!familyId || !uid) return
     setError(null)
+    setPendingDocId(docId)
     try {
-      await fosterApproveDocument(userDoc.fosterFamilyId, docId, userDoc.uid)
-      reload()
+      await runDocAction(async () => {
+        await fosterApproveDocument(familyId, docId, uid)
+        reload()
+      })
     } catch {
       setError('Schválení se nezdařilo.')
-    } finally {
-      setSubmittingDocId(null)
     }
   }
 
   async function handleCommentDocument(docId: string) {
+    const familyId = userDoc?.fosterFamilyId
     const comment = commentDrafts[docId]?.trim()
-    if (!userDoc?.fosterFamilyId || !comment) return
-    setSubmittingDocId(docId)
+    if (!familyId || !comment) return
     setError(null)
+    setPendingDocId(docId)
     try {
-      await fosterCommentDocument(userDoc.fosterFamilyId, docId, comment)
+      await runDocAction(async () => {
+        await fosterCommentDocument(familyId, docId, comment)
+        reload()
+      })
       setCommentDrafts((prev) => ({ ...prev, [docId]: '' }))
-      reload()
     } catch {
       setError('Odeslání komentáře se nezdařilo.')
-    } finally {
-      setSubmittingDocId(null)
+    }
+  }
+
+  async function handleSendMessage(e: FormEvent) {
+    e.preventDefault()
+    const familyId = userDoc?.fosterFamilyId
+    const trimmed = messageBody.trim()
+    if (!familyId || !userDoc || !trimmed) return
+    setError(null)
+    try {
+      await runSendMessage(async () => {
+        await sendFosterMessage({
+          familyDocId: familyId,
+          organizationId: userDoc.organizationId ?? '',
+          createdByUid: userDoc.uid,
+          body: trimmed,
+        })
+        reload()
+      })
+      setMessageBody('')
+    } catch {
+      setError('Zprávu se nepodařilo odeslat.')
     }
   }
 
@@ -119,24 +173,25 @@ export default function MojeDashboardPage() {
 
   return (
     <MojeShell>
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Vítejte, {userDoc?.displayName}</h1>
-      {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
+      <header className="sp__card sp__card--pad">
+        <h1 className="text-2xl text-text-primary">Vítejte, {userDoc?.displayName}</h1>
+        {family?.address && <p className="mt-1 text-sm text-text-secondary">{family.address}</p>}
+        {error && (
+          <p className="mt-3 text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </header>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-
-      <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Vaše děti</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Vaše děti</h2>
         <div className="mt-3">
           {children.length === 0 ? (
             <EmptyState icon={Baby} text="Zatím tu nejsou žádné svěřené děti." />
           ) : (
             <div className="flex flex-col gap-2">
               {children.map(({ docId, child }) => (
-                <div key={docId} className="flex items-center gap-3 rounded-lg border border-border bg-surface p-4">
+                <div key={docId} className="sp__sub flex items-center gap-3">
                   <EntityAvatar photoURL={child.avatarUrl} label={`${child.firstName} ${child.lastName}`} />
                   <span className="text-sm text-text-primary">
                     {child.firstName} {child.lastName}
@@ -148,8 +203,8 @@ export default function MojeDashboardPage() {
         </div>
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Sdílené zápisy</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Sdílené zápisy</h2>
         <div className="mt-3">
           {entries.length === 0 ? (
             <EmptyState icon={Clock} text="Zatím tu nejsou žádné sdílené zápisy." />
@@ -162,7 +217,7 @@ export default function MojeDashboardPage() {
                     key={docId}
                     type="button"
                     onClick={() => setSelectedEntry({ docId, entry })}
-                    className="flex items-start gap-3 rounded-lg border border-border bg-surface p-4 text-left transition-colors duration-150 hover:bg-overlay-hover"
+                    className="flex items-start gap-3 sp__sub text-left transition-colors duration-150 hover:bg-overlay-hover"
                   >
                     <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-inset text-text-secondary">
                       <Icon className="size-4" />
@@ -184,22 +239,54 @@ export default function MojeDashboardPage() {
         </div>
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Chat s klíčovou osobou</h2>
-        <div className="mt-3">
-          <EmptyState icon={MessageCircle} text="Chat zatím připravujeme." />
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Chat s klíčovou osobou</h2>
+        <div className="mt-3 flex max-h-[420px] flex-col gap-2 overflow-y-auto border-t border-border-subtle pt-4">
+          {messages.length === 0 ? (
+            <EmptyState icon={MessageCircle} text="Zatím žádné zprávy — napište klíčové osobě jako první." />
+          ) : (
+            messages.map(({ docId, message }) => {
+              const isMine = message.authorRole === 'foster'
+              return (
+                <div key={docId} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+                  <div
+                    className={`max-w-[85%] rounded-lg px-3.5 py-2.5 text-sm ${
+                      isMine ? 'bg-primary text-primary-foreground' : 'border border-border bg-surface text-text-primary'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{message.body}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-text-tertiary">
+                    {isMine ? 'Vy' : 'Klíčová osoba'} · {new Date(message.createdAt).toLocaleString('cs-CZ')}
+                  </p>
+                </div>
+              )
+            })
+          )}
+          <div ref={messagesEndRef} />
         </div>
+        <form onSubmit={handleSendMessage} className="mt-3 flex flex-col gap-2">
+          <Textarea
+            value={messageBody}
+            onChange={(e) => setMessageBody(e.target.value)}
+            placeholder="Napište klíčové osobě…"
+            rows={2}
+          />
+          <Button type="submit" size="sm" className="w-fit" loading={sendingMessage} disabled={!messageBody.trim()}>
+            <Send size={16} /> Odeslat
+          </Button>
+        </form>
       </section>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Dokumenty</h2>
+      <section className="sp__card sp__card--pad">
+        <h2 className="text-base text-text-primary">Dokumenty</h2>
         <div className="mt-3">
           {documents.length === 0 ? (
             <EmptyState icon={FileText} text="Zatím tu nejsou žádné dokumenty ke schválení." />
           ) : (
             <div className="flex flex-col gap-3">
               {documents.map(({ docId, document }) => (
-                <div key={docId} className="rounded-lg border border-border bg-surface p-4">
+                <div key={docId} className="sp__sub">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-text-primary">{document.title}</p>
                     <p className="shrink-0 text-xs text-text-tertiary">{DOCUMENT_STATUS_LABELS[document.status]}</p>
@@ -211,23 +298,25 @@ export default function MojeDashboardPage() {
                     <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
                       <Button
                         size="sm"
+                        loading={docLoading && pendingDocId === docId}
+                        success={docSuccess && pendingDocId === docId}
                         onClick={() => handleApproveDocument(docId)}
-                        disabled={submittingDocId === docId}
                       >
                         Schválit
                       </Button>
-                      <textarea
+                      <Textarea
                         value={commentDrafts[docId] ?? ''}
                         onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [docId]: e.target.value }))}
                         placeholder="Nebo napište komentář…"
                         rows={2}
-                        className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary focus:border-2 focus:border-accent focus:outline-none"
                       />
                       <Button
                         variant="secondary"
                         size="sm"
+                        loading={docLoading && pendingDocId === docId}
+                        success={docSuccess && pendingDocId === docId}
                         onClick={() => handleCommentDocument(docId)}
-                        disabled={submittingDocId === docId || !commentDrafts[docId]?.trim()}
+                        disabled={!commentDrafts[docId]?.trim()}
                         className="w-fit"
                       >
                         Odeslat komentář
@@ -245,7 +334,10 @@ export default function MojeDashboardPage() {
         <TimelineEntryDetail
           entry={selectedEntry.entry}
           authorName="Klíčová osoba"
-          subjectLabels={resolveSubjectLabels(selectedEntry.entry.subjectRefs)}
+          // Pěstoun tady záměrně NEMÁ prokliky na profily — na staffová
+          // rozhraní nemá přístup (viz firestore.rules), odkaz by vedl do
+          // zdi. Jména zůstávají prostým textem.
+          subjectLabels={resolveSubjectLabels(selectedEntry.entry.subjectRefs).map((label) => ({ key: label, node: label }))}
           onClose={() => setSelectedEntry(null)}
         />
       )}

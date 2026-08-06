@@ -28,7 +28,7 @@ export function SettingsNav({ groups }: { groups: SettingsNavGroup[] }) {
     <div className="space-y-4">
       {groups.map((group) => (
         <div key={group.label}>
-          <p className="px-2.5 py-1.5 text-[10px] leading-none text-text-secondary">{group.label}</p>
+          <p className="px-2.5 py-1.5 text-2xs leading-none text-text-secondary">{group.label}</p>
           <div className="space-y-0.5">
             {group.items.map((item) => (
               <NavLink

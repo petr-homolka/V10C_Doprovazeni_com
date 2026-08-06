@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react'
-import type { LucideIcon } from 'lucide-react'
-import { Mic, Pencil } from 'lucide-react'
+import type { IconComponent } from '@/components/ui/icons'
+import { Mic, Pencil } from '@/components/ui/icons'
 import { cn } from '@/lib/utils'
 
 function computeInitials(label: string): string {
@@ -24,9 +24,9 @@ function computeInitials(label: string): string {
  *   subjekt. `quickRecordDisabledReason` (bez Dohody nejde zápis uložit)
  *   zobrazí jen tooltip, klik nic nespustí.
  * - `onChangePhoto` (profil, `size="lg"`): klik na celý avatar otevře
- *   výběr souboru. Zatím jen na Spisu (FamilyDetailPage) — pěstoun/dítě/
- *   Dohoda vlastní profilovou stránku ještě nemají (SEAM, viz
- *   CURRENT_STATE.md), takže pro ně zatím žádná cesta ke změně fotky není.
+ *   výběr souboru. Zapojeno na profilu rodiny, pěstouna, dítěte i
+ *   zaměstnance (přes `EditableAvatar`), a taky přímo v seznamech Dětí/
+ *   Pěstounů/Zaměstnanců přes ⋮ menu.
  *
  * `stopPropagation` na obou klicích je nutný — řádky v tabulkách (viz
  * FamilyListPage) bývají celé zabalené v `<Link>`, klik na avatar nesmí
@@ -40,15 +40,22 @@ export function EntityAvatar({
   onQuickRecord,
   quickRecordDisabledReason,
   onChangePhoto,
+  ring,
+  online,
   className,
 }: {
   photoURL?: string | null
   label: string
   size?: 'sm' | 'lg'
-  fallbackIcon?: LucideIcon
+  fallbackIcon?: IconComponent
   onQuickRecord?: () => void
   quickRecordDisabledReason?: string
   onChangePhoto?: () => void
+  /** Cesta D: 2px modrý prstenec kolem avataru — "tohle je aktuální
+   * uživatel/kontext" konvence z Woorkroom reference. */
+  ring?: boolean
+  /** Cesta D: zelená tečka vpravo dole — online/přítomnost (Messenger). */
+  online?: boolean
   className?: string
 }) {
   const dimension = size === 'lg' ? 'size-24' : 'size-8'
@@ -72,8 +79,9 @@ export function EntityAvatar({
     <div className={cn('group relative shrink-0 rounded-full', dimension, className)}>
       <div
         className={cn(
-          'flex h-full w-full items-center justify-center overflow-hidden rounded-full border border-border-strong bg-surface-soft text-text-secondary',
-          size === 'lg' ? 'text-xl font-semibold' : 'text-[11px] font-semibold',
+          'flex h-full w-full items-center justify-center overflow-hidden rounded-full border bg-surface-soft text-text-secondary',
+          ring ? 'border-2 border-primary' : 'border-border-strong',
+          size === 'lg' ? 'text-xl font-semibold' : 'text-xs font-semibold',
         )}
       >
         {photoURL ? (
@@ -84,6 +92,15 @@ export function EntityAvatar({
           computeInitials(label) || '?'
         )}
       </div>
+      {online && (
+        <span
+          aria-hidden
+          className={cn(
+            'absolute rounded-full border-2 border-surface-soft bg-online',
+            size === 'lg' ? 'bottom-0.5 right-0.5 size-4' : 'bottom-0 right-0 size-2.5',
+          )}
+        />
+      )}
 
       {onQuickRecord && (
         <button

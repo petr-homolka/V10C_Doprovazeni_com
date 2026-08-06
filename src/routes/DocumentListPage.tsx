@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHead } from '@/components/spis/PageBody'
 import { Table, TableHeaderRow, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/ui/empty-state'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
@@ -8,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { listOrganizationDocuments } from '@/services/documentService'
 import { listFamiliesWithDocIds } from '@/services/familyService'
 import type { FamilyDoc } from '@/types/family'
-import { FileText } from 'lucide-react'
+import { FileText } from '@/components/ui/icons'
 
 const TABLE_COLUMNS = '2fr 2fr 1fr 1fr'
 
@@ -38,26 +39,26 @@ export default function DocumentListPage() {
 
   if (!organizationId) {
     return (
-      <AppShell breadcrumb={[{ label: 'Dokumenty' }]}>
-        <h1 className="text-lg font-normal leading-normal text-text-primary">Dokumenty</h1>
+      <AppShell>
+        <PageHead title="Dokumenty" />
         <p className="mt-4 text-sm text-text-secondary">Tahle stránka je pro zaměstnance konkrétní organizace.</p>
       </AppShell>
     )
   }
 
   return (
-    <AppShell breadcrumb={[{ label: 'Dokumenty' }]}>
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Dokumenty</h1>
+    <AppShell>
+      <PageHead title="Dokumenty" count={documents?.length} description="Koncepty i hotové dokumenty napříč rodinami.">
+        {error && (
+          <p className="text-sm text-danger" role="alert">
+            {error}
+          </p>
+        )}
+      </PageHead>
 
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
-
-      <div className="mt-6">
+      <section className="sp__card sp__card--pad">
         {documents === null ? (
-          <p className="text-sm text-text-secondary">Načítám…</p>
+          <p className="text-sm text-text-tertiary">Načítám…</p>
         ) : documents.length === 0 ? (
           <EmptyState icon={FileText} text="Zatím tu nejsou žádné dokumenty." />
         ) : (
@@ -82,7 +83,7 @@ export default function DocumentListPage() {
             })}
           </Table>
         )}
-      </div>
+      </section>
     </AppShell>
   )
 }

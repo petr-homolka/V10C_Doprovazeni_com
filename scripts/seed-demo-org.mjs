@@ -118,8 +118,22 @@ function toFields(obj) {
   return fields
 }
 
+/**
+ * Každý dokument ze seedu nese `dataClass: 'test'`. Bez toho by po pár
+ * letech nešlo poznat, co je zkušební a co ostrý spis — a retenční
+ * i archivační pravidla (30 let, viz src/lib/retentionPolicy.ts) platí
+ * VÝHRADNĚ pro ostrá data. Chybějící pole se čte jako 'live', takže
+ * neoznačený záznam je vždycky ten chráněný.
+ */
+const DATA_CLASS_TEST = 'test'
+
 function writeDoc(path, data) {
-  return { update: { name: `projects/${PROJECT_ID}/databases/(default)/documents/${path}`, fields: toFields(data) } }
+  return {
+    update: {
+      name: `projects/${PROJECT_ID}/databases/(default)/documents/${path}`,
+      fields: toFields({ ...data, dataClass: DATA_CLASS_TEST }),
+    },
+  }
 }
 
 async function main() {

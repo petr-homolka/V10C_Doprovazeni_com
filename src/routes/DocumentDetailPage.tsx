@@ -3,11 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
 import ReactMarkdown from 'react-markdown'
 import { AppShell } from '@/components/shell/AppShell'
+import { PageHead } from '@/components/spis/PageBody'
+import { SpisSection } from '@/components/spis/SpisSection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { PersonLink } from '@/components/ui/person-link'
+import { Textarea } from '@/components/ui/textarea'
 import { DOCUMENT_STATUS_LABELS } from '@/components/documents/documentStatusLabels'
 import { useAuth } from '@/hooks/useAuth'
+import { useAsyncSubmit } from '@/hooks/useAsyncSubmit'
 import { getFamilyByUid, listChildrenForFamily, listFosterPersonsByRefs } from '@/services/familyService'
 import { getActiveAgreement } from '@/services/agreementService'
 import { listStaff } from '@/services/staffService'
@@ -23,6 +29,7 @@ import {
   sendToFosterReview,
   sendToMgmtReview,
 } from '@/services/documentService'
+import { auditActor } from '@/services/auditLogService'
 import { isReadOnlyManagerRole } from '@/types/user'
 import type { DocumentVersionDoc, FamilyDocumentDoc } from '@/types/familyDocument'
 import type { UserDoc } from '@/types/user'
@@ -55,6 +62,13 @@ export default function DocumentDetailPage() {
   const [children, setChildren] = useState<Array<{ docId: string; child: ChildDoc }>>([])
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
 
+  /** Popisek rodiny pro auditní stopu — log musí dávat smysl i za pět let,
+      kdy tenhle spis už u organizace být nemusí. */
+  const familyLabel =
+    fosterPersons.length > 0
+      ? `${fosterPersons[0].fosterPerson.firstName} ${fosterPersons[0].fosterPerson.lastName}`
+      : `Spis ${familyUid ?? ''}`
+
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [reviewerUid, setReviewerUid] = useState('')
@@ -64,7 +78,15 @@ export default function DocumentDetailPage() {
 
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+
+  const { loading: savingEdit, success: savingEditSuccess, run: runSaveEdit } = useAsyncSubmit()
+  const { loading: sendingToFoster, success: sendingToFosterSuccess, run: runSendToFoster } = useAsyncSubmit()
+  const { loading: markingFinal, success: markingFinalSuccess, run: runMarkFinal } = useAsyncSubmit()
+  const { loading: sendingToMgmt, success: sendingToMgmtSuccess, run: runSendToMgmt } = useAsyncSubmit()
+  const { loading: rejecting, success: rejectingSuccess, run: runReject } = useAsyncSubmit()
+  const { loading: closing, success: closingSuccess, run: runClose } = useAsyncSubmit()
+  const { loading: sendingToAuthority, success: sendingToAuthoritySuccess, run: runSendToAuthority } = useAsyncSubmit()
+  const { loading: filing, success: filingSuccess, run: runFile } = useAsyncSubmit()
 
   async function reload() {
     if (!familyUid || !docId || !organizationId) return
@@ -136,78 +158,139 @@ export default function DocumentDetailPage() {
   const isVedeni = userDoc && (userDoc.role === 'org_admin' || isReadOnlyManagerRole(userDoc.role))
   const bodyChanged = document && (title !== document.title || body !== document.body)
 
-  async function withSubmitting(fn: () => Promise<void>) {
-    setSubmitting(true)
-    setError(null)
-    try {
-      await fn()
-      await reload()
-    } catch {
-      setError('Akci se nepodařilo provést.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   async function handleSaveEdit() {
     if (!familyDocId || !docId || !organizationId || !userDoc || !document) return
-    await withSubmitting(() => editDocument(familyDocId, docId, organizationId, userDoc.uid, title, body, document.currentVersion))
+    setError(null)
+    try {
+      await runSaveEdit(async () => {
+        await editDocument(familyDocId, docId, organizationId, userDoc.uid, title, body, document.currentVersion)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleSendToFoster() {
     if (!familyDocId || !docId || !organizationId || !userDoc || !document) return
-    await withSubmitting(async () => {
-      if (bodyChanged) await editDocument(familyDocId, docId, organizationId, userDoc.uid, title, body, document.currentVersion)
-      await sendToFosterReview(familyDocId, docId)
-    })
+    setError(null)
+    try {
+      await runSendToFoster(async () => {
+        if (bodyChanged) await editDocument(familyDocId, docId, organizationId, userDoc.uid, title, body, document.currentVersion)
+        await sendToFosterReview(familyDocId, docId)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleMarkFinal() {
     if (!familyDocId || !docId || !userDoc) return
-    await withSubmitting(() => markDocumentFinal(familyDocId, docId, userDoc.uid, assignedKoUid))
+    setError(null)
+    try {
+      await runMarkFinal(async () => {
+        await markDocumentFinal(familyDocId, docId, userDoc.uid, assignedKoUid)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleSendToMgmt() {
     if (!familyDocId || !docId) return
-    await withSubmitting(() => sendToMgmtReview(familyDocId, docId, reviewerUid || undefined))
+    setError(null)
+    try {
+      await runSendToMgmt(async () => {
+        await sendToMgmtReview(familyDocId, docId, reviewerUid || undefined)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleReject() {
     if (!familyDocId || !docId || !rejectReason.trim()) return
-    await withSubmitting(async () => {
-      await rejectDocumentToDraft(familyDocId, docId, rejectReason.trim())
+    setError(null)
+    try {
+      await runReject(async () => {
+        await rejectDocumentToDraft(familyDocId, docId, rejectReason.trim())
+        await reload()
+      })
       setShowRejectForm(false)
       setRejectReason('')
-    })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleClose() {
     if (!familyDocId || !docId || !document) return
-    await withSubmitting(() => closeDocument(familyDocId, docId, document))
+    setError(null)
+    try {
+      await runClose(async () => {
+        await closeDocument(familyDocId, docId, document)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleSendToAuthority() {
     if (!familyDocId || !docId || !organizationId || !document) return
-    await withSubmitting(() => sendDocumentToAuthority({ familyDocId, docId, organizationId, title: document.title, sentTo }))
+    setError(null)
+    try {
+      await runSendToAuthority(async () => {
+        await sendDocumentToAuthority({
+          familyDocId,
+          docId,
+          organizationId,
+          title: document.title,
+          sentTo,
+          actor: auditActor(userDoc!),
+          familyLabel,
+        })
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   async function handleFile() {
     if (!familyDocId || !docId) return
-    await withSubmitting(() => fileDocument(familyDocId, docId))
+    setError(null)
+    try {
+      await runFile(async () => {
+        await fileDocument(familyDocId, docId)
+        await reload()
+      })
+    } catch {
+      setError('Akci se nepodařilo provést.')
+    }
   }
 
   if (notFound) {
     return (
-      <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }, { label: 'Nenalezeno' }]}>
-        <p className="text-sm text-text-secondary">Tenhle dokument se nepodařilo najít.</p>
+      <AppShell>
+        <PageHead title="Dokument" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-secondary">Tenhle dokument se nepodařilo najít.</p>
+        </section>
       </AppShell>
     )
   }
 
   if (!document) {
     return (
-      <AppShell breadcrumb={[{ label: 'Rodiny', href: '/rodiny' }]}>
-        <p className="text-sm text-text-secondary">Načítám…</p>
+      <AppShell>
+        <PageHead title="Dokument" />
+        <section className="sp__card sp__card--pad">
+          <p className="text-sm text-text-tertiary">Načítám…</p>
+        </section>
       </AppShell>
     )
   }
@@ -219,49 +302,48 @@ export default function DocumentDetailPage() {
 
   return (
     <AppShell
-      breadcrumb={[
-        { label: 'Rodiny', href: '/rodiny' },
-        { label: familyUid ?? '', href: `/rodiny/${familyUid}` },
-        { label: document.title },
-      ]}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-normal leading-normal text-text-primary">{document.title}</h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            {document.uid} · verze {document.currentVersion} · {DOCUMENT_STATUS_LABELS[status]}
-          </p>
-          {subjectLabels.length > 0 && <p className="mt-0.5 text-xs text-text-tertiary">Týká se: {subjectLabels.join(', ')}</p>}
-        </div>
-        {qrDataUrl && (
-          <div className="shrink-0 text-center">
-            <img src={qrDataUrl} alt="QR ověřovací kód dokumentu" className="rounded-sm border border-border" />
-            <p className="mt-1 text-[10px] text-text-tertiary">hash {document.hash.slice(0, 12)}…</p>
-          </div>
+      <PageHead
+        title={document.title}
+        description={`${document.uid} · verze ${document.currentVersion} · ${DOCUMENT_STATUS_LABELS[status]}`}
+        actions={
+          qrDataUrl && (
+            <div className="shrink-0 text-center">
+              <img src={qrDataUrl} alt="QR ověřovací kód dokumentu" className="rounded-sm border border-border-default" />
+              <p className="mt-1 text-2xs text-text-faint">hash {document.hash.slice(0, 12)}…</p>
+            </div>
+          )
+        }
+      >
+        {(subjectLabels.length > 0 || error) && (
+          <>
+            {subjectLabels.length > 0 && (
+              <p className="text-sm text-text-tertiary">Týká se: {subjectLabels.join(', ')}</p>
+            )}
+            {error && (
+              <p className="mt-1 text-sm text-danger" role="alert">
+                {error}
+              </p>
+            )}
+          </>
         )}
-      </div>
-
-      {error && (
-        <p className="mt-3 text-sm text-danger" role="alert">
-          {error}
-        </p>
-      )}
+      </PageHead>
 
       {document.rejectionReason && status === 'draft' && (
-        <div className="mt-4 rounded-lg border border-warning bg-warning-bg p-4">
+        <div className="sp__card sp__card--pad border-warning">
           <p className="text-sm font-medium text-text-primary">Vedení dokument zamítlo</p>
           <p className="mt-1 text-sm text-text-secondary">{document.rejectionReason}</p>
         </div>
       )}
 
       {document.fosterComments && (status === 'commented' || status === 'draft') && (
-        <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+        <div className="sp__card sp__card--pad">
           <p className="text-sm font-medium text-text-primary">Komentář pěstouna</p>
           <p className="mt-1 whitespace-pre-wrap text-sm text-text-secondary">{document.fosterComments}</p>
         </div>
       )}
 
-      <section className="mt-6">
+      <section className="sp__card sp__card--pad">
         {isEditable ? (
           <div className="flex flex-col gap-4">
             <label className="flex flex-col gap-1.5">
@@ -269,25 +351,26 @@ export default function DocumentDetailPage() {
               <Input value={title} onChange={(e) => setTitle(e.target.value)} />
             </label>
             <label className="flex flex-col gap-1.5">
-              <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah (markdown)</span>
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={16}
-                className="w-full resize-y rounded-sm border border-border-medium bg-inset px-4 py-3 text-[16px] leading-relaxed text-text-primary focus:border-2 focus:border-accent focus:outline-none"
-              />
+              <span className="text-sm font-medium leading-relaxed text-text-primary">Obsah</span>
+              <RichTextEditor value={body} onChange={setBody} minHeight={396} placeholder="Začněte psát obsah dokumentu…" />
             </label>
             <div className="flex items-center gap-2">
-              <Button onClick={handleSaveEdit} disabled={submitting || !bodyChanged} variant="secondary">
+              <Button
+                onClick={handleSaveEdit}
+                disabled={!bodyChanged}
+                loading={savingEdit}
+                success={savingEditSuccess}
+                variant="secondary"
+              >
                 Uložit koncept
               </Button>
-              <Button onClick={handleSendToFoster} disabled={submitting}>
+              <Button onClick={handleSendToFoster} loading={sendingToFoster} success={sendingToFosterSuccess}>
                 Poslat pěstounovi
               </Button>
             </div>
           </div>
         ) : (
-          <div className="rounded-lg border border-border bg-surface p-6">
+          <div>
             <div className="prose prose-sm max-w-none text-text-primary">
               <ReactMarkdown>{document.body}</ReactMarkdown>
             </div>
@@ -296,19 +379,19 @@ export default function DocumentDetailPage() {
       </section>
 
       {status === 'foster_review' && (
-        <p className="mt-4 text-sm text-text-secondary">Čeká na reakci pěstouna.</p>
+        <p className="sp__card sp__card--pad text-sm text-text-secondary">Čeká na reakci pěstouna.</p>
       )}
 
       {(status === 'commented' || status === 'approved_foster') && (
-        <div className="mt-4 flex items-center gap-2">
-          <Button onClick={handleMarkFinal} disabled={submitting}>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleMarkFinal} loading={markingFinal} success={markingFinalSuccess}>
             Označit jako Konečný
           </Button>
         </div>
       )}
 
       {status === 'final' && (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="sp__card sp__card--pad flex max-w-[560px] flex-col gap-3">
           <label className="flex flex-col gap-1.5">
             <span className="text-sm font-medium leading-relaxed text-text-primary">Schvalovatel (volitelné)</span>
             <Select
@@ -323,37 +406,42 @@ export default function DocumentDetailPage() {
               ))}
             </Select>
           </label>
-          <Button onClick={handleSendToMgmt} disabled={submitting} className="w-fit">
+          <Button onClick={handleSendToMgmt} loading={sendingToMgmt} success={sendingToMgmtSuccess} className="w-fit">
             Poslat vedení
           </Button>
         </div>
       )}
 
       {status === 'mgmt_review' && (
-        <div className="mt-4">
+        <div className="sp__card sp__card--pad">
           <p className="text-sm text-text-secondary">Čeká na schválení vedením.</p>
           {isVedeni && (
             <div className="mt-3 flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <Button onClick={handleClose} disabled={submitting}>
+                <Button onClick={handleClose} loading={closing} success={closingSuccess}>
                   Schválit a uzavřít
                 </Button>
-                <Button variant="outline" onClick={() => setShowRejectForm((v) => !v)} disabled={submitting}>
+                <Button variant="outline" onClick={() => setShowRejectForm((v) => !v)} disabled={closing}>
                   Zamítnout
                 </Button>
               </div>
               {showRejectForm && (
-                <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+                <div className="sp__sub flex max-w-[560px] flex-col gap-2">
                   <label className="flex flex-col gap-1.5">
                     <span className="text-sm font-medium leading-relaxed text-text-primary">Důvod zamítnutí</span>
-                    <textarea
+                    <Textarea
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       rows={3}
-                      className="w-full resize-y rounded-sm border border-border-medium bg-inset px-3 py-2 text-sm text-text-primary focus:border-2 focus:border-accent focus:outline-none"
                     />
                   </label>
-                  <Button onClick={handleReject} disabled={submitting || !rejectReason.trim()} className="w-fit">
+                  <Button
+                    onClick={handleReject}
+                    disabled={!rejectReason.trim()}
+                    loading={rejecting}
+                    success={rejectingSuccess}
+                    className="w-fit"
+                  >
                     Zamítnout a vrátit do konceptu
                   </Button>
                 </div>
@@ -367,7 +455,7 @@ export default function DocumentDetailPage() {
         status === 'closed_foster_unapproved' ||
         status === 'closed_ko_unapproved' ||
         status === 'closed_both_unapproved') && (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
+        <div className="sp__card sp__card--pad flex max-w-[560px] flex-col gap-3">
           <p className="text-sm text-text-primary">{DOCUMENT_STATUS_LABELS[status]}</p>
           <div className="flex items-center gap-2">
             <Select
@@ -377,10 +465,15 @@ export default function DocumentDetailPage() {
               <option value="ospod">OSPOD</option>
               <option value="soud">Soud</option>
             </Select>
-            <Button onClick={handleSendToAuthority} disabled={submitting}>
+            <Button onClick={handleSendToAuthority} loading={sendingToAuthority} success={sendingToAuthoritySuccess}>
               Odeslat na úřad
             </Button>
-            <Button variant="secondary" onClick={handleFile} disabled={submitting}>
+            <Button
+              variant="secondary"
+              onClick={handleFile}
+              loading={filing}
+              success={filingSuccess}
+            >
               Uložit do spisu
             </Button>
           </div>
@@ -388,33 +481,39 @@ export default function DocumentDetailPage() {
       )}
 
       {status === 'sent' && (
-        <p className="mt-4 text-sm text-text-secondary">
+        <p className="sp__card sp__card--pad text-sm text-text-secondary">
           Odesláno na {document.sentTo === 'soud' ? 'soud' : 'OSPOD'}{' '}
           {document.sentAt && new Date(document.sentAt).toLocaleString('cs-CZ')}.
         </p>
       )}
       {status === 'filed' && (
-        <p className="mt-4 text-sm text-text-secondary">
+        <p className="sp__card sp__card--pad text-sm text-text-secondary">
           Uloženo do spisu {document.filedAt && new Date(document.filedAt).toLocaleString('cs-CZ')}.
         </p>
       )}
 
-      <section className="mt-8">
-        <h2 className="text-lg font-normal leading-tight text-text-primary">Historie verzí</h2>
-        <div className="mt-3 flex flex-col gap-2">
+      <SpisSection id="verze" title="Historie verzí" description="Každá uložená verze i s otiskem obsahu." padded>
+        <div className="flex flex-col">
           {versions.map(({ docId: vId, version }) => (
-            <div key={vId} className="rounded-lg border border-border bg-surface p-3 text-sm">
+            <div key={vId} className="border-b border-border-subtle py-2 text-sm last:border-0">
               <p className="text-text-primary">
-                v{version.version} · {resolveStaffName(version.editedByUid)} ·{' '}
+                v{version.version} ·{' '}
+                <PersonLink
+                  kind="staff"
+                  id={staffList.some((s) => s.uid === version.editedByUid) ? version.editedByUid : null}
+                  name={resolveStaffName(version.editedByUid)}
+                  muted
+                />{' '}
+                ·{' '}
                 {new Date(version.createdAt).toLocaleString('cs-CZ')}
               </p>
               <p className="mt-0.5 text-xs text-text-tertiary">hash {version.hash.slice(0, 16)}…</p>
             </div>
           ))}
         </div>
-      </section>
+      </SpisSection>
 
-      <div className="mt-6">
+      <div>
         <Button variant="ghost" size="sm" onClick={() => navigate(`/rodiny/${familyUid}`)}>
           ← Zpět na Spis
         </Button>

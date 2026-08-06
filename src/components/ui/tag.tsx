@@ -10,7 +10,7 @@ import type { ReactNode } from 'react'
  */
 export function Tag({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex h-[18px] items-center rounded-full bg-tier-bg px-1.5 text-[10px] font-medium leading-4 text-tier">
+    <span className="inline-flex h-[18px] items-center rounded-full bg-tier-bg px-1.5 text-2xs font-medium leading-4 text-tier">
       {children}
     </span>
   )

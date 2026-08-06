@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AppShell } from '@/components/shell/AppShell'
 import { SettingsNav } from '@/components/settings/SettingsNav'
 import { SETTINGS_NAV_GROUPS } from '@/components/settings/settingsNavGroups'
+import { PageHead } from '@/components/spis/PageBody'
 import { Switch } from '@/components/ui/switch'
 
 /**
@@ -13,18 +14,24 @@ import { Switch } from '@/components/ui/switch'
  * produktu (ne převzatý cizí text o zpracování dat pro reklamu/newsletter
  * — to by pro CRM pěstounské agentury nedávalo smysl a bylo by věcně
  * nepravdivé), jen typografický STYL je převzatý přesně.
+ *
+ * "E-mailová upozornění" zůstává jen lokální UI stav (appka nemá e-mail
+ * infrastrukturu — SEAM). Narozeninový/jmeninový přepínač byl PŮVODNĚ tady
+ * (2026-07-23), ale PŘESUNUT na vlastní `/nastaveni/kalendar`
+ * (`CalendarSettingsPage.tsx`, 2026-07-24, Petrovo zadání "speciální
+ * nastavení PRO KALENDÁŘE") — logicky patří ke Kalendáři, ne k obecným
+ * e-mailovým Oznámením.
  */
 export default function NotificationsSettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true)
 
   return (
     <AppShell
-      breadcrumb={[{ label: 'Nastavení' }, { label: 'Oznámení' }]}
       secondaryPanel={<SettingsNav groups={SETTINGS_NAV_GROUPS} />}
     >
-      <h1 className="text-lg font-normal leading-normal text-text-primary">Oznámení</h1>
+      <PageHead title="Oznámení" />
 
-      <div className="mt-6 max-w-[480px]">
+      <section className="sp__card sp__card--pad max-w-[560px]">
         <p className="text-sm font-medium text-text-primary">E-mailová upozornění</p>
         <div className="mb-4 mt-3 flex items-center justify-between gap-5">
           <span className="text-sm text-text-secondary">
@@ -34,6 +41,7 @@ export default function NotificationsSettingsPage() {
             checked={emailNotifications}
             onChange={setEmailNotifications}
             label="E-mailová upozornění"
+            showLabel={false}
           />
         </div>
         <p className="text-xs text-text-secondary">
@@ -44,7 +52,7 @@ export default function NotificationsSettingsPage() {
           . Vypnutím přepínače přestanete dostávat e-maily — systémová upozornění v appce zůstanou
           beze změny.
         </p>
-      </div>
+      </section>
     </AppShell>
   )
 }
