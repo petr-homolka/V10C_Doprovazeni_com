@@ -11,6 +11,13 @@ import { GlobalSearchModal, useGlobalSearchShortcut } from '@/components/search/
 import { AccountMenu } from './AccountMenu'
 
 /**
+ * POSTRANNÍ PANEL — NA CESTĚ E UŽ HO APPKA NEPOUŽÍVÁ.
+ *
+ * Od převzetí vercelovské hlavičky (`TopNav`) nese navigaci vodorovná
+ * lišta a `AppShell` sem nesahá. Soubor zůstává jen kvůli návrhové
+ * obrazovce `preview/lab/spis/ScreenSpis.tsx`, což je historický návrh,
+ * ne živá appka. Kdo hledá navigaci, hledá `TopNav.tsx`.
+ *
  * POSTRANNÍ PANEL.
  *
  * Přestavěno 2026-07-25 na Petrův podnět („co máš v hlavičce, můžeš klidně

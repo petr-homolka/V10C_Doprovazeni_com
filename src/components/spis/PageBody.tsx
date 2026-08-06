@@ -27,7 +27,12 @@ export function PageBody({ children }: { children: ReactNode }) {
 }
 
 /**
- * HLAVIČKA STRÁNKY — první karta: název, jedna věta, akce, případně filtry.
+ * HLAVIČKA STRÁNKY — název, jedna věta, akce, případně filtry.
+ *
+ * CESTA E: UŽ NENÍ KARTA. Vercel nechává nadpis stát přímo na ploše
+ * stránky a rámuje až obsah pod ním; bílá karta kolem titulku dělala
+ * z nadpisu další „objekt" a stránka pak měla dvě stejně silné hrany nad
+ * sebou. Filtry pod nadpisem oddělí linka, ne druhý rám.
  *
  * Stejná jako hlavička profilu rodiny, aby seznam a detail vypadaly jako
  * jedna appka. Nadpis je `text-2xl` (26 px) a JEDINÝ na stránce; sekce pod
@@ -52,10 +57,10 @@ export function PageHead({
   children?: ReactNode
 }) {
   return (
-    <header className="sp__card sp__card--pad">
+    <header className="px-1">
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="flex items-center gap-2.5 text-2xl text-text-primary">
+          <h1 className="flex items-center gap-2.5 text-2xl font-medium text-text-primary">
             {title}
             {count !== undefined && <span className="text-lg text-text-faint">{count}</span>}
           </h1>
@@ -63,7 +68,7 @@ export function PageHead({
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
       </div>
-      {children && <div className="mt-4 border-t border-border-subtle pt-4">{children}</div>}
+      {children && <div className="mt-4">{children}</div>}
     </header>
   )
 }

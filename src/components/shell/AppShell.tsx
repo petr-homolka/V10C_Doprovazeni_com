@@ -1,13 +1,17 @@
 import type { ReactNode } from 'react'
 import { useScrollTopOnRoute } from '@/hooks/useScrollTopOnRoute'
-import { Sidebar } from './Sidebar'
-import { TopBar } from './TopBar'
+import { TopNav } from './TopNav'
 import { ActiveVisitBanner } from './ActiveVisitBanner'
 
 /**
  * `sidePanel` renders as a sibling of the sidebar/main column, not nested
  * inside `main` — that's what gives it full viewport height (spanning
  * past the TopBar row) instead of starting below the header.
+ *
+ * CESTA E: levý panel je pryč, navigaci nese `TopNav` ve dvou vodorovných
+ * řadách (viz komentář tam). `pageContext` se tím z okrajové ozdoby stal
+ * článkem cesty za lomítkem, takže hlavička konečně nese „kde jsem" na
+ * jednom místě.
  *
  * `breadcrumb` odsud 2026-07-25 ZMIZEL. Nesl jednu informaci, která je
  * zároveň v levém panelu (zvýrazněná položka) a v nadpisu stránky, takže
@@ -34,9 +38,8 @@ export function AppShell({
 
   return (
     <div className="flex h-screen bg-app">
-      <Sidebar />
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <TopBar context={pageContext} actions={pageActions} />
+        <TopNav context={pageContext} actions={pageActions} />
         <ActiveVisitBanner />
         {/*
           VŠECHNY TŘI VARIANTY MAJÍ TUTÉŽ PLOCHU: šedou stránku (`sp__page`)

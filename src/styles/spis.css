@@ -148,9 +148,12 @@
 .sp__sections {
   display: grid;
   gap: 40px;
-  max-width: calc(216px + 32px + 880px);
+  /* CESTA E: Vercel drží obsah v 1200px sloupci s 24px okraji. Po zrušení
+     levého panelu je na to místo — dřív se 1128px muselo dělit s 240px
+     navigace. */
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 32px 24px 160px;
+  padding: 24px 24px 160px;
 }
 
 .sp__sec {
